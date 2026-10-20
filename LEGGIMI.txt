@@ -1,41 +1,39 @@
-SimplyCAD Pro - app installabile (v12.9.10)
+SimplyCAD Pro - pubblicazione su GitHub Pages (v13.1)
 
-Contenuto della cartella (vanno caricati tutti insieme, senza rinominarli):
-  index.html             il programma
-  sw.js                  fa funzionare l'app anche senza internet
-  manifest.webmanifest   nome, icona e comportamento dell'app installata
-  icon-192.png, icon-512.png, icon-maskable.png   icone
+Contenuto (vanno caricati tutti, senza rinominarli e SENZA cartelle intorno):
+  index.html  sw.js  manifest.webmanifest  icon-192.png  icon-512.png  icon-maskable.png  README.md
 
-PUBBLICARE (una volta sola, da Chromebook o PC)
- 1. Estrai lo ZIP: ottieni la cartella "simplycad".
- 2. Apri https://app.netlify.com/drop e trascina la cartella "simplycad" nel riquadro.
- 3. Dopo pochi secondi hai un indirizzo tipo https://nome-a-caso.netlify.app
- 4. Crea l'account gratuito (o accedi) e "rivendica" il sito, altrimenti non resta tuo.
-    Nelle impostazioni del sito puoi cambiare il nome: es. https://simplycad-silvio.netlify.app
+PRIMA PUBBLICAZIONE (una volta sola, da Chromebook o PC, con Chrome)
+ 1. Crea l'account gratuito su https://github.com (conferma l'email).
+ 2. In alto a destra "+" -> "New repository".
+      Repository name: simplycad      Visibilità: Public (obbligatoria per il sito gratuito)
+      Lascia vuoto il resto -> "Create repository".
+ 3. Nella pagina che compare tocca il link "uploading an existing file".
+ 4. Estrai lo ZIP, apri la cartella "simplycad", seleziona TUTTI i file al suo interno
+    e trascinali nel riquadro (non trascinare la cartella: i file devono stare "in cima").
+    In basso -> "Commit changes".
+ 5. Nel repository: "Settings" -> a sinistra "Pages" -> Source: "Deploy from a branch",
+    Branch: "main", cartella "/ (root)" -> "Save".
+ 6. Dopo 1-2 minuti, in cima alla stessa pagina compare l'indirizzo:
+      https://<tuo-nome-utente>.github.io/simplycad/
+    (ricarica la pagina se non lo vedi ancora).
 
-INSTALLARE SU OGNI DISPOSITIVO
- - Android (tablet, telefono): apri l'indirizzo con Chrome -> menu (tre puntini) -> "Installa app"
-   (oppure menu File dell'app -> "Installa app").
- - Chromebook / PC: apri l'indirizzo con Chrome -> icona di installazione nella barra degli indirizzi
-   (o menu File -> "Installa app").
- Apri l'app una volta con internet: da quel momento funziona anche in cantiere senza rete
- (resta esclusa solo la lettura del testo dalle immagini, che scarica dati da internet).
+INSTALLARE L'APP
+ - Android: apri l'indirizzo con Chrome -> tre puntini -> "Installa app".
+ - Chromebook / PC: icona di installazione nella barra degli indirizzi (o menu File -> "Installa app").
+ Se hai già installato la versione Netlify: è un indirizzo diverso, quindi un'app diversa.
+ Prima di disinstallare quella vecchia, salva i progetti aperti (File -> Salva / Condividi progetto)
+ e riaprili nella nuova con File -> Carica progetto.
 
 AGGIORNARE A UNA VERSIONE NUOVA
- - Su Netlify, nella pagina del sito -> "Deploys", trascina la nuova cartella.
- - Alla successiva apertura l'app chiede "È pronta una versione nuova: aggiornare?".
+ 1. Nel repository -> "Add file" -> "Upload files".
+ 2. Trascina i file della nuova cartella (stessi nomi: sostituiscono i vecchi) -> "Commit changes".
+ 3. Dopo 1-2 minuti il sito è aggiornato; all'apertura l'app chiede
+    "È pronta una versione nuova: aggiornare?".
+ (Si può anche aggiornare solo index.html e sw.js, ma caricare tutto è più sicuro.)
 
-I PROGETTI
- - Restano sui tuoi dispositivi e nei tuoi file: il sito contiene solo il programma.
- - I salvataggi automatici dell'HTML locale NON passano all'app installata (il browser li tiene
-   separati per indirizzo): apri l'ultimo progetto con File -> Carica progetto e da lì prosegui.
- - Archivio consigliato: una cartella su Drive (es. "SimplyCAD Progetti").
-   Android: File -> Condividi progetto -> Drive.  Chromebook/PC: Salva -> scegli la cartella di Drive.
- - Chromebook/PC: con l'app installata, doppio clic su un file .json -> "Apri con SimplyCAD".
-
-ATTENZIONE: chi conosce l'indirizzo può aprire l'app (non i tuoi progetti). La chiave di licenza
-servirà a limitarne l'uso quando la venderai.
-
-CODICE DI ACCESSO
- - Al primo avvio su ogni dispositivo l'app chiede il codice di accesso; dopo non lo richiede piu.
- - I progetti gia salvati sul dispositivo restano come sono.
+DA SAPERE
+ - Con l'account gratuito il repository deve essere pubblico: chiunque può vedere e scaricare
+   il programma (index.html). I tuoi progetti NO: restano sui tuoi dispositivi e su Drive.
+   Per tenerlo privato serve GitHub Pro (a pagamento), oppure resta su Netlify.
+ - Su GitHub non compare la scritta "Powered by Netlify".

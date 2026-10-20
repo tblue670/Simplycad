@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v12.9.10</title>
+<title>SimplyCAD Pro · v13.1</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -699,43 +699,46 @@ body.mode-3d #infoStrip .scale-badge{display:none}
 </style>
 </head>
 <body class="menu-top">
-<style>
-html.locked body>*:not(#lock){display:none!important}
-#lock{position:fixed;inset:0;z-index:200;background:#1e1e2e;color:#eeeeee;display:flex;align-items:center;justify-content:center;padding:16px;font-family:system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif}
-#lock[hidden]{display:none!important}
-#lock .lbox{background:#2a2a3e;border:1px solid #45455e;border-radius:12px;padding:22px;width:100%;max-width:360px;display:flex;flex-direction:column;gap:12px}
-#lock h2{margin:0;font-size:19px}
-#lock p{margin:0;font-size:14px;color:#a9a9c0}
-#lock input{width:100%;padding:12px;font-size:18px;border:1px solid #45455e;border-radius:8px;background:#2a2a3e;color:#eeeeee;letter-spacing:.08em}
-#lock button{padding:12px;font-size:16px;border:0;border-radius:8px;background:#4f8cff;color:#2a2a3e;cursor:pointer}
-#lock .lerr{color:#ff8a80;font-size:14px;min-height:1.2em}
-</style>
-<div id="lock" hidden><form class="lbox" id="lockForm" autocomplete="off">
- <h2>SimplyCAD Pro</h2>
- <p>Inserisci il codice di accesso. Su questo dispositivo verrà richiesto solo la prima volta.</p>
- <input id="lockIn" type="password" inputmode="text" autocomplete="off" aria-label="Codice di accesso">
- <button type="submit">Entra</button>
- <div class="lerr" id="lockErr"></div>
-</form></div>
 <script>
-(function(){
- var H='ca80964f47561244e61253760cbd3f4d852a87723fa4e74056ea3ccfeb7acb98', SALT='scad-f4bc445be492', K='simplycad_unlock';
- function sha256(s){function r(n,x){return(x>>>n)|(x<<(32-n))}var k=[],h=[],i,j,p=2,u=unescape(encodeURIComponent(s)),w=[],L=u.length*8;
-  for(;k.length<64;p++){for(j=2;j*j<=p&&p%j;j++);if(j*j>p){if(h.length<8)h.push(Math.pow(p,1/2)*4294967296|0);k.push(Math.pow(p,1/3)*4294967296|0)}}
-  u+='\x80';while(u.length%64-56)u+='\x00';for(i=0;i<u.length;i++)w[i>>2]|=u.charCodeAt(i)<<((3-i)%4)*8;w.push(0,L);
-  for(j=0;j<w.length;j+=16){var a=h.slice(0),m=w.slice(j,j+16);for(i=0;i<64;i++){if(i>15){var x=m[i-15],y=m[i-2];m[i]=m[i-16]+(r(7,x)^r(18,x)^(x>>>3))+m[i-7]+(r(17,y)^r(19,y)^(y>>>10))|0}
-   var t1=a[7]+(r(6,a[4])^r(11,a[4])^r(25,a[4]))+((a[4]&a[5])^(~a[4]&a[6]))+k[i]+m[i],t2=(r(2,a[0])^r(13,a[0])^r(22,a[0]))+((a[0]&a[1])^(a[0]&a[2])^(a[1]&a[2]));a=[t1+t2|0].concat(a);a[4]=a[4]+t1|0;a.pop()}
-   for(i=0;i<8;i++)h[i]=h[i]+a[i]|0}
-  var o='';for(i=0;i<8;i++)o+=('00000000'+(h[i]>>>0).toString(16)).slice(-8);return o}
- var ok=false;try{ok=localStorage.getItem(K)===H}catch(e){}
- if(ok)return;
- document.documentElement.classList.add('locked');
- function show(){var l=document.getElementById('lock');l.hidden=false;var f=document.getElementById('lockForm'),inp=document.getElementById('lockIn'),err=document.getElementById('lockErr');
-  setTimeout(function(){inp.focus()},50);
-  f.addEventListener('submit',function(e){e.preventDefault();var v=inp.value.trim();
-   if(sha256(SALT+v)===H){try{localStorage.setItem(K,H)}catch(x){}document.documentElement.classList.remove('locked');l.hidden=true;l.remove();}
-   else{err.textContent='Codice non corretto. Riprova.';inp.value='';inp.focus()}})}
- if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',show);else show();
+/* v13.1 · accesso con password (una volta per dispositivo) */
+(function () {
+  const H = 'e409bf1886856de41a4c91d084e3de4196e5b5a7c8335e050111ec32b311a817', U = '0abb16fce9925a46b1f64e32714624b8b09e564127e7b6e282948dc68ed0784e';
+  function sha256(s) {
+    const K = [], P = n => { for (let i = 2; i * i <= n; i++) if (n % i === 0) return false; return true; }, fr = x => ((x - Math.floor(x)) * 4294967296) | 0;
+    const Hh = []; for (let n = 2, c = 0; c < 64; n++) if (P(n)) { if (c < 8) Hh[c] = fr(Math.pow(n, 1 / 2)); K[c++] = fr(Math.pow(n, 1 / 3)); }
+    const b = unescape(encodeURIComponent(s)), l = b.length, w = [];
+    for (let i = 0; i < l; i++) w[i >> 2] |= b.charCodeAt(i) << (24 - (i % 4) * 8);
+    w[l >> 2] |= 0x80 << (24 - (l % 4) * 8); const nb = ((l + 8) >> 6) + 1; w[nb * 16 - 1] = l * 8;
+    const r = (x, n) => (x >>> n) | (x << (32 - n));
+    for (let j = 0; j < nb * 16; j += 16) {
+      const W = []; let [a, bb, c, d, e, f, g, h] = Hh;
+      for (let i = 0; i < 64; i++) {
+        W[i] = i < 16 ? (w[j + i] | 0) : (r(W[i - 2], 17) ^ r(W[i - 2], 19) ^ (W[i - 2] >>> 10)) + W[i - 7] + (r(W[i - 15], 7) ^ r(W[i - 15], 18) ^ (W[i - 15] >>> 3)) + W[i - 16] | 0;
+        const t1 = h + (r(e, 6) ^ r(e, 11) ^ r(e, 25)) + ((e & f) ^ (~e & g)) + K[i] + W[i] | 0, t2 = (r(a, 2) ^ r(a, 13) ^ r(a, 22)) + ((a & bb) ^ (a & c) ^ (bb & c)) | 0;
+        h = g; g = f; f = e; e = d + t1 | 0; d = c; c = bb; bb = a; a = t1 + t2 | 0;
+      }
+      [a, bb, c, d, e, f, g, h].forEach((v, i) => Hh[i] = Hh[i] + v | 0);
+    }
+    return Hh.map(v => (v >>> 0).toString(16).padStart(8, '0')).join('');
+  }
+  try { if (localStorage.getItem('simplycad_accesso') === U) return; } catch (_) {}
+  const ov = document.createElement('div'); ov.id = 'scLock';
+  ov.innerHTML = '<div style="background:#1b2133;border:1px solid #2f3a55;border-radius:14px;padding:22px 20px;width:min(340px,100%);color:#e6e9f2;font:14px system-ui,sans-serif;text-align:center">' +
+    '<div style="font-size:30px">🏠</div><div style="font-size:19px;font-weight:700;margin:4px 0 2px">SimplyCAD</div><div style="color:#9aa3bd;font-size:12.5px;margin-bottom:14px">Scrivi la password per usare l\'app su questo dispositivo</div>' +
+    '<input id="scLockPw" type="password" autocomplete="current-password" style="width:100%;box-sizing:border-box;padding:11px;border-radius:8px;border:1px solid #39456a;background:#11162a;color:#fff;font-size:16px;text-align:center">' +
+    '<label style="display:flex;gap:6px;align-items:center;justify-content:center;margin:8px 0 0;color:#9aa3bd;font-size:12.5px"><input type="checkbox" id="scLockSee" style="width:18px;height:18px"> mostra</label>' +
+    '<div id="scLockMsg" style="min-height:18px;color:#f87171;font-size:12.5px;margin:6px 0"></div>' +
+    '<button id="scLockOk" style="width:100%;padding:11px;border-radius:8px;border:1px solid #22c55e;background:#16a34a;color:#fff;font-size:15px;font-weight:600">Entra</button></div>';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:2147483647;background:#0d111c;display:flex;align-items:center;justify-content:center;padding:16px';
+  ['pointerdown', 'pointerup', 'pointermove', 'touchstart', 'touchmove', 'wheel', 'keydown', 'contextmenu'].forEach(ev => ov.addEventListener(ev, e => e.stopPropagation(), {passive: ev.startsWith('touch') || ev === 'wheel'}));
+  const add = () => { (document.body || document.documentElement).appendChild(ov); const i = ov.querySelector('#scLockPw'); setTimeout(() => i.focus(), 50);
+    const go = () => { if (sha256('SimplyCAD|' + i.value.trim()) === H) { try { localStorage.setItem('simplycad_accesso', U); } catch (_) {} ov.remove(); } else { ov.querySelector('#scLockMsg').textContent = 'Password non corretta (attenzione a maiuscole e minuscole)'; i.select(); } };
+    ov.querySelector('#scLockOk').onclick = go; i.addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
+    ov.querySelector('#scLockSee').onchange = e => { i.type = e.target.checked ? 'text' : 'password'; };
+    /* l'app non deve rimettersi sopra: si tiene in cima */
+    new MutationObserver(() => { if (ov.isConnected && ov.nextSibling) document.body.appendChild(ov); }).observe(document.body, {childList: true});
+  };
+  if (document.body) add(); else document.addEventListener('DOMContentLoaded', add);
 })();
 </script>
 
@@ -1826,7 +1829,7 @@ const state = {
   currentLayerId: DEFAULT_LAYER_ID,
   nextLayerId: 1,
   images: [], activeImageId: null,
-  floors: [{id: 'f0', name: 'Piano terra', elev: 0, h: 3, slabT: 0.3}], currentFloorId: 'f0', floorSeq: 1, roofs: [], holes: [], zones: [], ceils: [], beams: [], cmpOff: [],
+  floors: [{id: 'f0', name: 'Piano terra', elev: 0, h: 3, slabT: 0.3}], currentFloorId: 'f0', floorSeq: 1, roofs: [], holes: [], zones: [], ceils: [], beams: [], cmpOff: [], cmpCustom: [],
   selected: null, tool: 'wall', pendingPoint: null, mode: '2d', nextId: 1,
   roomColors: ['#e8d5b7','#b7d5e8','#d5e8b7','#e8b7d5','#b7e8d5','#d5b7e8',
                '#f4a460','#87ceeb','#98fb98','#dda0dd','#afeeee','#f0e68c']
@@ -4088,7 +4091,7 @@ const buildProjectBlob = () => {
     furniture: state.furniture, labels: state.labels, stairs: state.stairs, customFurn: window.SCcf ? SCcf.exportUsed() : {},
     layers: state.layers, currentLayerId: state.currentLayerId,
     nextLayerId: state.nextLayerId, nextId: state.nextId,
-    floors: state.floors, currentFloorId: state.currentFloorId, floorSeq: state.floorSeq, roofs: state.roofs, holes: state.holes, zones: state.zones, ceils: state.ceils || [], beams: state.beams || [], cmpOff: state.cmpOff || [],
+    floors: state.floors, currentFloorId: state.currentFloorId, floorSeq: state.floorSeq, roofs: state.roofs, holes: state.holes, zones: state.zones, ceils: state.ceils || [], beams: state.beams || [], cmpOff: state.cmpOff || [], cmpCustom: state.cmpCustom || [],
     photos: window.SCph ? SCph.exportUsed() : undefined,
     images: state.images.filter(i => i.dataUrl).map(i => ({id: i.id, name: i.name, layerId: i.layerId, floorId: i.floorId, opacity: i.opacity, scale: i.scale, x: i.x, y: i.y, rot: i.rot || 0, dataUrl: i.dataUrl})),
     ...(window.SCauto ? SCauto.extras() : {}), appVersion: '8.0',
@@ -4195,7 +4198,7 @@ document.getElementById('fileInput').onchange = (e) => {
       state.stairs = data.stairs || [];
       state.floors = (data.floors && data.floors.length) ? data.floors : [{id: 'f0', name: 'Piano terra', elev: 0, h: 3, slabT: 0.3}];
       state.currentFloorId = state.floors.some(f => f.id === data.currentFloorId) ? data.currentFloorId : sortedFloors()[0].id;
-      state.floorSeq = data.floorSeq || state.floors.length; state.roofs = data.roofs || []; state.holes = data.holes || []; state.zones = data.zones || []; state.ceils = data.ceils || []; state.beams = data.beams || []; state.cmpOff = data.cmpOff || []; try { if (window.SCph) { SCph.importAll(data.photos); const np = data.photos ? Object.keys(data.photos).length : 0, miss = SCph.missing(); setTimeout(() => toast('Progetto aperto' + (np ? ' · ' + np + ' foto' : '') + (miss ? ' · ⚠ ' + miss + ' foto non contenute nel file' : '')), 700); } } catch (_) {}
+      state.floorSeq = data.floorSeq || state.floors.length; state.roofs = data.roofs || []; state.holes = data.holes || []; state.zones = data.zones || []; state.ceils = data.ceils || []; state.beams = data.beams || []; state.cmpOff = data.cmpOff || []; state.cmpCustom = data.cmpCustom || []; try { if (window.SCph) { SCph.importAll(data.photos); const np = data.photos ? Object.keys(data.photos).length : 0, miss = SCph.missing(); setTimeout(() => toast('Progetto aperto' + (np ? ' · ' + np + ' foto' : '') + (miss ? ' · ⚠ ' + miss + ' foto non contenute nel file' : '')), 700); } } catch (_) {}
       state.nextId = data.nextId || 1;
       state.layers = data.layers && data.layers.length ? data.layers :
         [{id: DEFAULT_LAYER_ID, name: '0', color: null, visible: true, locked: false}];
@@ -4278,7 +4281,7 @@ async function newSession() {
   state.furniture = []; state.labels = []; state.stairs = []; state.images = []; state.activeImageId = null;
   state.layers = [{id: DEFAULT_LAYER_ID, name: '0', color: null, visible: true, locked: false}];
   state.currentLayerId = DEFAULT_LAYER_ID; state.nextLayerId = 1;
-  state.floors = [{id: 'f0', name: 'Piano terra', elev: 0, h: 3, slabT: 0.3}]; state.currentFloorId = 'f0'; state.floorSeq = 1; state.roofs = []; state.holes = []; state.zones = []; state.ceils = []; state.beams = []; state.cmpOff = [];
+  state.floors = [{id: 'f0', name: 'Piano terra', elev: 0, h: 3, slabT: 0.3}]; state.currentFloorId = 'f0'; state.floorSeq = 1; state.roofs = []; state.holes = []; state.zones = []; state.ceils = []; state.beams = []; state.cmpOff = []; state.cmpCustom = [];
   state.sel = []; state.selected = null; state.pendingPoint = null;
   tmp = null; boxSel = null; drag = null; place = null;
   syncBgControls(); renderLayersPanel(); updateSelectionPanel(); updateRoomList(); refresh(); checkpoint(); fit();
@@ -4495,7 +4498,8 @@ function printPlan() {
     </style>
   </head><body>
     <img src="${dataUrl}" />
-    <script>window.onload = () => setTimeout(() => { window.print(); }, 300);<\/script>
+    <script>
+<script>window.onload = () => setTimeout(() => { window.print(); }, 300);<\/script>
   </body></html>`);
   w.document.close();
 }
@@ -6524,7 +6528,7 @@ const snap = () => JSON.stringify({
   furniture: state.furniture, labels: state.labels, stairs: state.stairs,
   layers: state.layers, currentLayerId: state.currentLayerId, nextLayerId: state.nextLayerId,
   images: state.images.map(i => ({id: i.id, name: i.name, layerId: i.layerId, floorId: i.floorId, opacity: i.opacity, scale: i.scale, x: i.x, y: i.y, rot: i.rot || 0})),
-  floors: state.floors, floorSeq: state.floorSeq, roofs: state.roofs, holes: state.holes, zones: state.zones, ceils: state.ceils || [], beams: state.beams || [], cmpOff: state.cmpOff || [],
+  floors: state.floors, floorSeq: state.floorSeq, roofs: state.roofs, holes: state.holes, zones: state.zones, ceils: state.ceils || [], beams: state.beams || [], cmpOff: state.cmpOff || [], cmpCustom: state.cmpCustom || [],
   nextId: state.nextId
 });
 let last = snap(), undoS = [], redoS = [], lastPush = 0;
@@ -6544,7 +6548,7 @@ function restore(s) {
     currentLayerId: d.currentLayerId || DEFAULT_LAYER_ID,
     nextLayerId: d.nextLayerId || 1,
     images: Array.isArray(d.images) ? d.images.map(m => { const o = imageStore.get(m.id); return o ? Object.assign(o, m) : null; }).filter(Boolean) : state.images,
-    floors: (d.floors && d.floors.length) ? d.floors : [{id: 'f0', name: 'Piano terra', elev: 0, h: 3, slabT: 0.3}], floorSeq: d.floorSeq || 1, roofs: d.roofs || [], holes: d.holes || [], zones: d.zones || [], ceils: d.ceils || [], beams: d.beams || [], cmpOff: d.cmpOff || [],
+    floors: (d.floors && d.floors.length) ? d.floors : [{id: 'f0', name: 'Piano terra', elev: 0, h: 3, slabT: 0.3}], floorSeq: d.floorSeq || 1, roofs: d.roofs || [], holes: d.holes || [], zones: d.zones || [], ceils: d.ceils || [], beams: d.beams || [], cmpOff: d.cmpOff || [], cmpCustom: d.cmpCustom || [],
     nextId: d.nextId, sel: [], selected: null, pendingPoint: null
   });
   if (!state.floors.some(f => f.id === state.currentFloorId)) state.currentFloorId = sortedFloors()[0].id;
@@ -8770,7 +8774,7 @@ $('impAnyInput').onchange = async e => {
     rooms: state.rooms, measurements: state.measurements,
     furniture: state.furniture, labels: state.labels, stairs: state.stairs, customFurn: window.SCcf ? SCcf.exportUsed() : {},
     layers: state.layers, currentLayerId: state.currentLayerId, nextLayerId: state.nextLayerId,
-    floors: state.floors, currentFloorId: state.currentFloorId, floorSeq: state.floorSeq, roofs: state.roofs, holes: state.holes, zones: state.zones, ceils: state.ceils || [], beams: state.beams || [], cmpOff: state.cmpOff || [],
+    floors: state.floors, currentFloorId: state.currentFloorId, floorSeq: state.floorSeq, roofs: state.roofs, holes: state.holes, zones: state.zones, ceils: state.ceils || [], beams: state.beams || [], cmpOff: state.cmpOff || [], cmpCustom: state.cmpCustom || [],
     nextId: state.nextId, imgCount: state.images.filter(i => i.dataUrl).length,
     settings: { wallHeight: $('wallHeight')?.value, wallThickness: $('wallThickness')?.value, gridSize: $('gridSize')?.value }
   };}
@@ -8876,7 +8880,7 @@ $('impAnyInput').onchange = async e => {
       state.stairs = d.stairs || [];
       state.floors = (d.floors && d.floors.length) ? d.floors : [{id: 'f0', name: 'Piano terra', elev: 0, h: 3, slabT: 0.3}];
       state.currentFloorId = state.floors.some(f => f.id === d.currentFloorId) ? d.currentFloorId : sortedFloors()[0].id;
-      state.floorSeq = d.floorSeq || state.floors.length; state.roofs = d.roofs || []; state.holes = d.holes || []; state.zones = d.zones || []; state.ceils = d.ceils || []; state.beams = d.beams || []; state.cmpOff = d.cmpOff || [];
+      state.floorSeq = d.floorSeq || state.floors.length; state.roofs = d.roofs || []; state.holes = d.holes || []; state.zones = d.zones || []; state.ceils = d.ceils || []; state.beams = d.beams || []; state.cmpOff = d.cmpOff || []; state.cmpCustom = d.cmpCustom || [];
       state.nextId = d.nextId || 1;
       if (d.layers && d.layers.length) state.layers = d.layers;
       state.currentLayerId = d.currentLayerId || DEFAULT_LAYER_ID;
@@ -10970,11 +10974,11 @@ updateRoomList();
       const N = roomNet(r), fm = state.floors.length > 1 ? floorById(floorOf(r)).name + ' · ' : '', nm = fm + (r.name || ('Locale ' + (ri + 1)));
       const hs = N.edges.filter(e => e.wl).map(e => [getWallHeight(e.wl), e.L]);
       const H = hs.length ? hs.reduce((s, [h, l]) => s + h * l, 0) / hs.reduce((s, [, l]) => s + l, 0) : getDefaultWallHeight();
-      let ded = 0, doorW = 0, winA = 0; const rivWin = [];
+      let ded = 0, doorW = 0, winA = 0, nD = 0, nW = 0; const rivWin = [];
       N.edges.forEach(e => edgeOpenings(e).forEach(x => {
         const a = x.w * x.h;
         if (a > opt.dedInt) ded += a;
-        if (x.type === 'door') doorW += x.w; else { winA += a; rivWin.push(x); }
+        if (x.type === 'door') { doorW += x.w; nD++; } else { winA += a; rivWin.push(x); nW++; }
       }));
       const pareti = Math.max(0, N.per * H - ded);
       const isBagno = /bagn|wc|servizi|doccia/i.test(nm), isCuc = /cucin|angolo cottura/i.test(nm);
@@ -10986,7 +10990,7 @@ updateRoomList();
       const bt = isBagno ? 0 : Math.max(0, N.per - doorW);
       const rai = N.area > 0 ? winA / N.area : 0;
       pav += N.area; sof += N.area; intI += pareti; batt += bt; riv += rv; volTot += N.area * H;
-      L.push({nm, area: N.area, per: N.per, H, vol: N.area * H, pareti, winA, rai, riv: rv, net: N.net});
+      L.push({nm, area: N.area, per: N.per, H, vol: N.area * H, pareti, winA, rai, riv: rv, net: N.net, ded, nD, nW});
     });
 
     // facce esterne dei muri (lato non rivolto a un locale)
@@ -11046,7 +11050,14 @@ updateRoomList();
     add('Intonaci e tinteggiature', 'int_int', `Intonaco civile interno su pareti (detratti vani > ${it(opt.dedInt, 1)} m²)`, 'm²', intI);
     add('Intonaci e tinteggiature', 'int_sof', 'Intonaco civile interno a soffitto', 'm²', sof);
     add('Intonaci e tinteggiature', 'int_est', `Intonaco esterno su facciate (detratti vani > ${it(opt.dedInt, 1)} m²)`, 'm²', intE);
-    add('Intonaci e tinteggiature', 'tin_int', 'Tinteggiatura interna pareti e soffitti, due mani', 'm²', Math.max(0, intI - riv) + sof);
+    /* v13.0: tinteggiatura interna stanza per stanza, pareti e soffitto separati (un solo prezzo al m² per tutte le stanze) */
+    { const used = {}; L.forEach(l => {
+        let s = l.nm.toLowerCase().normalize('NFD').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'locale'; used[s] = (used[s] || 0) + 1; if (used[s] > 1) s += '_' + used[s];
+        const pa = Math.max(0, l.pareti - l.riv);
+        add('Tinteggiature interne', 'tin_par_' + s, 'Tinteggiatura pareti – ' + l.nm + ', due mani', 'm²', pa,
+          'Perimetro ' + it(l.per) + ' ml × h ' + it(l.H) + ' m' + (l.ded > 0.005 ? ' − vani ' + it(l.ded) + ' m²' : '') + (l.riv > 0.005 ? ' − rivestimento ' + it(l.riv) + ' m²' : '') + ' = ' + it(pa) + ' m²');
+        add('Tinteggiature interne', 'tin_sof_' + s, 'Tinteggiatura soffitto – ' + l.nm + ', due mani', 'm²', l.area, 'Superficie del soffitto ' + it(l.area) + ' m²');
+      }); }
     add('Intonaci e tinteggiature', 'tin_est', 'Tinteggiatura esterna facciate, due mani', 'm²', intE);
 
     // serramenti (solo su muri non da demolire)
@@ -11088,13 +11099,16 @@ updateRoomList();
     add('Impianti', 'el_presa', 'Punto presa 10/16 A', 'n.', cnt('presa'));
     add('Impianti', 'el_quadro', 'Quadro elettrico di appartamento', 'n.', cnt('quadro'));
     add('Opere varie', 'scale', 'Scala interna', 'n.', state.stairs.filter(isEntityVisible).length);
+    /* v13.0: voci aggiunte dall'utente, con formula costruita toccando le misure del disegno */
+    (state.cmpCustom || []).forEach(c => { const r = SCvf.evalF(c.f, L); if (r.ok) V.push({cat: c.cat || 'Voci aggiunte', key: 'cus_' + c.id, desc: c.desc || 'Voce aggiunta', um: c.um || 'm²', q: Math.max(0, r.v), det: SCvf.words(c.f, L) + ' = ' + it(r.v), cus: c.id}); else V.push({cat: c.cat || 'Voci aggiunte', key: 'cus_' + c.id, desc: c.desc || 'Voce aggiunta', um: c.um || 'm²', q: 0, det: 'Formula da completare: ' + SCvf.words(c.f, L), cus: c.id}); });
     return {V, L, pav, volTot};
   }
 
   /* ---------- pannello ---------- */
   let panel = null, tab = 'voci', R = null, sig = '';
   const corpoOf = k => { k = String(k); if (k.startsWith('mur_') && window.SCwk) return SCwk.priceOf(k); if (k.startsWith('cg_') && window.SCcg) return SCcg.priceOf(k); if (k.startsWith('cs_') && window.SCcs) return SCcs.priceOf(k); if (k.startsWith('area_')) { const z = state.zones.find(x => 'area_' + x.id === k); return z && z.wkPrice != null ? +z.wkPrice : null; } return null; };
-  const price = k => { const v = corpoOf(k); if (v != null) return v; return prices[k] != null ? prices[k] : 0; };
+  const pkey = k => { k = String(k); const m = k.match(/^(tin_par|tin_sof)_/); return m ? m[1] : k; };   /* v13.0: stesso prezzo al m² per tutte le stanze */
+  const price = k => { const v = corpoOf(k); if (v != null) return v; if (String(k).startsWith('cus_')) { const c = (state.cmpCustom || []).find(x => 'cus_' + x.id === k); return c && +c.p || 0; } k = pkey(k); return prices[k] != null ? prices[k] : (k === 'tin_par' || k === 'tin_sof') && prices.tin_int != null ? prices.tin_int : 0; };
   /* v12.5: voci escluse dal computo (restano in grigio, fuori da totali, stampa e CSV); la scelta si salva nel progetto */
   const isOff = k => Array.isArray(state.cmpOff) && state.cmpOff.includes(k);
   const ON = () => R.V.filter(v => !isOff(v.key));
@@ -11123,7 +11137,7 @@ updateRoomList();
     });
     body.addEventListener('input', e => {
       const t = e.target;
-      if (t.dataset.k) { prices[t.dataset.k] = pNum(t.value); saveP(); if (t.dataset.k.startsWith('mur_') && window.SCwk) SCwk.setPrice(t.dataset.k, pNum(t.value)); if (t.dataset.k.startsWith('cs_') && window.SCcs) { SCcs.setPrice(t.dataset.k, pNum(t.value)); try { checkpoint(); } catch (_) {} } if (t.dataset.k.startsWith('cg_') && window.SCcg) { SCcg.setPrice(t.dataset.k, pNum(t.value)); try { checkpoint(); } catch (_) {} } if (t.dataset.k.startsWith('area_')) { const z = state.zones.find(x => 'area_' + x.id === t.dataset.k); if (z) { z.wkPrice = pNum(t.value); try { checkpoint(); } catch (_) {} } } const v = R.V.find(x => x.key === t.dataset.k); const c = t.closest('tr').querySelector('.cmp-imp'); if (v && c) c.textContent = it(v.q * price(v.key)); totals(); }
+      if (t.dataset.k) { prices[t.dataset.k] = pNum(t.value); saveP(); if (t.dataset.k.startsWith('mur_') && window.SCwk) SCwk.setPrice(t.dataset.k, pNum(t.value)); if (t.dataset.k.startsWith('cs_') && window.SCcs) { SCcs.setPrice(t.dataset.k, pNum(t.value)); try { checkpoint(); } catch (_) {} } if (t.dataset.k.startsWith('cg_') && window.SCcg) { SCcg.setPrice(t.dataset.k, pNum(t.value)); try { checkpoint(); } catch (_) {} } if (t.dataset.k.startsWith('area_')) { const z = state.zones.find(x => 'area_' + x.id === t.dataset.k); if (z) { z.wkPrice = pNum(t.value); try { checkpoint(); } catch (_) {} } } if (t.dataset.k.startsWith('cus_')) { const cc = (state.cmpCustom || []).find(x => 'cus_' + x.id === t.dataset.k); if (cc) { cc.p = pNum(t.value); try { checkpoint(); } catch (_) {} } } body.querySelectorAll('input.cmp-p').forEach(inp => { if (inp.dataset.k !== t.dataset.k) return; const v = R.V.find(x => x.key === inp.dataset.v); if (inp !== t) inp.value = price(v ? v.key : t.dataset.k) ? it(price(v.key)) : ''; const c = inp.closest('tr').querySelector('.cmp-imp'); if (v && c) c.innerHTML = isOff(v.key) ? '<s>' + it(v.q * price(v.key)) + '</s>' : it(v.q * price(v.key)); }); totals(); }
       if (t.dataset.o) { opt[t.dataset.o] = t.type === 'checkbox' ? t.checked : pNum(t.value); saveO(); R = compute(); totals(); }
     });
     return panel;
@@ -11134,7 +11148,9 @@ updateRoomList();
     panel.querySelectorAll('.cmp-tabs button').forEach(b => b.classList.toggle('on', b.dataset.t === tab));
     const body = panel.querySelector('#cmpBody');
     if (tab === 'voci') {
-      if (!R.V.length) { body.innerHTML = '<div class="cmp-empty">Nessuna quantità: disegna muri chiusi (locali), assegna lo stato ai muri da demolire o nuovi, inserisci porte e finestre.</div>'; }
+      const top = `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:2px 0 6px"><button class="wt-btn" id="cmpAdd" style="background:#1677a8;border-color:#249bd3;color:#fff">➕ Aggiungi voce</button><span class="cmp-note" style="padding:0">Voce tua: descrizione, unità e formula fatta toccando le misure delle stanze.</span></div>` +
+        (!R.L.length && state.walls.length ? '<div class="cmp-note" style="color:#fbbf24">Nessuna stanza chiusa rilevata: tinteggiature interne, pavimenti e soffitti compaiono solo quando i muri di una stanza si chiudono (estremi uniti). Controlla nella scheda Locali.</div>' : '');
+      if (!R.V.length) { body.innerHTML = top + '<div class="cmp-empty">Nessuna quantità: disegna muri chiusi (locali), assegna lo stato ai muri da demolire o nuovi, inserisci porte e finestre.</div>'; }
       else {
         const nOff = R.V.filter(v => isOff(v.key)).length;
         let h = (nOff ? `<div class="cmp-note" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${nOff === 1 ? '1 voce esclusa' : nOff + ' voci escluse'}: in grigio, non entrano nei totali, nella stampa e nel CSV. <button class="wt-btn" id="cmpAllOn">Riattiva tutte</button></div>` : '') +
@@ -11142,12 +11158,14 @@ updateRoomList();
         R.V.forEach(v => {
           if (v.cat !== cat) { cat = v.cat; h += `<tr class="cmp-cat"><td colspan="7">${esc(cat)}</td></tr>`; }
           const off = isOff(v.key); if (!off) n++;
-          h += `<tr${off ? ' style="opacity:.42"' : ''}><td><input type="checkbox" data-off="${esc(v.key)}"${off ? '' : ' checked'} title="${off ? 'Esclusa: tocca per includerla' : 'Inclusa: tocca per escluderla'}" style="width:20px;height:20px"></td><td>${off ? '—' : n}</td><td>${esc(v.desc)}${v.det ? `<small>${esc(v.det)}</small>` : ''}</td><td>${v.um}</td><td class="r">${it(v.q)}</td>
-            <td><input class="cmp-p" data-k="${esc(v.key)}" inputmode="decimal" value="${price(v.key) ? it(price(v.key)) : ''}" placeholder="0,00"></td><td class="r cmp-imp">${off ? '<s>' + it(v.q * price(v.key)) + '</s>' : it(v.q * price(v.key))}</td></tr>`;
+          h += `<tr${off ? ' style="opacity:.42"' : ''}><td><input type="checkbox" data-off="${esc(v.key)}"${off ? '' : ' checked'} title="${off ? 'Esclusa: tocca per includerla' : 'Inclusa: tocca per escluderla'}" style="width:20px;height:20px"></td><td>${off ? '—' : n}</td><td>${v.cus ? `<button class="wt-btn" data-cus="${esc(v.cus)}" title="Modifica la voce e la formula" style="float:right;margin-left:6px">✏️</button>` : ''}${esc(v.desc)}${v.det ? `<small>${esc(v.det)}</small>` : ''}</td><td>${v.um}</td><td class="r">${it(v.q)}</td>
+            <td><input class="cmp-p" data-k="${esc(pkey(v.key))}" data-v="${esc(v.key)}" inputmode="decimal" value="${price(v.key) ? it(price(v.key)) : ''}" placeholder="0,00"></td><td class="r cmp-imp">${off ? '<s>' + it(v.q * price(v.key)) + '</s>' : it(v.q * price(v.key))}</td></tr>`;
         });
-        body.innerHTML = h + '</tbody></table>';
+        body.innerHTML = top + h + '</tbody></table>';
         const ao = body.querySelector('#cmpAllOn'); if (ao) ao.onclick = () => { state.cmpOff = []; try { checkpoint(); } catch (_) {} render(); };
       }
+      { const ab = body.querySelector('#cmpAdd'); if (ab) ab.onclick = () => SCvf.edit(null, R.L, () => { R = compute(); render(); });
+        body.querySelectorAll('[data-cus]').forEach(b => b.onclick = () => SCvf.edit(b.dataset.cus, R.L, () => { R = compute(); render(); })); }
     } else if (tab === 'quadro') {
       body.innerHTML = quadroHTML();
     } else if (tab === 'locali') {
@@ -16436,6 +16454,103 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   const st = document.createElement('style');
   st.textContent = 'body{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}input,textarea,[contenteditable]{-webkit-touch-callout:default;-webkit-user-select:text;user-select:text}img{-webkit-user-drag:none}';
   document.head.appendChild(st);
+})();
+</script>
+<script>
+/* ========================================================================
+   v13.0 · VOCI AGGIUNTE NEL COMPUTO CON FORMULA «A TOCCHI»
+   La formula è una fila di gettoni: misure delle stanze (superficie, perimetro, pareti, soffitto, altezza,
+   volume, porte, finestre), numeri e operazioni + − × ÷ ( ). Niente da scrivere a mano.
+   ======================================================================== */
+(function () {
+  const QN = {area: 'Superficie', per: 'Perimetro', pareti: 'Pareti', sof: 'Soffitto', H: 'Altezza', vol: 'Volume', porte: 'Porte', fin: 'Finestre'};
+  const QU = {area: 'm²', per: 'ml', pareti: 'm²', sof: 'm²', H: 'm', vol: 'm³', porte: 'n.', fin: 'n.'};
+  const it = (v, d = 2) => (Math.round((+v || 0) * Math.pow(10, d)) / Math.pow(10, d)).toLocaleString('it-IT', {minimumFractionDigits: d, maximumFractionDigits: d});
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+  const one = (l, q) => q === 'area' || q === 'sof' ? l.area : q === 'per' ? l.per : q === 'pareti' ? Math.max(0, l.pareti - (l.riv || 0)) : q === 'H' ? l.H : q === 'vol' ? l.vol : q === 'porte' ? (l.nD || 0) : q === 'fin' ? (l.nW || 0) : 0;
+  function mval(t, L) {
+    if (t.room === '*') { if (t.q === 'H') { const s = L.reduce((a, l) => a + l.per, 0); return s ? L.reduce((a, l) => a + l.H * l.per, 0) / s : 0; } return L.reduce((a, l) => a + one(l, t.q), 0); }
+    const l = L.find(x => x.nm === t.room); return l ? one(l, t.q) : null;
+  }
+  /* numeri a cifre: i gettoni «n» consecutivi formano un numero */
+  function evalF(f, L) {
+    const T = []; (f || []).forEach(t => { if (t.t === 'd') { const p = T[T.length - 1]; if (p && p.t === 'num' && p.raw != null) { p.raw += t.v; p.v = parseFloat(p.raw.replace(',', '.')); } else T.push({t: 'num', raw: t.v, v: parseFloat(t.v.replace(',', '.'))}); } else if (t.t === 'm') { const v = mval(t, L); T.push({t: 'num', v: v == null ? NaN : v, miss: v == null}); } else T.push(t); });
+    if (!T.length) return {ok: false, v: 0, why: 'vuota'};
+    let i = 0;
+    const peek = () => T[i], isOp = (x, s) => x && x.t === 'op' && x.v === s;
+    function prim() { const x = T[i]; if (!x) throw 'manca un valore alla fine'; if (isOp(x, '(')) { i++; const v = expr(); if (!isOp(T[i], ')')) throw 'manca «)»'; i++; return v; } if (isOp(x, '-')) { i++; return -prim(); } if (x.t === 'num') { i++; if (x.miss) throw 'stanza non trovata'; if (!isFinite(x.v)) throw 'numero non valido'; return x.v; } throw 'operazione fuori posto'; }
+    function term() { let v = prim(); while (isOp(peek(), '×') || isOp(peek(), '÷') || (peek() && (peek().t === 'num' || isOp(peek(), '(')))) { const o = peek(); if (o.t === 'op' && (o.v === '×' || o.v === '÷')) { i++; const b = prim(); if (o.v === '÷') { if (Math.abs(b) < 1e-12) throw 'divisione per zero'; v /= b; } else v *= b; } else v *= prim(); } return v; }
+    function expr() { let v = term(); while (isOp(peek(), '+') || isOp(peek(), '-')) { const o = T[i++]; const b = term(); v = o.v === '+' ? v + b : v - b; } return v; }
+    try { const v = expr(); if (i < T.length) throw 'parentesi «)» in più'; return {ok: true, v}; } catch (e) { return {ok: false, v: 0, why: String(e)}; }
+  }
+  function words(f, L) {
+    let s = '', prevD = false;
+    (f || []).forEach(t => {
+      if (t.t === 'd') { s += (prevD ? '' : ' ') + t.v; prevD = true; return; } prevD = false;
+      if (t.t === 'm') { const v = mval(t, L || []); s += ' ' + QN[t.q] + ' (' + (t.room === '*' ? 'tutte' : t.room) + (v == null ? ' – non trovata' : ' ' + it(v) + ' ' + QU[t.q]) + ')'; }
+      else s += ' ' + t.v;
+    });
+    return s.trim().replace(/\( /g, '(').replace(/ \)/g, ')') || '—';
+  }
+  let ov = null;
+  function edit(id, L, done) {
+    if (!Array.isArray(state.cmpCustom)) state.cmpCustom = [];
+    const old = id ? state.cmpCustom.find(x => x.id === id) : null;
+    const c = old ? JSON.parse(JSON.stringify(old)) : {id: 'c' + Date.now().toString(36), cat: 'Voci aggiunte', desc: '', um: 'm²', f: []};
+    let room = L.length ? L[0].nm : '*';
+    if (ov) ov.remove();
+    ov = document.createElement('div'); ov.className = 'cf-ov';
+    ov.innerHTML = `<div class="cf-box"><div class="cf-h"><b>${old ? '✏️ Modifica voce' : '➕ Nuova voce'}</b><button class="wt-btn" data-x="close">✕</button></div>
+      <label>Descrizione</label><input id="cfDesc" placeholder="es. Rasatura pareti bagno" value="${esc(c.desc)}">
+      <div style="display:flex;gap:8px"><div style="flex:1"><label>Unità</label><select id="cfUm">${['m²', 'ml', 'm³', 'n.', 'a corpo', 'kg', 'h'].map(u => `<option${u === c.um ? ' selected' : ''}>${u}</option>`).join('')}</select></div>
+      <div style="flex:2"><label>Categoria</label><input id="cfCat" value="${esc(c.cat)}"></div></div>
+      <label>Formula <small>(tocca stanza e misura, poi le operazioni)</small></label>
+      <div class="cf-f" id="cfF"></div><div class="cf-res" id="cfRes"></div>
+      <label>Stanza</label><div class="cf-rooms" id="cfRooms"></div>
+      <div class="cf-ms">${Object.keys(QN).map(q => `<button class="wt-btn" data-q="${q}">${QN[q]}<small>${QU[q]}</small></button>`).join('')}</div>
+      <div class="cf-kp">${['7', '8', '9', '÷', '4', '5', '6', '×', '1', '2', '3', '−', '0', ',', '(', '+', ')', '⌫', 'C'].map(k => `<button class="wt-btn" data-k="${k}">${k}</button>`).join('')}</div>
+      <div class="cf-foot">${old ? '<button class="wt-btn" data-x="del" style="color:#f87171">🗑 Elimina</button>' : ''}<span style="flex:1"></span><button class="wt-btn" data-x="close">Annulla</button><button class="wt-btn" data-x="ok" style="background:#16a34a;border-color:#22c55e;color:#fff">Salva</button></div></div>`;
+    document.body.appendChild(ov);
+    ['pointerdown', 'pointerup', 'pointermove', 'touchstart', 'touchmove', 'wheel', 'contextmenu'].forEach(ev => ov.addEventListener(ev, e => e.stopPropagation(), {passive: ev.startsWith('touch') || ev === 'wheel'}));
+    const $ = s => ov.querySelector(s);
+    const rooms = () => { $('#cfRooms').innerHTML = [{nm: '*'}].concat(L).map(l => `<button class="wt-btn${l.nm === room ? ' on' : ''}" data-r="${esc(l.nm)}">${l.nm === '*' ? 'Tutte' : esc(l.nm)}</button>`).join('') || '<span class="cmp-note">Nessuna stanza chiusa</span>'; };
+    const show = () => {
+      $('#cfF').innerHTML = c.f.length ? c.f.map(t => `<span class="cf-tk cf-${t.t}">${t.t === 'm' ? QN[t.q] + ' <small>' + esc(t.room === '*' ? 'tutte' : t.room) + '</small>' : esc(t.v)}</span>`).join('') : '<span class="cmp-note" style="padding:0">vuota: tocca una misura o un numero</span>';
+      const r = evalF(c.f, L); $('#cfRes').innerHTML = !c.f.length ? '' : r.ok ? '= <b>' + it(r.v) + '</b> ' + esc($('#cfUm').value) : '<span style="color:#fbbf24">' + esc(r.why) + '</span>';
+    };
+    const last = () => c.f[c.f.length - 1];
+    ov.onclick = e => {
+      const b = e.target.closest('button'); if (!b) { if (e.target === ov) close(); return; }
+      if (b.dataset.r != null) { room = b.dataset.r; rooms(); return; }
+      if (b.dataset.q) { const p = last(); if (p && (p.t === 'm' || p.t === 'd' || (p.t === 'op' && p.v === ')'))) c.f.push({t: 'op', v: '×'}); c.f.push({t: 'm', room, q: b.dataset.q}); if (!$('#cfDesc').value.trim() && c.f.length === 1) { $('#cfUm').value = QU[b.dataset.q]; } show(); return; }
+      if (b.dataset.k) { const k = b.dataset.k; if (k === 'C') c.f = []; else if (k === '⌫') { const p = last(); if (p && p.t === 'd' && p.v.length > 1) p.v = p.v.slice(0, -1); else c.f.pop(); } else if (/[0-9,]/.test(k)) { const p = last(); if (p && p.t === 'm') c.f.push({t: 'op', v: '×'}); if (k === ',' && p && p.t === 'd' && p.v.includes(',')) return; c.f.push({t: 'd', v: k}); /* cifre unite in un gettone */ const n = c.f.length; if (n > 1 && c.f[n - 2].t === 'd') { c.f[n - 2].v += k; c.f.pop(); } } else c.f.push({t: 'op', v: k === '−' ? '-' : k}); show(); return; }
+      if (b.dataset.x === 'close') close();
+      if (b.dataset.x === 'del') { if (!confirm('Eliminare la voce «' + (c.desc || 'senza nome') + '»?')) return; state.cmpCustom = state.cmpCustom.filter(x => x.id !== c.id); state.cmpOff = (state.cmpOff || []).filter(k => k !== 'cus_' + c.id); try { checkpoint(); } catch (_) {} close(); done && done(); }
+      if (b.dataset.x === 'ok') {
+        c.desc = $('#cfDesc').value.trim(); c.um = $('#cfUm').value; c.cat = $('#cfCat').value.trim() || 'Voci aggiunte';
+        if (!c.desc) { toast('Scrivi la descrizione della voce'); $('#cfDesc').focus(); return; }
+        if (!c.f.length) { toast('La formula è vuota: tocca una misura o scrivi un numero'); return; }
+        const r = evalF(c.f, L); if (!r.ok) { toast('Formula da sistemare: ' + r.why); return; }
+        if (old) Object.assign(old, c); else state.cmpCustom.push(c);
+        try { checkpoint(); } catch (_) {} close(); toast('Voce salvata nel computo'); done && done();
+      }
+    };
+    $('#cfUm').onchange = show;
+    function close() { if (ov) { ov.remove(); ov = null; } }
+    rooms(); show();
+  }
+  const st = document.createElement('style');
+  st.textContent = `.cf-ov{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:2147483000;display:flex;align-items:center;justify-content:center;padding:10px}
+  .cf-box{background:#1b2133;color:#e6e9f2;border:1px solid #2f3a55;border-radius:12px;width:min(520px,100%);max-height:96vh;overflow:auto;padding:12px 14px;font-size:13px}
+  .cf-box label{display:block;margin:8px 0 3px;color:#9aa3bd;font-size:12px}.cf-box input,.cf-box select{width:100%;box-sizing:border-box;padding:8px;border-radius:6px;border:1px solid #39456a;background:#11162a;color:#fff;font-size:14px}
+  .cf-h{display:flex;justify-content:space-between;align-items:center}.cf-f{min-height:40px;padding:6px;border:1px solid #39456a;border-radius:6px;background:#11162a;display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+  .cf-tk{padding:4px 7px;border-radius:5px;background:#2a3350;font-size:13px}.cf-m{background:#1677a8;color:#fff}.cf-m small{opacity:.8}.cf-op{background:transparent;font-weight:700;font-size:15px}
+  .cf-res{min-height:20px;margin:5px 2px;font-size:14px}.cf-rooms,.cf-ms{display:flex;flex-wrap:wrap;gap:5px}.cf-rooms .on{background:#1677a8;border-color:#249bd3;color:#fff}
+  .cf-ms{margin-top:7px}.cf-ms button{display:flex;flex-direction:column;align-items:center;min-width:76px;padding:6px}.cf-ms small{opacity:.7;font-size:10px}
+  .cf-kp{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:9px}.cf-kp button{padding:10px 0;font-size:16px}
+  .cf-foot{display:flex;gap:8px;margin-top:12px;align-items:center}.cf-box .wt-btn{min-height:36px}`;
+  document.head.appendChild(st);
+  window.SCvf = {evalF, words, edit};
 })();
 </script>
 </body>
