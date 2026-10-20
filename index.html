@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v13.1</title>
+<title>SimplyCAD Pro · v13.2</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -10208,7 +10208,7 @@ updateRoomList();
     if (isCurrentLayerLocked()) { toast('Livello corrente bloccato: impossibile disegnare'); return; }
     const r = c2d.getBoundingClientRect(), w = screenToWorld(cx - r.left, cy - r.top);
     if (tmpZ.length >= 3) { const f = worldToScreen(tmpZ[0].x, tmpZ[0].y), s = worldToScreen(w.x, w.y); if (Math.hypot(f.x - s.x, f.y - s.y) < 14) { finish(); return; } }
-    const p = snapToVertex(w, tmpZ.length ? tmpZ[tmpZ.length - 1] : null);
+    const p = window.SCcs && SCcs.snap ? SCcs.snap(w, tmpZ.length ? tmpZ[tmpZ.length - 1] : null) : snapToVertex(w, tmpZ.length ? tmpZ[tmpZ.length - 1] : null);   /* v13.2: angoli e filo interno dei muri */
     if (tmpZ.length && Math.hypot(p.x - tmpZ[tmpZ.length - 1].x, p.y - tmpZ[tmpZ.length - 1].y) < 0.02) return;
     tmpZ.push({x: p.x, y: p.y}); draw2D();
   };
@@ -10221,9 +10221,10 @@ updateRoomList();
   }
   function cancel() { if (tmpZ.length) { tmpZ = []; draw2D(); } }
 
-  function closePal() { if (pal) { pal.remove(); pal = null; } }
+  let palZ = null;
+  function closePal() { if (pal) { pal.remove(); pal = null; } palZ = null; try { draw2D(); } catch (_) {} }
   function openPalette(z, b) {
-    closePal();
+    closePal(); palZ = z;
     pal = document.createElement('div');
     pal.style.cssText = 'position:fixed;z-index:9500;background:#1e1e2e;border:1px solid #38bdf8;border-radius:10px;padding:8px;box-shadow:0 6px 22px rgba(0,0,0,.55);font:13px sans-serif;color:#e5e7eb;display:flex;flex-direction:column;gap:6px;width:min(290px,calc(100vw - 12px));max-height:calc(100vh - 12px);overflow:auto';
     const ist = 'width:100%;box-sizing:border-box;padding:7px 8px;border-radius:6px;border:1px solid #475569;background:#12151f;color:#e5e7eb;font:14px sans-serif';
@@ -10235,6 +10236,11 @@ updateRoomList();
       '<label style="font-size:12px" id="zpMthL">Spessore massetto (cm)<input id="zpMth" inputmode="decimal" style="' + ist + '" value="' + (+z.mth > 0 ? String(z.mth).replace('.', ',') : '5') + '"></label>' +
       '<label style="font-size:12px">Prezzo a corpo (€)<input id="zpPr" inputmode="decimal" style="' + ist + '" value="' + (+z.wkPrice ? String(z.wkPrice).replace('.', ',') : '') + '" placeholder="0,00"></label>' +
       '<div id="zpSum" style="font-size:11.5px;line-height:1.4;color:#cbd5e1;background:#151826;border:1px solid #2f3550;border-radius:6px;padding:5px 7px"></div></div>' +
+      '<label style="font-size:12px;display:flex;gap:7px;align-items:center;margin-top:2px"><input type="checkbox" id="zpTin" style="width:20px;height:20px"' + (z.tin ? ' checked' : '') + '> Tinteggiatura pareti e soffitto</label>' +
+      '<div id="zpTinMore" style="display:flex;flex-direction:column;gap:6px">' +
+      '<label style="font-size:12px">Altezza pareti (m) <span style="opacity:.7">vuoto = altezza dei muri</span><input id="zpTinH" inputmode="decimal" style="' + ist + '" value="' + (+z.tinH > 0 ? String(z.tinH).replace('.', ',') : '') + '" placeholder="automatica"></label>' +
+      '<button id="zpTinPick" style="padding:7px;border-radius:6px;border:1px solid #16a34a;background:#14301f;color:#bbf7d0;cursor:pointer">✋ Correggi muri contati</button>' +
+      '<div id="zpTinSum" style="font-size:11.5px;line-height:1.4;color:#cbd5e1;background:#151826;border:1px solid #2f3550;border-radius:6px;padding:5px 7px"></div></div>' +
       '<div style="font-weight:700;color:#7dd3fc">Colore area</div><div id="zpSw" style="display:flex;flex-wrap:wrap;gap:5px"></div>' +
       '<div style="display:flex;gap:6px;align-items:center"><input type="color" id="zpCol" style="width:38px;height:28px;padding:0;border:0;background:none"><span style="font-size:12px;opacity:.8">altro colore</span></div>' +
       '<div style="display:flex;gap:6px"><button id="zpDel" style="flex:1;padding:6px;border-radius:6px;border:1px solid #7f1d1d;background:#3f1d1d;color:#fca5a5;cursor:pointer">Elimina</button><button id="zpOk" style="flex:1;padding:6px;border-radius:6px;border:1px solid #166534;background:#15803d;color:#fff;cursor:pointer">Fatto</button></div>';
@@ -10248,7 +10254,13 @@ updateRoomList();
       const k = z.lav || ''; pal.querySelector('#zpMore').style.display = k ? 'flex' : 'none';
       pal.querySelector('#zpMatL').style.display = k && k !== 'solodem' ? '' : 'none'; pal.querySelector('#zpMthL').style.display = hasMass(k) ? '' : 'none';
       const v = zVoce(z); pal.querySelector('#zpSum').innerHTML = v ? '<b>Voce di computo (a corpo)</b><br>' + v.desc.replace(/[<>&]/g, '') + '<br><span style="color:#9ca3b8">' + v.det + '</span>' : '';
+      pal.querySelector('#zpTinMore').style.display = z.tin ? 'flex' : 'none';
+      if (z.tin && window.SCtin) pal.querySelector('#zpTinSum').innerHTML = SCtin.summary(z);
     };
+    pal.querySelector('#zpTin').onchange = e => { z.tin = e.target.checked || undefined; syncMore(); draw2D(); checkpoint(); if (z.tin) toast('In verde i tratti di muro contati per la tinteggiatura'); };
+    pal.querySelector('#zpTinH').oninput = e => { const v = num(e.target.value); z.tinH = v >= 0.5 && v <= 20 ? v : undefined; syncMore(); };
+    pal.querySelector('#zpTinH').onchange = () => checkpoint();
+    pal.querySelector('#zpTinPick').onclick = () => { closePal(); if (window.SCtin) SCtin.pick(z); };
     pal.querySelector('#zpName').oninput = e => { z.name = e.target.value; syncMore(); draw2D(); };
     pal.querySelector('#zpLav').onchange = e => { z.lav = e.target.value || undefined; if (hasMass(z.lav) && !(+z.mth > 0)) z.mth = 5; syncMore(); draw2D(); checkpoint(); if (z.lav) toast('Lavorazione: ' + LAV[z.lav].t + ' · voce a corpo nel computo'); };
     pal.querySelector('#zpMat').oninput = e => { z.mat = e.target.value; syncMore(); };
@@ -10367,7 +10379,7 @@ updateRoomList();
   build3D = function () { const r = _b3z.apply(this, arguments); try { addZones3D(); } catch (err) { console.warn('aree 3D', err); } return r; };
 
   /* tasto destro / due dita: chiude l'area se ci sono almeno 3 punti, altrimenti annulla */
-  window.SCzone = {busy: () => state.tool === 'zone' && tmpZ.length > 0, finish,
+  window.SCzone = {busy: () => state.tool === 'zone' && tmpZ.length > 0, finish, palZone: () => palZ, openPal: z => openPalette(z, boxes.find(q => q.z === z)),
     tmp: () => tmpZ, addPt: p => { tmpZ.push({x: r6(p.x), y: r6(p.y)}); draw2D(); },
     active: () => (activeZ && state.zones.includes(activeZ) && isEntityVisible(activeZ) && !isEntityLocked(activeZ) && (state.tool === 'select' || state.tool === 'box')) ? activeZ : null,
     vert: () => { const z = activeZ; return z && z.pts ? Math.min(selV, z.pts.length - 1) : 0; },
@@ -10970,7 +10982,11 @@ updateRoomList();
     const L = [];
     let pav = 0, sof = 0, intI = 0, batt = 0, riv = 0, volTot = 0;
 
+    /* v13.2: aree con «Tinteggiatura pareti e soffitto» (stanze aperte o confini scelti da te) */
+    const ZT = window.SCtin ? (state.zones || []).filter(z => isEntityVisible(z) && z.tin && z.pts && z.pts.length >= 3) : [];
+    const zc = z => ({x: z.pts.reduce((s, p) => s + p.x, 0) / z.pts.length, y: z.pts.reduce((s, p) => s + p.y, 0) / z.pts.length});
     rooms.forEach((r, ri) => {
+      const cov = ZT.find(z => floorOf(z) === floorOf(r) && pointInPolygon(zc(z), r.polygon));
       const N = roomNet(r), fm = state.floors.length > 1 ? floorById(floorOf(r)).name + ' · ' : '', nm = fm + (r.name || ('Locale ' + (ri + 1)));
       const hs = N.edges.filter(e => e.wl).map(e => [getWallHeight(e.wl), e.L]);
       const H = hs.length ? hs.reduce((s, [h, l]) => s + h * l, 0) / hs.reduce((s, [, l]) => s + l, 0) : getDefaultWallHeight();
@@ -10980,6 +10996,7 @@ updateRoomList();
         if (a > opt.dedInt) ded += a;
         if (x.type === 'door') { doorW += x.w; nD++; } else { winA += a; rivWin.push(x); nW++; }
       }));
+      if (window.SCtin) N.edges.forEach(e => { if (!e.wl) return; const s = SCtin.sOn(e.wl, e.a), t = SCtin.sOn(e.wl, e.b); ded += SCtin.worksDed(e.wl, Math.min(s, t), Math.max(s, t), H, opt.dedInt).ded; });   /* v13.2: fori e tagli del prospetto */
       const pareti = Math.max(0, N.per * H - ded);
       const isBagno = /bagn|wc|servizi|doccia/i.test(nm), isCuc = /cucin|angolo cottura/i.test(nm);
       let rv = 0;
@@ -10990,7 +11007,14 @@ updateRoomList();
       const bt = isBagno ? 0 : Math.max(0, N.per - doorW);
       const rai = N.area > 0 ? winA / N.area : 0;
       pav += N.area; sof += N.area; intI += pareti; batt += bt; riv += rv; volTot += N.area * H;
-      L.push({nm, area: N.area, per: N.per, H, vol: N.area * H, pareti, winA, rai, riv: rv, net: N.net, ded, nD, nW});
+      L.push({nm, area: N.area, per: N.per, H, vol: N.area * H, pareti, winA, rai, riv: rv, net: N.net, ded, nD, nW, cov: cov ? ((cov.name || '').trim() || 'Area') : ''});
+    });
+    ZT.forEach((z, zi) => {
+      const T = SCtin.calc(z, opt.dedInt), fm = state.floors.length > 1 ? floorById(floorOf(z)).name + ' · ' : '', nm = fm + (((z.name || '').trim()) || 'Area ' + (zi + 1));
+      const isBagno = /bagn|wc|servizi|doccia/i.test(nm), isCuc = /cucin|angolo cottura/i.test(nm);
+      let rv = 0;
+      if (isBagno || (isCuc && opt.rivCucina)) { const hr = Math.min(opt.hRiv, T.H); rv = Math.max(0, (T.per - T.doorW) * hr - T.wins.reduce((s, x) => s + x.ov * Math.max(0, Math.min(hr, x.sill + x.h) - x.sill), 0)); }
+      L.push({nm, area: T.area, per: T.per, H: T.H, vol: T.area * T.H, pareti: Math.max(0, T.per * T.H - T.ded), winA: T.winA, rai: T.area > 0 ? T.winA / T.area : 0, riv: rv, net: true, ded: T.ded, nD: T.nD, nW: T.nW, zone: true, pieces: T.pieces});
     });
 
     // facce esterne dei muri (lato non rivolto a un locale)
@@ -11051,11 +11075,11 @@ updateRoomList();
     add('Intonaci e tinteggiature', 'int_sof', 'Intonaco civile interno a soffitto', 'm²', sof);
     add('Intonaci e tinteggiature', 'int_est', `Intonaco esterno su facciate (detratti vani > ${it(opt.dedInt, 1)} m²)`, 'm²', intE);
     /* v13.0: tinteggiatura interna stanza per stanza, pareti e soffitto separati (un solo prezzo al m² per tutte le stanze) */
-    { const used = {}; L.forEach(l => {
+    { const used = {}; L.forEach(l => { if (l.cov) return;   /* stanza già tinteggiata dall'area disegnata sopra */
         let s = l.nm.toLowerCase().normalize('NFD').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'locale'; used[s] = (used[s] || 0) + 1; if (used[s] > 1) s += '_' + used[s];
         const pa = Math.max(0, l.pareti - l.riv);
         add('Tinteggiature interne', 'tin_par_' + s, 'Tinteggiatura pareti – ' + l.nm + ', due mani', 'm²', pa,
-          'Perimetro ' + it(l.per) + ' ml × h ' + it(l.H) + ' m' + (l.ded > 0.005 ? ' − vani ' + it(l.ded) + ' m²' : '') + (l.riv > 0.005 ? ' − rivestimento ' + it(l.riv) + ' m²' : '') + ' = ' + it(pa) + ' m²');
+          (l.zone ? 'Tratti di muro ' + (l.pieces.length > 1 ? l.pieces.map(x => it(x)).join(' + ') + ' = ' : '') + it(l.per) + ' ml' : 'Perimetro ' + it(l.per) + ' ml') + ' × h ' + it(l.H) + ' m' + (l.ded > 0.005 ? ' − vani ' + it(l.ded) + ' m²' : '') + (l.riv > 0.005 ? ' − rivestimento ' + it(l.riv) + ' m²' : '') + ' = ' + it(pa) + ' m²');
         add('Tinteggiature interne', 'tin_sof_' + s, 'Tinteggiatura soffitto – ' + l.nm + ', due mani', 'm²', l.area, 'Superficie del soffitto ' + it(l.area) + ' m²');
       }); }
     add('Intonaci e tinteggiature', 'tin_est', 'Tinteggiatura esterna facciate, due mani', 'm²', intE);
@@ -11149,7 +11173,7 @@ updateRoomList();
     const body = panel.querySelector('#cmpBody');
     if (tab === 'voci') {
       const top = `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:2px 0 6px"><button class="wt-btn" id="cmpAdd" style="background:#1677a8;border-color:#249bd3;color:#fff">➕ Aggiungi voce</button><span class="cmp-note" style="padding:0">Voce tua: descrizione, unità e formula fatta toccando le misure delle stanze.</span></div>` +
-        (!R.L.length && state.walls.length ? '<div class="cmp-note" style="color:#fbbf24">Nessuna stanza chiusa rilevata: tinteggiature interne, pavimenti e soffitti compaiono solo quando i muri di una stanza si chiudono (estremi uniti). Controlla nella scheda Locali.</div>' : '');
+        (!R.L.length && state.walls.length ? '<div class="cmp-note" style="color:#fbbf24">Nessuna stanza chiusa rilevata. Per chiuderle: Geometria → «Controlla chiusure». Per una stanza aperta (o per decidere tu i confini): disegna un\'Area e attiva «Tinteggiatura pareti e soffitto».</div>' : '');
       if (!R.V.length) { body.innerHTML = top + '<div class="cmp-empty">Nessuna quantità: disegna muri chiusi (locali), assegna lo stato ai muri da demolire o nuovi, inserisci porte e finestre.</div>'; }
       else {
         const nOff = R.V.filter(v => isOff(v.key)).length;
@@ -11311,7 +11335,7 @@ updateRoomList();
   }
   const live = () => { if (panel && !panel.classList.contains('prova-hide')) { R = compute(); render(); } };
   window.SCcomputo = {open, compute, sums: () => { R = compute(); return sums(); }, quadro: () => { R = compute(); return quadroRows(); },
-    roomNet, keys: () => { R = compute(); return R.V.map(v => ({key: v.key, desc: v.desc, um: v.um, q: v.q, price: price(v.key)})); },
+    roomNet, opt: () => opt, keys: () => { R = compute(); return R.V.map(v => ({key: v.key, desc: v.desc, um: v.um, q: v.q, price: price(v.key)})); },
     setPrice: (k, v) => { prices[k] = v; saveP(); live(); }, setOpt: (k, v) => { opt[k] = v; saveO(); live(); }, getOpt: () => ({...opt})};
 })();
 
@@ -15884,7 +15908,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     priceOf: k => { const e = state.ceils.concat(state.beams).find(x => 'cs_' + x.id === k); return e && e.price != null ? +e.price : null; },
     setPrice: (k, v) => { const e = state.ceils.concat(state.beams).find(x => 'cs_' + x.id === k); if (e) e.price = v; },
     busy: () => isMine(state.tool) && tmp.length > 0, finish, undoPt: () => { tmp.pop(); draw2D(); }, cancel: () => { tmp = []; draw2D(); },
-    count: () => tmp.length, mode, cycleMode, modeName: () => MNAME[mode()], moveSide, innerOf, velette, dense, voceC, voceB
+    count: () => tmp.length, mode, cycleMode, modeName: () => MNAME[mode()], moveSide, innerOf, velette, dense, voceC, voceB, snap: snapCs
   };
 })();
 </script>
@@ -16551,6 +16575,201 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   .cf-foot{display:flex;gap:8px;margin-top:12px;align-items:center}.cf-box .wt-btn{min-height:36px}`;
   document.head.appendChild(st);
   window.SCvf = {evalF, words, edit};
+})();
+</script>
+<script>
+/* ========================================================================
+   v13.2 · TINTEGGIATURA DA AREA  ·  CONTROLLA CHIUSURE
+   1) Un'Area con «Tinteggiatura pareti e soffitto»: si contano solo i tratti di faccia interna dei muri che
+      corrono lungo i lati dell'area (lati aperti esclusi), meno porte, finestre, fori e tagli del prospetto
+      oltre la soglia del computo; i muri da demolire non contano. Muri da togliere/aggiungere con un tocco.
+   2) Controlla chiusure: estremità di muro che si fermano a pochi cm da un altro muro; le chiudi una per una.
+   ======================================================================== */
+(function () {
+  const f2 = v => (Math.round((+v || 0) * 100) / 100).toLocaleString('it-IT', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  const Lw = w => Math.hypot(w.p2.x - w.p1.x, w.p2.y - w.p1.y);
+  const sOn = (w, p) => { const L = Lw(w) || 1; return ((p.x - w.p1.x) * (w.p2.x - w.p1.x) + (p.y - w.p1.y) * (w.p2.y - w.p1.y)) / L; };
+  const sArea = P => P.reduce((s, p, i) => { const q = P[(i + 1) % P.length]; return s + p.x * q.y - q.x * p.y; }, 0) / 2;
+  const shapeK = k => k.sh === 'round' ? Math.PI / 4 : k.sh === 'arch' ? (() => { const r = k.w / 2, hr = Math.max(0, k.h - r); return (k.w * hr + Math.PI * r * r / 2) / (k.w * k.h || 1); })() : 1;
+  const wName = w => (w.name || '').trim() || 'muro';
+  /* fori e tagli del prospetto nel tratto [s0,s1] del muro (le nicchie non si tolgono: la superficie resta) */
+  function worksDed(w, s0, s1, H, dedInt) {
+    let ded = 0; (Array.isArray(w.works) ? w.works : []).forEach(k => {
+      if (k.k !== 'hole' && k.k !== 'cut') return;
+      const ov = Math.min(s1, k.cx + k.w / 2) - Math.max(s0, k.cx - k.w / 2); if (ov < 0.005) return;
+      const hv = Math.max(0, Math.min(H, k.y + k.h) - Math.max(0, k.y)); if (k.w * k.h * shapeK(k) <= dedInt) return;
+      ded += ov * hv * shapeK(k);
+    });
+    return {ded};
+  }
+  /* tratti di muro lungo i lati dell'area */
+  function stretches(z) {
+    const P = z.pts, n = P.length, ccw = sArea(P) > 0, fl = floorOf(z), out = [];
+    const W = state.walls.filter(w => isEntityVisible(w) && floorOf(w) === fl && !w.chiusura && Lw(w) > 0.01);
+    const X = new Set(z.tinX || []), A = new Set(z.tinA || []);
+    for (let i = 0; i < n; i++) {
+      const a = P[i], b = P[(i + 1) % n], Le = Math.hypot(b.x - a.x, b.y - a.y); if (Le < 0.02) continue;
+      const ue = {x: (b.x - a.x) / Le, y: (b.y - a.y) / Le}, ne = ccw ? {x: -ue.y, y: ue.x} : {x: ue.y, y: -ue.x};
+      W.forEach(w => {
+        const L = Lw(w), u = {x: (w.p2.x - w.p1.x) / L, y: (w.p2.y - w.p1.y) / L}, nw = {x: -u.y, y: u.x}, th = getWallThickness(w) / 2;
+        const forced = A.has(w.id), par = Math.abs(ue.x * nw.x + ue.y * nw.y); if (par > (forced ? 0.18 : 0.07)) return;
+        const da = (a.x - w.p1.x) * nw.x + (a.y - w.p1.y) * nw.y, db = (b.x - w.p1.x) * nw.x + (b.y - w.p1.y) * nw.y;
+        if (da * db < 0) return; const sg = Math.sign(da + db) || 1, tol = forced ? 0.5 : 0.08;
+        if (Math.abs(Math.abs(da) - th) > tol || Math.abs(Math.abs(db) - th) > tol) return;
+        if (sg * (ne.x * nw.x + ne.y * nw.y) <= 0) return;   /* l'area deve stare dalla parte opposta al muro */
+        const sa = sOn(w, a), sb = sOn(w, b), s0 = Math.max(Math.min(sa, sb), -th), s1 = Math.min(Math.max(sa, sb), L + th); if (s1 - s0 < 0.02) return;
+        const pt = s => ({x: w.p1.x + u.x * s + nw.x * th * sg, y: w.p1.y + u.y * s + nw.y * th * sg});
+        const e0 = (pt(s0).x - a.x) * ue.x + (pt(s0).y - a.y) * ue.y, e1 = (pt(s1).x - a.x) * ue.x + (pt(s1).y - a.y) * ue.y;
+        out.push({w, edge: i, s0, s1, e0: Math.max(0, Math.min(e0, e1)), e1: Math.min(Le, Math.max(e0, e1)), pa: pt(s0), pb: pt(s1), ex: X.has(w.id) || w.stato === 'demolire', demo: w.stato === 'demolire'});
+      });
+    }
+    return out;
+  }
+  function calc(z, dedInt) {
+    const S = stretches(z), inc = S.filter(s => !s.ex), pieces = [];
+    for (let i = 0; i < z.pts.length; i++) {   /* per ogni lato si uniscono i tratti sovrapposti */
+      const I = inc.filter(s => s.edge === i).map(s => [s.e0, s.e1]).sort((p, q) => p[0] - q[0]); let cur = null;
+      I.forEach(([x0, x1]) => { if (cur && x0 <= cur[1] + 0.005) cur[1] = Math.max(cur[1], x1); else { if (cur) pieces.push(cur[1] - cur[0]); cur = [x0, x1]; } });
+      if (cur) pieces.push(cur[1] - cur[0]);
+    }
+    const per = pieces.reduce((s, v) => s + v, 0);
+    const hw = inc.reduce((s, x) => s + getWallHeight(x.w) * (x.e1 - x.e0), 0), lw = inc.reduce((s, x) => s + (x.e1 - x.e0), 0);
+    const H = +z.tinH > 0 ? +z.tinH : lw > 0 ? hw / lw : getDefaultWallHeight();
+    let ded = 0, doorW = 0, winA = 0, nD = 0, nW = 0; const wins = [];
+    inc.forEach(s => {
+      const L = Lw(s.w);
+      state.doors.filter(d => d.wallId === s.w.id && isEntityVisible(d)).forEach(d => { const ov = Math.min(s.s1, d.t * L + d.width / 2) - Math.max(s.s0, d.t * L - d.width / 2); if (ov < 0.02) return; nD++; doorW += ov; if (d.width * d.height > dedInt) ded += ov * Math.min(H, d.height); });
+      state.windows.filter(d => d.wallId === s.w.id && isEntityVisible(d)).forEach(d => { const ov = Math.min(s.s1, d.t * L + d.width / 2) - Math.max(s.s0, d.t * L - d.width / 2); if (ov < 0.02) return; const sill = +d.sillHeight || 0; nW++; winA += ov * d.height; wins.push({ov, sill, h: d.height}); if (d.width * d.height > dedInt) ded += ov * Math.max(0, Math.min(H, sill + d.height) - sill); });
+      ded += worksDed(s.w, s.s0, s.s1, H, dedInt).ded;
+    });
+    return {per, H, ded, doorW, nD, nW, winA, wins, pieces, area: Math.abs(sArea(z.pts)), S};
+  }
+  const dedI = () => { try { return SCcomputo.opt().dedInt; } catch (_) { return 4; } };
+  function summary(z) {
+    const T = calc(z, dedI()), ex = T.S.filter(s => s.ex && !s.demo).length, dm = T.S.filter(s => s.demo).length;
+    if (!T.per) return '<b style="color:#fbbf24">Nessun muro lungo i lati dell\'area.</b><br>Porta i lati sul filo interno dei muri (l\'area si aggancia agli angoli e alle facce) oppure usa «Correggi muri».';
+    return '<b>Pareti</b>: ' + (T.pieces.length > 1 ? T.pieces.map(f2).join(' + ') + ' = ' : '') + f2(T.per) + ' ml × h ' + f2(T.H) + (T.ded > 0.005 ? ' − vani ' + f2(T.ded) : '') + ' = <b>' + f2(Math.max(0, T.per * T.H - T.ded)) + ' m²</b><br><b>Soffitto</b>: ' + f2(T.area) + ' m²' +
+      (ex ? '<br><span style="color:#fca5a5">' + ex + (ex === 1 ? ' muro escluso' : ' muri esclusi') + ' da te</span>' : '') + (dm ? '<br><span style="color:#facc15">' + dm + ' da demolire, non contati</span>' : '') +
+      '<br><span style="color:#9ca3b8">Si tolgono i vani oltre ' + f2(dedI()) + ' m² (scheda Opzioni del computo). I lati senza muro non si contano.</span>';
+  }
+
+  /* ---------------------------------------------------------------- disegno: tratti contati e modalità */
+  let pickZ = null, chk = null, CL = [];
+  const ban = document.createElement('div'); ban.id = 'scTinBan'; (document.querySelector('.workspace') || document.body).appendChild(ban);
+  const st = document.createElement('style');
+  st.textContent = '#scTinBan{position:absolute;z-index:38;left:50%;top:calc(var(--dt,0px) + 6px);transform:translateX(-50%);display:none;align-items:center;gap:6px;flex-wrap:wrap;justify-content:center;max-width:calc(100% - 16px);padding:5px 8px;background:rgba(15,23,42,.95);border:2px solid var(--bc,#22c55e);border-radius:10px;color:#f1f5f9;font:600 13px system-ui,sans-serif}' +
+    '#scTinBan button{min-height:34px;padding:4px 10px;border-radius:8px;border:1px solid var(--bc,#22c55e);background:#1e293b;color:#f1f5f9;font:600 13px system-ui,sans-serif;cursor:pointer}';
+  document.head.appendChild(st);
+  ['pointerdown', 'pointerup', 'touchstart', 'wheel'].forEach(ev => ban.addEventListener(ev, e => e.stopPropagation(), {passive: true}));
+  function showBan(c, t, btns) { ban.style.setProperty('--bc', c); ban.innerHTML = '<span>' + t + '</span>' + btns.map(([a, l]) => '<button data-a="' + a + '">' + l + '</button>').join(''); ban.style.display = 'flex'; }
+  const hideBan = () => { ban.style.display = 'none'; };
+  ban.onclick = e => { const b = e.target.closest('button'); if (!b) return; if (b.dataset.a === 'pfine') endPick(); if (b.dataset.a === 'cfine') endChk(); };
+
+  const _d2 = draw2D;
+  draw2D = function () {
+    const r = _d2.apply(this, arguments);
+    try {
+      if (state.mode !== '2d') return r;
+      const z = pickZ || (window.SCzone && SCzone.palZone && SCzone.palZone());
+      if (z && z.tin && state.zones.includes(z)) {
+        const S = stretches(z); ctx.save(); ctx.lineCap = 'round';
+        S.forEach(s => { const a = worldToScreen(s.pa.x, s.pa.y), b = worldToScreen(s.pb.x, s.pb.y); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+          if (s.ex) { ctx.setLineDash([7, 6]); ctx.strokeStyle = s.demo ? '#facc15' : '#ef4444'; ctx.lineWidth = 4; } else { ctx.setLineDash([]); ctx.strokeStyle = '#22c55e'; ctx.lineWidth = 6; } ctx.stroke(); });
+        ctx.restore();
+      }
+      if (chk) {
+        ctx.save(); CL.forEach(c => { const a = worldToScreen(c.p.x, c.p.y), b = worldToScreen(c.hit.x, c.hit.y);
+          ctx.setLineDash([4, 4]); ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); ctx.setLineDash([]);
+          ctx.beginPath(); ctx.arc(a.x, a.y, 13, 0, 7); ctx.fillStyle = 'rgba(239,68,68,.35)'; ctx.fill(); ctx.lineWidth = 3; ctx.stroke();
+          ctx.font = 'bold 11px sans-serif'; ctx.fillStyle = '#fecaca'; ctx.textAlign = 'center'; ctx.fillText(Math.round(c.gap * 100) + ' cm', a.x, a.y - 18); });
+        ctx.restore();
+      }
+    } catch (e) { console.warn('tinteggiatura area', e); }
+    return r;
+  };
+
+  /* correggi muri: un tocco toglie o aggiunge il muro */
+  function pick(z) {
+    endChk(); pickZ = z; try { ctxTool('select'); } catch (_) {} setSel && setSel([]);
+    showBan('#22c55e', 'Tinteggiatura · tocca un muro: <span style="color:#86efac">verde</span> = contato, <span style="color:#fca5a5">rosso</span> = escluso', [['pfine', '✔ Fine']]); draw2D();
+  }
+  function endPick() { if (!pickZ) return; const z = pickZ; pickZ = null; hideBan(); draw2D(); try { SCzone.openPal(z); } catch (_) {} }
+  function wallAt(cx, cy) {
+    const r = c2d.getBoundingClientRect(), p = screenToWorld(cx - r.left, cy - r.top), fl = state.currentFloorId; let best = null, bd = Infinity;
+    state.walls.forEach(w => { if (!isEntityVisible(w) || floorOf(w) !== fl) return; const L = Lw(w); if (L < 0.01) return; const t = Math.max(0, Math.min(L, sOn(w, p))), q = {x: w.p1.x + (w.p2.x - w.p1.x) * t / L, y: w.p1.y + (w.p2.y - w.p1.y) * t / L}, d = Math.hypot(q.x - p.x, q.y - p.y);
+      if (d < getWallThickness(w) / 2 + 14 / viewScale && d < bd) { bd = d; best = w; } });
+    return best;
+  }
+  function togglePick(w) {
+    const z = pickZ; if (!Array.isArray(z.tinX)) z.tinX = []; if (!Array.isArray(z.tinA)) z.tinA = [];
+    if (w.stato === 'demolire') return toast('Muro da demolire: non si tinteggia');
+    const S = stretches(z).filter(s => s.w === w);
+    if (S.length && !S[0].ex) { z.tinX.push(w.id); z.tinA = z.tinA.filter(x => x !== w.id); toast('Escluso: ' + wName(w)); }
+    else if (z.tinX.includes(w.id)) { z.tinX = z.tinX.filter(x => x !== w.id); toast('Di nuovo contato: ' + wName(w)); }
+    else { z.tinA.push(w.id); if (!stretches(z).some(s => s.w === w && !s.ex)) { z.tinA = z.tinA.filter(x => x !== w.id); return toast('Questo muro non corre lungo un lato dell\'area: sposta il lato dell\'area sul muro'); } toast('Aggiunto: ' + wName(w)); }
+    checkpoint(); draw2D();
+  }
+
+  /* controlla chiusure */
+  function scan() {
+    const fl = state.currentFloorId, W = state.walls.filter(w => isEntityVisible(w) && floorOf(w) === fl && Lw(w) > 0.05), out = [];
+    const onWall = (p, o) => { const L = Lw(o), t = sOn(o, p); if (t < -1e-3 || t > L + 1e-3) return false; const q = {x: o.p1.x + (o.p2.x - o.p1.x) * t / L, y: o.p1.y + (o.p2.y - o.p1.y) * t / L}; return Math.hypot(q.x - p.x, q.y - p.y) < 1e-3; };
+    W.forEach(w => ['p1', 'p2'].forEach(k => {
+      if (isEntityLocked(w)) return;
+      const p = w[k]; if (W.some(o => o !== w && onWall(p, o))) return;
+      /* già incrociato vicino all'estremità (muro che sporge): è chiuso */
+      if (W.some(o => { if (o === w) return false; const i = inter(w.p1, w.p2, o.p1, o.p2); return i && i.t >= 0 && i.t <= 1 && i.u >= -1e-4 && i.u <= 1 + 1e-4 && Math.abs(i.t - (k === 'p1' ? 0 : 1)) * Lw(w) < getWallThickness(o) + 0.10; })) return;
+      let best = null;
+      W.forEach(o => {
+        if (o === w) return; const i = inter(w.p1, w.p2, o.p1, o.p2); if (!i) return;
+        const Lwv = Lw(w), Lo = Lw(o), g = getWallThickness(o) + 0.10, tk = k === 'p1' ? 0 : 1;
+        const gap = Math.abs(i.t - tk) * Lwv; if (gap < 0.002 || gap > g) return;
+        if ((k === 'p1' && i.t > 0) || (k === 'p2' && i.t < 1)) return;   /* solo allungare l'estremità corta, mai accorciare */
+        if (i.u < -(g / Lo) || i.u > 1 + g / Lo) return;
+        const hit = ptAt(w, i.t), oEnd = i.u < 0 ? 'p1' : i.u > 1 ? 'p2' : null;
+        if (oEnd && isEntityLocked(o)) return;
+        if (!best || gap < best.gap) best = {w, k, o, oEnd, p: {...p}, hit, gap};
+      });
+      if (best) out.push(best);
+    }));
+    /* un angolo con due muri entrambi corti compare una volta sola */
+    return out.filter((c, i) => !out.some((d, j) => j < i && d.w === c.o && d.o === c.w));
+  }
+  const nRooms = () => state.rooms.filter(r => isEntityVisible(r)).length;
+  function startChk() {
+    pickZ = null; try { ctxTool('select'); } catch (_) {} chk = true; CL = scan(); upChk(); draw2D();
+    if (!CL.length) toast('Nessuna estremità da chiudere: le stanze aperte hanno muri lontani più di uno spessore');
+  }
+  function upChk() { showBan('#ef4444', CL.length ? 'Controlla chiusure · ' + CL.length + (CL.length === 1 ? ' estremità staccata' : ' estremità staccate') + ': tocca il cerchio rosso da chiudere · stanze ' + nRooms() : 'Controlla chiusure · nessuna estremità staccata · stanze ' + nRooms(), [['cfine', '✔ Fine']]); }
+  function endChk() { if (!chk) return; chk = null; CL = []; hideBan(); draw2D(); }
+  function close1(c) {
+    const o1 = c.w.p1, o2 = c.w.p2; c.w[c.k] = {x: r6(c.hit.x), y: r6(c.hit.y)}; keepOps(c.w, o1, o2);
+    if (c.oEnd) { const q1 = c.o.p1, q2 = c.o.p2; c.o[c.oEnd] = {x: r6(c.hit.x), y: r6(c.hit.y)}; keepOps(c.o, q1, q2); }
+    const n0 = nRooms(); detectRooms(); refresh(); checkpoint(); CL = scan(); draw2D(); upChk();
+    toast('Chiuso (' + Math.round(c.gap * 100) + ' cm)' + (nRooms() > n0 ? ' · stanze chiuse: ' + nRooms() : ''));
+  }
+  const _ht = handleTap;
+  handleTap = function (cx, cy) {
+    if (pickZ) { const w = wallAt(cx, cy); if (w) togglePick(w); return; }
+    if (chk) {
+      const r = c2d.getBoundingClientRect(); let best = null, bd = 26;
+      CL.forEach(c => { const s = worldToScreen(c.p.x, c.p.y), d = Math.hypot(s.x - (cx - r.left), s.y - (cy - r.top)); if (d < bd) { bd = d; best = c; } });
+      if (best) close1(best); else toast('Tocca un cerchio rosso, oppure «Fine»');
+      return;
+    }
+    return _ht.apply(this, arguments);
+  };
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') { endPick(); endChk(); } });
+
+  /* menu Geometria */
+  const gm = document.querySelector('[data-menu="geometry"] .menu-dropdown');
+  if (gm) {
+    const b = document.createElement('button'); b.className = 'menu-row'; b.id = 'chkCloseBtn';
+    b.innerHTML = '<span class="mi-icon">⭕</span><span class="mi-label">Controlla chiusure</span><span class="mi-kbd">muri staccati</span>';
+    b.onclick = () => { document.querySelectorAll('.menu-dropdown').forEach(m => m.classList.remove('open')); startChk(); };
+    const pb = document.getElementById('wkMenuBtn'); if (pb) pb.after(b); else gm.prepend(b);
+  }
+  window.SCtin = {calc, summary, stretches, pick, sOn, worksDed, check: startChk, scan, closeOne: close1, endCheck: endChk};
 })();
 </script>
 </body>
