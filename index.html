@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v13.2</title>
+<title>SimplyCAD Pro · v13.3</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -941,6 +941,7 @@ body.mode-3d #infoStrip .scale-badge{display:none}
         <label><input type="checkbox" id="showFurniture" checked> Arredi</label>
         <label><input type="checkbox" id="showLabels" checked> Testi</label>
         <label><input type="checkbox" id="showRoomColors" checked> Stanze colorate</label>
+        <label><input type="checkbox" id="showRoomNames" checked> Nomi stanze</label>
       </div>
       <div class="menu-sep"></div>
       <button class="menu-row" id="themeBtn"><span class="mi-icon">🌓</span><span class="mi-label">Sfondo chiaro (bianco)</span><span class="mi-kbd" id="themeState">OFF</span></button>
@@ -2321,6 +2322,16 @@ function wallLettersToIndex(s) {
   for (const ch of s) n = n * 26 + (ch.charCodeAt(0) - 64);
   return n - 1;
 }
+function roomNamesOn() { const e = document.getElementById('showRoomNames'); return !e || e.checked; }
+/* v13.3: nome del muro scritto a mano (unico; vuoto = torna automatico) */
+function setWallName(w, v) {
+  const nm = String(v || '').trim(), old = w.name;
+  if (!nm) { const used = new Set(state.walls.filter(o => o !== w).map(o => (o.name || '').trim())); let i = 0; while (used.has('Muro ' + wallLetters(i))) i++; w.name = 'Muro ' + wallLetters(i); toast('Nome automatico: ' + w.name); }
+  else if (nm === old) return true;
+  else if (state.walls.some(o => o !== w && (o.name || '').trim().toLowerCase() === nm.toLowerCase())) { toast('Nome già usato da un altro muro: scegline uno diverso'); return false; }
+  else w.name = nm;
+  draw2D(); try { checkpoint(); } catch (_) {} return true;
+}
 function ensureWallNames() {
   const used = new Set(), todo = [];
   let next = 0;
@@ -2630,6 +2641,7 @@ function drawRoom(r) {
   for (const p of r.polygon) { cx += p.x; cy += p.y; }
   cx /= r.polygon.length; cy /= r.polygon.length;
   const c = worldToScreen(cx, cy), k = lblK();
+  if (!roomNamesOn()) return;   /* v13.3: Vista → Nomi stanze */
   ctx.fillStyle = '#fff';
   ctx.font = 'bold ' + Math.round(12 * k) + 'px sans-serif';
   ctx.textAlign = 'center';
@@ -3752,6 +3764,8 @@ function updateSelectionPanel() {
     info.innerHTML = `
       <div style="font-size:12px; margin-bottom:5px"><b>🧱 ${escHtml(w.name)}</b> <span style="color:#7dd3fc">[${escHtml(layer.name)}]</span></div>
       <label>Lunghezza: ${fmtLen(len)} | Angolo: ${ad}°</label>
+      <label>Nome</label>
+      <input type="text" id="selWallName" value="${escHtml(w.name)}" placeholder="vuoto = automatico">
       <label>Altezza (m)</label>
       <input type="number" id="selWallHeight" value="${getWallHeight(w).toFixed(2)}" min="1" max="10" step="0.1">
       <label>Spessore (m)</label>
@@ -3772,6 +3786,7 @@ function updateSelectionPanel() {
         <button class="action" id="extendStart" style="flex:1; font-size:11px">← Inizio</button>
         <button class="action" id="extendEnd" style="flex:1; font-size:11px">Fine →</button>
       </div>`;
+    document.getElementById('selWallName').onchange = e => { if (isEntityLocked(w)) { e.target.value = w.name; return; } if (!setWallName(w, e.target.value)) e.target.value = w.name; else updateSelectionPanel(); };
     document.getElementById('selWallStato').onchange = e => { if (isEntityLocked(w)) return; w.stato = e.target.value; draw2D(); if (state.mode === '3d') build3D(); };
     document.getElementById('selWallMat').onchange = e => { if (isEntityLocked(w)) return; w.material = e.target.value; delete w.color; updateSelectionPanel(); draw2D(); if (state.mode === '3d') build3D(); };
     bindColorPicker('selWallCol', c => { if (isEntityLocked(w)) return; w.color = c; w.cu = 1; draw2D(); if (state.mode === '3d') build3D(); });
@@ -4417,7 +4432,7 @@ function printPlan() {
   g.font = 'bold 14px sans-serif';
   g.textAlign = 'center';
   for (const r of state.rooms) {
-    if (!isEntityVisible(r)) continue;
+    if (!isEntityVisible(r) || !roomNamesOn()) continue;
     let cx = 0, cy = 0;
     for (const p of r.polygon) { cx += p.x; cy += p.y; }
     cx /= r.polygon.length; cy /= r.polygon.length;
@@ -8936,7 +8951,7 @@ $('impAnyInput').onchange = async e => {
      - storico: ultimi salvataggi, uno per sessione (anche di versioni precedenti dell'app), prima di Nuovo / Apri / Ripristina,
        prima di un calo improvviso del lavoro e la versione piu' completa mai vista
      ===================================================================== */
-  const APPV = '8.0', IDBN = 'simplycad_auto', TOGIDS = ['showFloor', 'showCeiling', 'showDimensions', 'showFurniture', 'showLabels', 'showWallNames', 'snapAngles', 'snapGrid', 'snapPts'];
+  const APPV = '8.0', IDBN = 'simplycad_auto', TOGIDS = ['showFloor', 'showCeiling', 'showDimensions', 'showFurniture', 'showLabels', 'showWallNames', 'showRoomNames', 'snapAngles', 'snapGrid', 'snapPts'];
   let idbP = null, lastSaved = 0, allowEmpty = false, saveT = 0, busy = false, again = false, lastJ = '', lastHist = 0, lastPeakAt = 0, failWarned = false, ready = false;
   const idb = () => idbP || (idbP = new Promise((res, rej) => {
     try {
@@ -9170,7 +9185,7 @@ $('impAnyInput').onchange = async e => {
       body.innerHTML = ws.map(w => {
         const dis = isEntityLocked(w) ? ' disabled' : '';
         return `<tr data-id="${w.id}">
-          <td class="wt-name">${escHtml(w.name)}</td>
+          <td class="wt-name"><input type="text" data-f="name" value="${escHtml(w.name)}"${dis} style="width:100%;min-width:70px;box-sizing:border-box"></td>
           <td><input type="number" data-f="len" step="0.01" min="0.05" inputmode="decimal"${dis}></td>
           <td><input type="number" data-f="h" step="0.01" min="0.1" max="10" inputmode="decimal"${dis}></td>
           <td><input type="number" data-f="t" step="0.01" min="0.01" max="2" inputmode="decimal"${dis}></td>
@@ -9208,6 +9223,7 @@ $('impAnyInput').onchange = async e => {
       if (t.checked) delete w.hideDim; else w.hideDim = true;
       draw2D(); return;
     }
+    if (f === 'name') { if (!setWallName(w, t.value)) t.value = w.name; else { t.value = w.name; if (state.selected && state.selected.type === 'wall' && state.selected.id === w.id) updateSelectionPanel(); } return; }
     const v = parseFloat(String(t.value).replace(',', '.'));
     const cur = {len: wLen(w), h: getWallHeight(w), t: getWallThickness(w)};
     const ok = Number.isFinite(v) && (
@@ -9994,7 +10010,7 @@ updateRoomList();
    (anche se il browser ricarica la pagina, ad esempio dopo il selettore file)
    ======================================================================== */
 (function () {
-  const KEY = 'simplycad_toggles_v1', IDS = ['showFloor', 'showCeiling', 'showDimensions', 'showFurniture', 'showLabels', 'showWallNames', 'snapAngles', 'snapGrid', 'snapPts'];
+  const KEY = 'simplycad_toggles_v1', IDS = ['showFloor', 'showCeiling', 'showDimensions', 'showFurniture', 'showLabels', 'showWallNames', 'showRoomNames', 'snapAngles', 'snapGrid', 'snapPts'];
   let saved = {}; try { saved = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (_) {}
   const save = () => { const o = {}; IDS.forEach(id => { const e = document.getElementById(id); if (e) o[id] = !!e.checked; });
     try { if (window.SCsv && SCsv.active() && SCsv.state() && SCsv.state().prevDim !== undefined) o.showDimensions = !!SCsv.state().prevDim; } catch (_) {}   /* in Rilievo le quote sono nascoste solo temporaneamente */
@@ -16770,6 +16786,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     const pb = document.getElementById('wkMenuBtn'); if (pb) pb.after(b); else gm.prepend(b);
   }
   window.SCtin = {calc, summary, stretches, pick, sOn, worksDed, check: startChk, scan, closeOne: close1, endCheck: endChk};
+  { const rn = document.getElementById('showRoomNames'); if (rn) rn.addEventListener('change', () => { try { draw2D(); } catch (_) {} }); }
 })();
 </script>
 </body>
