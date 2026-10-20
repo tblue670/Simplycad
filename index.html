@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v13.4</title>
+<title>SimplyCAD Pro · v13.6</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -532,6 +532,8 @@
   .cmp-foot{display:flex;flex-wrap:wrap;gap:6px 16px;justify-content:flex-end;padding:9px 12px;border-top:1px solid #3c4260;font-size:12px;color:#9ca3b8}
   .cmp-foot b{color:#fff;font-variant-numeric:tabular-nums}
   .cmp-foot .big b{color:#7dd3fc;font-size:14px}
+  .cmp-sub td{font-weight:700;color:#7dd3fc;border-bottom:2px solid #3b4566!important;text-align:right;padding:5px 6px!important;font-size:12.5px}
+  body:has(.cmp-panel:not(.prova-hide)) #panHandle,body:has(.cmp-panel:not(.prova-hide)) #vkFab{display:none!important}
   .cmp-empty,.cmp-note{color:#8b93ad;font-size:11.5px;line-height:1.45;padding:8px 2px}
   .cmp-opt{display:grid;gap:9px;max-width:440px}
   .cmp-opt label{display:grid;grid-template-columns:1fr 90px;align-items:center;gap:10px;font-size:12px;color:#cbd5e1}
@@ -942,6 +944,7 @@ body.mode-3d #infoStrip .scale-badge{display:none}
         <label><input type="checkbox" id="showLabels" checked> Testi</label>
         <label><input type="checkbox" id="showRoomColors" checked> Stanze colorate</label>
         <label><input type="checkbox" id="showRoomNames" checked> Nomi stanze</label>
+        <label><input type="checkbox" id="showWallNames" checked> Nomi muri</label>
       </div>
       <div class="menu-sep"></div>
       <button class="menu-row" id="themeBtn"><span class="mi-icon">🌓</span><span class="mi-label">Sfondo chiaro (bianco)</span><span class="mi-kbd" id="themeState">OFF</span></button>
@@ -955,7 +958,6 @@ body.mode-3d #infoStrip .scale-badge{display:none}
           <button class="wt-btn" id="dimToggleBtn" style="flex:1">👁 Quote ON/OFF</button>
         </div>
         <label><input type="checkbox" id="dimShowAngle" checked> Angolo nella quota</label>
-        <label><input type="checkbox" id="showWallNames" checked> Nome dei muri</label>
         <div style="font-size:10px;color:#777;margin-top:3px;line-height:1.3">Interruttore generale: «Quote muri» in Visualizzazione. Per singolo muro: colonna Quota nella Tabella muri.</div>
       </div>
       <div class="menu-sep"></div>
@@ -11147,6 +11149,7 @@ updateRoomList();
     add('Opere varie', 'scale', 'Scala interna', 'n.', state.stairs.filter(isEntityVisible).length);
     /* v13.0: voci aggiunte dall'utente, con formula costruita toccando le misure del disegno */
     (state.cmpCustom || []).forEach(c => { const r = SCvf.evalF(c.f, L); if (r.ok) V.push({cat: c.cat || 'Voci aggiunte', key: 'cus_' + c.id, desc: c.desc || 'Voce aggiunta', um: c.um || 'm²', q: Math.max(0, r.v), det: SCvf.words(c.f, L) + ' = ' + it(r.v), cus: c.id}); else V.push({cat: c.cat || 'Voci aggiunte', key: 'cus_' + c.id, desc: c.desc || 'Voce aggiunta', um: c.um || 'm²', q: 0, det: 'Formula da completare: ' + SCvf.words(c.f, L), cus: c.id}); });
+    { const ord = new Map(); V.forEach(v => { if (!ord.has(v.cat)) ord.set(v.cat, ord.size); }); V.forEach((v, i) => v._i = i); V.sort((a, b) => ord.get(a.cat) - ord.get(b.cat) || a._i - b._i); }   /* v13.6: voci raggruppate per tipologia */
     return {V, L, pav, volTot};
   }
 
@@ -11201,13 +11204,15 @@ updateRoomList();
         const nOff = R.V.filter(v => isOff(v.key)).length;
         let h = (nOff ? `<div class="cmp-note" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${nOff === 1 ? '1 voce esclusa' : nOff + ' voci escluse'}: in grigio, non entrano nei totali, nella stampa e nel CSV. <button class="wt-btn" id="cmpAllOn">Riattiva tutte</button></div>` : '') +
           '<table class="cmp-t"><thead><tr><th title="Voce inclusa nel computo">✓</th><th>N.</th><th>Descrizione</th><th>U.M.</th><th>Quantità</th><th>Prezzo €</th><th>Importo €</th></tr></thead><tbody>', cat = '', n = 0;
+        const subRow = c => `<tr class="cmp-sub"><td colspan="6">Totale ${esc(c)}</td><td class="r cmp-subv" data-cat="${esc(c)}"></td></tr>`;   /* v13.6: parziale per tipologia */
         R.V.forEach(v => {
-          if (v.cat !== cat) { cat = v.cat; h += `<tr class="cmp-cat"><td colspan="7">${esc(cat)}</td></tr>`; }
+          if (v.cat !== cat) { if (cat) h += subRow(cat); cat = v.cat; h += `<tr class="cmp-cat"><td colspan="7">${esc(cat)}</td></tr>`; }
           const off = isOff(v.key); if (!off) n++;
           h += `<tr${off ? ' style="opacity:.42"' : ''}><td><input type="checkbox" data-off="${esc(v.key)}"${off ? '' : ' checked'} title="${off ? 'Esclusa: tocca per includerla' : 'Inclusa: tocca per escluderla'}" style="width:20px;height:20px"></td><td>${off ? '—' : n}</td><td>${v.cus ? `<button class="wt-btn" data-cus="${esc(v.cus)}" title="Modifica la voce e la formula" style="float:right;margin-left:6px">✏️</button>` : ''}${esc(v.desc)}${v.det ? `<small>${esc(v.det)}</small>` : ''}</td><td>${v.um}</td><td class="r">${it(v.q)}</td>
             <td><input class="cmp-p" data-k="${esc(pkey(v.key))}" data-v="${esc(v.key)}" inputmode="decimal" value="${price(v.key) ? it(price(v.key)) : ''}" placeholder="0,00"></td><td class="r cmp-imp">${off ? '<s>' + it(v.q * price(v.key)) + '</s>' : it(v.q * price(v.key))}</td></tr>`;
         });
-        body.innerHTML = top + h + '</tbody></table>';
+        if (cat) h += subRow(cat);
+        body.innerHTML = top + h + '</tbody></table>'; subTot();
         const ao = body.querySelector('#cmpAllOn'); if (ao) ao.onclick = () => { state.cmpOff = []; try { checkpoint(); } catch (_) {} render(); };
       }
       { const ab = body.querySelector('#cmpAdd'); if (ab) ab.onclick = () => SCvf.edit(null, R.L, () => { R = compute(); render(); });
@@ -11280,7 +11285,12 @@ updateRoomList();
     const iva = imponibile * opt.iva / 100, totLavori = imponibile + iva, tec = imponibile * opt.tec / 100, ivaTec = tec * opt.ivaTec / 100;
     return {lav, sic, base, imp, imp2: imponibile, imponibile, iva, totLavori, tec, ivaTec, tot: totLavori, investimento: totLavori + tec + ivaTec};
   }
+  function subTot() {
+    if (!panel) return; const T = new Map(catTotals());
+    panel.querySelectorAll('.cmp-subv').forEach(td => { td.textContent = it(T.get(td.dataset.cat) || 0); });
+  }
   function totals() {
+    subTot();
     const S = sums(), f = panel.querySelector('#cmpFoot');
     f.innerHTML = `<span>Lavori <b>${eur(S.lav)}</b></span>${opt.oneri ? `<span>Sicurezza ${it(opt.oneri, 1)}% <b>${eur(S.sic)}</b></span>` : ''}${opt.imprev ? `<span>Imprevisti ${it(opt.imprev, 1)}% <b>${eur(S.imp)}</b></span>` : ''}<span>IVA ${it(opt.iva, 0)}% <b>${eur(S.iva)}</b></span><span class="big">Totale lavori <b>${eur(S.totLavori)}</b></span>`;
   }
@@ -11299,7 +11309,8 @@ updateRoomList();
     const m = meta(), out = [];
     out.push([c('Computo dal modello'), c(m.name || ''), c(m.client || ''), c(m.address || ''), c(new Date().toLocaleDateString('it-IT'))].join(';'));
     out.push(['N.', 'Categoria', 'Descrizione', 'Dettaglio', 'U.M.', 'Quantità', 'Prezzo', 'Importo'].map(c).join(';'));
-    ON().forEach((v, i) => out.push([i + 1, c(v.cat), c(v.desc), c(v.det), c(v.um), n(v.q), n(price(v.key)), n(v.q * price(v.key))].join(';')));
+    { const L = ON(), T = new Map(catTotals()); L.forEach((v, i) => { out.push([i + 1, c(v.cat), c(v.desc), c(v.det), c(v.um), n(v.q), n(price(v.key)), n(v.q * price(v.key))].join(';'));
+        if (!L[i + 1] || L[i + 1].cat !== v.cat) out.push(['', c(v.cat), c('Totale ' + v.cat), '', '', '', '', n(T.get(v.cat) || 0)].join(';')); }); }
     out.push(''); out.push([c('QUADRO ECONOMICO')].join(';'));
     quadroRows().rows.forEach(([k, d, v]) => out.push([c(k), c(d), '', '', '', '', '', n(v)].join(';')));
     out.push(''); out.push(['Locale', 'Sup. netta m²', 'Perimetro ml', 'H m', 'Volume m³', 'Pareti m²', 'Finestre m²', 'RAI'].map(c).join(';'));
@@ -16736,7 +16747,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
 
   /* controlla chiusure */
   function scan() {
-    const fl = state.currentFloorId, W = state.walls.filter(w => isEntityVisible(w) && floorOf(w) === fl && Lw(w) > 0.05), out = [];
+    const fl = state.currentFloorId, W = state.walls.filter(w => isEntityVisible(w) && floorOf(w) === fl && Lw(w) > 0.05 && !(window.SCcg && SCcg.isCp && SCcg.isCp(w))), out = [];   /* v13.5: le contropareti non chiudono le stanze */
     const onWall = (p, o) => { const L = Lw(o), t = sOn(o, p); if (t < -1e-3 || t > L + 1e-3) return false; const q = {x: o.p1.x + (o.p2.x - o.p1.x) * t / L, y: o.p1.y + (o.p2.y - o.p1.y) * t / L}; return Math.hypot(q.x - p.x, q.y - p.y) < 1e-3; };
     W.forEach(w => ['p1', 'p2'].forEach(k => {
       if (isEntityLocked(w)) return;
