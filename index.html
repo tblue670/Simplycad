@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v13.3</title>
+<title>SimplyCAD Pro · v13.4</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -814,7 +814,7 @@ body.mode-3d #infoStrip .scale-badge{display:none}
         <button class="tool" data-tool="door" title="Porta (D)">🚪 Porta</button>
         <button class="tool" data-tool="window" title="Finestra (F)">🪟 Finestra</button>
         <button class="tool" data-tool="room" title="Stanza (R)">🎨 Stanza</button>
-        <button class="tool" data-tool="measure" title="Misura (M)">📏 Misura</button>
+        <button class="tool" data-tool="measure" title="Misura al volo, non resta nel disegno (M)">📏 Misura</button>
       </div>
       <div class="menu-label">Inserisci</div>
       <div class="tool-grid">
@@ -822,7 +822,7 @@ body.mode-3d #infoStrip .scale-badge{display:none}
         <button class="tool" data-tool="text" title="Testo (X)">📝 Testo</button>
         <button class="tool" data-tool="stairs" title="Scala (L)">🪜 Scala</button>
         <button class="tool" data-tool="pillar" title="Pilastro: tocca un muro per addossarlo (dimensioni e distanza dal muro) o tocca lo spazio libero per un pilastro isolato">▣ Pilastro</button>
-        <button class="tool" data-tool="dim" title="Quota (Q)">📐 Quota</button>
+        <button class="tool" data-tool="dim" title="Quota da tavola: tocca un muro o due punti (Q)">📐 Quota</button>
         <button class="tool" data-tool="line" title="Linea / polilinea">╱ Linea</button>
         <button class="tool" data-tool="circle" title="Cerchio">◯ Cerchio</button>
         <button class="tool" data-tool="arc" title="Arco">◜ Arco</button>
@@ -2640,6 +2640,7 @@ function drawRoom(r) {
   let cx = 0, cy = 0;
   for (const p of r.polygon) { cx += p.x; cy += p.y; }
   cx /= r.polygon.length; cy /= r.polygon.length;
+  if (window.SCrl) { const lp = SCrl.pos(r); cx = lp.x; cy = lp.y; }   /* v13.4: punto più largo della stanza, o dove l'hai spostato */
   const c = worldToScreen(cx, cy), k = lblK();
   if (!roomNamesOn()) return;   /* v13.3: Vista → Nomi stanze */
   ctx.fillStyle = '#fff';
@@ -2993,6 +2994,7 @@ function drawWindow(w) {
 function drawMeasurement(m) {
   if (!isEntityVisible(m)) return;
   if (m.kind) return drawShape(m);
+  if (m.q && window.SCq) return SCq.draw(m);   /* v13.4: quota da tavola */
   const sel = state.selected?.type === 'measurement' && state.selected.id === m.id;
   const p1 = worldToScreen(m.p1.x, m.p1.y);
   const p2 = worldToScreen(m.p2.x, m.p2.y);
@@ -3923,11 +3925,13 @@ function updateSelectionPanel() {
       <label>Area netta: ${svRoomArea(r).toFixed(2)} m²</label>
       <label>Nome</label>
       <input type="text" id="selName" value="${escHtml(r.name)}">
+      ${r.lblOff ? '<button class="action" id="selRoomLblAuto" style="margin-top:5px">↺ Posizione nome automatica</button>' : ''}
       <label>Colore</label>
       <div class="color-palette">
         <div class="color-swatch ${r.color ? '' : 'active'}" style="background:transparent;border:2px dashed #8a93a8;display:flex;align-items:center;justify-content:center;font-size:12px;color:#8a93a8" data-color="" title="Nessun colore">∅</div>
         ${state.roomColors.map(c => `<div class="color-swatch ${c===r.color?'active':''}" style="background:${c}" data-color="${c}"></div>`).join('')}
       </div>`;
+    { const b = document.getElementById('selRoomLblAuto'); if (b) b.onclick = () => { delete r.lblOff; draw2D(); try { checkpoint(); } catch (_) {} updateSelectionPanel(); }; }
     document.getElementById('selName').oninput = e => { r.name = e.target.value; r._userNamed = true; draw2D(); updateRoomList(); };
     document.querySelectorAll('.color-swatch').forEach(sw => {
       sw.onclick = () => { r.color = sw.dataset.color || null; draw2D(); if (state.mode === '3d') build3D(); updateSelectionPanel(); updateRoomList(); };
@@ -4436,6 +4440,7 @@ function printPlan() {
     let cx = 0, cy = 0;
     for (const p of r.polygon) { cx += p.x; cy += p.y; }
     cx /= r.polygon.length; cy /= r.polygon.length;
+    if (window.SCrl) { const lp = SCrl.pos(r); cx = lp.x; cy = lp.y; }
     g.fillText(r.name, tx(cx), ty(cy));
     g.font = '11px sans-serif';
     g.fillText(`${svRoomArea(r).toFixed(2)} m²`, tx(cx), ty(cy) + 14);
@@ -4468,6 +4473,7 @@ function printPlan() {
     g.stroke();
     g.strokeStyle = '#000';
   }
+  if (window.SCq) try { SCq.print(g, tx, ty); } catch (e) { console.warn('quote stampa', e); }
   // Quote sulle lunghezze muri
   g.fillStyle = '#000';
   g.font = '11px sans-serif';
@@ -8727,8 +8733,8 @@ $('impAnyInput').onchange = async e => {
       detectRooms(); draw2D();
       if (state.mode === '3d') build3D();
     } else {
-      state.measurements.push(assignLayer({id: newId(), p1: anchor, p2: endPt}));
-      measureStart = null; draw2D();
+      if (!(window.SCq && SCq.typed(anchor, endPt))) { state.measurements.push(assignLayer({id: newId(), p1: anchor, p2: endPt})); measureStart = null; }
+      draw2D();
     }
   }
   function cancel() { quickInput = null; show(null); }
@@ -10697,7 +10703,7 @@ updateRoomList();
       const w = ensureWall(assignLayer({id: newId(), p1: {...T.a}, p2: T.p, height: getDefaultWallHeight()}));
       state.walls.push(w); state.pendingPoint = T.p; detectRooms();
     } else if (m === 'measure') {
-      state.measurements.push(assignLayer({id: newId(), p1: {...T.a}, p2: T.p})); measureStart = null;
+      if (!(window.SCq && SCq.typed({...T.a}, T.p))) { state.measurements.push(assignLayer({id: newId(), p1: {...T.a}, p2: T.p})); measureStart = null; }
     } else if (m === 'line') {
       shapePush({kind: 'line', p1: {...T.a}, p2: T.p}); shapeTmp = [T.p];
     } else if (m === 'circle' || m === 'arc1' || m === 'arc2') {
@@ -13233,7 +13239,7 @@ updateRoomList();
   function rescaleAll(A, k) {
     const f = p => ({x: r6(A.x + (p.x - A.x) * k), y: r6(A.y + (p.y - A.y) * k)});
     state.walls.forEach(w => { w.p1 = f(w.p1); w.p2 = f(w.p2); });
-    state.measurements.forEach(m => { m.p1 = f(m.p1); m.p2 = f(m.p2); });
+    state.measurements.forEach(m => { m.p1 = f(m.p1); m.p2 = f(m.p2); if (m.qa) { m.qa = f(m.qa); m.qb = f(m.qb); m.qo = f(m.qo); } });
     [state.furniture, state.stairs, state.labels, state.holes].forEach(arr => arr.forEach(e => { const q = f(e); e.x = q.x; e.y = q.y; }));
     state.zones.forEach(z => { if (z.pts) z.pts = z.pts.map(f); });
     state.images.forEach(im => { const q = f({x: im.x, y: im.y}); im.x = q.x; im.y = q.y; im.scale = im.scale * k; });
@@ -13330,6 +13336,8 @@ updateRoomList();
     if (t === 'line') return mk(sh ? 'Linea · tocca il punto finale' : 'Linea · tocca il punto di partenza');
     if (t === 'circle') return mk(sh ? 'Cerchio · tocca un punto sul bordo (definisce il raggio)' : 'Cerchio · tocca il centro');
     if (t === 'arc') return mk(sh === 0 ? 'Arco · 1/3 tocca il centro' : sh === 1 ? 'Arco · 2/3 tocca il punto di inizio' : 'Arco · 3/3 tocca il punto di fine');
+    if (t === 'measure' && window.SCq) return SCq.specM(mk);
+    if (t === 'dim' && window.SCq) return SCq.specD(mk);
     if (t === 'measure') return mk(ms ? 'Misura · tocca il secondo punto' : 'Misura · tocca il primo punto');
     if (t === 'dim') return mk(ms ? 'Quota · tocca il secondo punto' : 'Quota · tocca il primo punto');
     if (t === 'room') return mk('Stanza · tocca dentro la stanza per darle un nome');
@@ -16086,7 +16094,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     (state.zones || []).forEach(z => arr(z.pts));
     (state.ceils || []).forEach(c => arr(c.pts));
     (state.beams || []).forEach(b => arr(b.pts));
-    state.measurements.forEach(m => { P(m.p1); P(m.p2); P(m.p3); P(m.c); arr(m.pts); });
+    state.measurements.forEach(m => { P(m.p1); P(m.p2); P(m.p3); P(m.c); arr(m.pts); P(m.qa); P(m.qb); P(m.qo); if (m.qu) { const x = m.qu.x * co - m.qu.y * si, y = m.qu.x * si + m.qu.y * co; m.qu = {x, y}; } });
     state.furniture.forEach(f => { P(f); f.rot = (f.rot || 0) + a; });
     state.stairs.forEach(s => { P(s); s.rot = (s.rot || 0) + a; arr(s.pts); });
     state.labels.forEach(l => { P(l); l.rotation = (l.rotation || 0) + a; });
@@ -16787,6 +16795,255 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   }
   window.SCtin = {calc, summary, stretches, pick, sOn, worksDed, check: startChk, scan, closeOne: close1, endCheck: endChk};
   { const rn = document.getElementById('showRoomNames'); if (rn) rn.addEventListener('change', () => { try { draw2D(); } catch (_) {} }); }
+})();
+</script>
+<script>
+/* ========================================================================
+   v13.4 · NOMI DELLE STANZE  ·  MISURA AL VOLO  ·  QUOTA DA TAVOLA
+   1) Nome della stanza nel punto più largo (sempre dentro); trascinabile col dito (scostamento salvato nella stanza).
+   2) Misura = metro al volo: più punti di fila con la somma, non resta nel disegno.
+   3) Quota = quota da tavola: tocco su un muro (fuori = lunghezza intera sulla faccia esterna, dentro = luce netta tra le
+      tramezze), oppure due punti + posizione della linea, poi catena. Le quote sul muro seguono il muro.
+   ======================================================================== */
+(function () {
+  const S = p => worldToScreen(p.x, p.y), sub = (a, b) => ({x: a.x - b.x, y: a.y - b.y}), dot = (a, b) => a.x * b.x + a.y * b.y;
+  const add = (a, b, k = 1) => ({x: a.x + b.x * k, y: a.y + b.y * k}), nrm = v => { const l = Math.hypot(v.x, v.y) || 1; return {x: v.x / l, y: v.y / l}; };
+  const R6 = p => ({x: r6(p.x), y: r6(p.y)}), Lw = w => Math.hypot(w.p2.x - w.p1.x, w.p2.y - w.p1.y);
+  const toW = (cx, cy) => { const r = c2d.getBoundingClientRect(); return screenToWorld(cx - r.left, cy - r.top); };
+
+  /* ---------------------------------------------------------------- 1) nomi delle stanze */
+  const PL = new Map();
+  function polylabel(P) {
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity; P.forEach(p => { x0 = Math.min(x0, p.x); y0 = Math.min(y0, p.y); x1 = Math.max(x1, p.x); y1 = Math.max(y1, p.y); });
+    const cs = Math.min(x1 - x0, y1 - y0); if (!(cs > 0)) return {x: (x0 + x1) / 2, y: (y0 + y1) / 2};
+    const dist = (x, y) => { let ins = false, md = Infinity;
+      for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const a = P[i], b = P[j];
+        if ((a.y > y) !== (b.y > y) && x < (b.x - a.x) * (y - a.y) / (b.y - a.y) + a.x) ins = !ins;
+        const dx = b.x - a.x, dy = b.y - a.y, l2 = dx * dx + dy * dy, t = l2 ? Math.max(0, Math.min(1, ((x - a.x) * dx + (y - a.y) * dy) / l2)) : 0; md = Math.min(md, Math.hypot(x - a.x - t * dx, y - a.y - t * dy)); }
+      return (ins ? 1 : -1) * md; };
+    const cell = (x, y, h) => { const d = dist(x, y); return {x, y, h, d, mx: d + h * Math.SQRT2}; };
+    const Q = []; let h = cs / 2;
+    for (let x = x0; x < x1; x += cs) for (let y = y0; y < y1; y += cs) Q.push(cell(x + h, y + h, h));
+    let cx = 0, cy = 0; P.forEach(p => { cx += p.x; cy += p.y; }); let best = cell(cx / P.length, cy / P.length, 0);
+    const bb = cell((x0 + x1) / 2, (y0 + y1) / 2, 0); if (bb.d > best.d) best = bb;
+    for (let it = 0; Q.length && it < 4000; it++) {
+      let bi = 0; for (let i = 1; i < Q.length; i++) if (Q[i].mx > Q[bi].mx) bi = i;
+      const c = Q.splice(bi, 1)[0]; if (c.d > best.d) best = c; if (c.mx - best.d <= 0.01) continue;
+      const hh = c.h / 2; Q.push(cell(c.x - hh, c.y - hh, hh), cell(c.x + hh, c.y - hh, hh), cell(c.x - hh, c.y + hh, hh), cell(c.x + hh, c.y + hh, hh));
+    }
+    return {x: best.x, y: best.y};
+  }
+  function anchor(r) { const k = r.polygon.map(p => p.x.toFixed(3) + ',' + p.y.toFixed(3)).join(';'); let v = PL.get(k); if (!v) { v = polylabel(r.polygon); if (PL.size > 400) PL.clear(); PL.set(k, v); } return v; }
+  function pos(r) { const a = anchor(r); return r.lblOff ? {x: a.x + r.lblOff.x, y: a.y + r.lblOff.y} : a; }
+  function labelBox(r) {
+    const c = S(pos(r)), k = lblK(); ctx.save(); ctx.font = 'bold ' + Math.round(12 * k) + 'px sans-serif'; let w = ctx.measureText(r.name || '').width; ctx.font = Math.round(10 * k) + 'px sans-serif'; w = Math.max(w, ctx.measureText('000.0 m²').width); ctx.restore();
+    return {x0: c.x - w / 2 - 6, x1: c.x + w / 2 + 6, y0: c.y - 14 * k - 4, y1: c.y + 18 * k + 4};
+  }
+  let rd = null;
+  window.addEventListener('pointerdown', e => {
+    if (e.target !== c2d || state.mode !== '2d' || state.tool !== 'select' || e.button > 0 || !roomNamesOn()) return;
+    if (window.SCzone && SCzone.active && SCzone.active()) return;
+    const r0 = c2d.getBoundingClientRect(), x = e.clientX - r0.left, y = e.clientY - r0.top;
+    const r = state.rooms.slice().reverse().find(q => isEntityVisible(q) && !isEntityLocked(q) && floorOf(q) === state.currentFloorId && (() => { const b = labelBox(q); return x >= b.x0 && x <= b.x1 && y >= b.y0 && y <= b.y1; })());
+    if (!r) return;
+    e.stopImmediatePropagation(); e.preventDefault();
+    const a = anchor(r), p0 = pos(r);
+    rd = {r, id: e.pointerId, x0: e.clientX, y0: e.clientY, run: 0, lx: e.clientX, ly: e.clientY, touch: e.pointerType !== 'mouse', moved: false, a, d0: sub(p0, toW(e.clientX, e.clientY)), old: r.lblOff ? {...r.lblOff} : null};
+    try { c2d.setPointerCapture(e.pointerId); } catch (_) {}
+  }, true);
+  window.addEventListener('pointermove', e => {
+    if (!rd || e.pointerId !== rd.id) return; e.stopImmediatePropagation();
+    if (!rd.moved && Math.hypot(e.clientX - rd.x0, e.clientY - rd.y0) < 6) return; rd.moved = true;
+    let w; const F = window.SCfinger;
+    if (rd.touch && F && F.on()) { rd.run += Math.hypot(e.clientX - rd.lx, e.clientY - rd.ly); rd.lx = e.clientX; rd.ly = e.clientY; const c = F.pos(e.clientX, e.clientY, rd.run); F.show(c); w = F.world(c); }
+    else w = add(toW(e.clientX, e.clientY), rd.d0);
+    rd.r.lblOff = {x: r6(w.x - rd.a.x), y: r6(w.y - rd.a.y)}; draw2D();
+  }, true);
+  const rUp = e => {
+    if (!rd || e.pointerId !== rd.id) return; e.stopImmediatePropagation();
+    const d = rd; rd = null; try { c2d.releasePointerCapture(e.pointerId); } catch (_) {} if (window.SCfinger) SCfinger.hide();
+    if (d.moved) { if (Math.hypot(d.r.lblOff.x, d.r.lblOff.y) < 0.02) delete d.r.lblOff; draw2D(); try { checkpoint(); } catch (_) {} if (state.selected && state.selected.type === 'room' && state.selected.id === d.r.id) updateSelectionPanel(); }
+    else handleTap(d.x0, d.y0);   /* tocco senza spostare: come un tocco normale (seleziona la stanza) */
+  };
+  window.addEventListener('pointerup', rUp, true); window.addEventListener('pointercancel', rUp, true);
+  window.SCrl = {pos, anchor, polylabel};
+
+  /* ---------------------------------------------------------------- quote: calcolo */
+  const qCache = new Map();
+  const visW = () => state.walls.filter(w => isEntityVisible(w) && floorOf(w) === state.currentFloorId && Lw(w) > 0.01);
+  function geom(w) { const L = Lw(w), u = {x: (w.p2.x - w.p1.x) / L, y: (w.p2.y - w.p1.y) / L}; return {L, u, n: {x: -u.y, y: u.x}, th: getWallThickness(w) / 2}; }
+  /* intervalli occupati dagli altri muri sulla linea della faccia (param. lungo il muro) */
+  function cuts(w, sd, tolO) {
+    const G = geom(w), base = add(w.p1, G.n, sd * G.th), out = [];
+    state.walls.forEach(o => {
+      if (o === w || !isEntityVisible(o) || floorOf(o) !== floorOf(w) || Lw(o) < 0.01) return; const g = geom(o);
+      const den = G.u.x * g.u.y - G.u.y * g.u.x; if (Math.abs(den) < 0.2) return;
+      const T = [-1, 1].map(s => { const ob = add(o.p1, g.n, s * g.th), d = sub(ob, base), t = (d.x * g.u.y - d.y * g.u.x) / den, q = add(base, G.u, t), to = dot(sub(q, o.p1), g.u); return {t, to}; });
+      const lo = Math.min(T[0].to, T[1].to), hi = Math.max(T[0].to, T[1].to); if (hi < -tolO || lo > g.L + tolO) return;
+      const t0 = Math.min(T[0].t, T[1].t), t1 = Math.max(T[0].t, T[1].t); if (t1 < -G.th - g.th - 0.1 || t0 > G.L + G.th + g.th + 0.1) return;
+      out.push({o, t0, t1});
+    });
+    return out;
+  }
+  function span(w, sd, ext, s) {
+    const G = geom(w); let s0 = 0, s1 = G.L;
+    if (ext) {
+      const C = cuts(w, sd, G.th * 2 + 0.06).filter(c => Math.min(distancePointToSegment(w.p1, c.o.p1, c.o.p2), distancePointToSegment(w.p2, c.o.p1, c.o.p2)) < G.th + getWallThickness(c.o) / 2 + 0.06);
+      C.forEach(c => { if (c.t1 < G.L / 2) s0 = Math.min(s0, c.t0); else if (c.t0 > G.L / 2) s1 = Math.max(s1, c.t1); });
+    } else {
+      const C = cuts(w, sd, 0.03); if (C.some(c => s > c.t0 + 0.005 && s < c.t1 - 0.005)) return null;
+      C.forEach(c => { if (c.t1 <= s + 0.005) s0 = Math.max(s0, c.t1); else if (c.t0 >= s - 0.005) s1 = Math.min(s1, c.t0); });
+    }
+    if (s1 - s0 < 0.02) return null;
+    const base = add(w.p1, G.n, sd * G.th);
+    return {a: add(base, G.u, s0), b: add(base, G.u, s1), u: G.u, n: {x: G.n.x * sd, y: G.n.y * sd}};
+  }
+  function inside(q) {
+    if (state.rooms.some(r => isEntityVisible(r) && floorOf(r) === state.currentFloorId && pointInPolygon(q, r.polygon))) return true;
+    const W = visW(); let hit = 0;
+    for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4, e = {x: q.x + Math.cos(a) * 80, y: q.y + Math.sin(a) * 80}; if (W.some(w => { const i = inter(q, e, w.p1, w.p2); return i && i.t > 0 && i.t < 1 && i.u >= 0 && i.u <= 1; })) hit++; }
+    return hit >= 6;
+  }
+  function compute(m) {
+    if (m.wq) {
+      const w = state.walls.find(x => x.id === m.wq.id);
+      if (!w) delete m.wq;
+      else { const sp = span(w, m.wq.sd, m.wq.ext, m.wq.s * Lw(w)); if (sp) { m.qa = R6(sp.a); m.qb = R6(sp.b); m.qu = sp.u; m.qo = R6(add(sp.a, sp.n, m.wq.off)); } }
+    }
+    const u = nrm(m.qu || sub(m.qb, m.qa)), P = x => add(m.qo, u, dot(sub(x, m.qo), u));
+    return {p1: R6(P(m.qa)), p2: R6(P(m.qb)), u, n: {x: -u.y, y: u.x}};
+  }
+  const eq = (a, b) => a && b && Math.abs(a.x - b.x) < 1e-5 && Math.abs(a.y - b.y) < 1e-5;
+  function normalize(m) {
+    if (m.kind || !m.p1 || !m.p2) return;
+    if (!m.q) { const u = nrm(sub(m.p2, m.p1)); if (Math.hypot(m.p2.x - m.p1.x, m.p2.y - m.p1.y) < 1e-6) return; m.q = 1; m.qa = {...m.p1}; m.qb = {...m.p2}; m.qu = u; m.qo = {...m.p1}; }   /* misure di prima: diventano quote */
+    const c = qCache.get(m.id), E = compute(m);
+    if (c && !(eq(m.p1, c.p1) && eq(m.p2, c.p2)) && !(eq(m.p1, E.p1) && eq(m.p2, E.p2))) {
+      const d1 = sub(m.p1, c.p1), d2 = sub(m.p2, c.p2), m1 = Math.hypot(d1.x, d1.y) > 1e-6, m2 = Math.hypot(d2.x, d2.y) > 1e-6;
+      if (m1 && m2 && Math.hypot(d1.x - d2.x, d1.y - d2.y) < 1e-4) {   /* spostata intera */
+        const dn = dot(d1, E.n);
+        if (state.sel.length > 1 && !m.wq) { m.qa = R6(add(m.qa, d1)); m.qb = R6(add(m.qb, d1)); m.qo = R6(add(m.qo, d1)); }
+        else if (m.wq) { const w = state.walls.find(x => x.id === m.wq.id), G = w && geom(w); if (G) m.wq.off = Math.round((m.wq.off + dn * Math.sign(dot(E.n, {x: G.n.x * m.wq.sd, y: G.n.y * m.wq.sd}) || 1)) * 1000) / 1000; }
+        else m.qo = R6(add(m.qo, E.n, dn));
+      } else if (!m.wq) { if (m1) m.qa = R6(m.p1); if (m2) m.qb = R6(m.p2); m.qu = nrm(sub(m.qb, m.qa)); }
+    }
+    const F = compute(m); m.p1 = F.p1; m.p2 = F.p2; qCache.set(m.id, {p1: {...F.p1}, p2: {...F.p2}});
+  }
+  const normAll = () => { try { state.measurements.forEach(normalize); } catch (e) { console.warn('quote', e); } };
+
+  /* ---------------------------------------------------------------- quote: disegno */
+  function drawQ(m, g, T, scale, col, sel, ghost) {
+    const A = T(m.qa), B = T(m.qb), P1 = T(m.p1), P2 = T(m.p2), len = Math.abs(dot(sub(m.qb, m.qa), nrm(m.qu || sub(m.qb, m.qa))));
+    g.save(); g.strokeStyle = col; g.fillStyle = col; g.lineWidth = sel ? 2.2 : 1.2; g.setLineDash(ghost ? [5, 4] : []);
+    const ext = (Q, P) => { const v = sub(P, Q), l = Math.hypot(v.x, v.y); if (l < 2) return; const e = {x: v.x / l, y: v.y / l}; g.beginPath(); g.moveTo(Q.x + e.x * 3 * scale, Q.y + e.y * 3 * scale); g.lineTo(P.x + e.x * 5 * scale, P.y + e.y * 5 * scale); g.stroke(); };
+    g.lineWidth = sel ? 1.6 : 0.8; ext(A, P1); ext(B, P2);
+    g.lineWidth = sel ? 2.2 : 1.2; g.beginPath(); g.moveTo(P1.x, P1.y); g.lineTo(P2.x, P2.y); g.stroke();
+    const dl = Math.hypot(P2.x - P1.x, P2.y - P1.y) || 1, ux = (P2.x - P1.x) / dl, uy = (P2.y - P1.y) / dl, t = 5 * scale;
+    g.lineWidth = sel ? 2.4 : 1.6; [P1, P2].forEach(P => { g.beginPath(); g.moveTo(P.x - (ux - uy) * t, P.y - (uy + ux) * t); g.lineTo(P.x + (ux - uy) * t, P.y + (uy + ux) * t); g.stroke(); });
+    let ang = Math.atan2(uy, ux); if (ang > Math.PI / 2 + 1e-3) ang -= Math.PI; if (ang < -Math.PI / 2 - 1e-3) ang += Math.PI;
+    g.translate((P1.x + P2.x) / 2, (P1.y + P2.y) / 2); g.rotate(ang);
+    g.font = 'bold ' + Math.round(11 * scale) + 'px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'bottom';
+    const txt = fmtLen(len); if (!ghost && g === ctx) { g.lineWidth = 3; g.strokeStyle = 'rgba(15,23,42,.85)'; g.setLineDash([]); g.strokeText(txt, 0, -3 * scale); }
+    g.fillText(txt, 0, -3 * scale); g.restore();
+  }
+  function drawM(m) {
+    const sel = (state.selected && state.selected.type === 'measurement' && state.selected.id === m.id) || state.sel.some(x => x.type === 'measurement' && x.id === m.id);
+    drawQ(m, ctx, S, lblK() * 1.15, sel ? '#38bdf8' : getEntityColor(m, '#fbbf24'), sel, false);
+  }
+  function printQ(g, tx, ty) {
+    state.measurements.forEach(m => { if (!m.q || m.kind || !isEntityVisible(m)) return; drawQ(m, g, p => ({x: tx(p.x), y: ty(p.y)}), 1.1, '#111', false, false); });
+  }
+
+  /* ---------------------------------------------------------------- strumenti */
+  let MP = [], D = {st: 0};
+  const resetD = () => { D = {st: 0}; };
+  function newQ(o) { const m = assignLayer({id: newId(), q: 1, ...o}); const F = compute(m); m.p1 = F.p1; m.p2 = F.p2; qCache.set(m.id, {p1: {...F.p1}, p2: {...F.p2}}); state.measurements.push(m); return m; }
+  function wallQuota(world, cx, cy) {
+    const r0 = c2d.getBoundingClientRect(), sp = {x: cx - r0.left, y: cy - r0.top}; let best = null, bd = Infinity;
+    visW().forEach(w => { const G = geom(w), t = dot(sub(world, w.p1), G.u); if (t < 0 || t > G.L) return; const d = Math.abs(dot(sub(world, w.p1), G.n)); if (d < G.th + 16 / viewScale && d < bd) { bd = d; best = {w, t, G}; } });
+    if (!best) return false;
+    const near = p => { const s = S(p); return Math.hypot(s.x - sp.x, s.y - sp.y) < 22; };
+    if (state.walls.some(w => isEntityVisible(w) && (near(w.p1) || near(w.p2)))) return false;   /* vicino a uno spigolo: quota libera da quel punto */
+    const {w, t, G} = best, sd = Math.sign(dot(sub(world, w.p1), G.n)) || 1, q = add(add(w.p1, G.u, t), G.n, sd * (G.th + 0.25)), ext = !inside(q);
+    const s = span(w, sd, ext, t); if (!s) { toast('Qui c\'è una tramezza: tocca il tratto di muro tra due tramezze'); return true; }
+    const m = newQ({wq: {id: w.id, sd, ext, s: t / G.L, off: ext ? 0.6 : 0.35}});
+    toast((ext ? 'Lunghezza esterna ' : 'Luce netta ') + fmtLen(Math.hypot(m.qb.x - m.qa.x, m.qb.y - m.qa.y)) + ' · trascinala per spostarla');
+    draw2D(); try { checkpoint(); } catch (_) {} return true;
+  }
+  const _ht = handleTap;
+  handleTap = function (cx, cy) {
+    if (state.mode === '2d' && state.tool === 'measure') {
+      if (isCurrentLayerLocked && isCurrentLayerLocked()) {}
+      const p = snapToVertex(toW(cx, cy)); if (MP.length && Math.hypot(p.x - MP[MP.length - 1].x, p.y - MP[MP.length - 1].y) < 0.005) return;
+      MP.push(R6(p)); measureStart = MP[MP.length - 1]; draw2D(); return;
+    }
+    if (state.mode === '2d' && state.tool === 'dim') {
+      if (isCurrentLayerLocked()) { toast('Livello corrente bloccato'); return; }
+      const w = toW(cx, cy);
+      if (D.st === 0) { if (wallQuota(w, cx, cy)) return; const a = R6(snapToVertex(w)); D = {st: 1, a}; measureStart = a; draw2D(); return; }
+      if (D.st === 1) { const b = R6(snapToVertex(w, D.a)); if (Math.hypot(b.x - D.a.x, b.y - D.a.y) < 0.02) return; D = {st: 2, a: D.a, b}; measureStart = null; draw2D(); return; }
+      if (D.st === 2) { const u = nrm(sub(D.b, D.a)), n = {x: -u.y, y: u.x}, off = dot(sub(w, D.a), n), o = R6(add(D.a, n, off)); newQ({qa: D.a, qb: D.b, qu: u, qo: o}); D = {st: 3, last: D.b, u, o}; draw2D(); try { checkpoint(); } catch (_) {} return; }
+      if (D.st === 3) { const c = R6(snapToVertex(w)); if (Math.abs(dot(sub(c, D.last), D.u)) < 0.02) return; newQ({qa: D.last, qb: c, qu: D.u, qo: D.o}); D.last = c; draw2D(); try { checkpoint(); } catch (_) {} return; }
+    }
+    return _ht.apply(this, arguments);
+  };
+  /* tastierino: misura → punto del metro; quota → quota libera */
+  function typed(a, b) {
+    if (state.tool === 'measure') { if (!MP.length) MP.push(R6(a)); MP.push(R6(b)); measureStart = MP[MP.length - 1]; return true; }
+    if (state.tool === 'dim') { newQ({qa: R6(a), qb: R6(b), qu: nrm(sub(b, a)), qo: R6(a)}); resetD(); measureStart = null; return true; }
+    return false;
+  }
+  const sumM = () => MP.reduce((s, p, i) => i ? s + Math.hypot(p.x - MP[i - 1].x, p.y - MP[i - 1].y) : 0, 0);
+  function specM(mk) {
+    const B = [['qundo', '↩ Annulla punto'], ['qreset', '⟲ Azzera'], ['done', '✔ Fine']];
+    if (!MP.length) return mk('Misura al volo · tocca il primo punto (non resta nel disegno)', [['done', '✔ Fine']]);
+    return mk('Misura · ' + (MP.length - 1) + (MP.length === 2 ? ' tratto' : ' tratti') + ' · totale ' + fmtLen(sumM()) + ' · tocca il punto successivo', B);
+  }
+  function specD(mk) {
+    const B = [['qundo', '↩ Annulla punto'], ['done', '✔ Fine']];
+    if (D.st === 0) return mk('Quota · tocca un muro (fuori = intera, dentro = tra le tramezze) oppure il primo punto', [['done', '✔ Fine']]);
+    if (D.st === 1) return mk('Quota · tocca il secondo punto', B);
+    if (D.st === 2) return mk('Quota · tocca dove mettere la linea di quota', B);
+    return mk('Quota · catena: tocca il punto successivo, oppure «Fine»', [['qend', '⏹ Chiudi catena'], ['done', '✔ Fine']]);
+  }
+  const tb = document.getElementById('toolBanner');
+  if (tb) tb.addEventListener('click', e => {
+    const b = e.target.closest && e.target.closest('button'); if (!b) return; const a = b.dataset.a;
+    if (a === 'qundo') { if (state.tool === 'measure') { MP.pop(); measureStart = MP.length ? MP[MP.length - 1] : null; } else if (state.tool === 'dim') { if (D.st === 1) { resetD(); measureStart = null; } else if (D.st === 2) { D = {st: 1, a: D.a}; measureStart = D.a; } else resetD(); } draw2D(); }
+    if (a === 'qreset') { MP = []; measureStart = null; draw2D(); }
+    if (a === 'qend') { resetD(); measureStart = null; draw2D(); }
+  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') { MP = []; resetD(); } }, true);
+
+  let lastTool = state.tool;
+  const _d2 = draw2D;
+  draw2D = function () {
+    if (state.tool !== lastTool) { if (lastTool === 'measure') MP = []; if (lastTool === 'dim') resetD(); lastTool = state.tool; }
+    normAll();
+    const r = _d2.apply(this, arguments);
+    try {
+      if (state.mode !== '2d') return r;
+      if (state.tool === 'measure' && MP.length) {
+        ctx.save(); ctx.strokeStyle = '#facc15'; ctx.fillStyle = '#facc15'; ctx.lineWidth = 2;
+        const P = MP.map(S); ctx.beginPath(); P.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)); ctx.stroke();
+        P.forEach(p => { ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, 7); ctx.fill(); });
+        ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center';
+        for (let i = 1; i < MP.length; i++) { const a = P[i - 1], b = P[i], t = fmtLen(Math.hypot(MP[i].x - MP[i - 1].x, MP[i].y - MP[i - 1].y)), x = (a.x + b.x) / 2, y = (a.y + b.y) / 2 - 7; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(15,23,42,.9)'; ctx.strokeText(t, x, y); ctx.fillText(t, x, y); }
+        if (MP.length > 2) { const p = P[P.length - 1], t = 'Σ ' + fmtLen(sumM()); ctx.font = 'bold 13px sans-serif'; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(15,23,42,.9)'; ctx.strokeText(t, p.x + 30, p.y + 20); ctx.fillText(t, p.x + 30, p.y + 20); }
+        ctx.restore();
+      }
+      if (state.tool === 'dim' && (D.st === 2 || D.st === 3) && hover) {
+        let g;
+        if (D.st === 2) { const u = nrm(sub(D.b, D.a)), n = {x: -u.y, y: u.x}, o = add(D.a, n, dot(sub(hover, D.a), n)); g = {qa: D.a, qb: D.b, qu: u, qo: o}; }
+        else g = {qa: D.last, qb: hover, qu: D.u, qo: D.o};
+        const F = compute(g); g.p1 = F.p1; g.p2 = F.p2; drawQ(g, ctx, S, lblK() * 1.15, '#38bdf8', false, true);
+      }
+    } catch (e) { console.warn('misura/quota', e); }
+    return r;
+  };
+  const _cp = checkpoint;
+  checkpoint = function () { normAll(); return _cp.apply(this, arguments); };
+  window.SCq = {draw: drawM, print: printQ, typed, specM, specD, span, compute, normalize, wallQuota, temp: () => MP.slice(), state: () => D};
 })();
 </script>
 </body>
