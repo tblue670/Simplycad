@@ -1,4 +1,4 @@
-SimplyCAD Pro - pubblicazione su GitHub Pages (v16.1)
+SimplyCAD Pro - pubblicazione su GitHub Pages (v17.1)
 
 Contenuto (vanno caricati tutti, senza rinominarli e SENZA cartelle intorno):
   index.html  sw.js  manifest.webmanifest  icon-192.png  icon-512.png  icon-maskable.png  README.md
@@ -31,3 +31,18 @@ AGGIORNARE A UNA VERSIONE NUOVA
     Se non lo chiede, chiudi e riapri l'app.
 
 I PROGETTI restano sui tuoi dispositivi e nei tuoi file .json: il sito contiene solo il programma.
+
+NOVITÀ v17.0
+ - Quota da terra degli oggetti (radiatori, prese, quadri, pensili…): riquadro dell'arredo, modifica multipla,
+   tastierino 123 (secondo campo «Da terra»), Copia proprietà; in 3D e nel tour; etichetta «h+1,10» in pianta
+   (si spegne in ⚙️ › Selezione).
+ - Progetto › Analisi: Verifica locali (DM 5/7/1975, opzione «Salva Casa»), Superficie commerciale (DPR 138/98),
+   Relazione fotografica stanza per stanza. Tutte stampabili o salvabili in PDF.
+ - Piani: «Duplica in cima» chiede se copiare solo muri/porte/finestre o tutto (arredi, testi, quote, aree, nomi).
+
+NOVITÀ v17.1
+ - Barra di modifica secondo l'elemento toccato (muro, porta, finestra, arredo, testo, più elementi).
+ - Il 123 resta solo come pulsante tondo; copia, taglia, colore di muri/porte/finestre e azioni rare nel menu ⋯.
+ - Muro: pulsante Stato (esistente → da demolire → nuovo) e pulsante Geometria (angolo, rifila, estendi, dividi).
+ - Porta: verso di apertura e cerniera con un tocco. 📷+ scatta o sceglie una foto anche se il muro non ne ha.
+ - Messaggi nascosti; il pulsante si riattiva in ⚙️ › Selezione. Disegna: linea, cerchio, arco sotto «Forme ▸».
