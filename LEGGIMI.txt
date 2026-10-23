@@ -1,4 +1,4 @@
-SimplyCAD Pro - pubblicazione su GitHub Pages (v17.2)
+SimplyCAD Pro - pubblicazione su GitHub Pages (v18.0)
 
 Contenuto (vanno caricati tutti, senza rinominarli e SENZA cartelle intorno):
   index.html  sw.js  manifest.webmanifest  icon-192.png  icon-512.png  icon-maskable.png  README.md
@@ -49,3 +49,10 @@ NOVITÀ v17.1
 
 NOVITÀ v17.2
  - Il pulsante Disegna è sempre nella barra di modifica, subito dopo ➕.
+
+NOVITÀ v18.0 (consolidamento)
+ - Disegno più leggero: i ridisegni chiesti durante tocchi, rotellina e trascinamenti si raccolgono
+   (al massimo uno per fotogramma). Esempio: 60 scatti di zoom = 1 ridisegno invece di 60.
+ - Il file salvato riporta la versione del programma; se apri un file fatto con una versione più nuova
+   l'app ti avvisa di aggiornare prima di modificarlo.
+ - Nessun cambiamento visibile: pianta, stampa e DXF identici alla v17.2 (confronto automatico).

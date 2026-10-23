@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v17.2</title>
+<title>SimplyCAD Pro · v18.0</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -4126,7 +4126,7 @@ const buildProjectBlob = () => {
     floors: state.floors, currentFloorId: state.currentFloorId, floorSeq: state.floorSeq, roofs: state.roofs, holes: state.holes, zones: state.zones, ceils: state.ceils || [], beams: state.beams || [], cmpOff: state.cmpOff || [], cmpCustom: state.cmpCustom || [], cart: state.cart || null,
     photos: window.SCph ? SCph.exportUsed() : undefined,
     images: state.images.filter(i => i.dataUrl).map(i => ({id: i.id, name: i.name, layerId: i.layerId, floorId: i.floorId, opacity: i.opacity, scale: i.scale, x: i.x, y: i.y, rot: i.rot || 0, dataUrl: i.dataUrl})),
-    ...(window.SCauto ? SCauto.extras() : {}), appVersion: '8.0',
+    ...(window.SCauto ? SCauto.extras() : {}), appVersion: '18.0', fileFormat: 4,   /* v18.0: versione del programma che ha salvato */
     settings: {wallThickness: document.getElementById('wallThickness').value, wallHeight: document.getElementById('wallHeight').value, wallMaterial: appSettings.wallMaterial, wallColor: appSettings.wallColor || '', gridSize: document.getElementById('gridSize').value}
   };
   return new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
@@ -4218,6 +4218,8 @@ document.getElementById('fileInput').onchange = (e) => {
       try { data = JSON.parse(txt); } catch (err) { return uiAlert('Il file ' + info + ' non è un progetto SimplyCAD leggibile.\n\n' + (txt.charAt(0) === '<' ? 'Sembra una pagina web: forse è stato scaricato il collegamento invece del file.' : 'Dettaglio: ' + err.message)); }
       if (!data || typeof data !== 'object' || !(Array.isArray(data.walls) || Array.isArray(data.floors))) return uiAlert('Il file ' + info + ' non contiene un progetto SimplyCAD.');
       setProjName(file.name);
+      { const v = String(data.appVersion || '').split('.').map(Number), me = [18, 0];   /* v18.0: file salvato da una versione più nuova */
+        if (v[0] > me[0] || (v[0] === me[0] && (v[1] || 0) > me[1])) setTimeout(() => uiAlert('Il file ' + info + ' è stato salvato con SimplyCAD v' + data.appVersion + ', più nuova di questa (v18.0).\n\nL\'ho aperto, ma le funzioni nuove potrebbero non vedersi e, se lo salvi da qui, andare perse. Aggiorna l\'app (chiudi e riapri, o ricarica la pagina) prima di modificarlo.'), 300); }
       try { window.SCauto && SCauto.preReplace('pre-open'); } catch (_) {}
       state.walls = (data.walls || []).map(w => { if (!(parseFloat(w.thickness) > 0)) w.thickness = parseFloat(data.settings && data.settings.wallThickness) || parseFloat(document.getElementById('wallThickness').value) || 0.2; return w; });
       state.doors = (data.doors || []).map(d => ({rotation: 0, ...d}));
@@ -4336,7 +4338,7 @@ document.getElementById('clearFurnitureBtn').onclick = async () => {
 };
 document.getElementById('exportImgBtn').onclick = () => {
   let dataUrl, filename;
-  if (state.mode === '2d') { dataUrl = c2d.toDataURL('image/png'); filename = `planimetria_2d_${Date.now()}.png`; }
+  if (state.mode === '2d') { if (window.SCdraw && SCdraw.flush) SCdraw.flush(); dataUrl = c2d.toDataURL('image/png'); filename = `planimetria_2d_${Date.now()}.png`; }
   else { renderer.render(scene, camera); dataUrl = renderer.domElement.toDataURL('image/png'); filename = `planimetria_3d_${Date.now()}.png`; }
   const a = document.createElement('a');
   a.href = dataUrl; a.download = filename; a.click();
@@ -5787,7 +5789,16 @@ window.addEventListener('keydown', e => {
   if (e.key === 'Escape') { place = null; e.stopImmediatePropagation(); toast('Annullato'); draw2D(); }
   else if (e.key === 'Enter') { e.preventDefault(); e.stopImmediatePropagation(); placeKeyboard(); }
 }, true);
-const _draw2Dplace = draw2D;
+/* v18.0: ogni strato della pianta si registra con un nome (SCdraw.layers / SCdraw.report) */
+window.SCdraw = (function () {
+  const L = [], T = [];
+  return {
+    inner(name) { const prev = draw2D, i = L.length; L.push(name); return function () { const t = performance.now(); try { return prev.apply(this, arguments); } finally { T[i] = (T[i] || 0) * 0.7 + (performance.now() - t) * 0.3; } }; },
+    layers: () => L.slice(),
+    report() { const tot = window.SCdraw.last ? window.SCdraw.last() : 0, o = [['Pianta di base', +(T[0] || 0).toFixed(2)]]; L.forEach((n, i) => o.push([n, +(((i + 1 < L.length ? T[i + 1] : tot) || 0) - (T[i] || 0)).toFixed(2)])); return o; }
+  };
+})();
+const _draw2Dplace = SCdraw.inner('Anteprime (forme, incolla, parallela)');
 draw2D = function () {
   _draw2Dplace();
   shapePreview();
@@ -6489,7 +6500,7 @@ c2d.addEventListener('pointerup', e => {
   if (e.pointerType !== 'mouse' && (appSettings.crossMode === 'cross' || appSettings.crossMode === 'full')) { hoverRaw = null; draw2D(); }
 });
 
-const _draw = draw2D;
+const _draw = SCdraw.inner('Selezione multipla');
 draw2D = function () { state.walls.forEach(ensureWall); _draw(); overlay(); const sb = document.getElementById('selectBtnTop'); if (sb) sb.classList.toggle('active', state.tool === 'select'); };
 function overlay() {
   ctx.save(); ctx.lineCap = 'round';
@@ -8783,7 +8794,7 @@ $('impAnyInput').onchange = async e => {
   document.querySelectorAll('.tool').forEach(b => b.addEventListener('click', cancel));
   const _ht = handleTap;
   handleTap = function(cx, cy) { if (quickInput !== null) cancel(); return _ht(cx, cy); };
-  const _prev = draw2D;
+  const _prev = SCdraw.inner('Anteprima muro da tastiera');
   draw2D = function() {
     _prev();
     if (!quickInput) return;
@@ -9298,7 +9309,7 @@ $('impAnyInput').onchange = async e => {
   }
 
   /* ---------- hook di ridisegno ---------- */
-  const _drawTbl = draw2D;
+  const _drawTbl = SCdraw.inner('Tabella muri');
   draw2D = function () { _drawTbl(); if (isOpen()) update(); };
 
   /* ---------- menu Muri ---------- */
@@ -9347,7 +9358,7 @@ $('impAnyInput').onchange = async e => {
     bWin.classList.toggle('active', zwOn);
     ws.classList.toggle('zw-on', zwOn);
   }
-  const _dz = draw2D;
+  const _dz = SCdraw.inner('Percentuale di zoom');
   draw2D = function () { _dz(); pct.textContent = Math.round(viewScale / ZOOM_BASE * 100) + '%'; };
 
   function setZw(on) {
@@ -9916,7 +9927,7 @@ updateRoomList();
     if (f && f.pil && sync(f)) draw2D();
   });
   /* il pilastro segue il muro quando questo viene spostato, ruotato o allungato */
-  const _dr = draw2D;
+  const _dr = SCdraw.inner('Pilastri addossati');
   draw2D = function () {
     for (const f of state.furniture) if (f.pil) sync(f);
     const r = _dr.apply(this, arguments);
@@ -10014,7 +10025,7 @@ updateRoomList();
     P.push({x: w.x, y: w.y}); n++;
     if (n >= 4) apply(); else hint();
   };
-  const _d = draw2D;
+  const _d = SCdraw.inner('Allinea immagine');
   draw2D = function () {
     _d.apply(this, arguments);
     if (!on || !P.length) return;
@@ -10154,7 +10165,7 @@ updateRoomList();
 
   /* ---- hover: evidenzia l'elemento sotto il mouse (solo PC, strumento Seleziona) ---- */
   let hov = null;
-  const _d = draw2D;
+  const _d = SCdraw.inner('Evidenzia sotto il mouse');
   draw2D = function () {
     _d.apply(this, arguments);
     hov = null;
@@ -10250,7 +10261,7 @@ updateRoomList();
       ctx.restore();
     }
   }
-  const _d = draw2D;
+  const _d = SCdraw.inner('Aree');
   draw2D = function () { _d.apply(this, arguments); if (state.mode !== '2d') return; if (state.tool !== 'zone' && tmpZ.length) tmpZ = []; if (activeZ && !(state.tool === 'select' || state.tool === 'box' || !state.zones.includes(activeZ))) activeZ = null; if (activeZ && !state.zones.includes(activeZ)) activeZ = null; drawZones(); };
 
   const _ht = handleTap;
@@ -10888,7 +10899,7 @@ updateRoomList();
   }
 
   /* ---------- anteprima sul disegno ---------- */
-  const _d = draw2D;
+  const _d = SCdraw.inner('Tastierino 123');
   draw2D = function () {
     if (isOpen) {
       const keep = lastMouseWorld;
@@ -11874,7 +11885,7 @@ updateRoomList();
     }
     ctx.restore();
   }
-  const _d2 = draw2D;
+  const _d2 = SCdraw.inner('Piani e fori nel solaio');
   draw2D = function () { stampAll(); _d2.apply(this, arguments); drawOverlay(); };
 
   // strumento «foro nel solaio»
@@ -12150,7 +12161,7 @@ updateRoomList();
     e.preventDefault(); e.stopImmediatePropagation(); const n = nameOf(document.querySelector('.quick-tools .tool[data-tool="' + t + '"]')); goIdle(); toast('Funzione disattivata: ' + n);
   }, true);
   // il cursore segue lo stato: freccia in Seleziona, croce scelta con uno strumento acceso
-  let last = null; const _d = draw2D;
+  let last = null; const _d = SCdraw.inner('Cursore a croce');
   draw2D = function () { if (state.tool !== last) { last = state.tool; if (typeof applyCrossCursor === 'function') applyCrossCursor(); } return _d.apply(this, arguments); };
   if (typeof applyCrossCursor === 'function') applyCrossCursor();
 })();
@@ -13119,7 +13130,7 @@ updateRoomList();
 
   /* ---------------------------------------------------------------- disegno dello schizzo */
   const _dg = drawGrid; drawGrid = function () { if (on && S && S.view === 'sketch') return; return _dg.apply(this, arguments); };
-  const _d = draw2D;
+  const _d = SCdraw.inner('Rilievo (schizzo)');
   draw2D = function () {
     _d.apply(this, arguments); if (!on || !S || state.mode !== '2d') return;
     if (S.view === 'result') return drawResult();
@@ -13451,7 +13462,7 @@ updateRoomList();
   setInterval(banner, 400);
 
   /* ---------- disegno: colori, punti d'estremità, anteprime ---------- */
-  const _d = draw2D;
+  const _d = SCdraw.inner('Colore dello strumento');
   draw2D = function () {
     const t = state.tool, I = INFO[t], old = appSettings.crossColor;
     if (pv && (pv.tool !== t || !state.walls.includes(pv.wl))) pv = null;
@@ -15210,7 +15221,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       }
     }
   }
-  const _d2 = draw2D;
+  const _d2 = SCdraw.inner('Prospetto del muro');
   draw2D = function () { const r = _d2.apply(this, arguments); try { if (state.mode === '2d') drawPlan(); } catch (e) { console.warn('prospetto pianta', e); } try { if (S.open) render(); } catch (e) { console.warn('prospetto', e); } return r; };
 
   /* ---------------------------------------------------------------- barra di selezione: pulsante Prospetto */
@@ -15510,7 +15521,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   };
 
   /* ---------------------------------------------------------------- pianta: isolante a zig-zag e lastre */
-  const _d2 = draw2D;
+  const _d2 = SCdraw.inner('Cartongesso');
   draw2D = function () {
     const r = _d2.apply(this, arguments);
     if (state.mode !== '2d') return r;
@@ -15816,7 +15827,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     }
     ctx.restore();
   }
-  const _d2 = draw2D;
+  const _d2 = SCdraw.inner('Controsoffitti e false travi');
   draw2D = function () {
     const r = _d2.apply(this, arguments);
     if (!isMine(state.tool) && tmp.length) tmp = [];
@@ -16408,7 +16419,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   /* ---------------------------------------------------------------- v12.9: foto visibili in pianta e nella barra di selezione */
   function missing() { let n = 0; usedIds().forEach(id => { if (!PH.has(id)) n++; }); return n; }
   let badges = [];
-  const _d2 = draw2D;
+  const _d2 = SCdraw.inner('Icone foto');
   draw2D = function () {
     const r = _d2.apply(this, arguments); badges = [];
     try {
@@ -16738,7 +16749,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   const hideBan = () => { ban.style.display = 'none'; };
   ban.onclick = e => { const b = e.target.closest('button'); if (!b) return; if (b.dataset.a === 'pfine') endPick(); if (b.dataset.a === 'cfine') endChk(); };
 
-  const _d2 = draw2D;
+  const _d2 = SCdraw.inner('Tinteggiatura');
   draw2D = function () {
     const r = _d2.apply(this, arguments);
     try {
@@ -17093,7 +17104,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   document.addEventListener('keydown', e => { if (e.key === 'Escape') { MP = []; resetD(); } }, true);
 
   let lastTool = state.tool;
-  const _d2 = draw2D;
+  const _d2 = SCdraw.inner('Quote e misure');
   draw2D = function () {
     if (state.tool !== lastTool) { if (lastTool === 'measure') MP = []; if (lastTool === 'dim') resetD(); lastTool = state.tool; }
     normAll();
@@ -17385,7 +17396,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     }
     ctx.restore();
   }
-  const _d2 = draw2D;
+  const _d2 = SCdraw.inner('Simbolo dello snap');
   draw2D = function () { const r = _d2.apply(this, arguments); try { drawMark(); } catch (e) { console.warn('snap', e); } return r; };
 
   /* ---------------------------------------------------------------- impostazioni */
@@ -18594,7 +18605,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     return _dl.apply(this, arguments);
   };
   /* anteprima della freccia mentre si sceglie dove scrivere */
-  const _d2 = draw2D;
+  const _d2 = SCdraw.inner('Nota con freccia');
   draw2D = function () {
     const r = _d2.apply(this, arguments);
     try {
@@ -18735,7 +18746,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     const c = worldToScreen(pv.x, pv.y), a = DR ? DR.cur : -Math.PI / 2 - angOf(W);
     return {c, k: {x: c.x + Math.cos(a) * R, y: c.y + Math.sin(a) * R}, a};
   }
-  const _d2 = draw2D;
+  const _d2 = SCdraw.inner('Cerchio di rotazione');
   draw2D = function () {
     const r = _d2.apply(this, arguments);
     try {
@@ -19402,6 +19413,39 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       cb.onchange = () => { appSettings.msgBtn = cb.checked; if (!cb.checked && appSettings.msgPos !== 'hidden') { appSettings.msgLast = appSettings.msgPos; appSettings.msgPos = 'hidden'; } persistSettings(); try { applyDocks(); } catch (_) {} apply(); };
     }
   } catch (_) {}
+})();
+
+</script>
+<script>
+/* ========================================================================
+   v18.0 · MOTORE DI DISEGNO DELLA PIANTA: regista dei ridisegni
+   - Durante tocchi, trascinamenti, rotellina e tasti i ridisegni chiesti dal programma si raccolgono:
+     al massimo UNO per fotogramma dello schermo (prima un tocco ne faceva 4).
+   - Stampa, DXF, PDF e chiamate fuori dagli eventi restano immediate (nessun cambiamento).
+   - La dimensione della tavola da disegno si legge una volta per ridisegno invece che a ogni punto.
+   - SCdraw.layers() = elenco ordinato dei 23 strati della pianta; SCdraw.report() = tempo di ciascuno (ms).
+   ======================================================================== */
+(function () {
+  const core = draw2D;
+  let inEvt = false, pending = false, raf = 0, cache = null, lastMs = 0, frames = 0;
+  const EV = ['pointerdown', 'pointermove', 'pointerup', 'pointercancel', 'click', 'dblclick', 'wheel', 'touchstart', 'touchmove', 'touchend', 'keydown', 'keyup', 'input', 'change'];
+  EV.forEach(ev => window.addEventListener(ev, () => { if (!inEvt) { inEvt = true; setTimeout(() => { inEvt = false; }, 0); } }, {capture: true, passive: true}));
+  const _gcs = getCanvasSize;
+  getCanvasSize = function () { return cache || _gcs(); };
+  function run(self, args) {
+    const own = !cache;
+    if (own) cache = {w: c2d.clientWidth, h: c2d.clientHeight};
+    const t = performance.now();
+    try { return core.apply(self, args); }
+    finally { if (own) { cache = null; lastMs = performance.now() - t; frames++; } }
+  }
+  function flush() { if (raf) { cancelAnimationFrame(raf); raf = 0; } if (pending) { pending = false; run(null, []); } }
+  draw2D = function () {
+    if (window.__printing || !inEvt || cache || document.hidden) { if (pending && !cache) { pending = false; if (raf) { cancelAnimationFrame(raf); raf = 0; } } return run(this, arguments); }
+    pending = true;
+    if (!raf) raf = requestAnimationFrame(() => { raf = 0; if (pending) { pending = false; try { run(null, []); } catch (e) { console.warn('disegno', e); } } });
+  };
+  window.SCdraw = Object.assign(window.SCdraw || {}, {flush, last: () => lastMs, frames: () => frames});
 })();
 
 </script>
