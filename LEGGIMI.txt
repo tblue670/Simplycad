@@ -1,4 +1,4 @@
-SimplyCAD Pro - pubblicazione su GitHub Pages (v18.1)
+SimplyCAD Pro - pubblicazione su GitHub Pages (v18.2)
 
 Contenuto (vanno caricati tutti, senza rinominarli e SENZA cartelle intorno):
   index.html  sw.js  manifest.webmanifest  icon-192.png  icon-512.png  icon-maskable.png  README.md
@@ -60,3 +60,6 @@ NOVITÀ v18.0 (consolidamento)
 NOVITÀ v18.1
  - Correzione: le voci Verifica locali, Superficie commerciale e Relazione fotografica erano nascoste.
    Ora sono in Progetto › «Verifiche e superfici».
+
+NOVITÀ v18.2
+ - Tocchi una stanza: nella barra di modifica c'è il pulsante Verifiche (requisiti dei locali, superficie commerciale, relazione fotografica).

@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v18.1</title>
+<title>SimplyCAD Pro · v18.2</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -4126,7 +4126,7 @@ const buildProjectBlob = () => {
     floors: state.floors, currentFloorId: state.currentFloorId, floorSeq: state.floorSeq, roofs: state.roofs, holes: state.holes, zones: state.zones, ceils: state.ceils || [], beams: state.beams || [], cmpOff: state.cmpOff || [], cmpCustom: state.cmpCustom || [], cart: state.cart || null,
     photos: window.SCph ? SCph.exportUsed() : undefined,
     images: state.images.filter(i => i.dataUrl).map(i => ({id: i.id, name: i.name, layerId: i.layerId, floorId: i.floorId, opacity: i.opacity, scale: i.scale, x: i.x, y: i.y, rot: i.rot || 0, dataUrl: i.dataUrl})),
-    ...(window.SCauto ? SCauto.extras() : {}), appVersion: '18.1', fileFormat: 4,   /* v18.0: versione del programma che ha salvato */
+    ...(window.SCauto ? SCauto.extras() : {}), appVersion: '18.2', fileFormat: 4,   /* v18.0: versione del programma che ha salvato */
     settings: {wallThickness: document.getElementById('wallThickness').value, wallHeight: document.getElementById('wallHeight').value, wallMaterial: appSettings.wallMaterial, wallColor: appSettings.wallColor || '', gridSize: document.getElementById('gridSize').value}
   };
   return new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
@@ -4218,8 +4218,8 @@ document.getElementById('fileInput').onchange = (e) => {
       try { data = JSON.parse(txt); } catch (err) { return uiAlert('Il file ' + info + ' non è un progetto SimplyCAD leggibile.\n\n' + (txt.charAt(0) === '<' ? 'Sembra una pagina web: forse è stato scaricato il collegamento invece del file.' : 'Dettaglio: ' + err.message)); }
       if (!data || typeof data !== 'object' || !(Array.isArray(data.walls) || Array.isArray(data.floors))) return uiAlert('Il file ' + info + ' non contiene un progetto SimplyCAD.');
       setProjName(file.name);
-      { const v = String(data.appVersion || '').split('.').map(Number), me = [18, 1];   /* v18.0: file salvato da una versione più nuova */
-        if (v[0] > me[0] || (v[0] === me[0] && (v[1] || 0) > me[1])) setTimeout(() => uiAlert('Il file ' + info + ' è stato salvato con SimplyCAD v' + data.appVersion + ', più nuova di questa (v18.1).\n\nL\'ho aperto, ma le funzioni nuove potrebbero non vedersi e, se lo salvi da qui, andare perse. Aggiorna l\'app (chiudi e riapri, o ricarica la pagina) prima di modificarlo.'), 300); }
+      { const v = String(data.appVersion || '').split('.').map(Number), me = [18, 2];   /* v18.0: file salvato da una versione più nuova */
+        if (v[0] > me[0] || (v[0] === me[0] && (v[1] || 0) > me[1])) setTimeout(() => uiAlert('Il file ' + info + ' è stato salvato con SimplyCAD v' + data.appVersion + ', più nuova di questa (v18.2).\n\nL\'ho aperto, ma le funzioni nuove potrebbero non vedersi e, se lo salvi da qui, andare perse. Aggiorna l\'app (chiudi e riapri, o ricarica la pagina) prima di modificarlo.'), 300); }
       try { window.SCauto && SCauto.preReplace('pre-open'); } catch (_) {}
       state.walls = (data.walls || []).map(w => { if (!(parseFloat(w.thickness) > 0)) w.thickness = parseFloat(data.settings && data.settings.wallThickness) || parseFloat(document.getElementById('wallThickness').value) || 0.2; return w; });
       state.doors = (data.doors || []).map(d => ({rotation: 0, ...d}));
@@ -19342,8 +19342,9 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     if (!(window.SCrot && SCrot.isGroup && SCrot.isGroup())) return toast('Selezione non ruotabile (livello bloccato?)');
     const v = await ctxAsk('Ruota di (°, + antiorario)', '90'); if (v && isFinite(v[0]) && v[0]) SCrot.applyDeg(v[0]);
   });
+  const bVf = mk('sbVf', 'Verifiche: requisiti dei locali, superficie commerciale, relazione fotografica', I('<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/><path d="M8.5 12.5l2.2 2.2 4.8-4.8"/>'), () => { if (window.SCvf) SCvf.open('dm'); });   /* v18.2 */
   const edit = $('sbEdit');
-  [bStato, bGeo, bFlip, bHinge, bDup, bRot].reduce((ref, b) => { ref.after(b); return b; }, edit);
+  [bVf, bStato, bGeo, bFlip, bHinge, bDup, bRot].reduce((ref, b) => { ref.after(b); return b; }, edit);
 
   try { $('sbDel').before($('sbMore')); } catch (_) {}
   try { $('sbAdd').after($('sbDraw')); } catch (_) {}   /* ⋯ subito prima di 🗑 */
@@ -19373,6 +19374,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     show(bFlip, single && only === 'door'); show(bHinge, single && only === 'door');
     show(bDup, multi || (only === 'furniture' || only === 'label' || only === 'stairs'));
     show(bRot, multi);
+    show(bVf, only === 'room');
     show($('sbCol'), !multi && (only === 'furniture' || only === 'label' || only === 'stairs'));
     show($('sbMatch'), single && ['wall', 'door', 'window', 'furniture', 'stairs'].includes(only));
     const ph = $('sbPh'); if (ph) show(ph, single && (only === 'wall' || only === 'door' || only === 'window'));
