@@ -1,4 +1,4 @@
-SimplyCAD Pro - pubblicazione su GitHub Pages (v18.2)
+SimplyCAD Pro - pubblicazione su GitHub Pages (v18.3)
 
 Contenuto (vanno caricati tutti, senza rinominarli e SENZA cartelle intorno):
   index.html  sw.js  manifest.webmanifest  icon-192.png  icon-512.png  icon-maskable.png  README.md
@@ -63,3 +63,7 @@ NOVITÀ v18.1
 
 NOVITÀ v18.2
  - Tocchi una stanza: nella barra di modifica c'è il pulsante Verifiche (requisiti dei locali, superficie commerciale, relazione fotografica).
+
+NOVITÀ v18.3
+ - Riga messaggi fissa sotto il disegno: istruzioni dei comandi con i loro pulsanti e avvisi brevi non coprono più la pianta.
+ - Barra di modifica trascinabile dalla maniglia ⠿ a sinistra; ricorda la posizione; doppio tocco sulla maniglia = torna in alto al centro.

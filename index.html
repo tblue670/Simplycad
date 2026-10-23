@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v18.2</title>
+<title>SimplyCAD Pro · v18.3</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -4126,7 +4126,7 @@ const buildProjectBlob = () => {
     floors: state.floors, currentFloorId: state.currentFloorId, floorSeq: state.floorSeq, roofs: state.roofs, holes: state.holes, zones: state.zones, ceils: state.ceils || [], beams: state.beams || [], cmpOff: state.cmpOff || [], cmpCustom: state.cmpCustom || [], cart: state.cart || null,
     photos: window.SCph ? SCph.exportUsed() : undefined,
     images: state.images.filter(i => i.dataUrl).map(i => ({id: i.id, name: i.name, layerId: i.layerId, floorId: i.floorId, opacity: i.opacity, scale: i.scale, x: i.x, y: i.y, rot: i.rot || 0, dataUrl: i.dataUrl})),
-    ...(window.SCauto ? SCauto.extras() : {}), appVersion: '18.2', fileFormat: 4,   /* v18.0: versione del programma che ha salvato */
+    ...(window.SCauto ? SCauto.extras() : {}), appVersion: '18.3', fileFormat: 4,   /* v18.0: versione del programma che ha salvato */
     settings: {wallThickness: document.getElementById('wallThickness').value, wallHeight: document.getElementById('wallHeight').value, wallMaterial: appSettings.wallMaterial, wallColor: appSettings.wallColor || '', gridSize: document.getElementById('gridSize').value}
   };
   return new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
@@ -4218,8 +4218,8 @@ document.getElementById('fileInput').onchange = (e) => {
       try { data = JSON.parse(txt); } catch (err) { return uiAlert('Il file ' + info + ' non è un progetto SimplyCAD leggibile.\n\n' + (txt.charAt(0) === '<' ? 'Sembra una pagina web: forse è stato scaricato il collegamento invece del file.' : 'Dettaglio: ' + err.message)); }
       if (!data || typeof data !== 'object' || !(Array.isArray(data.walls) || Array.isArray(data.floors))) return uiAlert('Il file ' + info + ' non contiene un progetto SimplyCAD.');
       setProjName(file.name);
-      { const v = String(data.appVersion || '').split('.').map(Number), me = [18, 2];   /* v18.0: file salvato da una versione più nuova */
-        if (v[0] > me[0] || (v[0] === me[0] && (v[1] || 0) > me[1])) setTimeout(() => uiAlert('Il file ' + info + ' è stato salvato con SimplyCAD v' + data.appVersion + ', più nuova di questa (v18.2).\n\nL\'ho aperto, ma le funzioni nuove potrebbero non vedersi e, se lo salvi da qui, andare perse. Aggiorna l\'app (chiudi e riapri, o ricarica la pagina) prima di modificarlo.'), 300); }
+      { const v = String(data.appVersion || '').split('.').map(Number), me = [18, 3];   /* v18.0: file salvato da una versione più nuova */
+        if (v[0] > me[0] || (v[0] === me[0] && (v[1] || 0) > me[1])) setTimeout(() => uiAlert('Il file ' + info + ' è stato salvato con SimplyCAD v' + data.appVersion + ', più nuova di questa (v18.3).\n\nL\'ho aperto, ma le funzioni nuove potrebbero non vedersi e, se lo salvi da qui, andare perse. Aggiorna l\'app (chiudi e riapri, o ricarica la pagina) prima di modificarlo.'), 300); }
       try { window.SCauto && SCauto.preReplace('pre-open'); } catch (_) {}
       state.walls = (data.walls || []).map(w => { if (!(parseFloat(w.thickness) > 0)) w.thickness = parseFloat(data.settings && data.settings.wallThickness) || parseFloat(document.getElementById('wallThickness').value) || 0.2; return w; });
       state.doors = (data.doors || []).map(d => ({rotation: 0, ...d}));
@@ -9807,6 +9807,7 @@ updateRoomList();
     $('sbPaste').style.display = clipHas() ? '' : 'none';
     $('sbNum').style.display = (window.SCvkOpen && window.SCvkCanEdit && SCvkCanEdit()) ? '' : 'none';   /* v16.1: anche per ruotare gli oggetti */
     if (window.SCbar2) try { SCbar2.vis(); } catch (_) {}   /* v17.1 */
+    if (window.SCband && SCband.applyBar()) return;   /* v18.3: spostata a mano */
     const r = c2d.getBoundingClientRect(), bw = bar.offsetWidth || 220;
     bar.style.left = Math.max(6, Math.min(innerWidth - bw - 6, r.left + (r.width - bw) / 2)) + 'px';
     bar.style.top = Math.max(4, r.top + 6) + 'px';
@@ -19448,6 +19449,115 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     if (!raf) raf = requestAnimationFrame(() => { raf = 0; if (pending) { pending = false; try { run(null, []); } catch (e) { console.warn('disegno', e); } } });
   };
   window.SCdraw = Object.assign(window.SCdraw || {}, {flush, last: () => lastMs, frames: () => frames});
+})();
+
+</script>
+<script>
+/* ========================================================================
+   v18.3 · RIGA MESSAGGI FUORI DAL DISEGNO + BARRA DI MODIFICA TRASCINABILE
+   - Una striscia fissa sotto il disegno (44 px): istruzioni dei comandi con i loro pulsanti
+     (guida strumenti, controlla chiusure, tinteggiatura, copia proprietà, nota, allinea immagine),
+     avvisi brevi e, a destra, numero di muri e scala. Niente più riquadri sopra la pianta.
+   - Il disegno si accorcia una volta per tutte (margine sotto l'area di lavoro): non salta.
+   - Barra di modifica: si trascina dalla maniglia a sinistra, ricorda la posizione,
+     doppio tocco sulla maniglia = torna in alto al centro.
+   ======================================================================== */
+(function () {
+  const ws = document.querySelector('.workspace'); if (!ws) return;
+  const H = 44;
+  const band = document.createElement('div'); band.id = 'scBand';
+  band.innerHTML = '<div id="scBandL"></div><div id="scBandT"></div><div id="scBandR"></div>';
+  document.body.appendChild(band);
+  const css = document.createElement('style');
+  css.textContent = `
+  body:not(.sv-on):not(.vf-print) .workspace{margin-bottom:${H}px}
+  #scBand{position:fixed;z-index:60;height:${H}px;display:flex;align-items:center;gap:8px;padding:0 8px;box-sizing:border-box;background:#141826;border-top:1px solid #2f3a55;color:#e2e8f0;font:600 13px/1.25 system-ui,sans-serif;overflow:hidden}
+  body.sv-on #scBand{display:none}
+  #scBandL{display:flex;align-items:center;gap:6px;min-width:0;flex:1 1 auto;overflow:hidden}
+  #scBandL>*{min-width:0;overflow:hidden}
+  #scBandL>*>span:first-child,#scBandL .tb-t{min-width:0;flex:0 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #scBandL button{flex:none}
+  body.hide-strip #scBandR{display:none}
+  #scBandT{flex:0 1 auto;max-width:45%;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+  #scBandR{flex:0 0 auto;display:flex;gap:10px;align-items:center;color:#94a3b8;font-weight:500;font-size:12px;white-space:nowrap}
+  #scBand #toolBanner,#scBand #scTinBan,#scBand #v16Ban,#scBand .scb-moved{position:static!important;transform:none!important;top:auto!important;left:auto!important;max-width:none!important;box-shadow:none!important;
+    background:transparent!important;border:0!important;border-left:4px solid var(--bc,#38bdf8)!important;border-radius:0!important;padding:0 0 0 8px!important;flex-wrap:nowrap!important;white-space:nowrap;pointer-events:auto!important;z-index:auto!important}
+  #scBand #v16Ban{border-left-color:#f472b6!important}
+  #scBand .scb-moved{border-left-color:#38bdf8!important;display:flex;gap:8px;align-items:center}
+  #scBand button{min-height:32px!important}
+  #scBand #toast{position:static!important;transform:none!important;background:transparent!important;padding:0 4px!important;max-width:none!important;color:#fbbf24;font-size:13px;text-align:left!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #scBand #status,#scBand #scaleBadge{position:static!important;transform:none!important;background:transparent!important;padding:0!important;border:0!important;color:#94a3b8!important;font-size:12px!important}
+  @media (max-width:700px){#scBandR .scale-badge{display:none}}
+  #selBar #sbN{cursor:grab;touch-action:none;padding:4px 6px 4px 2px;border-radius:12px}
+  #selBar #sbN::before{content:'⠿';margin-right:3px;color:#64748b;font-size:14px}
+  #selBar.sb-drag{box-shadow:0 6px 24px rgba(56,189,248,.45)}`;
+  document.head.appendChild(css);
+
+  /* posizione della striscia: sotto l'area di lavoro, larga quanto lei */
+  function place() {
+    const r = ws.getBoundingClientRect();
+    band.style.left = r.left + 'px'; band.style.width = r.width + 'px'; band.style.top = r.bottom + 'px';
+  }
+  try { new ResizeObserver(place).observe(ws); } catch (_) {}
+  window.addEventListener('resize', place);
+  setInterval(place, 1000);
+
+  /* trasloco dei riquadri esistenti nella striscia */
+  const L = band.querySelector('#scBandL'), T = band.querySelector('#scBandT'), R = band.querySelector('#scBandR');
+  const move = () => {
+    ['toolBanner', 'scTinBan', 'v16Ban'].forEach(id => { const e = document.getElementById(id); if (e && e.parentNode !== L) L.appendChild(e); });
+    const t = document.getElementById('toast'); if (t && t.parentNode !== T) T.appendChild(t);
+    ['status', 'scaleBadge'].forEach(id => { const e = document.getElementById(id); if (e && e.parentNode !== R) R.appendChild(e); });
+  };
+  move();
+  /* riquadri creati al volo (allinea immagine): position:fixed in alto al centro → nella striscia */
+  new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => {
+    if (n.nodeType !== 1 || n.parentNode !== document.body || n === band) return;
+    const s = n.getAttribute('style') || '';
+    if (/position:\s*fixed/.test(s) && /top:\s*64px/.test(s) && /left:\s*50%/.test(s)) { n.classList.add('scb-moved'); L.appendChild(n); }
+  }))).observe(document.body, {childList: true});
+  /* l'avviso breve non deve coprire le istruzioni: quando c'è un riquadro attivo va a destra di esso (già così nel flusso) */
+
+  /* prima sistemazione: l'area di disegno ha cambiato altezza */
+  setTimeout(() => { place(); window.dispatchEvent(new Event('resize')); }, 0);
+  let svWas = document.body.classList.contains('sv-on');   /* rilievo a tutto schermo: la striscia sparisce e il disegno riprende l'altezza */
+  new MutationObserver(() => { const sv = document.body.classList.contains('sv-on'); if (sv === svWas) return; svWas = sv; setTimeout(() => { place(); window.dispatchEvent(new Event('resize')); }, 30); }).observe(document.body, {attributes: true, attributeFilter: ['class']});
+
+  /* ---------------------------------------------------------------- barra di modifica trascinabile */
+  const bar = document.getElementById('selBar'), grip = document.getElementById('sbN');
+  if (bar && grip) {
+    let D = null, lastTap = 0;
+    grip.title = 'Trascina per spostare la barra · doppio tocco: torna in alto al centro';
+    grip.addEventListener('pointerdown', e => {
+      e.preventDefault(); e.stopPropagation();
+      const now = Date.now();
+      if (now - lastTap < 350) { delete appSettings.sbPos; try { persistSettings(); } catch (_) {} lastTap = 0; if (window.SCselbar) SCselbar.place(); toast('Barra di modifica: posizione automatica'); return; }
+      lastTap = now;
+      const r = bar.getBoundingClientRect(); D = {dx: e.clientX - r.left, dy: e.clientY - r.top, moved: false};
+      try { grip.setPointerCapture(e.pointerId); } catch (_) {}
+    });
+    grip.addEventListener('pointermove', e => {
+      if (!D) return; e.preventDefault();
+      const x = e.clientX - D.dx, y = e.clientY - D.dy;
+      if (!D.moved && Math.hypot(x - bar.getBoundingClientRect().left, y - bar.getBoundingClientRect().top) < 4) return;
+      D.moved = true; bar.classList.add('sb-drag');
+      appSettings.sbPos = clampPos(x, y); apply();
+    });
+    const end = e => { if (!D) return; if (D.moved) { lastTap = 0; try { persistSettings(); } catch (_) {} } D = null; bar.classList.remove('sb-drag'); };
+    grip.addEventListener('pointerup', end); grip.addEventListener('pointercancel', end);
+    grip.addEventListener('click', e => e.stopPropagation());
+  }
+  function clampPos(x, y) {
+    const bw = bar.offsetWidth || 220, bh = bar.offsetHeight || 40, r = ws.getBoundingClientRect();
+    return {x: Math.max(4, Math.min(innerWidth - bw - 4, x)) / innerWidth, y: Math.max(4, Math.min(r.bottom - bh - 4, y)) / innerHeight};
+  }
+  function apply() {
+    const p = appSettings.sbPos; if (!p || !bar) return false;
+    const c = clampPos(p.x * innerWidth, p.y * innerHeight);
+    bar.style.left = (c.x * innerWidth) + 'px'; bar.style.top = (c.y * innerHeight) + 'px';
+    return true;
+  }
+  window.SCband = {place, move, applyBar: apply, height: () => document.body.classList.contains('sv-on') ? 0 : H};
 })();
 
 </script>
