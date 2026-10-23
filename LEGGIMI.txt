@@ -1,4 +1,4 @@
-SimplyCAD Pro - pubblicazione su GitHub Pages (v18.3)
+SimplyCAD Pro - pubblicazione su GitHub Pages (v18.4)
 
 Contenuto (vanno caricati tutti, senza rinominarli e SENZA cartelle intorno):
   index.html  sw.js  manifest.webmanifest  icon-192.png  icon-512.png  icon-maskable.png  README.md
@@ -67,3 +67,6 @@ NOVITÀ v18.2
 NOVITÀ v18.3
  - Riga messaggi fissa sotto il disegno: istruzioni dei comandi con i loro pulsanti e avvisi brevi non coprono più la pianta.
  - Barra di modifica trascinabile dalla maniglia ⠿ a sinistra; ricorda la posizione; doppio tocco sulla maniglia = torna in alto al centro.
+
+NOVITÀ v18.4
+ - Riga messaggi: istruzioni e avvisi su due righe invece di troncati; i dati di stato (muri, scala) si nascondono mentre c'è un messaggio e non si sovrappongono più.

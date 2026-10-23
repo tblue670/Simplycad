@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v18.3</title>
+<title>SimplyCAD Pro · v18.4</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -4126,7 +4126,7 @@ const buildProjectBlob = () => {
     floors: state.floors, currentFloorId: state.currentFloorId, floorSeq: state.floorSeq, roofs: state.roofs, holes: state.holes, zones: state.zones, ceils: state.ceils || [], beams: state.beams || [], cmpOff: state.cmpOff || [], cmpCustom: state.cmpCustom || [], cart: state.cart || null,
     photos: window.SCph ? SCph.exportUsed() : undefined,
     images: state.images.filter(i => i.dataUrl).map(i => ({id: i.id, name: i.name, layerId: i.layerId, floorId: i.floorId, opacity: i.opacity, scale: i.scale, x: i.x, y: i.y, rot: i.rot || 0, dataUrl: i.dataUrl})),
-    ...(window.SCauto ? SCauto.extras() : {}), appVersion: '18.3', fileFormat: 4,   /* v18.0: versione del programma che ha salvato */
+    ...(window.SCauto ? SCauto.extras() : {}), appVersion: '18.4', fileFormat: 4,   /* v18.0: versione del programma che ha salvato */
     settings: {wallThickness: document.getElementById('wallThickness').value, wallHeight: document.getElementById('wallHeight').value, wallMaterial: appSettings.wallMaterial, wallColor: appSettings.wallColor || '', gridSize: document.getElementById('gridSize').value}
   };
   return new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
@@ -4218,8 +4218,8 @@ document.getElementById('fileInput').onchange = (e) => {
       try { data = JSON.parse(txt); } catch (err) { return uiAlert('Il file ' + info + ' non è un progetto SimplyCAD leggibile.\n\n' + (txt.charAt(0) === '<' ? 'Sembra una pagina web: forse è stato scaricato il collegamento invece del file.' : 'Dettaglio: ' + err.message)); }
       if (!data || typeof data !== 'object' || !(Array.isArray(data.walls) || Array.isArray(data.floors))) return uiAlert('Il file ' + info + ' non contiene un progetto SimplyCAD.');
       setProjName(file.name);
-      { const v = String(data.appVersion || '').split('.').map(Number), me = [18, 3];   /* v18.0: file salvato da una versione più nuova */
-        if (v[0] > me[0] || (v[0] === me[0] && (v[1] || 0) > me[1])) setTimeout(() => uiAlert('Il file ' + info + ' è stato salvato con SimplyCAD v' + data.appVersion + ', più nuova di questa (v18.3).\n\nL\'ho aperto, ma le funzioni nuove potrebbero non vedersi e, se lo salvi da qui, andare perse. Aggiorna l\'app (chiudi e riapri, o ricarica la pagina) prima di modificarlo.'), 300); }
+      { const v = String(data.appVersion || '').split('.').map(Number), me = [18, 4];   /* v18.0: file salvato da una versione più nuova */
+        if (v[0] > me[0] || (v[0] === me[0] && (v[1] || 0) > me[1])) setTimeout(() => uiAlert('Il file ' + info + ' è stato salvato con SimplyCAD v' + data.appVersion + ', più nuova di questa (v18.4).\n\nL\'ho aperto, ma le funzioni nuove potrebbero non vedersi e, se lo salvi da qui, andare perse. Aggiorna l\'app (chiudi e riapri, o ricarica la pagina) prima di modificarlo.'), 300); }
       try { window.SCauto && SCauto.preReplace('pre-open'); } catch (_) {}
       state.walls = (data.walls || []).map(w => { if (!(parseFloat(w.thickness) > 0)) w.thickness = parseFloat(data.settings && data.settings.wallThickness) || parseFloat(document.getElementById('wallThickness').value) || 0.2; return w; });
       state.doors = (data.doors || []).map(d => ({rotation: 0, ...d}));
@@ -19475,17 +19475,21 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   body.sv-on #scBand{display:none}
   #scBandL{display:flex;align-items:center;gap:6px;min-width:0;flex:1 1 auto;overflow:hidden}
   #scBandL>*{min-width:0;overflow:hidden}
-  #scBandL>*>span:first-child,#scBandL .tb-t{min-width:0;flex:0 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #scBandL>*>span:first-child,#scBandL .tb-t{min-width:0;flex:0 1 auto;overflow:hidden;white-space:normal!important;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.2}
   #scBandL button{flex:none}
   body.hide-strip #scBandR{display:none}
   #scBandT{flex:0 1 auto;max-width:45%;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-  #scBandR{flex:0 0 auto;display:flex;gap:10px;align-items:center;color:#94a3b8;font-weight:500;font-size:12px;white-space:nowrap}
+  #scBandR{flex:0 1 auto;display:flex;gap:10px;align-items:center;color:#94a3b8;font-weight:500;font-size:12px;white-space:nowrap}
   #scBand #toolBanner,#scBand #scTinBan,#scBand #v16Ban,#scBand .scb-moved{position:static!important;transform:none!important;top:auto!important;left:auto!important;max-width:none!important;box-shadow:none!important;
     background:transparent!important;border:0!important;border-left:4px solid var(--bc,#38bdf8)!important;border-radius:0!important;padding:0 0 0 8px!important;flex-wrap:nowrap!important;white-space:nowrap;pointer-events:auto!important;z-index:auto!important}
   #scBand #v16Ban{border-left-color:#f472b6!important}
   #scBand .scb-moved{border-left-color:#38bdf8!important;display:flex;gap:8px;align-items:center}
   #scBand button{min-height:32px!important}
-  #scBand #toast{position:static!important;transform:none!important;background:transparent!important;padding:0 4px!important;max-width:none!important;color:#fbbf24;font-size:13px;text-align:left!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #scBand #toast{position:static!important;transform:none!important;background:transparent!important;padding:0 4px!important;max-width:none!important;color:#fbbf24;font-size:13px;text-align:left!important;white-space:normal!important;overflow:hidden;line-height:1.2;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+  #scBand #toast[style*="block"]{display:-webkit-box!important}
+  #scBand #status{max-width:none!important;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #scBandR{min-width:0;overflow:hidden}
+  #scBand.busy #scBandR{display:none}
   #scBand #status,#scBand #scaleBadge{position:static!important;transform:none!important;background:transparent!important;padding:0!important;border:0!important;color:#94a3b8!important;font-size:12px!important}
   @media (max-width:700px){#scBandR .scale-badge{display:none}}
   #selBar #sbN{cursor:grab;touch-action:none;padding:4px 6px 4px 2px;border-radius:12px}
@@ -19510,6 +19514,8 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     ['status', 'scaleBadge'].forEach(id => { const e = document.getElementById(id); if (e && e.parentNode !== R) R.appendChild(e); });
   };
   move();
+  /* quando ci sono istruzioni o un avviso, i dati di stato (muri, scala…) si nascondono: tutto lo spazio al messaggio */
+  setInterval(() => { const busy = [...L.children].some(e => e.offsetWidth > 0) || (document.getElementById('toast') || {}).offsetWidth > 0; band.classList.toggle('busy', busy); }, 250);
   /* riquadri creati al volo (allinea immagine): position:fixed in alto al centro → nella striscia */
   new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => {
     if (n.nodeType !== 1 || n.parentNode !== document.body || n === band) return;
