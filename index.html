@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v13.6</title>
+<title>SimplyCAD Pro · v14.0</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -468,7 +468,7 @@
   .dock-btn { padding: 7px 2px; background: #3a3a5e; border: 2px solid transparent; color: #eee; cursor: pointer; border-radius: 5px; font-size: 11px; font-family: inherit; text-align: center; touch-action: manipulation; }
   .dock-btn:hover { background: #4a4a6e; }
   .dock-btn.active { border-color: #7dd3fc; color: #7dd3fc; }
-  #msgToggleBtn.active { background: #4a4a6e; border-color: #7dd3fc; color: #7dd3fc; }
+  #msgToggleBtn.active, #qtToggleBtn.active, #zbToggleBtn.active { background: #4a4a6e; border-color: #7dd3fc; color: #7dd3fc; }
 
   .imp-card{border:1px solid #3a3a5e;border-radius:8px;padding:9px 10px;margin:8px 0;background:#26283f}
   .imp-t{font-size:13px;font-weight:600;color:#e5e7eb}
@@ -546,6 +546,9 @@
   .fl-bar button:disabled{opacity:.3;cursor:default}
   .fl-bar button:not(:disabled):active{background:#1677a8;color:#fff}
   .fl-bar #flName{color:#7dd3fc;font-weight:600;border-left:1px solid #3c4260;border-right:1px solid #3c4260;min-width:128px;white-space:nowrap}
+  @media (max-width: 900px) { .fl-bar #flName{min-width:0;max-width:112px;overflow:hidden;text-overflow:ellipsis;padding:0 7px} .fl-bar button{padding:0 8px} }   /* v14.0: posto per Strumenti e Zoom */
+  @media (max-width: 520px) { .fl-bar #flName{max-width:70px} header .header-action-btn{padding:6px 5px} .undo-redo-quick{gap:3px;padding:3px 3px} }
+  @media (max-width: 700px) { header{overflow-x:auto;scrollbar-width:none} header::-webkit-scrollbar{display:none} }   /* schermi stretti: la barra scorre col dito invece di tagliare i pulsanti */
   .fl-panel{position:absolute;right:12px;top:52px;width:min(600px,calc(100% - 24px));max-height:calc(100% - 68px);display:flex;flex-direction:column;background:#202337f2;border:1px solid #4a5375;border-radius:10px;box-shadow:0 18px 50px #0008;z-index:32;backdrop-filter:blur(8px);color:#e5e7eb}
   .fl-panel.prova-hide{display:none}
   .fl-head{display:flex;align-items:center;gap:6px;padding:10px 12px 6px}
@@ -764,6 +767,8 @@ body.mode-3d #infoStrip .scale-badge{display:none}
   </div>
   <button class="header-action-btn" id="menuToggleBtn" title="Mostra/Nascondi menu"><span class="btn-icon">☰</span> <span class="btn-text">Menu</span></button>
   <button class="header-action-btn" id="msgToggleBtn" title="Mostra/Nascondi riquadro messaggi"><span class="btn-icon">💬</span> <span class="btn-text">Messaggi</span></button>
+  <button class="header-action-btn" id="qtToggleBtn" title="Mostra/Nascondi strumenti rapidi"><span class="btn-icon">🧰</span> <span class="btn-text">Strumenti</span></button>
+  <button class="header-action-btn" id="zbToggleBtn" title="Mostra/Nascondi barra zoom"><span class="btn-icon">🔍</span> <span class="btn-text">Zoom</span></button>
   <button class="header-action-btn" id="svSwitchBtn" title="Passa alla modalità rilievo per smartphone (schizzo, misure, tabella)"><span class="btn-icon">📱</span> <span class="btn-text">Rilievo</span></button>
   <button class="header-action-btn" id="fsBtn" title="Schermo intero" style="display:none"><span class="btn-icon">⛶</span> <span class="btn-text">Schermo intero</span></button>
 </header>
@@ -4552,6 +4557,7 @@ document.getElementById('helpBtn').onclick = () => {
     ['<kbd>0</kbd> / <kbd>Home</kbd>', 'Adatta la vista a tutto il disegno (2D e 3D)'],
     ['<kbd>Z</kbd> / <kbd>Maiusc</kbd>+<kbd>Z</kbd>', 'Zoom finestra · zoom precedente'],
     ['<kbd>G</kbd>', 'Snap griglia acceso / spento'],
+    ['<kbd>F3</kbd>', 'Snap ad oggetti acceso / spento (spigoli, intersezioni, perpendicolare…)'],
     ['<kbd>Ctrl</kbd>+<kbd>Z</kbd> / <kbd>Y</kbd>', 'Annulla · Ripeti'],
     ['<kbd>Ctrl</kbd>+<kbd>C</kbd> <kbd>X</kbd> <kbd>V</kbd> <kbd>D</kbd> <kbd>A</kbd>', 'Copia · Taglia · Incolla · Duplica · Seleziona tutto'],
     ['<kbd>Ctrl</kbd>+<kbd>S</kbd> / <kbd>Ctrl</kbd>+<kbd>P</kbd>', 'Salva progetto · Stampa / PDF'],
@@ -9530,6 +9536,8 @@ function applyDocks() {
   });
   document.querySelectorAll('.dock-btn').forEach(b => b.classList.toggle('active', appSettings[b.dataset.tb + 'Pos'] === b.dataset.pos));
   $('msgToggleBtn').classList.toggle('active', appSettings.msgPos !== 'hidden');
+  if ($('qtToggleBtn')) $('qtToggleBtn').classList.toggle('active', appSettings.qtPos !== 'hidden');   /* v14.0 */
+  if ($('zbToggleBtn')) $('zbToggleBtn').classList.toggle('active', appSettings.zbPos !== 'hidden');
   $('msgPanel').classList.toggle('min', appSettings.msgMin);
   $('msgMin').textContent = appSettings.msgMin ? '▸' : '▾';
   updateDockVars();
@@ -9537,7 +9545,7 @@ function applyDocks() {
 document.querySelectorAll('.dock-btn').forEach(b => {
   b.onclick = () => {
     appSettings[b.dataset.tb + 'Pos'] = b.dataset.pos;
-    if (b.dataset.tb === 'msg' && b.dataset.pos !== 'hidden') appSettings.msgLast = b.dataset.pos;
+    if (b.dataset.pos !== 'hidden') appSettings[b.dataset.tb + 'Last'] = b.dataset.pos;
     persistSettings(); applyDocks();
   };
 });
@@ -9546,6 +9554,11 @@ $('msgToggleBtn').onclick = () => {
   else { appSettings.msgLast = appSettings.msgPos; appSettings.msgPos = 'hidden'; }
   persistSettings(); applyDocks();
 };
+['qt', 'zb'].forEach(k => { const b = $(k + 'ToggleBtn'); if (b) b.onclick = () => {   /* v14.0: come Messaggi, ricorda la posizione */
+  if (appSettings[k + 'Pos'] === 'hidden') appSettings[k + 'Pos'] = appSettings[k + 'Last'] || (k === 'qt' ? 'left' : 'right');
+  else { appSettings[k + 'Last'] = appSettings[k + 'Pos']; appSettings[k + 'Pos'] = 'hidden'; }
+  persistSettings(); applyDocks(); toast((k === 'qt' ? 'Strumenti rapidi ' : 'Barra zoom ') + (appSettings[k + 'Pos'] === 'hidden' ? 'nascosti' : 'visibili'));
+}; });
 $('msgMin').onclick = () => { appSettings.msgMin = !appSettings.msgMin; persistSettings(); applyDocks(); };
 $('msgClear').onclick = () => { $('msgLog').innerHTML = ''; };
 if (window.ResizeObserver) { const ro = new ResizeObserver(updateDockVars); if ($('infoStrip')) ro.observe($('infoStrip')); ['dockTop','dockBottom','dockLeft','dockRight'].forEach(id => ro.observe($(id))); }
@@ -11674,7 +11687,7 @@ updateRoomList();
 
   /* ---------------------------------------------------------------- barra del piano */
   function buildBar() {
-    const anchor = document.getElementById('msgToggleBtn'); if (!anchor || bar) return;
+    const anchor = document.getElementById('zbToggleBtn') || document.getElementById('msgToggleBtn'); if (!anchor || bar) return;   /* v14.0: dopo Strumenti e Zoom */
     bar = document.createElement('div'); bar.className = 'fl-bar'; bar.id = 'flBar';
     bar.innerHTML = '<button type="button" id="flDown" title="Piano inferiore (PagGiu)">▼</button><button type="button" id="flName" title="Piani, tetti e solai"></button><button type="button" id="flUp" title="Piano superiore (PagSu)">▲</button>';
     anchor.after(bar);
@@ -12281,6 +12294,8 @@ updateRoomList();
     const q = resolve(p, lastPoint()); state.holes.push({id: newId(), floorId: state.currentFloorId, x: q.x, y: q.y, w, d, rot: ang || 0}); refresh(); setTimeout(checkpoint, 0); ok('Foro ' + w + ' × ' + d + ' m creato');
   });
 
+  def('Disegno', 'quota automatica', 'quota automatica', 'Quote esterne a catena (parziali e totali) e luci nette delle stanze', () => { if (window.SCq2) SCq2.autoDialog(); ok('Quotatura automatica'); });   /* v14.0 */
+  def('Vista', 'snap', 'snap', 'Snap ad oggetti acceso / spento (tasto F3)', () => { const c = $('snapPts'); c.checked = !c.checked; c.dispatchEvent(new Event('change', {bubbles: true})); draw2D(); ok('Snap ad oggetti ' + (c.checked ? 'acceso' : 'spento')); });
   /* --- Strumenti senza parametri --- */
   tool('rifila', 'trim', 'rifila', 'Attiva Rifila: tocca il muro da accorciare', 'Modifica');
   tool('estendi', 'extend', 'estendi', 'Attiva Estendi: tocca il muro da allungare', 'Modifica');
@@ -13580,7 +13595,7 @@ updateRoomList();
     stairs: 'stairs', pillar: 'pillar', dim: 'dim', line: 'line', circle: 'circle', arc: 'arc', zone: 'zone', trim: 'cut', extend: 'ext',
     split: 'split', corner: 'corner', offset: 'par', rescale: 'meas', box: 'box', moveBg: 'move', hole: 'box'};
   const BY_ID = {selectBtnTop: 'select', undoBtnTop: 'undo', undoBtn: 'undo', redoBtnTop: 'redo', redoBtn: 'redo', menuToggleBtn: 'menu',
-    msgToggleBtn: 'msg', svSwitchBtn: 'phone', fsBtn: 'full', newBtn: 'file', saveBtn: 'save', saveAsBtn: 'edit', loadBtn: 'folder',
+    msgToggleBtn: 'msg', qtToggleBtn: 'tools', zbToggleBtn: 'search', svSwitchBtn: 'phone', fsBtn: 'full', newBtn: 'file', saveBtn: 'save', saveAsBtn: 'edit', loadBtn: 'folder',
     importDialogBtn: 'imp', printBtn: 'print', exportImgBtn: 'cam', dxfBtn: 'file', objBtn: 'cube', clientBtn: 'eye', 
     importBgBtn: 'image', importDxfBtn: 'file', importSvgBtn: 'file', importPdfVecBtn: 'file', copyBtn: 'copy', cutBtn: 'cut', pasteBtn: 'paste',
     dupBtn: 'copy', selAllBtn: 'selall', deleteSelectionMenu: 'trash', clearFurnitureBtn: 'trash', clrMeasBtn: 'dim', arrBtn: 'grid',
@@ -16916,6 +16931,8 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     return hit >= 6;
   }
   function compute(m) {
+    if (m.qt && window.SCq2) return SCq2.compute(m);   /* v14.0: angolari, raggio, diametro */
+    if (!m.wq && (m.qaA || m.qbA) && window.SCq2) SCq2.follow(m);   /* v14.0: estremi agganciati agli oggetti */
     if (m.wq) {
       const w = state.walls.find(x => x.id === m.wq.id);
       if (!w) delete m.wq;
@@ -16927,6 +16944,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   const eq = (a, b) => a && b && Math.abs(a.x - b.x) < 1e-5 && Math.abs(a.y - b.y) < 1e-5;
   function normalize(m) {
     if (m.kind || !m.p1 || !m.p2) return;
+    if (m.qt && window.SCq2) { const c = qCache.get(m.id); if (c && !(eq(m.p1, c.p1) && eq(m.p2, c.p2))) SCq2.moved(m, c); const F = compute(m); m.p1 = F.p1; m.p2 = F.p2; qCache.set(m.id, {p1: {...F.p1}, p2: {...F.p2}}); return; }
     if (!m.q) { const u = nrm(sub(m.p2, m.p1)); if (Math.hypot(m.p2.x - m.p1.x, m.p2.y - m.p1.y) < 1e-6) return; m.q = 1; m.qa = {...m.p1}; m.qb = {...m.p2}; m.qu = u; m.qo = {...m.p1}; }   /* misure di prima: diventano quote */
     const c = qCache.get(m.id), E = compute(m);
     if (c && !(eq(m.p1, c.p1) && eq(m.p2, c.p2)) && !(eq(m.p1, E.p1) && eq(m.p2, E.p2))) {
@@ -16936,7 +16954,11 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
         if (state.sel.length > 1 && !m.wq) { m.qa = R6(add(m.qa, d1)); m.qb = R6(add(m.qb, d1)); m.qo = R6(add(m.qo, d1)); }
         else if (m.wq) { const w = state.walls.find(x => x.id === m.wq.id), G = w && geom(w); if (G) m.wq.off = Math.round((m.wq.off + dn * Math.sign(dot(E.n, {x: G.n.x * m.wq.sd, y: G.n.y * m.wq.sd}) || 1)) * 1000) / 1000; }
         else m.qo = R6(add(m.qo, E.n, dn));
-      } else if (!m.wq) { if (m1) m.qa = R6(m.p1); if (m2) m.qb = R6(m.p2); m.qu = nrm(sub(m.qb, m.qa)); }
+      } else if (!m.wq) {   /* v14.0: estremo trascinato: si sgancia (e si riaggancia se cade su uno snap) */
+        if (m1) { m.qa = R6(m.p1); delete m.qaA; const A = window.SCsnap && SCsnap.anchorAt(m.qa); if (A) m.qaA = A; }
+        if (m2) { m.qb = R6(m.p2); delete m.qbA; const B = window.SCsnap && SCsnap.anchorAt(m.qb); if (B) m.qbA = B; }
+        if (!m.qm) m.qu = nrm(sub(m.qb, m.qa));
+      }
     }
     const F = compute(m); m.p1 = F.p1; m.p2 = F.p2; qCache.set(m.id, {p1: {...F.p1}, p2: {...F.p2}});
   }
@@ -16944,17 +16966,18 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
 
   /* ---------------------------------------------------------------- quote: disegno */
   function drawQ(m, g, T, scale, col, sel, ghost) {
+    if (m.qt && window.SCq2) return SCq2.draw(m, g, T, scale, col, sel, ghost);
     const A = T(m.qa), B = T(m.qb), P1 = T(m.p1), P2 = T(m.p2), len = Math.abs(dot(sub(m.qb, m.qa), nrm(m.qu || sub(m.qb, m.qa))));
     g.save(); g.strokeStyle = col; g.fillStyle = col; g.lineWidth = sel ? 2.2 : 1.2; g.setLineDash(ghost ? [5, 4] : []);
     const ext = (Q, P) => { const v = sub(P, Q), l = Math.hypot(v.x, v.y); if (l < 2) return; const e = {x: v.x / l, y: v.y / l}; g.beginPath(); g.moveTo(Q.x + e.x * 3 * scale, Q.y + e.y * 3 * scale); g.lineTo(P.x + e.x * 5 * scale, P.y + e.y * 5 * scale); g.stroke(); };
     g.lineWidth = sel ? 1.6 : 0.8; ext(A, P1); ext(B, P2);
     g.lineWidth = sel ? 2.2 : 1.2; g.beginPath(); g.moveTo(P1.x, P1.y); g.lineTo(P2.x, P2.y); g.stroke();
     const dl = Math.hypot(P2.x - P1.x, P2.y - P1.y) || 1, ux = (P2.x - P1.x) / dl, uy = (P2.y - P1.y) / dl, t = 5 * scale;
-    g.lineWidth = sel ? 2.4 : 1.6; [P1, P2].forEach(P => { g.beginPath(); g.moveTo(P.x - (ux - uy) * t, P.y - (uy + ux) * t); g.lineTo(P.x + (ux - uy) * t, P.y + (uy + ux) * t); g.stroke(); });
+    g.lineWidth = sel ? 2.4 : 1.6; if (window.SCq2) { SCq2.term(g, P1, ux, uy, t); SCq2.term(g, P2, -ux, -uy, t); } else [P1, P2].forEach(P => { g.beginPath(); g.moveTo(P.x - (ux - uy) * t, P.y - (uy + ux) * t); g.lineTo(P.x + (ux - uy) * t, P.y + (uy + ux) * t); g.stroke(); });
     let ang = Math.atan2(uy, ux); if (ang > Math.PI / 2 + 1e-3) ang -= Math.PI; if (ang < -Math.PI / 2 - 1e-3) ang += Math.PI;
     g.translate((P1.x + P2.x) / 2, (P1.y + P2.y) / 2); g.rotate(ang);
-    g.font = 'bold ' + Math.round(11 * scale) + 'px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'bottom';
-    const txt = fmtLen(len); if (!ghost && g === ctx) { g.lineWidth = 3; g.strokeStyle = 'rgba(15,23,42,.85)'; g.setLineDash([]); g.strokeText(txt, 0, -3 * scale); }
+    g.font = 'bold ' + Math.round(11 * scale * (window.SCq2 ? SCq2.size() : 1)) + 'px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'bottom';
+    const txt = window.SCq2 ? SCq2.fmt(len) : fmtLen(len); if (!ghost && g === ctx) { g.lineWidth = 3; g.strokeStyle = 'rgba(15,23,42,.85)'; g.setLineDash([]); g.strokeText(txt, 0, -3 * scale); }
     g.fillText(txt, 0, -3 * scale); g.restore();
   }
   function drawM(m) {
@@ -16990,11 +17013,21 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     }
     if (state.mode === '2d' && state.tool === 'dim') {
       if (isCurrentLayerLocked()) { toast('Livello corrente bloccato'); return; }
-      const w = toW(cx, cy);
-      if (D.st === 0) { if (wallQuota(w, cx, cy)) return; const a = R6(snapToVertex(w)); D = {st: 1, a}; measureStart = a; draw2D(); return; }
-      if (D.st === 1) { const b = R6(snapToVertex(w, D.a)); if (Math.hypot(b.x - D.a.x, b.y - D.a.y) < 0.02) return; D = {st: 2, a: D.a, b}; measureStart = null; draw2D(); return; }
-      if (D.st === 2) { const u = nrm(sub(D.b, D.a)), n = {x: -u.y, y: u.x}, off = dot(sub(w, D.a), n), o = R6(add(D.a, n, off)); newQ({qa: D.a, qb: D.b, qu: u, qo: o}); D = {st: 3, last: D.b, u, o}; draw2D(); try { checkpoint(); } catch (_) {} return; }
-      if (D.st === 3) { const c = R6(snapToVertex(w)); if (Math.abs(dot(sub(c, D.last), D.u)) < 0.02) return; newQ({qa: D.last, qb: c, qu: D.u, qo: D.o}); D.last = c; draw2D(); try { checkpoint(); } catch (_) {} return; }
+      const w = toW(cx, cy), md = window.SCq2 ? SCq2.mode() : 'al', AT = p => (window.SCsnap ? SCsnap.anchorAt(p) : null);
+      if (md === 'ang') {   /* v14.0: quota angolare tra due muri o linee */
+        if (D.st === 0) { const r = SCq2.pickLine(w); if (!r) { toast('Tocca un muro o una linea'); return; } D = {st: 'a1', ra: r}; draw2D(); return; }
+        if (D.st === 'a1') { const r = SCq2.pickLine(w); if (!r) { toast('Tocca il secondo muro o la seconda linea'); return; } if (r.id === D.ra.id) return; D = {st: 'a2', ra: D.ra, rb: r}; draw2D(); return; }
+        if (D.st === 'a2') { const m = newQ({qt: 'ang', ra: D.ra, rb: D.rb, qo: R6(w)}); if (!m.p1 || (m.p1.x === m.qo.x && m.p1.y === m.qo.y && m.p2.x === m.qo.x)) { state.measurements.pop(); toast('Muri paralleli: non c\'è un angolo da quotare'); resetD(); draw2D(); return; } resetD(); draw2D(); try { checkpoint(); } catch (_) {} return; }
+      }
+      if (md === 'rad' || md === 'dia') {   /* v14.0: raggio / diametro di cerchi e archi */
+        if (D.st === 0) { const r = SCq2.pickCircle(w); if (!r) { toast('Tocca il bordo di un cerchio o di un arco'); return; } D = {st: 'r1', rs: r}; draw2D(); return; }
+        if (D.st === 'r1') { newQ({qt: md, rs: D.rs, qo: R6(w)}); resetD(); draw2D(); try { checkpoint(); } catch (_) {} return; }
+      }
+      const fixU = md === 'h' ? {x: 1, y: 0} : md === 'v' ? {x: 0, y: 1} : null, qm = fixU ? md : undefined;
+      if (D.st === 0) { if (md === 'al' && wallQuota(w, cx, cy)) return; const a = R6(snapToVertex(w)); D = {st: 1, a, aA: AT(a)}; measureStart = a; draw2D(); return; }
+      if (D.st === 1) { const b = R6(snapToVertex(w, D.a)); if (Math.hypot(b.x - D.a.x, b.y - D.a.y) < 0.02) return; if (fixU && Math.abs(dot(sub(b, D.a), fixU)) < 0.02) { toast(md === 'h' ? 'I due punti sono sulla stessa verticale' : 'I due punti sono sulla stessa orizzontale'); return; } D = {st: 2, a: D.a, b, aA: D.aA, bA: AT(b)}; measureStart = null; draw2D(); return; }
+      if (D.st === 2) { const u = fixU || nrm(sub(D.b, D.a)), n = {x: -u.y, y: u.x}, off = dot(sub(w, D.a), n), o = R6(add(D.a, n, off)); const o2 = {qa: D.a, qb: D.b, qu: u, qo: o}; if (qm) o2.qm = qm; if (D.aA) o2.qaA = D.aA; if (D.bA) o2.qbA = D.bA; newQ(o2); D = {st: 3, last: D.b, lastA: D.bA, u, o, qm}; draw2D(); try { checkpoint(); } catch (_) {} return; }
+      if (D.st === 3) { const c = R6(snapToVertex(w)); if (Math.abs(dot(sub(c, D.last), D.u)) < 0.02) return; const cA = AT(c), o2 = {qa: D.last, qb: c, qu: D.u, qo: D.o}; if (D.qm) o2.qm = D.qm; if (D.lastA) o2.qaA = D.lastA; if (cA) o2.qbA = cA; newQ(o2); D.last = c; D.lastA = cA; draw2D(); try { checkpoint(); } catch (_) {} return; }
     }
     return _ht.apply(this, arguments);
   };
@@ -17011,8 +17044,16 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     return mk('Misura · ' + (MP.length - 1) + (MP.length === 2 ? ' tratto' : ' tratti') + ' · totale ' + fmtLen(sumM()) + ' · tocca il punto successivo', B);
   }
   function specD(mk) {
-    const B = [['qundo', '↩ Annulla punto'], ['done', '✔ Fine']];
-    if (D.st === 0) return mk('Quota · tocca un muro (fuori = intera, dentro = tra le tramezze) oppure il primo punto', [['done', '✔ Fine']]);
+    const B = [['qundo', '↩ Annulla punto'], ['done', '✔ Fine']], md = window.SCq2 ? SCq2.mode() : 'al', TY = window.SCq2 ? [['qtype', SCq2.modeName() + ' ›']] : [];
+    if (D.st === 'a1') return mk('Quota angolare · tocca il secondo muro o la seconda linea', B);
+    if (D.st === 'a2') return mk('Quota angolare · tocca dove mettere l\'arco (scegli anche quale angolo)', B);
+    if (D.st === 'r1') return mk((md === 'dia' ? 'Diametro' : 'Raggio') + ' · tocca dove mettere la quota', B);
+    if (D.st === 0) {
+      if (md === 'ang') return mk('Quota angolare · tocca il primo muro o la prima linea', TY.concat([['qauto', '⚡ Automatica'], ['done', '✔ Fine']]));
+      if (md === 'rad' || md === 'dia') return mk((md === 'dia' ? 'Diametro' : 'Raggio') + ' · tocca il bordo di un cerchio o di un arco', TY.concat([['qauto', '⚡ Automatica'], ['done', '✔ Fine']]));
+      if (md === 'h' || md === 'v') return mk('Quota ' + (md === 'h' ? 'orizzontale' : 'verticale') + ' · tocca il primo punto', TY.concat([['qauto', '⚡ Automatica'], ['done', '✔ Fine']]));
+      return mk('Quota · tocca un muro (fuori = intera, dentro = tra le tramezze) oppure il primo punto', TY.concat([['qauto', '⚡ Automatica'], ['done', '✔ Fine']]));
+    }
     if (D.st === 1) return mk('Quota · tocca il secondo punto', B);
     if (D.st === 2) return mk('Quota · tocca dove mettere la linea di quota', B);
     return mk('Quota · catena: tocca il punto successivo, oppure «Fine»', [['qend', '⏹ Chiudi catena'], ['done', '✔ Fine']]);
@@ -17020,9 +17061,11 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   const tb = document.getElementById('toolBanner');
   if (tb) tb.addEventListener('click', e => {
     const b = e.target.closest && e.target.closest('button'); if (!b) return; const a = b.dataset.a;
-    if (a === 'qundo') { if (state.tool === 'measure') { MP.pop(); measureStart = MP.length ? MP[MP.length - 1] : null; } else if (state.tool === 'dim') { if (D.st === 1) { resetD(); measureStart = null; } else if (D.st === 2) { D = {st: 1, a: D.a}; measureStart = D.a; } else resetD(); } draw2D(); }
+    if (a === 'qundo') { if (state.tool === 'measure') { MP.pop(); measureStart = MP.length ? MP[MP.length - 1] : null; } else if (state.tool === 'dim') { if (D.st === 1) { resetD(); measureStart = null; } else if (D.st === 2) { D = {st: 1, a: D.a, aA: D.aA}; measureStart = D.a; } else if (D.st === 'a2') { D = {st: 'a1', ra: D.ra}; } else resetD(); } draw2D(); }
     if (a === 'qreset') { MP = []; measureStart = null; draw2D(); }
     if (a === 'qend') { resetD(); measureStart = null; draw2D(); }
+    if (a === 'qtype' && window.SCq2) { SCq2.cycle(); resetD(); measureStart = null; draw2D(); }
+    if (a === 'qauto' && window.SCq2) { resetD(); measureStart = null; SCq2.autoDialog(); }
   });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') { MP = []; resetD(); } }, true);
 
@@ -17043,9 +17086,16 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
         if (MP.length > 2) { const p = P[P.length - 1], t = 'Σ ' + fmtLen(sumM()); ctx.font = 'bold 13px sans-serif'; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(15,23,42,.9)'; ctx.strokeText(t, p.x + 30, p.y + 20); ctx.fillText(t, p.x + 30, p.y + 20); }
         ctx.restore();
       }
+      if (state.tool === 'dim' && (D.st === 'a2' || D.st === 'r1') && hover && window.SCq2) {
+        const g = D.st === 'a2' ? {qt: 'ang', ra: D.ra, rb: D.rb, qo: hover} : {qt: SCq2.mode() === 'dia' ? 'dia' : 'rad', rs: D.rs, qo: hover};
+        SCq2.draw(g, ctx, S, lblK() * 1.15, '#38bdf8', false, true);
+      }
+      if (state.tool === 'dim' && D.st === 'a1' && window.SCsnap) {   /* primo riferimento evidenziato */
+        const L = SCsnap.refLine({t: D.ra.t, id: D.ra.id, s: 0}); if (L) { const a = S(L.a), b = S(add(L.a, L.u, L.L)); ctx.save(); ctx.strokeStyle = '#38bdf8'; ctx.lineWidth = 4; ctx.globalAlpha = .6; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); ctx.restore(); }
+      }
       if (state.tool === 'dim' && (D.st === 2 || D.st === 3) && hover) {
         let g;
-        if (D.st === 2) { const u = nrm(sub(D.b, D.a)), n = {x: -u.y, y: u.x}, o = add(D.a, n, dot(sub(hover, D.a), n)); g = {qa: D.a, qb: D.b, qu: u, qo: o}; }
+        if (D.st === 2) { const md = window.SCq2 ? SCq2.mode() : 'al', u = md === 'h' ? {x: 1, y: 0} : md === 'v' ? {x: 0, y: 1} : nrm(sub(D.b, D.a)), n = {x: -u.y, y: u.x}, o = add(D.a, n, dot(sub(hover, D.a), n)); g = {qa: D.a, qb: D.b, qu: u, qo: o}; }
         else g = {qa: D.last, qb: hover, qu: D.u, qo: D.o};
         const F = compute(g); g.p1 = F.p1; g.p2 = F.p2; drawQ(g, ctx, S, lblK() * 1.15, '#38bdf8', false, true);
       }
@@ -17056,6 +17106,557 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   checkpoint = function () { normAll(); return _cp.apply(this, arguments); };
   window.SCq = {draw: drawM, print: printQ, typed, specM, specD, span, compute, normalize, wallQuota, temp: () => MP.slice(), state: () => D};
 })();
+</script>
+<script>
+/* ========================================================================
+   v14.0 · SNAP AD OGGETTI (come nei CAD) · ALLINEAMENTI · PASSO POLARE
+   Tipi: estremo, mezzeria, spigolo (facce dei muri), intersezione, perpendicolare, vicino, centro/quadrante,
+   bordo apertura (porte e finestre), pilastro, vertice (aree, controsoffitti, travi). Simbolo + nome sul cursore.
+   Ogni punto agganciato porta con sé un "ancoraggio" (a quale oggetto appartiene): le quote lo usano per
+   seguire gli oggetti quando si spostano.
+   Impostazioni: appSettings.snapT (tipi accesi), appSettings.polarStep (15/30/45/90).
+   ======================================================================== */
+(function () {
+  const TYPES = [
+    ['end', 'Estremo', 'estremi dei muri e delle linee'],
+    ['mid', 'Mezzeria', 'metà dei muri e delle linee'],
+    ['corner', 'Spigolo', 'angoli delle facce dei muri'],
+    ['int', 'Intersezione', 'incroci tra muri e linee'],
+    ['perp', 'Perpendicolare', 'piede della perpendicolare dal punto precedente'],
+    ['cen', 'Centro', 'centri e quadranti di cerchi e archi'],
+    ['open', 'Apertura', 'bordi di porte e finestre'],
+    ['pil', 'Pilastro', 'spigoli di pilastri, colonne e travi'],
+    ['vtx', 'Vertice', 'vertici di aree, controsoffitti e false travi'],
+    ['align', 'Allineamento', 'guide orizzontali e verticali dai punti del disegno'],
+    ['near', 'Vicino', 'punto più vicino su muri, facce e linee']
+  ];
+  const DEF_T = {end: 1, mid: 1, corner: 1, int: 1, perp: 1, cen: 1, open: 1, pil: 1, vtx: 1, align: 1, near: 0};
+  if (!appSettings.snapT || typeof appSettings.snapT !== 'object') appSettings.snapT = {...DEF_T};
+  TYPES.forEach(([k]) => { if (appSettings.snapT[k] === undefined) appSettings.snapT[k] = DEF_T[k]; });
+  if (![15, 30, 45, 90].includes(+appSettings.polarStep)) appSettings.polarStep = 15;
+  const ON = k => !!appSettings.snapT[k];
+  const LBL = Object.fromEntries(TYPES.map(t => [t[0], t[1]]));
+
+  const sub = (a, b) => ({x: a.x - b.x, y: a.y - b.y}), dot = (a, b) => a.x * b.x + a.y * b.y, crs = (a, b) => a.x * b.y - a.y * b.x;
+  const add = (a, b, k = 1) => ({x: a.x + b.x * k, y: a.y + b.y * k}), len = v => Math.hypot(v.x, v.y);
+  const nrm = v => { const l = len(v) || 1; return {x: v.x / l, y: v.y / l}; };
+  const D = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+
+  /* ---------------------------------------------------------------- geometria dei riferimenti */
+  function wG(w) { const L = D(w.p1, w.p2); if (L < 1e-6) return null; const u = {x: (w.p2.x - w.p1.x) / L, y: (w.p2.y - w.p1.y) / L}; return {L, u, n: {x: -u.y, y: u.x}, th: getWallThickness(w) / 2}; }
+  const byId = (arr, id) => (state[arr] || []).find(x => x.id === id);
+  /* linea di riferimento: muro (asse se s=0, faccia se s=±1) o linea libera */
+  function refLine(r) {
+    if (r.t === 'w') { const w = byId('walls', r.id), G = w && wG(w); if (!G) return null; const o = r.s ? G.th * r.s : 0; return {a: add(w.p1, G.n, o), u: G.u, L: G.L}; }
+    if (r.t === 's') { const m = byId('measurements', r.id); if (!m || m.kind !== 'line') return null; const L = D(m.p1, m.p2); if (L < 1e-6) return null; return {a: m.p1, u: nrm(sub(m.p2, m.p1)), L}; }
+    return null;
+  }
+  function lineX(A, B) { const den = crs(A.u, B.u); if (Math.abs(den) < 1e-9) return null; const t = crs(sub(B.a, A.a), B.u) / den; return {p: add(A.a, A.u, t), t, s: crs(sub(B.a, A.a), A.u) / den}; }
+  function arcEnd(m) { const r = shapeRad(m), a0 = Math.atan2(m.p2.y - m.p1.y, m.p2.x - m.p1.x) + (m.sweep || 0); return {x: m.p1.x + Math.cos(a0) * r, y: m.p1.y + Math.sin(a0) * r}; }
+  function pilCorners(f) { const ca = Math.cos(-(f.rot || 0)), sa = Math.sin(-(f.rot || 0)); return [[-f.w / 2, -f.d / 2], [f.w / 2, -f.d / 2], [f.w / 2, f.d / 2], [-f.w / 2, f.d / 2]].map(([x, y]) => ({x: f.x + x * ca - y * sa, y: f.y + x * sa + y * ca})); }
+
+  /* ---------------------------------------------------------------- ancoraggi: dal riferimento al punto */
+  function resolve(A) {
+    if (!A) return null;
+    try {
+      if (A.k === 'wa') { const w = byId('walls', A.id); return w ? {x: w[A.e].x, y: w[A.e].y} : null; }
+      if (A.k === 'wm') { const w = byId('walls', A.id), G = w && wG(w); return G ? add({x: (w.p1.x + w.p2.x) / 2, y: (w.p1.y + w.p2.y) / 2}, G.n, (A.s || 0) * G.th) : null; }
+      if (A.k === 'wf') { const w = byId('walls', A.id), G = w && wG(w); return G ? add(w[A.e], G.n, A.s * G.th) : null; }
+      if (A.k === 'we') { const w = byId('walls', A.id), G = w && wG(w); if (!G) return null; const out = A.e === 'p1' ? {x: -G.u.x, y: -G.u.y} : G.u; return add(add(w[A.e], out, A.a), G.n, (A.s || 0) * G.th); }
+      if (A.k === 'wl') { const w = byId('walls', A.id), G = w && wG(w); return G ? add(add(w.p1, G.u, A.f * G.L), G.n, (A.s || 0) * G.th) : null; }
+      if (A.k === 'ix') { const a = refLine(A.a), b = refLine(A.b); if (!a || !b) return null; const x = lineX(a, b); return x ? x.p : null; }
+      if (A.k === 'op') { const o = byId(A.arr, A.id), w = o && byId('walls', o.wallId), G = w && wG(w); if (!G) return null; const c = add(w.p1, G.u, o.t * G.L); return add(add(c, G.u, A.e * (o.width || 0.9) / 2), G.n, (A.s || 0) * G.th); }
+      if (A.k === 'pl') { const f = byId('furniture', A.id); return f ? pilCorners(f)[A.i] : null; }
+      if (A.k === 'zv') { const z = byId(A.arr, A.id); const q = z && z.pts && z.pts[A.i]; return q ? {x: q.x, y: q.y} : null; }
+      if (A.k === 'se') { const m = byId('measurements', A.id); if (!m || !m.kind) return null; if (A.e === 'end') return arcEnd(m); if (A.e === 'mid') return {x: (m.p1.x + m.p2.x) / 2, y: (m.p1.y + m.p2.y) / 2}; return {x: m[A.e].x, y: m[A.e].y}; }
+      if (A.k === 'sq') { const m = byId('measurements', A.id); if (!m || !m.kind) return null; const r = shapeRad(m), a = A.q * Math.PI / 2; return {x: m.p1.x + Math.cos(a) * r, y: m.p1.y + Math.sin(a) * r}; }
+      if (A.k === 'sl') { const m = byId('measurements', A.id); if (!m || m.kind !== 'line') return null; return add(m.p1, sub(m.p2, m.p1), A.f); }
+    } catch (_) {}
+    return null;
+  }
+
+  /* ---------------------------------------------------------------- candidati (cache sulla geometria) */
+  let cache = {key: '', P: [], L: [], T: []};
+  function fingerprint(skip) {
+    let h = state.walls.length * 7 + state.doors.length * 13 + state.windows.length * 17 + state.measurements.length * 19 + state.furniture.length * 23 + (state.zones || []).length * 29;
+    const mix = (v, k) => { h = (h * 31 + Math.round((v || 0) * 1000) * k) % 2147483647; };
+    state.walls.forEach((w, i) => { mix(w.p1.x, 1); mix(w.p1.y, 2); mix(w.p2.x, 3); mix(w.p2.y, 5); mix(getWallThickness(w), 7); mix(isEntityVisible(w) ? 1 : 0, 11); });
+    state.doors.concat(state.windows).forEach(o => { mix(o.t, 3); mix(o.width, 5); });
+    state.measurements.forEach(m => { if (m.kind) { mix(m.p1.x, 1); mix(m.p1.y, 2); mix(m.p2.x, 3); mix(m.p2.y, 5); mix(m.sweep, 7); } });
+    state.furniture.forEach(f => { if (STRUCT_TYPES.has(f.type)) { mix(f.x, 1); mix(f.y, 2); mix(f.rot, 3); mix(f.w, 5); mix(f.d, 7); } });
+    ['zones', 'ceils', 'beams'].forEach(a => (state[a] || []).forEach(z => (z.pts || []).forEach(q => { mix(q.x, 1); mix(q.y, 2); })));
+    return h + '|' + state.currentFloorId + '|' + (skip || '') + '|' + JSON.stringify(state.layers.map(l => l.visible));
+  }
+  function build(skipIds) {
+    const P = [], Ls = [], T = [];   /* P: punti {p,k,A} · Ls: linee per perpendicolare/vicino · T: punti per gli allineamenti */
+    const W = state.walls.filter(w => isEntityVisible(w) && !skipIds.has(w.id) && wG(w));
+    const pt = (p, k, A) => P.push({p: {x: p.x, y: p.y}, k, A});
+    W.forEach(w => {
+      const G = wG(w);
+      pt(w.p1, 'end', {k: 'wa', id: w.id, e: 'p1'}); pt(w.p2, 'end', {k: 'wa', id: w.id, e: 'p2'});
+      pt({x: (w.p1.x + w.p2.x) / 2, y: (w.p1.y + w.p2.y) / 2}, 'mid', {k: 'wm', id: w.id, s: 0});
+      [-1, 0, 1].forEach(s => Ls.push({a: add(w.p1, G.n, s * G.th), u: G.u, L: G.L, A: f => ({k: 'wl', id: w.id, f, s}), ext: s ? G.th : 0}));
+      /* estremi liberi: spigoli delle facce */
+      ['p1', 'p2'].forEach(e => {
+        const q = w[e], free = !W.some(o => o !== w && distancePointToSegment(q, o.p1, o.p2) < G.th + getWallThickness(o) / 2 + 0.02);
+        if (free) [-1, 1].forEach(s => pt(add(q, G.n, s * G.th), 'corner', {k: 'wf', id: w.id, e, s}));
+      });
+    });
+    /* coppie di muri: spigoli tra facce, intersezioni tra assi */
+    const box = W.map(w => { const t = getWallThickness(w) / 2 + 0.05; return {x0: Math.min(w.p1.x, w.p2.x) - t, x1: Math.max(w.p1.x, w.p2.x) + t, y0: Math.min(w.p1.y, w.p2.y) - t, y1: Math.max(w.p1.y, w.p2.y) + t}; });
+    for (let i = 0; i < W.length; i++) for (let j = i + 1; j < W.length; j++) {
+      const bi = box[i], bj = box[j]; if (bi.x1 < bj.x0 || bj.x1 < bi.x0 || bi.y1 < bj.y0 || bj.y1 < bi.y0) continue;
+      const A = W[i], B = W[j], GA = wG(A), GB = wG(B); if (Math.abs(crs(GA.u, GB.u)) < 0.05) continue;
+      const ax = lineX({a: A.p1, u: GA.u}, {a: B.p1, u: GB.u});
+      if (ax && ax.t > 1e-4 && ax.t < GA.L - 1e-4 && ax.s > -1e-4 && ax.s < GB.L + 1e-4 || ax && ax.s > 1e-4 && ax.s < GB.L - 1e-4 && ax.t > -1e-4 && ax.t < GA.L + 1e-4)
+        pt(ax.p, 'int', {k: 'ix', a: {t: 'w', id: A.id, s: 0}, b: {t: 'w', id: B.id, s: 0}});
+      for (const sa of [-1, 1]) for (const sb of [-1, 1]) {
+        const la = {a: add(A.p1, GA.n, sa * GA.th), u: GA.u}, lb = {a: add(B.p1, GB.n, sb * GB.th), u: GB.u}, x = lineX(la, lb); if (!x) continue;
+        const ea = GB.th + 0.02, eb = GA.th + 0.02;
+        if (x.t < -ea || x.t > GA.L + ea || x.s < -eb || x.s > GB.L + eb) continue;
+        const inA = x.t > -1e-3 && x.t < GA.L + 1e-3, inB = x.s > -1e-3 && x.s < GB.L + 1e-3; if (inA !== inB) continue;
+        if (W.some(o => o !== A && o !== B && distancePointToSegment(x.p, o.p1, o.p2) < getWallThickness(o) / 2 - 0.005)) continue;   /* dentro un altro muro: non è uno spigolo visibile */
+        if (distancePointToSegment(x.p, A.p1, A.p2) < GA.th - 0.005 || distancePointToSegment(x.p, B.p1, B.p2) < GB.th - 0.005) continue;
+        pt(x.p, 'corner', {k: 'ix', a: {t: 'w', id: A.id, s: sa}, b: {t: 'w', id: B.id, s: sb}});
+      }
+    }
+    /* porte e finestre: bordi sull'asse e sulle facce */
+    [['doors'], ['windows']].forEach(([arr]) => state[arr].forEach(o => {
+      if (!isEntityVisible(o)) return; const w = W.find(x => x.id === o.wallId); if (!w) return; const G = wG(w), c = add(w.p1, G.u, o.t * G.L);
+      [-1, 1].forEach(e => [-1, 0, 1].forEach(s => pt(add(add(c, G.u, e * (o.width || 0.9) / 2), G.n, s * G.th), 'open', {k: 'op', arr, id: o.id, e, s})));
+    }));
+    /* pilastri, colonne, travi */
+    state.furniture.forEach(f => { if (!STRUCT_TYPES.has(f.type) || !isEntityVisible(f)) return; pilCorners(f).forEach((q, i) => pt(q, 'pil', {k: 'pl', id: f.id, i})); pt({x: f.x, y: f.y}, 'cen', null); });
+    /* vertici di aree, controsoffitti, false travi */
+    ['zones', 'ceils', 'beams'].forEach(arr => (state[arr] || []).forEach(z => { if (!isEntityVisible(z)) return; (z.pts || []).forEach((q, i) => pt(q, 'vtx', {k: 'zv', arr, id: z.id, i})); }));
+    /* forme libere */
+    const SL = [];
+    state.measurements.forEach(m => {
+      if (!m.kind || !isEntityVisible(m)) return;
+      if (m.kind === 'line') {
+        pt(m.p1, 'end', {k: 'se', id: m.id, e: 'p1'}); pt(m.p2, 'end', {k: 'se', id: m.id, e: 'p2'}); pt({x: (m.p1.x + m.p2.x) / 2, y: (m.p1.y + m.p2.y) / 2}, 'mid', {k: 'se', id: m.id, e: 'mid'});
+        const L = D(m.p1, m.p2); if (L > 1e-6) { Ls.push({a: m.p1, u: nrm(sub(m.p2, m.p1)), L, A: f => ({k: 'sl', id: m.id, f}), ext: 0}); SL.push(m); }
+      } else {
+        pt(m.p1, 'cen', {k: 'se', id: m.id, e: 'p1'});
+        if (m.kind === 'circle') for (let q = 0; q < 4; q++) pt(add(m.p1, {x: Math.cos(q * Math.PI / 2), y: Math.sin(q * Math.PI / 2)}, shapeRad(m)), 'cen', {k: 'sq', id: m.id, q});
+        else { pt(m.p2, 'end', {k: 'se', id: m.id, e: 'p2'}); pt(arcEnd(m), 'end', {k: 'se', id: m.id, e: 'end'}); }
+      }
+    });
+    /* intersezioni linee libere × muri e linee × linee */
+    SL.forEach((m, i) => {
+      const a = {a: m.p1, u: nrm(sub(m.p2, m.p1))}, La = D(m.p1, m.p2);
+      W.forEach(w => { const G = wG(w), x = lineX(a, {a: w.p1, u: G.u}); if (x && x.t > -1e-4 && x.t < La + 1e-4 && x.s > -1e-4 && x.s < G.L + 1e-4) pt(x.p, 'int', {k: 'ix', a: {t: 's', id: m.id}, b: {t: 'w', id: w.id, s: 0}}); });
+      SL.slice(i + 1).forEach(o => { const b = {a: o.p1, u: nrm(sub(o.p2, o.p1))}, x = lineX(a, b); if (x && x.t > -1e-4 && x.t < La + 1e-4 && x.s > -1e-4 && x.s < D(o.p1, o.p2) + 1e-4) pt(x.p, 'int', {k: 'ix', a: {t: 's', id: m.id}, b: {t: 's', id: o.id}}); });
+    });
+    P.forEach(c => { if (c.k === 'end' || c.k === 'corner' || c.k === 'pil' || c.k === 'open' || c.k === 'vtx') T.push(c.p); });
+    return {P, L: Ls, T};
+  }
+  function cands(skipIds) {
+    const k = fingerprint([...skipIds].join(','));
+    if (k !== cache.key) { const b = build(skipIds); cache = {key: k, ...b}; }
+    return cache;
+  }
+
+  /* ---------------------------------------------------------------- motore */
+  const HIST = [];   /* ultimi punti agganciati con il loro ancoraggio (per le quote) */
+  const keyOf = p => p.x.toFixed(4) + ',' + p.y.toFixed(4);
+  function remember(p, A) { if (!A) return; HIST.push({key: keyOf(p), p: {x: p.x, y: p.y}, A}); if (HIST.length > 60) HIST.shift(); }
+  function anchorAt(p) { if (!p) return null; for (let i = HIST.length - 1; i >= 0; i--) if (D(HIST[i].p, p) < 2e-4) return JSON.parse(JSON.stringify(HIST[i].A)); return null; }
+  let SN = null;   /* ultimo aggancio: {p, k, A, g:[guide], t} */
+  const prevSnap = snapToVertex;
+
+  function polarOf(p, from) {   /* punto polare/griglia come l'originale, con il passo scelto */
+    const r = snapToGrid(p, from); return r;
+  }
+  function engine(p, from) {
+    SN = null;
+    if (!$('snapPts').checked) return prevSnap(p, from);
+    const tol = 12 / viewScale;
+    const skip = new Set((snapSkip && typeof drag !== 'undefined' && drag && drag.type === 'vertex') ? snapSkip.map(l => l.w.id) : []);
+    const C = cands(skip);
+    /* 1) punti */
+    let best = null, bd = tol;
+    const PR = {end: 0, corner: 0, int: 0.5, pil: 0.5, open: 0.8, vtx: 0.5, cen: 0.8, mid: 1};
+    for (const c of C.P) { if (!ON(c.k)) continue; const d = D(c.p, p) + (PR[c.k] || 0) / viewScale; if (d < bd) { bd = d; best = c; } }
+    if (best) { SN = {p: best.p, k: best.k, A: best.A}; remember(best.p, best.A); return {x: best.p.x, y: best.p.y}; }
+    /* 2) piani sotto (aggancio originale ai vertici del piano sotto) */
+    const g0 = snapToGrid(p, from), r0 = prevSnap(p, from);
+    if (r0 && (Math.abs(r0.x - g0.x) > 1e-9 || Math.abs(r0.y - g0.y) > 1e-9) && D(r0, p) < tol * 1.2) { SN = {p: r0, k: 'ghost'}; return r0; }
+    /* 3) perpendicolare dal punto precedente */
+    if (from && ON('perp')) {
+      let bp = null, bpd = tol;
+      for (const l of C.L) { const t = dot(sub(from, l.a), l.u); if (t < -l.ext - 1e-6 || t > l.L + l.ext + 1e-6) continue; const q = add(l.a, l.u, t), d = D(q, p); if (d < bpd && D(q, from) > 1e-3) { bpd = d; bp = {p: q, A: l.A(t / l.L)}; } }
+      if (bp) { SN = {p: bp.p, k: 'perp', A: bp.A, from: {...from}}; remember(bp.p, bp.A); return bp.p; }
+    }
+    /* 4) allineamenti (anche combinati con il passo polare) */
+    if (ON('align')) {
+      const at = 8 / viewScale, base = from ? g0 : p;
+      let bx = null, by = null, dx = at, dy = at;
+      const TT = from ? C.T.concat([from]) : C.T;
+      for (const q of TT) {
+        if (D(q, p) < 1e-6) continue;
+        const ex = Math.abs(q.x - base.x), ey = Math.abs(q.y - base.y);
+        if (ex < dx && Math.abs(q.y - base.y) > tol) { dx = ex; bx = q; }
+        if (ey < dy && Math.abs(q.x - base.x) > tol) { dy = ey; by = q; }
+      }
+      let r = null, G = [];
+      if (bx && by) { r = {x: bx.x, y: by.y}; G = [bx, by]; }
+      else if (from && (bx || by) && $('snapAngles').checked) {
+        const v = sub(g0, from), L0 = len(v);
+        if (L0 > 1e-6) { const u = {x: v.x / L0, y: v.y / L0};
+          if (bx && Math.abs(u.x) > 1e-6) { const t = (bx.x - from.x) / u.x; if (t > 0) { r = add(from, u, t); G = [bx]; } }
+          else if (by && Math.abs(u.y) > 1e-6) { const t = (by.y - from.y) / u.y; if (t > 0) { r = add(from, u, t); G = [by]; } }
+          if (r && D(r, p) > tol * 2.5) { r = null; G = []; }
+        }
+      }
+      else if (bx) { r = {x: bx.x, y: from ? g0.y : p.y}; G = [bx]; if (from && $('snapAngles').checked) r = null; }
+      else if (by) { r = {x: from ? g0.x : p.x, y: by.y}; G = [by]; if (from && $('snapAngles').checked) r = null; }
+      if (r) { SN = {p: r, k: 'align', g: G}; return {x: r6(r.x), y: r6(r.y)}; }
+    }
+    /* 5) vicino */
+    if (ON('near')) {
+      let bn = null, bnd = tol;
+      for (const l of C.L) { const t = Math.max(-l.ext, Math.min(l.L + l.ext, dot(sub(p, l.a), l.u))), q = add(l.a, l.u, t), d = D(q, p); if (d < bnd) { bnd = d; bn = {p: q, A: l.A(t / l.L)}; } }
+      if (bn) { SN = {p: bn.p, k: 'near', A: bn.A}; remember(bn.p, bn.A); return bn.p; }
+    }
+    return prevSnap(p, from);
+  }
+  snapToVertex = function (p, from = null) { const r = engine(p, from); if (SN) SN.t = Date.now(); return r; };
+
+  /* passo polare a scelta (l'originale usava 15° fissi) */
+  const _sg = snapToGrid;
+  snapToGrid = function (p, from = null) {
+    const st = +appSettings.polarStep || 15;
+    if (st === 15 || !from || !($('snapAngles').checked) || kbShift) return _sg(p, from);
+    const dx = p.x - from.x, dy = p.y - from.y; let d = Math.hypot(dx, dy); if (d <= 0.05) return _sg(p, from);
+    const s = st * Math.PI / 180, a = Math.round(Math.atan2(dy, dx) / s) * s;
+    if ($('snapGrid').checked) { const gs = parseFloat($('gridSize').value) || 0.25; d = Math.round(d / gs) * gs || gs; }
+    return {x: r6(from.x + Math.cos(a) * d), y: r6(from.y + Math.sin(a) * d)};
+  };
+
+  /* ---------------------------------------------------------------- simbolo sul cursore */
+  function drawMark() {
+    if (state.mode !== '2d' || !SN || appSettings.snapMark === false) return;
+    const fresh = Date.now() - (SN.t || 0) < 400, hov = typeof hover !== 'undefined' && hover && Math.abs(hover.x - SN.p.x) < 1e-7 && Math.abs(hover.y - SN.p.y) < 1e-7;
+    const dragging = typeof drag !== 'undefined' && drag && (drag.type === 'vertex' || drag.type === 'measurement');
+    if (!(hov && state.tool !== 'select') && !(dragging && fresh)) return;
+    const s = worldToScreen(SN.p.x, SN.p.y), k = SN.k, r = 7, col = k === 'align' ? '#a3e635' : k === 'ghost' ? '#c084fc' : '#22d3ee';
+    ctx.save(); ctx.lineWidth = 2; ctx.strokeStyle = col; ctx.fillStyle = col; ctx.setLineDash([]);
+    if (k === 'align' && SN.g) { ctx.setLineDash([4, 4]); ctx.lineWidth = 1; SN.g.forEach(q => { const a = worldToScreen(q.x, q.y); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(s.x, s.y); ctx.stroke(); }); ctx.setLineDash([]); ctx.lineWidth = 2; }
+    ctx.beginPath();
+    if (k === 'end' || k === 'ghost') ctx.rect(s.x - r, s.y - r, 2 * r, 2 * r);
+    else if (k === 'mid') { ctx.moveTo(s.x, s.y - r); ctx.lineTo(s.x + r, s.y + r * 0.8); ctx.lineTo(s.x - r, s.y + r * 0.8); ctx.closePath(); }
+    else if (k === 'corner' || k === 'pil') { ctx.rect(s.x - r, s.y - r, 2 * r, 2 * r); ctx.moveTo(s.x - r, s.y - r); ctx.lineTo(s.x + r, s.y + r); }
+    else if (k === 'int') { ctx.moveTo(s.x - r, s.y - r); ctx.lineTo(s.x + r, s.y + r); ctx.moveTo(s.x + r, s.y - r); ctx.lineTo(s.x - r, s.y + r); }
+    else if (k === 'perp') { ctx.moveTo(s.x - r, s.y + r); ctx.lineTo(s.x + r, s.y + r); ctx.moveTo(s.x, s.y + r); ctx.lineTo(s.x, s.y - r); }
+    else if (k === 'cen') ctx.arc(s.x, s.y, r, 0, 7);
+    else if (k === 'open') { ctx.moveTo(s.x - r, s.y - r); ctx.lineTo(s.x - r, s.y + r); ctx.moveTo(s.x + r, s.y - r); ctx.lineTo(s.x + r, s.y + r); ctx.moveTo(s.x - r, s.y); ctx.lineTo(s.x + r, s.y); }
+    else if (k === 'vtx') { ctx.moveTo(s.x, s.y - r); ctx.lineTo(s.x + r, s.y); ctx.lineTo(s.x, s.y + r); ctx.lineTo(s.x - r, s.y); ctx.closePath(); }
+    else if (k === 'near') { ctx.moveTo(s.x - r, s.y - r); ctx.lineTo(s.x + r, s.y - r); ctx.lineTo(s.x - r, s.y + r); ctx.lineTo(s.x + r, s.y + r); ctx.closePath(); }
+    else if (k === 'align') { ctx.moveTo(s.x - r, s.y); ctx.lineTo(s.x + r, s.y); ctx.moveTo(s.x, s.y - r); ctx.lineTo(s.x, s.y + r); }
+    ctx.stroke();
+    const t = k === 'ghost' ? 'Piano sotto' : LBL[k] || ''; if (t) {
+      ctx.font = 'bold 11px system-ui,sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      const w = ctx.measureText(t).width + 8; ctx.fillStyle = 'rgba(15,23,42,.88)'; ctx.fillRect(s.x + 11, s.y + 9, w, 16);
+      ctx.fillStyle = col; ctx.fillText(t, s.x + 15, s.y + 17.5);
+    }
+    ctx.restore();
+  }
+  const _d2 = draw2D;
+  draw2D = function () { const r = _d2.apply(this, arguments); try { drawMark(); } catch (e) { console.warn('snap', e); } return r; };
+
+  /* ---------------------------------------------------------------- impostazioni */
+  function ui() {
+    const pts = $('snapPts'), ang = $('snapAngles'); if (!pts || !ang) return;
+    const lp = pts.closest('label'); if (lp) lp.lastChild.textContent = ' Snap ad oggetti (estremi, spigoli, intersezioni…)';
+    const la = ang.closest('label'); if (la) la.lastChild.textContent = ' Snap angolare';
+    const sel = document.createElement('select'); sel.id = 'polarStep'; sel.style.marginTop = '4px';
+    sel.innerHTML = [15, 30, 45, 90].map(v => `<option value="${v}">Passo angolare ${v}°</option>`).join(''); sel.value = String(appSettings.polarStep);
+    sel.onchange = () => { appSettings.polarStep = +sel.value; persistSettings(); };
+    la.after(sel);
+    const det = document.createElement('details'); det.id = 'snapTypes'; det.style.cssText = 'margin:4px 0 2px;font-size:12px;color:#c9cde0';
+    det.innerHTML = '<summary style="cursor:pointer;padding:3px 0">Tipi di snap…</summary>' + TYPES.map(([k, n, d]) => `<label style="display:flex;gap:6px;align-items:flex-start;margin:4px 0"><input type="checkbox" data-st="${k}" ${ON(k) ? 'checked' : ''} style="margin-top:2px"><span><b style="color:#e5e7eb">${n}</b><br><span style="font-size:10.5px;color:#8b93ad">${d}</span></span></label>`).join('') +
+      '<label style="display:flex;gap:6px;margin:6px 0 2px"><input type="checkbox" id="snapMark"' + (appSettings.snapMark === false ? '' : ' checked') + '> Mostra simbolo e nome dello snap</label>';
+    lp.after(det);
+    det.addEventListener('change', e => {
+      const c = e.target; if (c.dataset.st) { appSettings.snapT[c.dataset.st] = c.checked ? 1 : 0; persistSettings(); cache.key = ''; }
+      if (c.id === 'snapMark') { appSettings.snapMark = c.checked; persistSettings(); }
+      draw2D();
+    });
+  }
+  try { ui(); } catch (e) { console.warn('snap ui', e); }
+
+  /* F3 = snap ad oggetti acceso/spento (come nei CAD) */
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'F3') return; const a = document.activeElement; if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) return;
+    e.preventDefault(); const c = $('snapPts'); c.checked = !c.checked; c.dispatchEvent(new Event('change', {bubbles: true})); toast('Snap ad oggetti ' + (c.checked ? 'acceso' : 'spento')); draw2D();
+  });
+
+  window.SCsnap = {resolve, anchorAt, last: () => SN, types: TYPES, refLine, lineX, invalidate: () => { cache.key = ''; }};
+})();
+
+/* ========================================================================
+   v14.0 · QUOTE: associative agli oggetti agganciati · orizzontali / verticali · angolari · raggio / diametro
+   · stile (formato, testo, terminatori) · QUOTATURA AUTOMATICA (catene esterne + luci nette delle stanze)
+   Una quota tra due punti ricorda a cosa sono agganciati i suoi estremi (m.qaA, m.qbA): se l'oggetto si sposta
+   la quota lo segue, mantenendo la distanza della linea di quota. m.qm = 'h'|'v' tiene la direzione fissa.
+   Quote speciali: m.qt = 'ang' (ra, rb: muri o linee; qo = punto dell'arco) · 'rad' | 'dia' (rs: cerchio o arco).
+   ======================================================================== */
+(function () {
+  const sub = (a, b) => ({x: a.x - b.x, y: a.y - b.y}), dot = (a, b) => a.x * b.x + a.y * b.y, crs = (a, b) => a.x * b.y - a.y * b.x;
+  const add = (a, b, k = 1) => ({x: a.x + b.x * k, y: a.y + b.y * k}), nrm = v => { const l = Math.hypot(v.x, v.y) || 1; return {x: v.x / l, y: v.y / l}; };
+  const R6 = p => ({x: r6(p.x), y: r6(p.y)}), D = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+
+  /* ---------------------------------------------------------------- stile */
+  const ST = () => ({fmt: appSettings.qFmt || 'mu', term: appSettings.qTerm || 'tick', size: appSettings.qSize || 'M'});
+  const SIZE = {S: 0.8, M: 1, L: 1.3};
+  const comma = s => s.replace('.', ',');
+  function fmt(L) {
+    const f = ST().fmt;
+    if (f === 'm2') return comma(L.toFixed(2));
+    if (f === 'cm') { const c = Math.round(L * 1000) / 10; return comma(Number.isInteger(c) ? String(c) : c.toFixed(1)); }
+    if (f === 'mm') return String(Math.round(L * 1000));
+    return fmtLen(L);
+  }
+  const fmtA = a => comma((Math.round(a * 10) / 10).toFixed(Math.abs(a - Math.round(a)) < 0.05 ? 0 : 1)) + '°';
+  /* terminatore all'estremo P di una linea con direzione (ux,uy) verso l'interno; t = grandezza in px */
+  function term(g, P, ux, uy, t, kind) {
+    const k = kind || ST().term;
+    if (k === 'arrow') { const a = t * 1.9, b = t * 0.55; g.beginPath(); g.moveTo(P.x, P.y); g.lineTo(P.x + ux * a - uy * b, P.y + uy * a + ux * b); g.lineTo(P.x + ux * a + uy * b, P.y + uy * a - ux * b); g.closePath(); g.fill(); }
+    else if (k === 'dot') { g.beginPath(); g.arc(P.x, P.y, t * 0.42, 0, 7); g.fill(); }
+    else { g.beginPath(); g.moveTo(P.x - (ux - uy) * t, P.y - (uy + ux) * t); g.lineTo(P.x + (ux - uy) * t, P.y + (uy + ux) * t); g.stroke(); }
+  }
+
+  /* ---------------------------------------------------------------- quote tra due punti: seguono gli oggetti */
+  function follow(m) {
+    if (!window.SCsnap || !(m.qaA || m.qbA)) return;
+    const a = m.qaA ? SCsnap.resolve(m.qaA) : null, b = m.qbA ? SCsnap.resolve(m.qbA) : null;
+    if (m.qaA && !a) delete m.qaA; if (m.qbA && !b) delete m.qbA;
+    const na = a || m.qa, nb = b || m.qb; if (D(na, m.qa) < 1e-7 && D(nb, m.qb) < 1e-7) return;
+    if (D(na, nb) < 1e-4) return;   /* punti sovrapposti: lascio la quota com'era */
+    const u0 = nrm(m.qu || sub(m.qb, m.qa)), n0 = {x: -u0.y, y: u0.x}, off = dot(sub(m.qo, m.qa), n0);
+    const u = m.qm ? u0 : nrm(sub(nb, na)), n = {x: -u.y, y: u.x};
+    m.qa = R6(na); m.qb = R6(nb); m.qu = u; m.qo = R6(add(m.qa, n, off));
+  }
+
+  /* ---------------------------------------------------------------- quote speciali: geometria */
+  function lineOf(r) { return window.SCsnap ? SCsnap.refLine({t: r.t, id: r.id, s: 0}) : null; }
+  function angGeo(m) {
+    const A = lineOf(m.ra), B = lineOf(m.rb); if (!A || !B) return null;
+    const x = SCsnap.lineX(A, B); if (!x) return null; const C = x.p, v = sub(m.qo, C), r = Math.hypot(v.x, v.y); if (r < 1e-4) return null;
+    let d1 = A.u, d2 = B.u;
+    for (const s1 of [1, -1]) for (const s2 of [1, -1]) {
+      const a = {x: A.u.x * s1, y: A.u.y * s1}, b = {x: B.u.x * s2, y: B.u.y * s2}, c = crs(a, b);
+      if (Math.sign(crs(a, v)) === Math.sign(c) && Math.sign(crs(v, b)) === Math.sign(c)) { d1 = a; d2 = b; }
+    }
+    const deg = Math.acos(Math.max(-1, Math.min(1, dot(d1, d2)))) * 180 / Math.PI;
+    return {C, r, d1, d2, deg, p1: add(C, d1, r), p2: add(C, d2, r), A, B};
+  }
+  function radGeo(m) {
+    const s = (state.measurements || []).find(x => x.id === (m.rs && m.rs.id)); if (!s || (s.kind !== 'circle' && s.kind !== 'arc')) return null;
+    const C = s.p1, R = shapeRad(s); let u = sub(m.qo, C); if (Math.hypot(u.x, u.y) < 1e-6) u = {x: 1, y: 0}; u = nrm(u);
+    return {C, R, u, p1: m.qt === 'dia' ? add(C, u, -R) : {x: C.x, y: C.y}, p2: add(C, u, R)};
+  }
+  function compute(m) {
+    const G = m.qt === 'ang' ? angGeo(m) : radGeo(m);
+    if (!G) return {p1: m.p1 || m.qo, p2: m.p2 || m.qo, u: {x: 1, y: 0}, n: {x: 0, y: 1}};
+    const u = nrm(sub(G.p2, G.p1)); return {p1: R6(G.p1), p2: R6(G.p2), u, n: {x: -u.y, y: u.x}};
+  }
+  /* un estremo trascinato sposta il punto della quota (raggio dell'arco / lato del testo); tutta = sposta */
+  function moved(m, c) {
+    const d1 = sub(m.p1, c.p1), d2 = sub(m.p2, c.p2), m1 = Math.hypot(d1.x, d1.y) > 1e-6, m2 = Math.hypot(d2.x, d2.y) > 1e-6;
+    if (m1 && m2 && Math.hypot(d1.x - d2.x, d1.y - d2.y) < 1e-4) m.qo = R6(add(m.qo, d1));
+    else if (m1 || m2) m.qo = R6(m2 ? m.p2 : m.p1);
+  }
+
+  /* ---------------------------------------------------------------- disegno quote speciali */
+  function draw(m, g, T, scale, col, sel) {
+    const sz = SIZE[ST().size] || 1;
+    g.save(); g.strokeStyle = col; g.fillStyle = col; g.lineWidth = sel ? 2.2 : 1.2; g.setLineDash([]);
+    g.font = 'bold ' + Math.round(11 * scale * sz) + 'px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    const txt = (t, P) => { if (g === ctx) { g.lineWidth = 3; g.strokeStyle = 'rgba(15,23,42,.85)'; g.strokeText(t, P.x, P.y); g.strokeStyle = col; g.lineWidth = sel ? 2.2 : 1.2; } g.fillText(t, P.x, P.y); };
+    if (m.qt === 'ang') {
+      const G = angGeo(m); if (!G) { g.restore(); return; }
+      const C = T(G.C), P1 = T(G.p1), P2 = T(G.p2), rs = Math.hypot(P1.x - C.x, P1.y - C.y);
+      const a1 = Math.atan2(P1.y - C.y, P1.x - C.x); let da = Math.atan2(P2.y - C.y, P2.x - C.x) - a1; while (da > Math.PI) da -= 2 * Math.PI; while (da < -Math.PI) da += 2 * Math.PI;
+      g.beginPath(); g.arc(C.x, C.y, rs, a1, a1 + da, da < 0); g.stroke();
+      /* linee di richiamo dal segmento all'arco */
+      [[G.A, G.p1, P1], [G.B, G.p2, P2]].forEach(([L, pw, PS]) => { const t = Math.max(0, Math.min(L.L, dot(sub(pw, L.a), L.u))), q = T(add(L.a, L.u, t)); if (Math.hypot(q.x - PS.x, q.y - PS.y) > 3) { g.lineWidth = 0.8; g.beginPath(); g.moveTo(q.x, q.y); g.lineTo(PS.x, PS.y); g.stroke(); } });
+      g.lineWidth = sel ? 2.4 : 1.6;
+      const tg = (a, s) => ({x: -Math.sin(a) * s, y: Math.cos(a) * s}), t = 5 * scale, sd = da < 0 ? -1 : 1;
+      const k = ST().term === 'tick' ? 'arrow' : ST().term;   /* sugli archi il trattino obliquo non si legge: freccia */
+      let e = tg(a1, sd); term(g, P1, e.x, e.y, t, k); e = tg(a1 + da, -sd); term(g, P2, e.x, e.y, t, k);
+      const am = a1 + da / 2; txt(fmtA(G.deg), {x: C.x + Math.cos(am) * (rs + 12 * scale * sz), y: C.y + Math.sin(am) * (rs + 12 * scale * sz)});
+    } else {
+      const G = radGeo(m); if (!G) { g.restore(); return; }
+      const P1 = T(G.p1), P2 = T(G.p2), Q = T(m.qo), out = D(m.qo, G.C) > G.R + 1e-6;
+      g.beginPath(); g.moveTo(P1.x, P1.y); g.lineTo(P2.x, P2.y); if (out) g.lineTo(Q.x, Q.y); g.stroke();
+      const ux = (P1.x - P2.x), uy = (P1.y - P2.y), l = Math.hypot(ux, uy) || 1, t = 5 * scale;
+      term(g, P2, ux / l, uy / l, t, 'arrow'); if (m.qt === 'dia') term(g, P1, -ux / l, -uy / l, t, 'arrow');
+      const s = (m.qt === 'dia' ? 'Ø ' : 'R ') + fmt(m.qt === 'dia' ? 2 * G.R : G.R);
+      const at = out ? {x: Q.x + (Q.x >= P2.x ? 1 : -1) * (g.measureText(s).width / 2 + 4), y: Q.y - 8 * scale} : {x: (P1.x + P2.x) / 2 - uy / l * 12 * scale * sz, y: (P1.y + P2.y) / 2 + ux / l * 12 * scale * sz};
+      txt(s, at);
+    }
+    g.restore();
+  }
+
+  /* ---------------------------------------------------------------- scelta dei riferimenti col tocco */
+  function pickLine(w) {
+    const tol = 14 / viewScale; let best = null, bd = Infinity;
+    state.walls.forEach(x => { if (!isEntityVisible(x)) return; const d = distancePointToSegment(w, x.p1, x.p2); if (d < getWallThickness(x) / 2 + tol && d < bd) { bd = d; best = {t: 'w', id: x.id}; } });
+    state.measurements.forEach(m => { if (m.kind !== 'line' || !isEntityVisible(m)) return; const d = distancePointToSegment(w, m.p1, m.p2); if (d < tol && d < bd) { bd = d; best = {t: 's', id: m.id}; } });
+    return best;
+  }
+  function pickCircle(w) {
+    const tol = 14 / viewScale; let best = null, bd = tol;
+    state.measurements.forEach(m => { if ((m.kind !== 'circle' && m.kind !== 'arc') || !isEntityVisible(m)) return; const d = Math.abs(D(w, m.p1) - shapeRad(m)); if (d < bd) { bd = d; best = {id: m.id}; } });
+    return best;
+  }
+
+  /* ---------------------------------------------------------------- tipi di quota (strumento Quota) */
+  const MODES = [['al', '↗ Allineata'], ['h', '↔ Orizzontale'], ['v', '↕ Verticale'], ['ang', '∠ Angolo'], ['rad', 'R Raggio'], ['dia', 'Ø Diametro']];
+  if (!MODES.some(x => x[0] === appSettings.qMode)) appSettings.qMode = 'al';
+  const mode = () => appSettings.qMode;
+  function cycle() { const i = MODES.findIndex(x => x[0] === mode()); appSettings.qMode = MODES[(i + 1) % MODES.length][0]; persistSettings(); toast('Quota: ' + MODES.find(x => x[0] === appSettings.qMode)[1].slice(2)); }
+  const modeName = () => MODES.find(x => x[0] === mode())[1];
+
+  /* ---------------------------------------------------------------- QUOTATURA AUTOMATICA */
+  const visW = () => state.walls.filter(w => isEntityVisible(w) && floorOf(w) === state.currentFloorId && D(w.p1, w.p2) > 0.01);
+  function geomW(w) { const L = D(w.p1, w.p2), u = {x: (w.p2.x - w.p1.x) / L, y: (w.p2.y - w.p1.y) / L}; return {L, u, n: {x: -u.y, y: u.x}, th: getWallThickness(w) / 2}; }
+  function faceSegs(W) {   /* tutte le facce dei muri (segmenti), con l'ancoraggio del punto lungo la faccia */
+    const F = []; W.forEach(w => { const G = geomW(w); [-1, 1].forEach(s => F.push({w, s, a: add(add(w.p1, G.n, s * G.th), G.u, -G.th), b: add(add(w.p2, G.n, s * G.th), G.u, G.th), G})); }); return F;
+  }
+  /* raggio da p in direzione d: prima faccia colpita */
+  function ray(p, d, F, maxL) {
+    let best = null, bt = maxL || 1e9;
+    F.forEach(f => { const e = sub(f.b, f.a), den = crs(d, e); if (Math.abs(den) < 1e-9) return; const ap = sub(f.a, p), t = crs(ap, e) / den, s = crs(ap, d) / den; if (t > 1e-4 && t < bt && s >= -1e-6 && s <= 1 + 1e-6) { bt = t; best = {f, t, p: add(p, d, t)}; } });
+    return best;
+  }
+  function anchorOnFace(f, q) {
+    const G = f.G, t = dot(sub(q, f.w.p1), G.u);
+    if (t < G.th + 0.005) return {k: 'we', id: f.w.id, e: 'p1', a: r6(-t), s: f.s};          /* vicino a un estremo: distanza fissa da quell'estremo */
+    if (t > G.L - G.th - 0.005) return {k: 'we', id: f.w.id, e: 'p2', a: r6(t - G.L), s: f.s};
+    return {k: 'wl', id: f.w.id, f: t / G.L, s: f.s};
+  }
+  function quoteLayer() {
+    const NAME = '📏 Quote automatiche'; let l = state.layers.find(x => x.name === NAME);
+    if (!l) { const id = createLayer(NAME, false); l = state.layers.find(x => x.id === id); }
+    return l.id;
+  }
+  function mkQ(a, b, A, B, u, qo, extra) {
+    const m = {id: newId(), q: 1, qauto: 1, qa: R6(a), qb: R6(b), qu: u, qo: R6(qo), layerId: quoteLayer(), floorId: state.currentFloorId, ...extra};
+    if (A) m.qaA = A; if (B) m.qbA = B;
+    const F = window.SCq.compute(m); m.p1 = F.p1; m.p2 = F.p2; state.measurements.push(m); return m;
+  }
+  /* catene esterne: per ognuno dei 4 lati, i punti "visti" da fuori (spigoli e bordi delle aperture) proiettati
+     sulla direzione del lato; 1ª catena = parziali, 2ª = totale. Muri inclinati: proiezione sul lato più vicino. */
+  function outerChains(W, o) {
+    const F = faceSegs(W); let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    F.forEach(f => [f.a, f.b].forEach(q => { x0 = Math.min(x0, q.x); y0 = Math.min(y0, q.y); x1 = Math.max(x1, q.x); y1 = Math.max(y1, q.y); }));
+    if (!isFinite(x0)) return 0;
+    const H = Math.max(x1 - x0, y1 - y0) * 3 + 10; let n = 0;
+    const sides = [{u: {x: 1, y: 0}, d: {x: 0, y: 1}, edge: y0, out: -1}, {u: {x: 1, y: 0}, d: {x: 0, y: -1}, edge: y1, out: 1}, {u: {x: 0, y: 1}, d: {x: 1, y: 0}, edge: x0, out: -1}, {u: {x: 0, y: 1}, d: {x: -1, y: 0}, edge: x1, out: 1}];
+    sides.forEach(S => {
+      const horiz = S.u.x === 1, lo = horiz ? x0 : y0, hi = horiz ? x1 : y1, P = [];
+      const addP = (q, A) => { const t = horiz ? q.x : q.y; if (P.some(x => Math.abs(x.t - t) < 0.005)) return; P.push({t, q, A}); };
+      /* punti visibili da questo lato: campionamento con raggi + vertici delle facce esposte */
+      const vis = new Set();
+      for (let t = lo + 0.005; t <= hi - 0.005; t += Math.max(0.05, (hi - lo) / 400)) {
+        const st = horiz ? {x: t, y: S.edge + S.out * H} : {x: S.edge + S.out * H, y: t}, h = ray(st, S.d, F); if (h) vis.add(h.f);
+      }
+      vis.forEach(f => {
+        if (Math.abs(dot(f.G.u, S.u)) < 0.2) return;   /* faccia quasi perpendicolare al lato: i suoi spigoli escono dalle altre */
+        [f.a, f.b].forEach(q => {
+          const st = add(q, S.d, -H), h = ray(st, S.d, F); if (!(h && D(h.p, q) < 0.02)) return;
+          /* spigolo vero solo se da una parte all'altra cambia la profondità (non i giunti tra muri allineati) */
+          const dep = e => { const r = ray(add(st, S.u, e), S.d, F); return r ? r.t : null; }, da = dep(-0.01), db = dep(0.01);
+          if (da != null && db != null && Math.abs(da - db) < 0.002) return;
+          addP(q, anchorOnFace(f, q));
+        });
+        /* aperture sul muro di questa faccia */
+        state.doors.concat(state.windows).forEach(op => {
+          if (op.wallId !== f.w.id || !isEntityVisible(op)) return; const arr = state.doors.includes(op) ? 'doors' : 'windows', c = add(f.w.p1, f.G.u, op.t * f.G.L);
+          [-1, 1].forEach(e => { const q = add(add(c, f.G.u, e * (op.width || 0.9) / 2), f.G.n, f.s * f.G.th); addP(q, {k: 'op', arr, id: op.id, e, s: f.s}); });
+        });
+      });
+      if (P.length < 2) return;
+      P.sort((a, b) => a.t - b.t);
+      const base = S.edge + S.out * o.d1, base2 = S.edge + S.out * (o.d1 + o.d2), lineAt = v => horiz ? {x: lo, y: v} : {x: v, y: lo}, qm = horiz ? 'h' : 'v';
+      if (o.parz) for (let i = 1; i < P.length; i++) { if (P[i].t - P[i - 1].t < 0.01) continue; mkQ(P[i - 1].q, P[i].q, P[i - 1].A, P[i].A, S.u, lineAt(base), {qm}); n++; }
+      if (o.tot && (P.length > 2 || !o.parz)) { mkQ(P[0].q, P[P.length - 1].q, P[0].A, P[P.length - 1].A, S.u, lineAt(o.parz ? base2 : base), {qm}); n++; }
+    });
+    return n;
+  }
+  /* luci nette delle stanze: dal punto del nome, raggi orizzontali e verticali fino alle facce dei muri */
+  function roomInner(W) {
+    const F = faceSegs(W); let n = 0;
+    state.rooms.filter(r => isEntityVisible(r) && floorOf(r) === state.currentFloorId).forEach(r => {
+      const c = window.SCrl ? SCrl.pos(r) : r.polygon[0];
+      /* le linee non passano sul nome: orizzontale un po' sotto, verticale un po' a destra (in proporzione alla stanza) */
+      const spanAt = (p, u) => { const a = ray(p, {x: -u.x, y: -u.y}, F, 60), b = ray(p, u, F, 60); return a && b ? D(a.p, b.p) : 0; };
+      const sx = spanAt(c, {x: 1, y: 0}), sy = spanAt(c, {x: 0, y: 1});
+      [[{x: 1, y: 0}, {x: 0, y: -Math.min(0.55, sy * 0.3)}], [{x: 0, y: 1}, {x: Math.min(0.9, sx * 0.3), y: 0}]].forEach(([u, sh], k) => {
+        const p = add(c, sh, 1), a = ray(p, {x: -u.x, y: -u.y}, F, 60), b = ray(p, u, F, 60); if (!a || !b) return;
+        if (D(a.p, b.p) < 0.3) return;
+        mkQ(a.p, b.p, anchorOnFace(a.f, a.p), anchorOnFace(b.f, b.p), u, p, {qm: k ? 'v' : 'h', qroom: 1}); n++;
+      });
+    });
+    return n;
+  }
+  async function autoDialog() {
+    if (state.mode !== '2d') return;
+    const selW = (state.sel || []).filter(i => i.type === 'wall').map(i => i.id);
+    const bg = document.createElement('div'); bg.className = 'uidlg-bg';
+    const prev = state.measurements.filter(m => m.qauto && floorOf(m) === state.currentFloorId).length;
+    bg.innerHTML = `<div class="uidlg" style="width:min(440px,100%)"><p style="font-size:16px;font-weight:700;color:#7dd3fc;margin-bottom:6px">Quotatura automatica</p>
+      <div style="display:grid;gap:7px;font-size:13px">
+        <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="qaParz" checked style="width:auto;margin:0;flex:none"> Catena esterna dei parziali (spigoli, porte e finestre)</label>
+        <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="qaTot" checked style="width:auto;margin:0;flex:none"> Quota totale di ogni lato</label>
+        <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="qaRoom" checked style="width:auto;margin:0;flex:none"> Luci nette delle stanze (larghezza e lunghezza)</label>
+        <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="qaHide" ${$('showDimensions') && $('showDimensions').checked ? 'checked' : ''} style="width:auto;margin:0;flex:none"> Nascondi le scritte sui muri (lunghezza · angolo), che si sovrappongono</label>
+        <label style="display:flex;gap:8px;align-items:center;justify-content:space-between">Distanza della prima catena dal muro (m)<input type="number" id="qaD1" value="${appSettings.qaD1 || 0.6}" step="0.1" min="0.2" style="width:80px;margin:0;flex:none"></label>
+        <label style="display:flex;gap:8px;align-items:center;justify-content:space-between">Distanza tra le catene (m)<input type="number" id="qaD2" value="${appSettings.qaD2 || 0.5}" step="0.1" min="0.2" style="width:80px;margin:0;flex:none"></label>
+        <div style="font-size:11.5px;color:#9ca3b8;line-height:1.4">${selW.length ? 'Solo i <b>' + selW.length + ' muri selezionati</b>.' : 'Tutti i muri del piano corrente.'} Le quote vanno sul livello «📏 Quote automatiche» (lo puoi nascondere) e seguono i muri se li sposti.${prev ? '<br>Le ' + prev + ' quote automatiche già presenti su questo piano vengono sostituite.' : ''}</div>
+      </div><div class="row" style="margin-top:12px"><button data-x="0">Annulla</button><button class="ok" data-x="1">Crea quote</button></div></div>`;
+    document.body.appendChild(bg);
+    const ok = await new Promise(res => bg.addEventListener('click', e => { const b = e.target.closest('button'); if (b) res(b.dataset.x === '1'); }));
+    const hideW = bg.querySelector('#qaHide').checked, o = {parz: bg.querySelector('#qaParz').checked, tot: bg.querySelector('#qaTot').checked, room: bg.querySelector('#qaRoom').checked, d1: Math.max(0.2, +bg.querySelector('#qaD1').value || 0.6), d2: Math.max(0.2, +bg.querySelector('#qaD2').value || 0.5)};
+    bg.remove(); if (!ok) return;
+    appSettings.qaD1 = o.d1; appSettings.qaD2 = o.d2; persistSettings();
+    if (hideW && $('showDimensions') && $('showDimensions').checked) { $('showDimensions').checked = false; $('showDimensions').dispatchEvent(new Event('change', {bubbles: true})); }
+    let W = visW(); if (selW.length) W = W.filter(w => selW.includes(w.id));
+    if (!W.length) { toast('Nessun muro da quotare su questo piano'); return; }
+    state.measurements = state.measurements.filter(m => !(m.qauto && floorOf(m) === state.currentFloorId));
+    let n = 0; try { if (o.parz || o.tot) n += outerChains(W, o); if (o.room) { try { detectRooms(); } catch (_) {} n += roomInner(W); } } catch (e) { console.warn('quote auto', e); }
+    draw2D(); try { checkpoint(); } catch (_) {}
+    toast(n ? n + ' quote create · le trovi sul livello «📏 Quote automatiche»' : 'Nessuna quota creata');
+    try { renderLayersPanel(); } catch (_) {}
+  }
+
+  /* ---------------------------------------------------------------- impostazioni: stile quote (in ⚙️ e nel menu Vista) */
+  function styleUI() {
+    const host = $('snapPts') && $('snapPts').closest('.menu-pad'); if (!host) return;
+    const sep = document.createElement('div'); sep.className = 'menu-sep';
+    const lab = document.createElement('div'); lab.className = 'menu-label'; lab.textContent = 'Quote · stile';
+    const pad = document.createElement('div'); pad.className = 'menu-pad'; pad.id = 'qStylePad';
+    pad.innerHTML = `<label>Formato del numero</label><select id="qFmt"><option value="mu">Come il disegno (4.30 m)</option><option value="m2">Metri, 2 decimali (4,30)</option><option value="cm">Centimetri (430)</option><option value="mm">Millimetri (4300)</option></select>
+      <label>Terminatori</label><select id="qTerm"><option value="tick">Trattino obliquo</option><option value="arrow">Freccia</option><option value="dot">Punto</option></select>
+      <label>Grandezza del testo</label><select id="qSize"><option value="S">Piccolo</option><option value="M">Medio</option><option value="L">Grande</option></select>`;
+    host.after(sep, lab, pad);
+    const S = ST(); pad.querySelector('#qFmt').value = S.fmt; pad.querySelector('#qTerm').value = S.term; pad.querySelector('#qSize').value = S.size;
+    pad.addEventListener('change', e => { const k = e.target.id; if (!k) return; appSettings[k] = e.target.value; persistSettings(); draw2D(); });
+  }
+  try { styleUI(); } catch (e) { console.warn('stile quote', e); }
+
+  /* voce di menu: Disegna › Quota automatica (accanto a Quota) */
+  try {
+    const qb = document.querySelector('.menu-dropdown .tool[data-tool="dim"]');
+    if (qb) { const b = document.createElement('button'); b.className = 'menu-row'; b.id = 'autoDimBtn'; b.innerHTML = '<span class="mi-icon">📏</span><span class="mi-label">Quota automatica…</span>'; qb.after(b); b.onclick = () => { document.querySelectorAll('.menu-item.open').forEach(x => x.classList.remove('open')); document.querySelectorAll('.menu-dropdown.open-fixed').forEach(x => x.classList.remove('open-fixed')); autoDialog(); }; }
+  } catch (_) {}
+
+  window.SCq2 = {follow, compute, moved, draw, fmt, fmtA, term, size: () => SIZE[ST().size] || 1, pickLine, pickCircle, mode, cycle, modeName, autoDialog, outerChains, roomInner};
+})();
+
 </script>
 </body>
 </html>
