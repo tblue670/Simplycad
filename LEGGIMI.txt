@@ -1,4 +1,4 @@
-SimplyCAD Pro - pubblicazione su GitHub Pages (v17.1)
+SimplyCAD Pro - pubblicazione su GitHub Pages (v17.2)
 
 Contenuto (vanno caricati tutti, senza rinominarli e SENZA cartelle intorno):
   index.html  sw.js  manifest.webmanifest  icon-192.png  icon-512.png  icon-maskable.png  README.md
@@ -46,3 +46,6 @@ NOVITÀ v17.1
  - Muro: pulsante Stato (esistente → da demolire → nuovo) e pulsante Geometria (angolo, rifila, estendi, dividi).
  - Porta: verso di apertura e cerniera con un tocco. 📷+ scatta o sceglie una foto anche se il muro non ne ha.
  - Messaggi nascosti; il pulsante si riattiva in ⚙️ › Selezione. Disegna: linea, cerchio, arco sotto «Forme ▸».
+
+NOVITÀ v17.2
+ - Il pulsante Disegna è sempre nella barra di modifica, subito dopo ➕.

@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v17.1</title>
+<title>SimplyCAD Pro · v17.2</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -19334,7 +19334,8 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   const edit = $('sbEdit');
   [bStato, bGeo, bFlip, bHinge, bDup, bRot].reduce((ref, b) => { ref.after(b); return b; }, edit);
 
-  try { $('sbDel').before($('sbMore')); } catch (_) {}   /* ⋯ subito prima di 🗑 */
+  try { $('sbDel').before($('sbMore')); } catch (_) {}
+  try { $('sbAdd').after($('sbDraw')); } catch (_) {}   /* ⋯ subito prima di 🗑 */
   /* ⋯: copia, taglia, colore (muri, porte, finestre) e le altre voci */
   $('sbMore').onclick = e => {
     const r = e.currentTarget.getBoundingClientRect(), src = e.currentTarget, c = c2d.getBoundingClientRect();
@@ -19353,7 +19354,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     if (bar.style.display === 'none') return;
     const E = ents(), n = E.length || (state.selected ? 1 : 0), T = new Set(E.map(x => x.t)), only = T.size === 1 ? [...T][0] : '', multi = n > 1;
     bar.querySelectorAll('.sbw').forEach(x => x.style.display = 'none');
-    show($('sbDraw'), false); show($('sbNum'), false);
+    show($('sbDraw'), true); show($('sbNum'), false);   /* v17.2: Disegna sempre in barra, subito dopo ➕ */
     show($('sbAll'), multi);
     const isW = only === 'wall', single = n === 1;
     show(bStato, isW); if (isW) { const k = (E[0].e.stato || 'esistente'); if (bStato.dataset.k !== k) { bStato.dataset.k = k; bStato.innerHTML = stIcon(k); } }
