@@ -1,4 +1,4 @@
-SimplyCAD Pro - pubblicazione su GitHub Pages (v18.0)
+SimplyCAD Pro - pubblicazione su GitHub Pages (v18.1)
 
 Contenuto (vanno caricati tutti, senza rinominarli e SENZA cartelle intorno):
   index.html  sw.js  manifest.webmanifest  icon-192.png  icon-512.png  icon-maskable.png  README.md
@@ -56,3 +56,7 @@ NOVITÀ v18.0 (consolidamento)
  - Il file salvato riporta la versione del programma; se apri un file fatto con una versione più nuova
    l'app ti avvisa di aggiornare prima di modificarlo.
  - Nessun cambiamento visibile: pianta, stampa e DXF identici alla v17.2 (confronto automatico).
+
+NOVITÀ v18.1
+ - Correzione: le voci Verifica locali, Superficie commerciale e Relazione fotografica erano nascoste.
+   Ora sono in Progetto › «Verifiche e superfici».
