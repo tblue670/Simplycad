@@ -1,7 +1,8 @@
-SimplyCAD Pro - pubblicazione su GitHub Pages (v13.6)
+SimplyCAD Pro - pubblicazione su GitHub Pages (v15.0)
 
 Contenuto (vanno caricati tutti, senza rinominarli e SENZA cartelle intorno):
   index.html  sw.js  manifest.webmanifest  icon-192.png  icon-512.png  icon-maskable.png  README.md
+  (questo LEGGIMI.txt non serve caricarlo)
 
 PRIMA PUBBLICAZIONE (una volta sola, da Chromebook o PC, con Chrome)
  1. Crea l'account gratuito su https://github.com (conferma l'email).
@@ -21,19 +22,12 @@ PRIMA PUBBLICAZIONE (una volta sola, da Chromebook o PC, con Chrome)
 INSTALLARE L'APP
  - Android: apri l'indirizzo con Chrome -> tre puntini -> "Installa app".
  - Chromebook / PC: icona di installazione nella barra degli indirizzi (o menu File -> "Installa app").
- Se hai già installato la versione Netlify: è un indirizzo diverso, quindi un'app diversa.
- Prima di disinstallare quella vecchia, salva i progetti aperti (File -> Salva / Condividi progetto)
- e riaprili nella nuova con File -> Carica progetto.
 
 AGGIORNARE A UNA VERSIONE NUOVA
  1. Nel repository -> "Add file" -> "Upload files".
  2. Trascina i file della nuova cartella (stessi nomi: sostituiscono i vecchi) -> "Commit changes".
- 3. Dopo 1-2 minuti il sito è aggiornato; all'apertura l'app chiede
-    "È pronta una versione nuova: aggiornare?".
- (Si può anche aggiornare solo index.html e sw.js, ma caricare tutto è più sicuro.)
+ 3. Aspetta 1-2 minuti che GitHub pubblichi (in "Actions" il pallino diventa verde).
+ 4. Alla successiva apertura l'app chiede "È pronta una versione nuova: aggiornare?" -> conferma.
+    Se non lo chiede, chiudi e riapri l'app.
 
-DA SAPERE
- - Con l'account gratuito il repository deve essere pubblico: chiunque può vedere e scaricare
-   il programma (index.html). I tuoi progetti NO: restano sui tuoi dispositivi e su Drive.
-   Per tenerlo privato serve GitHub Pro (a pagamento), oppure resta su Netlify.
- - Su GitHub non compare la scritta "Powered by Netlify".
+I PROGETTI restano sui tuoi dispositivi e nei tuoi file .json: il sito contiene solo il programma.

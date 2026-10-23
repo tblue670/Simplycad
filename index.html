@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v14.0</title>
+<title>SimplyCAD Pro · v15.0</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -817,7 +817,7 @@ body.mode-3d #infoStrip .scale-badge{display:none}
     <div class="menu-dropdown">
       <div class="menu-label">Disegna</div>
       <div class="tool-grid">
-        <button class="tool active" data-tool="wall" title="Muro (W)">🧱 Muro</button>
+        <button class="tool" data-tool="wall" title="Muro (W)">🧱 Muro</button>
         <button class="tool" data-tool="door" title="Porta (D)">🚪 Porta</button>
         <button class="tool" data-tool="window" title="Finestra (F)">🪟 Finestra</button>
         <button class="tool" data-tool="room" title="Stanza (R)">🎨 Stanza</button>
@@ -1305,8 +1305,8 @@ body.mode-3d #infoStrip .scale-badge{display:none}
   <div class="dock" id="dockLeft"></div>
   <div class="dock" id="dockRight"></div>
   <div class="quick-tools" id="quickTools" role="toolbar" aria-label="Strumenti rapidi">
-  <button class="tool qt-btn" data-tool="select" title="Seleziona (V)" aria-label="Seleziona (V)">👆</button>
-  <button class="tool qt-btn active" data-tool="wall" title="Muro (W)" aria-label="Muro (W)">🧱</button>
+  <button class="tool qt-btn active" data-tool="select" title="Seleziona (V)" aria-label="Seleziona (V)">👆</button>
+  <button class="tool qt-btn" data-tool="wall" title="Muro (W)" aria-label="Muro (W)">🧱</button>
   <button class="tool qt-btn" data-tool="door" title="Porta (D)" aria-label="Porta (D)">🚪</button>
   <button class="tool qt-btn" data-tool="window" title="Finestra (F)" aria-label="Finestra (F)">🪟</button>
   <button class="tool qt-btn" data-tool="room" title="Stanza (R)" aria-label="Stanza (R)">🎨</button>
@@ -1837,8 +1837,8 @@ const state = {
   currentLayerId: DEFAULT_LAYER_ID,
   nextLayerId: 1,
   images: [], activeImageId: null,
-  floors: [{id: 'f0', name: 'Piano terra', elev: 0, h: 3, slabT: 0.3}], currentFloorId: 'f0', floorSeq: 1, roofs: [], holes: [], zones: [], ceils: [], beams: [], cmpOff: [], cmpCustom: [],
-  selected: null, tool: 'wall', pendingPoint: null, mode: '2d', nextId: 1,
+  floors: [{id: 'f0', name: 'Piano terra', elev: 0, h: 3, slabT: 0.3}], currentFloorId: 'f0', floorSeq: 1, roofs: [], holes: [], zones: [], ceils: [], beams: [], cmpOff: [], cmpCustom: [], cart: null,
+  selected: null, tool: 'select', pendingPoint: null, mode: '2d', nextId: 1,
   roomColors: ['#e8d5b7','#b7d5e8','#d5e8b7','#e8b7d5','#b7e8d5','#d5b7e8',
                '#f4a460','#87ceeb','#98fb98','#dda0dd','#afeeee','#f0e68c']
 };
@@ -2672,8 +2672,8 @@ function drawWallDimension(w, p1, p2, thickness) {
   const ad = (Math.atan2(w.p2.y - w.p1.y, w.p2.x - w.p1.x) * 180 / Math.PI).toFixed(0);
   const q1 = {x: p1.x + nx * dist, y: p1.y + ny * dist};
   const q2 = {x: p2.x + nx * dist, y: p2.y + ny * dist};
-  ctx.save();
-  ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 1; ctx.lineCap = 'butt'; ctx.setLineDash([]);
+  ctx.save(); const dimCol = window.__printing ? '#111111' : '#fbbf24';
+  ctx.strokeStyle = dimCol; ctx.lineWidth = 1; ctx.lineCap = 'butt'; ctx.setLineDash([]);
   ctx.beginPath();
   if (Math.abs(off) * viewScale > 4) {
     for (const [p, q] of [[p1, q1], [p2, q2]]) {
@@ -2693,7 +2693,7 @@ function drawWallDimension(w, p1, p2, thickness) {
   ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.lineJoin = 'round'; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(30,30,46,0.9)';
   ctx.strokeText(label, 0, 0);
-  ctx.fillStyle = '#fbbf24'; ctx.fillText(label, 0, 0);
+  ctx.fillStyle = dimCol; ctx.fillText(label, 0, 0);
   ctx.restore();
 }
 function drawWallName(w, p1, p2) {
@@ -3317,7 +3317,7 @@ function draw2D() {
   const {w, h} = getCanvasSize();
   ctx.fillStyle = appSettings.lightBg ? '#ffffff' : '#1e1e2e';
   ctx.fillRect(0, 0, w, h);
-  drawGrid();
+  if (!window.__printing) drawGrid();   /* v15.0: in stampa niente griglia */
   drawImages();
   for (const r of state.rooms) drawRoom(r);
   paintWallsScreen();
@@ -3348,7 +3348,7 @@ function draw2D() {
     ctx.fillText(`${fmtLen(len)} | ${(a*180/Math.PI).toFixed(1)}°`, (p1.x+p2.x)/2, (p1.y+p2.y)/2 - 10);
   }
   ctx.fillStyle = '#fbbf24';
-  for (const wl of state.walls) {
+  if (!window.__printing) for (const wl of state.walls) {
     if (!isEntityVisible(wl)) continue;
     for (const p of [wl.p1, wl.p2]) {
       const sp = worldToScreen(p.x, p.y);
@@ -4117,7 +4117,7 @@ const buildProjectBlob = () => {
     furniture: state.furniture, labels: state.labels, stairs: state.stairs, customFurn: window.SCcf ? SCcf.exportUsed() : {},
     layers: state.layers, currentLayerId: state.currentLayerId,
     nextLayerId: state.nextLayerId, nextId: state.nextId,
-    floors: state.floors, currentFloorId: state.currentFloorId, floorSeq: state.floorSeq, roofs: state.roofs, holes: state.holes, zones: state.zones, ceils: state.ceils || [], beams: state.beams || [], cmpOff: state.cmpOff || [], cmpCustom: state.cmpCustom || [],
+    floors: state.floors, currentFloorId: state.currentFloorId, floorSeq: state.floorSeq, roofs: state.roofs, holes: state.holes, zones: state.zones, ceils: state.ceils || [], beams: state.beams || [], cmpOff: state.cmpOff || [], cmpCustom: state.cmpCustom || [], cart: state.cart || null,
     photos: window.SCph ? SCph.exportUsed() : undefined,
     images: state.images.filter(i => i.dataUrl).map(i => ({id: i.id, name: i.name, layerId: i.layerId, floorId: i.floorId, opacity: i.opacity, scale: i.scale, x: i.x, y: i.y, rot: i.rot || 0, dataUrl: i.dataUrl})),
     ...(window.SCauto ? SCauto.extras() : {}), appVersion: '8.0',
@@ -4224,7 +4224,7 @@ document.getElementById('fileInput').onchange = (e) => {
       state.stairs = data.stairs || [];
       state.floors = (data.floors && data.floors.length) ? data.floors : [{id: 'f0', name: 'Piano terra', elev: 0, h: 3, slabT: 0.3}];
       state.currentFloorId = state.floors.some(f => f.id === data.currentFloorId) ? data.currentFloorId : sortedFloors()[0].id;
-      state.floorSeq = data.floorSeq || state.floors.length; state.roofs = data.roofs || []; state.holes = data.holes || []; state.zones = data.zones || []; state.ceils = data.ceils || []; state.beams = data.beams || []; state.cmpOff = data.cmpOff || []; state.cmpCustom = data.cmpCustom || []; try { if (window.SCph) { SCph.importAll(data.photos); const np = data.photos ? Object.keys(data.photos).length : 0, miss = SCph.missing(); setTimeout(() => toast('Progetto aperto' + (np ? ' · ' + np + ' foto' : '') + (miss ? ' · ⚠ ' + miss + ' foto non contenute nel file' : '')), 700); } } catch (_) {}
+      state.floorSeq = data.floorSeq || state.floors.length; state.roofs = data.roofs || []; state.holes = data.holes || []; state.zones = data.zones || []; state.ceils = data.ceils || []; state.beams = data.beams || []; state.cmpOff = data.cmpOff || []; state.cmpCustom = data.cmpCustom || []; state.cart = data.cart || null; try { if (window.SCph) { SCph.importAll(data.photos); const np = data.photos ? Object.keys(data.photos).length : 0, miss = SCph.missing(); setTimeout(() => toast('Progetto aperto' + (np ? ' · ' + np + ' foto' : '') + (miss ? ' · ⚠ ' + miss + ' foto non contenute nel file' : '')), 700); } } catch (_) {}
       state.nextId = data.nextId || 1;
       state.layers = data.layers && data.layers.length ? data.layers :
         [{id: DEFAULT_LAYER_ID, name: '0', color: null, visible: true, locked: false}];
@@ -4245,6 +4245,7 @@ document.getElementById('fileInput').onchange = (e) => {
       renderLayersPanel(); updateSelectionPanel(); updateRoomList(); draw2D();
       if (state.mode === '3d') build3D();
       if (window.floorsChanged) floorsChanged();
+      if (window.SCtoSelect) SCtoSelect();   /* v15.0 */
       uiAlert('Progetto caricato: ' + file.name);
     } catch (err) { console.error(err); uiAlert('Errore nell\'apertura di ' + info + ': ' + err.message); }
   };
@@ -4307,11 +4308,12 @@ async function newSession() {
   state.furniture = []; state.labels = []; state.stairs = []; state.images = []; state.activeImageId = null;
   state.layers = [{id: DEFAULT_LAYER_ID, name: '0', color: null, visible: true, locked: false}];
   state.currentLayerId = DEFAULT_LAYER_ID; state.nextLayerId = 1;
-  state.floors = [{id: 'f0', name: 'Piano terra', elev: 0, h: 3, slabT: 0.3}]; state.currentFloorId = 'f0'; state.floorSeq = 1; state.roofs = []; state.holes = []; state.zones = []; state.ceils = []; state.beams = []; state.cmpOff = []; state.cmpCustom = [];
+  state.floors = [{id: 'f0', name: 'Piano terra', elev: 0, h: 3, slabT: 0.3}]; state.currentFloorId = 'f0'; state.floorSeq = 1; state.roofs = []; state.holes = []; state.zones = []; state.ceils = []; state.beams = []; state.cmpOff = []; state.cmpCustom = []; state.cart = null;
   state.sel = []; state.selected = null; state.pendingPoint = null;
   tmp = null; boxSel = null; drag = null; place = null;
   syncBgControls(); renderLayersPanel(); updateSelectionPanel(); updateRoomList(); refresh(); checkpoint(); fit();
   toast(has ? 'Nuova sessione · Ctrl+Z ripristina la precedente' : 'Nuova sessione');
+  if (window.SCtoSelect) SCtoSelect();   /* v15.0 */
 }
 document.getElementById('newBtn').onclick = newSession;
 {
@@ -6557,7 +6559,7 @@ const snap = () => JSON.stringify({
   furniture: state.furniture, labels: state.labels, stairs: state.stairs,
   layers: state.layers, currentLayerId: state.currentLayerId, nextLayerId: state.nextLayerId,
   images: state.images.map(i => ({id: i.id, name: i.name, layerId: i.layerId, floorId: i.floorId, opacity: i.opacity, scale: i.scale, x: i.x, y: i.y, rot: i.rot || 0})),
-  floors: state.floors, floorSeq: state.floorSeq, roofs: state.roofs, holes: state.holes, zones: state.zones, ceils: state.ceils || [], beams: state.beams || [], cmpOff: state.cmpOff || [], cmpCustom: state.cmpCustom || [],
+  floors: state.floors, floorSeq: state.floorSeq, roofs: state.roofs, holes: state.holes, zones: state.zones, ceils: state.ceils || [], beams: state.beams || [], cmpOff: state.cmpOff || [], cmpCustom: state.cmpCustom || [], cart: state.cart || null,
   nextId: state.nextId
 });
 let last = snap(), undoS = [], redoS = [], lastPush = 0;
@@ -6577,7 +6579,7 @@ function restore(s) {
     currentLayerId: d.currentLayerId || DEFAULT_LAYER_ID,
     nextLayerId: d.nextLayerId || 1,
     images: Array.isArray(d.images) ? d.images.map(m => { const o = imageStore.get(m.id); return o ? Object.assign(o, m) : null; }).filter(Boolean) : state.images,
-    floors: (d.floors && d.floors.length) ? d.floors : [{id: 'f0', name: 'Piano terra', elev: 0, h: 3, slabT: 0.3}], floorSeq: d.floorSeq || 1, roofs: d.roofs || [], holes: d.holes || [], zones: d.zones || [], ceils: d.ceils || [], beams: d.beams || [], cmpOff: d.cmpOff || [], cmpCustom: d.cmpCustom || [],
+    floors: (d.floors && d.floors.length) ? d.floors : [{id: 'f0', name: 'Piano terra', elev: 0, h: 3, slabT: 0.3}], floorSeq: d.floorSeq || 1, roofs: d.roofs || [], holes: d.holes || [], zones: d.zones || [], ceils: d.ceils || [], beams: d.beams || [], cmpOff: d.cmpOff || [], cmpCustom: d.cmpCustom || [], cart: d.cart || null,
     nextId: d.nextId, sel: [], selected: null, pendingPoint: null
   });
   if (!state.floors.some(f => f.id === state.currentFloorId)) state.currentFloorId = sortedFloors()[0].id;
@@ -8803,7 +8805,7 @@ $('impAnyInput').onchange = async e => {
     rooms: state.rooms, measurements: state.measurements,
     furniture: state.furniture, labels: state.labels, stairs: state.stairs, customFurn: window.SCcf ? SCcf.exportUsed() : {},
     layers: state.layers, currentLayerId: state.currentLayerId, nextLayerId: state.nextLayerId,
-    floors: state.floors, currentFloorId: state.currentFloorId, floorSeq: state.floorSeq, roofs: state.roofs, holes: state.holes, zones: state.zones, ceils: state.ceils || [], beams: state.beams || [], cmpOff: state.cmpOff || [], cmpCustom: state.cmpCustom || [],
+    floors: state.floors, currentFloorId: state.currentFloorId, floorSeq: state.floorSeq, roofs: state.roofs, holes: state.holes, zones: state.zones, ceils: state.ceils || [], beams: state.beams || [], cmpOff: state.cmpOff || [], cmpCustom: state.cmpCustom || [], cart: state.cart || null,
     nextId: state.nextId, imgCount: state.images.filter(i => i.dataUrl).length,
     settings: { wallHeight: $('wallHeight')?.value, wallThickness: $('wallThickness')?.value, gridSize: $('gridSize')?.value }
   };}
@@ -8909,7 +8911,7 @@ $('impAnyInput').onchange = async e => {
       state.stairs = d.stairs || [];
       state.floors = (d.floors && d.floors.length) ? d.floors : [{id: 'f0', name: 'Piano terra', elev: 0, h: 3, slabT: 0.3}];
       state.currentFloorId = state.floors.some(f => f.id === d.currentFloorId) ? d.currentFloorId : sortedFloors()[0].id;
-      state.floorSeq = d.floorSeq || state.floors.length; state.roofs = d.roofs || []; state.holes = d.holes || []; state.zones = d.zones || []; state.ceils = d.ceils || []; state.beams = d.beams || []; state.cmpOff = d.cmpOff || []; state.cmpCustom = d.cmpCustom || [];
+      state.floorSeq = d.floorSeq || state.floors.length; state.roofs = d.roofs || []; state.holes = d.holes || []; state.zones = d.zones || []; state.ceils = d.ceils || []; state.beams = d.beams || []; state.cmpOff = d.cmpOff || []; state.cmpCustom = d.cmpCustom || []; state.cart = d.cart || null;
       state.nextId = d.nextId || 1;
       if (d.layers && d.layers.length) state.layers = d.layers;
       state.currentLayerId = d.currentLayerId || DEFAULT_LAYER_ID;
@@ -8920,6 +8922,7 @@ $('impAnyInput').onchange = async e => {
       state.doors.forEach(clampDoorWindowT); state.windows.forEach(clampDoorWindowT);
       renderLayersPanel(); updateSelectionPanel(); updateRoomList(); refresh();
       if (window.floorsChanged) floorsChanged();
+      if (window.SCtoSelect) SCtoSelect();   /* v15.0 */
       toast('Lavoro ripristinato');
     } catch(e) { toast('Autosalvataggio non valido'); }
   }
@@ -9472,6 +9475,7 @@ applyMenuPosition();
     if (e.pointerType === 'mouse') return;
     if (!eligible()) return;
     if (activePointers.size >= 1) { if (g) end(); return; }              // seconda dita: zoom/spostamento o menu a due dita
+    lastTool = state.tool;   /* v15.0: strumento appena scelto: il controllo periodico non deve chiudere il cursore */
     const c = cursorAt(e.clientX, e.clientY, 0);
     g = { id: e.pointerId, t: Date.now(), fx: e.clientX, fy: e.clientY, run: 0, cx: c.x, cy: c.y, raf: 0 }; show();
   }, true);
@@ -11789,6 +11793,7 @@ updateRoomList();
   const _dg = drawGrid;
   drawGrid = function () { _dg.apply(this, arguments); drawGhost(); };
   function ghostFloors() {
+    if (window.__printing) return [];
     const cur = floorById(state.currentFloorId);
     if (cfg.ghostMode === 'below') { const p = prevFloor(cur); return p ? [p] : []; }
     if (cfg.ghostMode === 'all') return sortedFloors().filter(f => f.id !== cur.id);
@@ -16982,7 +16987,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   }
   function drawM(m) {
     const sel = (state.selected && state.selected.type === 'measurement' && state.selected.id === m.id) || state.sel.some(x => x.type === 'measurement' && x.id === m.id);
-    drawQ(m, ctx, S, lblK() * 1.15, sel ? '#38bdf8' : getEntityColor(m, '#fbbf24'), sel, false);
+    drawQ(m, ctx, S, lblK() * 1.15, window.__printing ? '#111111' : sel ? '#38bdf8' : getEntityColor(m, '#fbbf24'), sel && !window.__printing, false);
   }
   function printQ(g, tx, ty) {
     state.measurements.forEach(m => { if (!m.q || m.kind || !isEntityVisible(m)) return; drawQ(m, g, p => ({x: tx(p.x), y: ty(p.y)}), 1.1, '#111', false, false); });
@@ -17336,7 +17341,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
 
   /* ---------------------------------------------------------------- simbolo sul cursore */
   function drawMark() {
-    if (state.mode !== '2d' || !SN || appSettings.snapMark === false) return;
+    if (state.mode !== '2d' || !SN || appSettings.snapMark === false || window.__printing) return;
     const fresh = Date.now() - (SN.t || 0) < 400, hov = typeof hover !== 'undefined' && hover && Math.abs(hover.x - SN.p.x) < 1e-7 && Math.abs(hover.y - SN.p.y) < 1e-7;
     const dragging = typeof drag !== 'undefined' && drag && (drag.type === 'vertex' || drag.type === 'measurement');
     if (!(hov && state.tool !== 'select') && !(dragging && fresh)) return;
@@ -17595,7 +17600,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       /* le linee non passano sul nome: orizzontale un po' sotto, verticale un po' a destra (in proporzione alla stanza) */
       const spanAt = (p, u) => { const a = ray(p, {x: -u.x, y: -u.y}, F, 60), b = ray(p, u, F, 60); return a && b ? D(a.p, b.p) : 0; };
       const sx = spanAt(c, {x: 1, y: 0}), sy = spanAt(c, {x: 0, y: 1});
-      [[{x: 1, y: 0}, {x: 0, y: -Math.min(0.55, sy * 0.3)}], [{x: 0, y: 1}, {x: Math.min(0.9, sx * 0.3), y: 0}]].forEach(([u, sh], k) => {
+      [[{x: 1, y: 0}, {x: 0, y: -Math.min(0.85, sy * 0.3)}], [{x: 0, y: 1}, {x: Math.min(0.9, sx * 0.3), y: 0}]].forEach(([u, sh], k) => {
         const p = add(c, sh, 1), a = ray(p, {x: -u.x, y: -u.y}, F, 60), b = ray(p, u, F, 60); if (!a || !b) return;
         if (D(a.p, b.p) < 0.3) return;
         mkQ(a.p, b.p, anchorOnFace(a.f, a.p), anchorOnFace(b.f, b.p), u, p, {qm: k ? 'v' : 'h', qroom: 1}); n++;
@@ -17655,6 +17660,498 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   } catch (_) {}
 
   window.SCq2 = {follow, compute, moved, draw, fmt, fmtA, term, size: () => SIZE[ST().size] || 1, pickLine, pickCircle, mode, cycle, modeName, autoDialog, outerChains, roomInner};
+})();
+
+</script>
+<script>
+/* ========================================================================
+   v15.0 · STAMPA IN SCALA (vettoriale) · CARTIGLIO CON LOGO · UN FOGLIO PER PIANO
+   La pianta viene ridisegnata dalle stesse funzioni dello schermo, ma su un "registratore" che produce SVG
+   (vettoriale) invece che pixel: porte, finestre, arredi, scale, quote, aree... escono come in pianta.
+   1 unità SVG = 1 px CSS = 25,4/96 mm: il foglio è in millimetri veri, la scala è esatta.
+   Foglio: A4 / A3, verticale / orizzontale · scale 1:20 1:50 1:100 1:200 1:500 · riquadro spostabile nell'anteprima.
+   Cartiglio: dati della ditta e logo (salvati nell'app, valgono per tutti i progetti) + dati della commessa (nel progetto).
+   ======================================================================== */
+(function () {
+  const PX = 96 / 25.4;                                  /* px per mm */
+  const PAPERS = {A4: [297, 210], A3: [420, 297]};
+  const SCALES = [20, 50, 100, 200, 500];
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+  const f2 = v => (Math.round(v * 100) / 100).toFixed(2).replace('.', ',');
+  const LOGO_KEY = 'simplycad_logo_v1';
+  let LOGO = ''; try { LOGO = localStorage.getItem(LOGO_KEY) || ''; } catch (_) {}
+  const PS = () => {   /* impostazioni di stampa (nell'app) */
+    const d = {paper: 'A3', orient: 'L', scale: +appSettings.printScale || 100, floors: 'cur', color: 'bn', table: true, legend: true, bar: true, wallDims: false, wallNames: false};
+    const s = Object.assign({}, d, appSettings.prt || {}); if (!PAPERS[s.paper]) s.paper = 'A3'; if (!SCALES.includes(+s.scale)) s.scale = 100; return s;
+  };
+  const DITTA = () => Object.assign({n: '', r2: '', r3: ''}, appSettings.cartDitta || {});
+  const CART = () => Object.assign({committente: '', indirizzo: '', oggetto: '', titolo: '', tav: '1', data: new Date().toLocaleDateString('it-IT'), redattore: '', note: ''}, state.cart || {});
+
+  /* ================================================================ registratore Canvas → SVG */
+  const mctx = document.createElement('canvas').getContext('2d');   /* solo per misurare i testi */
+  const PATSRC = new WeakMap();                                       /* pattern → canvas sorgente */
+  const _cp = CanvasRenderingContext2D.prototype.createPattern;
+  CanvasRenderingContext2D.prototype.createPattern = function (src) { const p = _cp.apply(this, arguments); try { if (p && src) PATSRC.set(p, src); } catch (_) {} return p; };
+  const parseCol = (() => { const sc = document.createElement('canvas').getContext('2d'), cache = new Map(); return v => {
+    let r = cache.get(v); if (r) return r; sc.fillStyle = '#000'; sc.fillStyle = v; const n = sc.fillStyle; let R, G, B, A = 1;
+    if (n[0] === '#') { R = parseInt(n.substr(1, 2), 16); G = parseInt(n.substr(3, 2), 16); B = parseInt(n.substr(5, 2), 16); } else { const m = n.match(/[\d.]+/g).map(Number); R = m[0]; G = m[1]; B = m[2]; A = m.length > 3 ? m[3] : 1; }
+    r = {R, G, B, A}; cache.set(v, r); return r; }; })();
+  const hex = (R, G, B) => '#' + [R, G, B].map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('');
+  /* colori per la carta: fondo scuro dell'app → bianco; colori chiari (pensati per il fondo scuro) → scuri;
+     bianco e nero: tutto nero tranne gialli e rossi (stato dei muri) e i riempimenti tenui */
+  const STATO = new Set(['#facc15', '#ef4444']);
+  function paperCol(v, kind, mode) {
+    if (v === '__paper') return {c: '#ffffff', a: 1};
+    if (typeof v !== 'string') return {c: '#000000', a: 1};
+    const {R, G, B, A} = parseCol(v), h = hex(R, G, B);
+    const mx = Math.max(R, G, B) / 255, mn = Math.min(R, G, B) / 255, L = (mx + mn) / 2, d = mx - mn, Sat = d === 0 ? 0 : d / (1 - Math.abs(2 * L - 1));
+    if (R < 70 && G < 70 && B < 90 && B - R >= 8) return {c: '#ffffff', a: A};          /* fondo dell'app (blu notte) */
+    if (STATO.has(h)) return {c: h, a: A};
+    if (mode === 'bn') {
+      if (kind === 'fill' && (A < 0.95)) return {c: Sat > 0.15 ? hex(160 + 0.25 * R, 160 + 0.25 * G, 160 + 0.25 * B) : (L > 0.9 ? '#ffffff' : hex(R, G, B)), a: Math.min(A, 0.35)};
+      if (kind === 'fill' && L > 0.9) return {c: '#ffffff', a: A};
+      return {c: '#000000', a: A};
+    }
+    if (L > 0.62 && (kind !== 'fill' || Sat > 0.25)) { const k = Math.min(1 - L, 0.38) / L; return {c: hex(R * k, G * k, B * k), a: A}; }
+    return {c: h, a: A};
+  }
+  function makeRecorder(W, H, mode) {
+    const out = [], defs = [], pats = new Map();
+    let uid = 0; const pre = 'r' + Math.random().toString(36).slice(2, 7), nid = p => pre + p + (++uid);
+    const st0 = () => ({m: [1, 0, 0, 1, 0, 0], fillStyle: '#000', strokeStyle: '#000', lineWidth: 1, lineCap: 'butt', lineJoin: 'miter', miterLimit: 10, globalAlpha: 1, font: '10px sans-serif',
+      textAlign: 'start', textBaseline: 'alphabetic', dash: [], lineDashOffset: 0, globalCompositeOperation: 'source-over', groups: 0, shadowBlur: 0, shadowColor: 'transparent', imageSmoothingEnabled: true, direction: 'inherit', filter: 'none'});
+    let S = st0(); const stack = []; let path = [], cur = null, start = null;
+    const tp = (x, y) => { const m = S.m; return {x: m[0] * x + m[2] * y + m[4], y: m[1] * x + m[3] * y + m[5]}; };
+    const scl = () => Math.sqrt(Math.abs(S.m[0] * S.m[3] - S.m[1] * S.m[2])) || 1;
+    const n = v => (Math.round(v * 100) / 100).toString();
+    const mul = (a, b) => [a[0] * b[0] + a[2] * b[1], a[1] * b[0] + a[3] * b[1], a[0] * b[2] + a[2] * b[3], a[1] * b[2] + a[3] * b[3], a[0] * b[4] + a[2] * b[5] + a[4], a[1] * b[4] + a[3] * b[5] + a[5]];
+    function paint(style, kind) {
+      if (style && typeof style === 'object') {
+        const src = PATSRC.get(style);
+        if (src && src.width && src.height) {
+          let id = pats.get(src); if (!id) { id = nid('p'); pats.set(src, id); let url = ''; try { url = src.toDataURL ? src.toDataURL() : src.src; } catch (_) {}
+            defs.push(`<pattern id="${id}" patternUnits="userSpaceOnUse" width="${src.width}" height="${src.height}"><image href="${url}" width="${src.width}" height="${src.height}"/></pattern>`); }
+          return {c: `url(#${id})`, a: 1};
+        }
+        return {c: mode === 'bn' ? '#999999' : '#888888', a: 0.5};   /* gradienti: tinta media */
+      }
+      return paperCol(style, kind, mode);
+    }
+    const alpha = a => { const v = a * S.globalAlpha; return v < 0.999 ? ` opacity="${n(v)}"` : ''; };
+    function dashAttr() { if (!S.dash.length) return ''; const k = scl(); return ` stroke-dasharray="${S.dash.map(v => n(v * k)).join(' ')}"`; }
+    const pathD = () => path.join(' ');
+    const R = {
+      canvas: {width: W, height: H}, __rec: true,
+      save() { stack.push(Object.assign({}, S, {m: S.m.slice(), dash: S.dash.slice(), groups: 0})); S.groups = 0; },
+      restore() { const g = S.groups; for (let i = 0; i < g; i++) out.push('</g>'); const p = stack.pop(); if (p) S = p; },
+      beginPath() { path = []; cur = start = null; },
+      moveTo(x, y) { const p = tp(x, y); path.push('M' + n(p.x) + ' ' + n(p.y)); cur = start = p; },
+      lineTo(x, y) { const p = tp(x, y); path.push((cur ? 'L' : 'M') + n(p.x) + ' ' + n(p.y)); if (!cur) start = p; cur = p; },
+      closePath() { if (path.length) path.push('Z'); cur = start; },
+      rect(x, y, w, h) { R.moveTo(x, y); R.lineTo(x + w, y); R.lineTo(x + w, y + h); R.lineTo(x, y + h); R.closePath(); },
+      roundRect(x, y, w, h, r) { r = Math.min(Array.isArray(r) ? (r[0] || 0) : (+r || 0), Math.abs(w) / 2, Math.abs(h) / 2); if (!r) return R.rect(x, y, w, h);
+        R.moveTo(x + r, y); R.lineTo(x + w - r, y); R.arcTo(x + w, y, x + w, y + r, r); R.lineTo(x + w, y + h - r); R.arcTo(x + w, y + h, x + w - r, y + h, r); R.lineTo(x + r, y + h); R.arcTo(x, y + h, x, y + h - r, r); R.lineTo(x, y + r); R.arcTo(x, y, x + r, y, r); R.closePath(); },
+      arc(x, y, r, a0, a1, ccw) { R.ellipse(x, y, r, r, 0, a0, a1, ccw); },
+      ellipse(x, y, rx, ry, rot, a0, a1, ccw) {
+        let sw = a1 - a0; const full = Math.abs(sw) >= 2 * Math.PI - 1e-9;
+        if (full) sw = ccw ? -2 * Math.PI : 2 * Math.PI; else { if (!ccw) { while (sw < 0) sw += 2 * Math.PI; } else { while (sw > 0) sw -= 2 * Math.PI; } }
+        const N = Math.max(8, Math.ceil(Math.abs(sw) / (Math.PI / 36))), cr = Math.cos(rot || 0), sr = Math.sin(rot || 0);
+        for (let i = 0; i <= N; i++) { const a = a0 + sw * i / N, ex = rx * Math.cos(a), ey = ry * Math.sin(a), px = x + ex * cr - ey * sr, py = y + ex * sr + ey * cr; if (i === 0 && cur) R.lineTo(px, py); else if (i === 0) R.moveTo(px, py); else R.lineTo(px, py); }
+      },
+      arcTo(x1, y1, x2, y2, r) {   /* approssimato: angolo raccordato */
+        if (!cur) { R.moveTo(x1, y1); return; }
+        const inv = (() => { const m = S.m, d = m[0] * m[3] - m[1] * m[2]; return p => ({x: (m[3] * (p.x - m[4]) - m[2] * (p.y - m[5])) / d, y: (-m[1] * (p.x - m[4]) + m[0] * (p.y - m[5])) / d}); })();
+        const p0 = inv(cur), v1 = {x: p0.x - x1, y: p0.y - y1}, v2 = {x: x2 - x1, y: y2 - y1}, l1 = Math.hypot(v1.x, v1.y), l2 = Math.hypot(v2.x, v2.y);
+        if (l1 < 1e-9 || l2 < 1e-9 || !r) { R.lineTo(x1, y1); return; }
+        const u1 = {x: v1.x / l1, y: v1.y / l1}, u2 = {x: v2.x / l2, y: v2.y / l2}, ang = Math.acos(Math.max(-1, Math.min(1, u1.x * u2.x + u1.y * u2.y))), t = r / Math.tan(ang / 2);
+        const a = {x: x1 + u1.x * t, y: y1 + u1.y * t}, b = {x: x1 + u2.x * t, y: y1 + u2.y * t}; R.lineTo(a.x, a.y);
+        for (let i = 1; i <= 6; i++) { const s = i / 6, q = {x: (1 - s) * (1 - s) * a.x + 2 * (1 - s) * s * x1 + s * s * b.x, y: (1 - s) * (1 - s) * a.y + 2 * (1 - s) * s * y1 + s * s * b.y}; R.lineTo(q.x, q.y); }
+      },
+      quadraticCurveTo(cx, cy, x, y) { const c = tp(cx, cy), p = tp(x, y); path.push('Q' + n(c.x) + ' ' + n(c.y) + ' ' + n(p.x) + ' ' + n(p.y)); cur = p; },
+      bezierCurveTo(c1x, c1y, c2x, c2y, x, y) { const a = tp(c1x, c1y), b = tp(c2x, c2y), p = tp(x, y); path.push('C' + n(a.x) + ' ' + n(a.y) + ' ' + n(b.x) + ' ' + n(b.y) + ' ' + n(p.x) + ' ' + n(p.y)); cur = p; },
+      stroke() { if (!path.length || S.globalCompositeOperation === 'destination-out') return; const c = paint(S.strokeStyle, 'stroke'); if (c.a <= 0.001) return;
+        out.push(`<path d="${pathD()}" fill="none" stroke="${c.c}" stroke-width="${n(Math.max(0.2, S.lineWidth * scl()))}" stroke-linecap="${S.lineCap}" stroke-linejoin="${S.lineJoin}" stroke-miterlimit="${S.miterLimit}"${dashAttr()}${alpha(c.a)}/>`); },
+      fill(rule) { if (!path.length || S.globalCompositeOperation === 'destination-out') return; const c = paint(S.fillStyle, 'fill'); if (c.a <= 0.001) return;
+        out.push(`<path d="${pathD()}" fill="${c.c}"${rule === 'evenodd' ? ' fill-rule="evenodd"' : ''}${alpha(c.a)}/>`); },
+      fillRect(x, y, w, h) { const p = path, cu = cur, s = start; R.beginPath(); R.rect(x, y, w, h); R.fill(); path = p; cur = cu; start = s; },
+      strokeRect(x, y, w, h) { const p = path, cu = cur, s = start; R.beginPath(); R.rect(x, y, w, h); R.stroke(); path = p; cur = cu; start = s; },
+      clearRect() {},
+      clip() { if (!path.length) return; const id = nid('c'); defs.push(`<clipPath id="${id}"><path d="${pathD()}"/></clipPath>`); out.push(`<g clip-path="url(#${id})">`); S.groups++; },
+      text(t, x, y, stroke) {
+        if (t == null || t === '') return; const c = paint(stroke ? S.strokeStyle : S.fillStyle, stroke ? 'halo' : 'text'); if (c.a <= 0.001) return;
+        const fm = /(\d+(?:\.\d+)?)px/.exec(S.font), fs = fm ? +fm[1] : 10, bold = /bold|[6-9]00/.test(S.font), ital = /italic/.test(S.font);
+        const anc = S.textAlign === 'center' ? 'middle' : (S.textAlign === 'right' || S.textAlign === 'end') ? 'end' : 'start';
+        const bl = S.textBaseline === 'middle' ? 'central' : S.textBaseline === 'top' || S.textBaseline === 'hanging' ? 'hanging' : S.textBaseline === 'bottom' || S.textBaseline === 'ideographic' ? 'text-after-edge' : 'auto';
+        const m = S.m, base = `transform="matrix(${m.map(n).join(' ')})" x="${n(x)}" y="${n(y)}" font-size="${n(fs)}" font-family="Arial, Helvetica, sans-serif"${bold ? ' font-weight="bold"' : ''}${ital ? ' font-style="italic"' : ''} text-anchor="${anc}" dominant-baseline="${bl}"`;
+        if (stroke) out.push(`<text ${base} fill="none" stroke="${c.c === '#000000' && mode ? '#ffffff' : c.c}" stroke-width="${n(S.lineWidth)}" stroke-linejoin="round"${alpha(c.a)}>${esc(t)}</text>`);
+        else out.push(`<text ${base} fill="${c.c}"${alpha(c.a)}>${esc(t)}</text>`);
+      },
+      fillText(t, x, y) { R.text(t, x, y, false); },
+      strokeText(t, x, y) { R.text(t, x, y, true); },
+      measureText(t) { mctx.font = S.font; return mctx.measureText(t); },
+      translate(x, y) { S.m = mul(S.m, [1, 0, 0, 1, x, y]); },
+      rotate(a) { const c = Math.cos(a), s = Math.sin(a); S.m = mul(S.m, [c, s, -s, c, 0, 0]); },
+      scale(x, y) { S.m = mul(S.m, [x, 0, 0, y, 0, 0]); },
+      transform(a, b, c, d, e, f) { S.m = mul(S.m, [a, b, c, d, e, f]); },
+      setTransform(a, b, c, d, e, f) { if (a && typeof a === 'object') { S.m = [a.a, a.b, a.c, a.d, a.e, a.f]; return; } S.m = a === undefined ? [1, 0, 0, 1, 0, 0] : [a, b, c, d, e, f]; },
+      resetTransform() { S.m = [1, 0, 0, 1, 0, 0]; },
+      getTransform() { const m = S.m; return new DOMMatrix([m[0], m[1], m[2], m[3], m[4], m[5]]); },
+      setLineDash(a) { S.dash = Array.isArray(a) ? a.slice() : []; }, getLineDash() { return S.dash.slice(); },
+      drawImage(img, ...a) {
+        let url = ''; try { url = img.toDataURL ? img.toDataURL() : img.src; } catch (_) { return; } if (!url) return;
+        const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height, m = S.m, op = alpha(1);
+        if (a.length === 2) out.push(`<image transform="matrix(${m.map(n).join(' ')})" x="${n(a[0])}" y="${n(a[1])}" width="${iw}" height="${ih}" href="${url}" preserveAspectRatio="none"${op}/>`);
+        else if (a.length === 4) out.push(`<image transform="matrix(${m.map(n).join(' ')})" x="${n(a[0])}" y="${n(a[1])}" width="${n(a[2])}" height="${n(a[3])}" href="${url}" preserveAspectRatio="none"${op}/>`);
+        else if (a.length === 8) out.push(`<svg transform="matrix(${m.map(n).join(' ')})" x="${n(a[4])}" y="${n(a[5])}" width="${n(a[6])}" height="${n(a[7])}" viewBox="${n(a[0])} ${n(a[1])} ${n(a[2])} ${n(a[3])}" preserveAspectRatio="none"><image width="${iw}" height="${ih}" href="${url}"${op}/></svg>`);
+      },
+      createPattern(...a) { return CanvasRenderingContext2D.prototype.createPattern.apply(mctx, a); },
+      createLinearGradient(...a) { return mctx.createLinearGradient(...a); }, createRadialGradient(...a) { return mctx.createRadialGradient(...a); },
+      isPointInPath() { return false; }, isPointInStroke() { return false; },
+      getImageData(x, y, w, h) { return mctx.createImageData(Math.max(1, w), Math.max(1, h)); }, putImageData() {},
+      result() { return {defs: defs.join(''), body: out.join('')}; }
+    };
+    ['fillStyle', 'strokeStyle', 'lineWidth', 'lineCap', 'lineJoin', 'miterLimit', 'globalAlpha', 'font', 'textAlign', 'textBaseline', 'lineDashOffset', 'globalCompositeOperation', 'shadowBlur', 'shadowColor', 'shadowOffsetX', 'shadowOffsetY', 'imageSmoothingEnabled', 'direction', 'filter', 'letterSpacing']
+      .forEach(k => Object.defineProperty(R, k, {get: () => S[k], set: v => { S[k] = v; }, enumerable: true}));
+    return R;
+  }
+  /* il contesto vero dello schermo viene "dirottato" sul registratore solo durante la stampa */
+  const PROPS = ['fillStyle', 'strokeStyle', 'lineWidth', 'lineCap', 'lineJoin', 'miterLimit', 'globalAlpha', 'font', 'textAlign', 'textBaseline', 'lineDashOffset', 'globalCompositeOperation', 'shadowBlur', 'shadowColor', 'shadowOffsetX', 'shadowOffsetY', 'imageSmoothingEnabled', 'direction', 'filter'];
+  const METHODS = ['save', 'restore', 'beginPath', 'moveTo', 'lineTo', 'closePath', 'rect', 'roundRect', 'arc', 'ellipse', 'arcTo', 'quadraticCurveTo', 'bezierCurveTo', 'stroke', 'fill', 'fillRect', 'strokeRect', 'clearRect', 'clip', 'fillText', 'strokeText', 'measureText', 'translate', 'rotate', 'scale', 'transform', 'setTransform', 'resetTransform', 'getTransform', 'setLineDash', 'getLineDash', 'drawImage', 'createPattern', 'createLinearGradient', 'createRadialGradient', 'isPointInPath', 'isPointInStroke', 'getImageData', 'putImageData'];
+  function hijack(R) {
+    const saved = {};
+    METHODS.forEach(k => { saved[k] = Object.getOwnPropertyDescriptor(ctx, k); Object.defineProperty(ctx, k, {value: R[k], configurable: true, writable: true}); });
+    PROPS.forEach(k => { saved['p_' + k] = Object.getOwnPropertyDescriptor(ctx, k); Object.defineProperty(ctx, k, {get: () => R[k], set: v => { R[k] = v; }, configurable: true}); });
+    return () => {
+      METHODS.forEach(k => { delete ctx[k]; if (saved[k]) Object.defineProperty(ctx, k, saved[k]); });
+      PROPS.forEach(k => { delete ctx[k]; if (saved['p_' + k]) Object.defineProperty(ctx, k, saved['p_' + k]); });
+    };
+  }
+
+  /* ================================================================ muri per la carta: contorno + interno bianco (vettoriale) */
+  function paintWallsPaper(g, walls, o) {
+    if (!walls.length) return;
+    const topo = _wlTopology(walls), S = o.scale, lw = 1.9 /* 0,5 mm */;
+    const items = walls.map((w, i) => {
+      const p = o.toScreen(w.p1.x, w.p1.y), q = o.toScreen(w.p2.x, w.p2.y), dx = q.x - p.x, dy = q.y - p.y, L = Math.hypot(dx, dy) || 1, ux = dx / L, uy = dy / L, e0 = topo.ext[i][0] * S, e1 = topo.ext[i][1] * S;
+      return {p: {x: p.x - ux * e0, y: p.y - uy * e0}, q: {x: q.x + ux * e1, y: q.y + uy * e1}, t: Math.max(getWallThickness(w) * S, 1), w, e0, e1};
+    });
+    const jp = topo.joins.map(j => ({a: o.toScreen(j.ax, j.ay), v: o.toScreen(j.vx, j.vy), b: o.toScreen(j.bx, j.by), i: j.i}));
+    g.save(); g.setLineDash([]); g.lineCap = 'butt'; g.lineJoin = 'miter'; g.miterLimit = 10;
+    const seg = (a, b, wdt, col) => { g.strokeStyle = col; g.lineWidth = wdt; g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(b.x, b.y); g.stroke(); };
+    const poly = (j, wdt, col) => { g.strokeStyle = col; g.lineWidth = wdt; g.beginPath(); g.moveTo(j.a.x, j.a.y); g.lineTo(j.v.x, j.v.y); g.lineTo(j.b.x, j.b.y); g.stroke(); };
+    items.forEach(it => seg(it.p, it.q, it.t, '#000000')); jp.forEach(j => poly(j, items[j.i].t, '#000000'));
+    const inner = (style) => {
+      items.forEach((it, i) => {
+        const w2 = it.t - 2 * lw; if (w2 < 0.6) return; let {p, q} = it; const dx = q.x - p.x, dy = q.y - p.y, L = Math.hypot(dx, dy); if (L < 1e-6) return; const ux = dx / L, uy = dy / L;
+        if (topo.closed[i][0]) p = {x: p.x + ux * lw, y: p.y + uy * lw}; else if (it.e0 > 0) p = {x: p.x + ux * Math.min(lw, it.e0), y: p.y + uy * Math.min(lw, it.e0)};
+        if (topo.closed[i][1]) q = {x: q.x - ux * lw, y: q.y - uy * lw}; else if (it.e1 > 0) q = {x: q.x - ux * Math.min(lw, it.e1), y: q.y - uy * Math.min(lw, it.e1)};
+        if (L <= 2 * lw + 0.5 && (topo.closed[i][0] || topo.closed[i][1])) return;
+        seg(p, q, w2, style(it));
+      });
+      jp.forEach(j => { const it = items[j.i], w2 = it.t - 2 * lw; if (w2 >= 0.6) poly(j, w2, style(it)); });
+    };
+    inner(() => '__paper');
+    if (o.fill === 'hatch') inner(it => wallPatternC(wallMat(it.w).pat, '#000000') || '#ffffff');
+    else if (o.fill === 'solid') { g.globalAlpha = 0.3; inner(() => '#9ca3af'); g.globalAlpha = 1; }
+    g.restore();
+  }
+
+  /* ================================================================ disegno di un piano sul registratore */
+  /* rende la pianta del piano fid con centro (cx,cy) in metri nel riquadro vw×vh (px) */
+  function renderPlan(fid, cx, cy, vw, vh, s, opt) {
+    const R = makeRecorder(vw, vh, opt.color);
+    const keep = {vs: viewScale, vo: {...viewOffset}, sel: state.sel, selected: state.selected, tool: state.tool, pend: state.pendingPoint, hov: typeof hover !== 'undefined' ? hover : null,
+      hr: typeof hoverRaw !== 'undefined' ? hoverRaw : null, lmw: lastMouseWorld, ms: measureStart, floor: state.currentFloorId, over: FLOORFILTER.over, light: appSettings.lightBg, lk: lblK, pwd: paintWallsDouble,
+      sd: $('showDimensions').checked, sn: appSettings.showWallNames, cw: Object.getOwnPropertyDescriptor(c2d, 'clientWidth'), ch: Object.getOwnPropertyDescriptor(c2d, 'clientHeight')};
+    for (const k in _patCCache) delete _patCCache[k];
+    for (const k in _statoPat) delete _statoPat[k];
+    let undo = null;
+    try {
+      window.__printing = true;
+      Object.defineProperty(c2d, 'clientWidth', {get: () => vw, configurable: true}); Object.defineProperty(c2d, 'clientHeight', {get: () => vh, configurable: true});
+      viewScale = 1000 / s / 25.4 * 96; viewOffset = {x: -cx * viewScale, y: cy * viewScale};
+      state.sel = []; state.selected = null; state.tool = 'select'; state.pendingPoint = null; try { hover = null; hoverRaw = null; } catch (_) {} lastMouseWorld = null; measureStart = null;
+      state.currentFloorId = fid; FLOORFILTER.over = undefined; appSettings.lightBg = true;
+      $('showDimensions').checked = !!opt.wallDims; appSettings.showWallNames = !!opt.wallNames;
+      lblK = () => 0.75;   /* testi e quote: stessa altezza sul foglio a qualunque scala (≈ 2,4 mm) */
+      paintWallsDouble = paintWallsPaper;
+      undo = hijack(R);
+      draw2D();
+    } catch (e) { console.warn('stampa', e); }
+    finally {
+      if (undo) undo();
+      window.__printing = false;
+      if (keep.cw) Object.defineProperty(c2d, 'clientWidth', keep.cw); else delete c2d.clientWidth;
+      if (keep.ch) Object.defineProperty(c2d, 'clientHeight', keep.ch); else delete c2d.clientHeight;
+      viewScale = keep.vs; viewOffset = keep.vo; state.sel = keep.sel; state.selected = keep.selected; state.tool = keep.tool; state.pendingPoint = keep.pend;
+      try { hover = keep.hov; hoverRaw = keep.hr; } catch (_) {} lastMouseWorld = keep.lmw; measureStart = keep.ms;
+      state.currentFloorId = keep.floor; FLOORFILTER.over = keep.over; appSettings.lightBg = keep.light; lblK = keep.lk; paintWallsDouble = keep.pwd; $('showDimensions').checked = keep.sd; appSettings.showWallNames = keep.sn;
+      for (const k in _patCCache) delete _patCCache[k];
+      for (const k in _statoPat) delete _statoPat[k];
+      try { draw2D(); } catch (_) {}
+    }
+    return R.result();
+  }
+  /* estensione del disegno di un piano (metri) */
+  function bboxOf(fid) {
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity; const P = (x, y) => { if (!isFinite(x) || !isFinite(y)) return; x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); };
+    const vis = e => { const l = getLayer(e.layerId); return !(l && l.visible === false) && floorOf(e) === fid; };
+    state.walls.forEach(w => { if (!vis(w)) return; const t = getWallThickness(w) / 2; P(w.p1.x - t, w.p1.y - t); P(w.p1.x + t, w.p1.y + t); P(w.p2.x - t, w.p2.y - t); P(w.p2.x + t, w.p2.y + t); });
+    state.furniture.forEach(f => { if (vis(f)) { const r = Math.hypot(f.w || 0, f.d || 0) / 2; P(f.x - r, f.y - r); P(f.x + r, f.y + r); } });
+    state.measurements.forEach(m => { if (vis(m) && m.p1 && m.p2) { P(m.p1.x, m.p1.y); P(m.p2.x, m.p2.y); } });
+    state.labels.forEach(l => { if (vis(l)) P(l.x, l.y); });
+    (state.zones || []).concat(state.ceils || [], state.beams || []).forEach(z => { if (vis(z)) (z.pts || []).forEach(q => P(q.x, q.y)); });
+    state.stairs.forEach(s => { if (vis(s)) { P(s.x - 2, s.y - 2); P(s.x + 2, s.y + 2); } });
+    if (!isFinite(x0)) return null; return {x0, y0, x1, y1};
+  }
+
+  /* ================================================================ foglio: cornice, riquadro, banda in basso, cartiglio */
+  function layout(o) {
+    let [W, H] = PAPERS[o.paper]; if (o.orient === 'P') [W, H] = [H, W];
+    const m = 10, band = 44, cartW = Math.min(150, (W - 2 * m) * 0.6);
+    return {W, H, m, band, cartW, vx: m, vy: m, vw: W - 2 * m, vh: H - 2 * m - band, by: H - m - band};
+  }
+  const mm = v => v * PX;
+  function fitText(t, maxMm, fsMm, bold) { t = String(t || ''); mctx.font = (bold ? 'bold ' : '') + (fsMm * PX) + 'px Arial'; if (mctx.measureText(t).width <= maxMm * PX) return t; while (t.length > 1 && mctx.measureText(t + '…').width > maxMm * PX) t = t.slice(0, -1); return t + '…'; }
+  const T = (x, y, t, fs, o = {}) => `<text x="${mm(x).toFixed(2)}" y="${mm(y).toFixed(2)}" font-family="Arial, Helvetica, sans-serif" font-size="${mm(fs).toFixed(2)}"${o.b ? ' font-weight="bold"' : ''}${o.a ? ` text-anchor="${o.a}"` : ''}${o.c ? ` fill="${o.c}"` : ''} dominant-baseline="${o.bl || 'alphabetic'}">${esc(t)}</text>`;
+  const Ln = (x1, y1, x2, y2, w = 0.25) => `<line x1="${mm(x1).toFixed(2)}" y1="${mm(y1).toFixed(2)}" x2="${mm(x2).toFixed(2)}" y2="${mm(y2).toFixed(2)}" stroke="#000" stroke-width="${mm(w).toFixed(2)}"/>`;
+  const Rc = (x, y, w, h, sw = 0.25, fill = 'none') => `<rect x="${mm(x).toFixed(2)}" y="${mm(y).toFixed(2)}" width="${mm(w).toFixed(2)}" height="${mm(h).toFixed(2)}" fill="${fill}" stroke="${sw ? '#000' : 'none'}" stroke-width="${mm(sw).toFixed(2)}"/>`;
+  function cartiglio(L, o, fl, idx) {
+    const C = CART(), Dt = DITTA(), x = L.W - L.m - L.cartW, y = L.by, w = L.cartW, h = L.band; let s = Rc(x, y, w, h, 0.5);
+    const rows = [16, 7, 7, 8, 6]; let yy = y;
+    /* riga 1: logo + ditta */
+    const lw = LOGO ? 32 : 0;
+    if (LOGO) s += `<image href="${LOGO}" x="${mm(x + 2).toFixed(2)}" y="${mm(yy + 1.5).toFixed(2)}" width="${mm(lw - 4).toFixed(2)}" height="${mm(rows[0] - 3).toFixed(2)}" preserveAspectRatio="xMidYMid meet"/>` + Ln(x + lw, yy, x + lw, yy + rows[0]);
+    const tx = x + lw + 3, tw = w - lw - 5;
+    s += T(tx, yy + 6, fitText(Dt.n || 'Nome ditta / studio', tw, 4, true), 4, {b: 1}) + T(tx, yy + 10.5, fitText(Dt.r2, tw, 2.6), 2.6) + T(tx, yy + 14.2, fitText(Dt.r3, tw, 2.6), 2.6);
+    yy += rows[0]; s += Ln(x, yy, x + w, yy);
+    const lab = (lx, ly, t) => T(lx, ly, t, 1.9, {c: '#444'});
+    /* riga 2: committente | indirizzo */
+    const half = w / 2; s += lab(x + 1.5, yy + 2.6, 'Committente') + T(x + 1.5, yy + 6, fitText(C.committente, half - 3, 2.8, true), 2.8, {b: 1}) + Ln(x + half, yy, x + half, yy + rows[1]);
+    s += lab(x + half + 1.5, yy + 2.6, 'Ubicazione') + T(x + half + 1.5, yy + 6, fitText(C.indirizzo, half - 3, 2.8), 2.8);
+    yy += rows[1]; s += Ln(x, yy, x + w, yy);
+    /* riga 3: oggetto */
+    s += lab(x + 1.5, yy + 2.6, 'Oggetto') + T(x + 1.5, yy + 6, fitText(C.oggetto, w - 3, 2.8), 2.8);
+    yy += rows[2]; s += Ln(x, yy, x + w, yy);
+    /* riga 4: titolo tavola */
+    const tit = (C.titolo ? C.titolo + (o.floors === 'all' && state.floors.length > 1 ? ' – ' + fl.name : '') : 'Pianta ' + fl.name.toLowerCase());
+    s += lab(x + 1.5, yy + 2.6, 'Elaborato') + T(x + 1.5, yy + 6.8, fitText(tit, w - 3, 3.6, true), 3.6, {b: 1});
+    yy += rows[3]; s += Ln(x, yy, x + w, yy);
+    /* riga 5: tav | scala | formato | data */
+    const tav = /^\d+$/.test(String(C.tav).trim()) ? String(+C.tav + idx) : (C.tav || '') + (idx ? '.' + (idx + 1) : '');
+    const cells = [['Tav.', tav], ['Scala', '1:' + o.scale], ['Formato', o.paper], ['Data', C.data], ['Redattore', C.redattore]], cw = [0.12, 0.16, 0.14, 0.22, 0.36];
+    let cx = x; cells.forEach(([k, v], i) => { const ww = w * cw[i]; s += lab(cx + 1.2, yy + 2.3, k) + T(cx + 1.2, yy + 5.2, fitText(v, ww - 2, 2.5, i < 2), 2.5, {b: i < 2 ? 1 : 0}); cx += ww; if (i < cells.length - 1) s += Ln(cx, yy, cx, yy + rows[4]); });
+    return s;
+  }
+  function band(L, o, fl) {
+    let s = '', x = L.m + 3, y = L.by + 5; const maxX = L.W - L.m - L.cartW - 3;
+    /* barra della scala */
+    if (o.bar) {
+      const segM = o.scale <= 20 ? 0.5 : o.scale <= 50 ? 1 : o.scale <= 100 ? 1 : o.scale <= 200 ? 2 : 5, segMm = segM * 1000 / o.scale, n = Math.max(1, Math.min(5, Math.floor(Math.min(60, maxX - x - 30) / segMm)));
+      for (let i = 0; i < n; i++) s += Rc(x + i * segMm, y, segMm, 1.6, 0.2, i % 2 ? '#fff' : '#000');
+      for (let i = 0; i <= n; i++) s += T(x + i * segMm, y + 4.6, String(+(i * segM).toFixed(2)).replace('.', ','), 2.1, {a: 'middle'});
+      s += T(x + n * segMm + 3, y + 1.8, 'm   ·   Scala 1:' + o.scale, 2.4, {b: 1});
+      y += 9;
+    }
+    /* legenda stato dei muri */
+    const st = new Set(state.walls.filter(w => floorOf(w) === fl.id && w.stato && w.stato !== 'esistente').map(w => w.stato));
+    if (o.legend && st.size) {
+      [['demolire', '#facc15', 'Da demolire'], ['nuovo', '#ef4444', 'Di nuova costruzione']].forEach(([k, c, t]) => { if (!st.has(k)) return; s += Rc(x, y - 2.4, 6, 3, 0.25, c) + T(x + 8, y, t, 2.4); x += 45; });
+      x = L.m + 3; y += 5;
+    }
+    /* tabella superfici */
+    if (o.table) {
+      const rooms = state.rooms.filter(r => { const l = getLayer(r.layerId); return floorOf(r) === fl.id && !(l && l.visible === false); });
+      if (rooms.length) {
+        const area = r => (window.svRoomArea ? svRoomArea(r) : computeArea(r.polygon)), rowH = 3.1, top = y + 1, avail = L.H - L.m - 2 - top - rowH * 2, perCol = Math.max(1, Math.floor(avail / rowH)), colW = 46;
+        const cols = Math.max(1, Math.floor((maxX - x) / colW)), cap = perCol * cols; let tot = 0; rooms.forEach(r => tot += area(r));
+        const list = rooms.slice(0, rooms.length > cap ? cap - 1 : cap);
+        s += T(x, top, 'Superfici nette · totale ' + f2(tot) + ' m²', 2.4, {b: 1});
+        list.forEach((r, i) => { const c = Math.floor(i / perCol), rr = i % perCol, xx = x + c * colW, yy = top + 3.4 + rr * rowH; s += T(xx, yy, fitText(r.name || 'Locale', colW - 18, 2.3), 2.3) + T(xx + colW - 4, yy, f2(area(r)) + ' m²', 2.3, {a: 'end'}); });
+        if (rooms.length > list.length) { const i = list.length, c = Math.floor(i / perCol), rr = i % perCol; s += T(x + c * colW, top + 3.4 + rr * rowH, '… altri ' + (rooms.length - list.length) + ' locali', 2.2, {c: '#555'}); }
+      }
+    }
+    return s;
+  }
+  /* un foglio intero (SVG) */
+  function sheet(o, fl, idx, center) {
+    const L = layout(o), pw = mm(L.vw), ph = mm(L.vh);
+    const r = renderPlan(fl.id, center.x, center.y, pw, ph, o.scale, o);
+    const id = 'vp' + Math.random().toString(36).slice(2, 8);
+    return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${L.W}mm" height="${L.H}mm" viewBox="0 0 ${mm(L.W).toFixed(2)} ${mm(L.H).toFixed(2)}">` +
+      `<defs><clipPath id="${id}"><rect width="${pw.toFixed(2)}" height="${ph.toFixed(2)}"/></clipPath>${r.defs}</defs>` +
+      `<rect width="${mm(L.W).toFixed(2)}" height="${mm(L.H).toFixed(2)}" fill="#fff"/>` +
+      `<g transform="translate(${mm(L.vx).toFixed(2)} ${mm(L.vy).toFixed(2)})" clip-path="url(#${id})"><g class="dwg">${r.body}</g></g>` +
+      Rc(L.m, L.m, L.W - 2 * L.m, L.H - 2 * L.m, 0.5) + Ln(L.m, L.by, L.W - L.m, L.by, 0.5) +
+      band(L, o, fl) + cartiglio(L, o, fl, idx) + `</svg>`;
+  }
+
+  /* ================================================================ dialogo di stampa con anteprima */
+  let D = null;
+  const floorsToPrint = o => o.floors === 'all' ? sortedFloors().filter(f => bboxOf(f.id)) : [floorById(state.currentFloorId)];
+  function fits(o, fid) { const b = bboxOf(fid); if (!b) return true; const L = layout(o); return (b.x1 - b.x0) * 1000 / o.scale <= L.vw && (b.y1 - b.y0) * 1000 / o.scale <= L.vh; }
+  function suggest(o, fid) { const b = bboxOf(fid); if (!b) return null; const L = layout(o); return SCALES.find(s => (b.x1 - b.x0) * 1000 / s <= L.vw && (b.y1 - b.y0) * 1000 / s <= L.vh) || null; }
+  function centerOf(fid) { const c = D && D.centers[fid]; if (c) return c; const b = bboxOf(fid); return b ? {x: (b.x0 + b.x1) / 2, y: (b.y0 + b.y1) / 2} : {x: 0, y: 0}; }
+
+  function open() {
+    if (D) close();
+    const o = PS(), C = CART(), Dt = DITTA();
+    const bg = document.createElement('div'); bg.className = 'prt-bg';
+    bg.innerHTML = `<div class="prt-box">
+      <div class="prt-head"><b>🖨 Stampa in scala</b><span class="prt-sp"></span><button data-x="close" class="prt-x" title="Chiudi">✕</button></div>
+      <div class="prt-main">
+        <div class="prt-side">
+          <div class="prt-sec">Foglio</div>
+          <div class="prt-row"><label>Formato<select data-o="paper"><option>A4</option><option>A3</option></select></label><label>Orientamento<select data-o="orient"><option value="L">Orizzontale</option><option value="P">Verticale</option></select></label></div>
+          <div class="prt-row"><label>Scala<select data-o="scale">${SCALES.map(s => `<option value="${s}">1:${s}</option>`).join('')}</select></label><label>Piani<select data-o="floors"><option value="cur">Piano corrente</option><option value="all">Tutti (un foglio per piano)</option></select></label></div>
+          <div class="prt-row"><label>Colori<select data-o="color"><option value="bn">Bianco e nero (gialli e rossi a colori)</option><option value="col">A colori</option></select></label></div>
+          <label class="cb"><input type="checkbox" data-o="table"> Tabella delle superfici</label>
+          <label class="cb"><input type="checkbox" data-o="legend"> Legenda gialli / rossi</label>
+          <label class="cb"><input type="checkbox" data-o="bar"> Barra della scala</label>
+          <label class="cb"><input type="checkbox" data-o="wallDims"> Scritte sui muri (lunghezza · angolo)</label>
+          <label class="cb"><input type="checkbox" data-o="wallNames"> Nomi dei muri (Muro A, B…)</label>
+          <div class="prt-warn" id="prtWarn"></div>
+          <div class="prt-sec">Cartiglio · ditta <small>(vale per tutti i progetti)</small></div>
+          <div class="prt-logo"><div id="prtLogoPrev">${LOGO ? `<img src="${LOGO}">` : '<span>nessun logo</span>'}</div><div><button data-x="logo" class="wt-btn">🖼 Carica logo…</button> <button data-x="nologo" class="wt-btn"${LOGO ? '' : ' hidden'}>Togli</button><input type="file" id="prtLogoIn" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden></div></div>
+          <label>Nome ditta / studio<input data-d="n" value="${esc(Dt.n)}"></label>
+          <label>Indirizzo<input data-d="r2" value="${esc(Dt.r2)}"></label>
+          <label>Telefono · email · P. IVA<input data-d="r3" value="${esc(Dt.r3)}"></label>
+          <div class="prt-sec">Cartiglio · commessa <small>(salvato nel progetto)</small></div>
+          <label>Committente<input data-c="committente" value="${esc(C.committente)}"></label>
+          <label>Ubicazione<input data-c="indirizzo" value="${esc(C.indirizzo)}"></label>
+          <label>Oggetto<input data-c="oggetto" value="${esc(C.oggetto)}" placeholder="es. Ristrutturazione appartamento"></label>
+          <label>Titolo dell'elaborato<input data-c="titolo" value="${esc(C.titolo)}" placeholder="vuoto = Pianta + nome del piano"></label>
+          <div class="prt-row"><label>Tavola n.<input data-c="tav" value="${esc(C.tav)}"></label><label>Data<input data-c="data" value="${esc(C.data)}"></label></div>
+          <label>Redattore<input data-c="redattore" value="${esc(C.redattore)}"></label>
+        </div>
+        <div class="prt-prev"><div class="prt-tabs" id="prtTabs"></div><div class="prt-sheet" id="prtSheet"></div><div class="prt-hint">Trascina il disegno nel foglio per scegliere la parte da stampare · <button class="wt-btn" data-x="center">⌖ Centra</button></div></div>
+      </div>
+      <div class="prt-foot"><button class="wt-btn" data-x="svg">⬇ Scarica SVG</button><span class="prt-sp"></span><button class="wt-btn" data-x="close">Chiudi</button><button class="wt-btn prt-go" data-x="print">🖨 Stampa / Salva PDF</button></div>
+    </div>`;
+    document.body.appendChild(bg);
+    ['pointerdown', 'pointermove', 'pointerup', 'wheel', 'contextmenu', 'touchstart', 'touchmove'].forEach(ev => bg.addEventListener(ev, e => e.stopPropagation(), {passive: true}));
+    D = {bg, o, centers: {}, fid: state.currentFloorId, t: 0};
+    bg.querySelectorAll('[data-o]').forEach(el => { const k = el.dataset.o; if (el.type === 'checkbox') el.checked = !!o[k]; else el.value = String(o[k]); });
+    bg.addEventListener('change', e => {
+      const el = e.target;
+      if (el.dataset.o) { const k = el.dataset.o; D.o[k] = el.type === 'checkbox' ? el.checked : (k === 'scale' ? +el.value : el.value); appSettings.prt = D.o; if (k === 'scale') { appSettings.printScale = +el.value; const ps = $('printScale'); if (ps) ps.value = el.value; try { updateScaleBadge(); } catch (_) {} } persistSettings(); if (k === 'floors') tabs(); preview(); }
+    });
+    bg.addEventListener('input', e => {
+      const el = e.target;
+      if (el.dataset.d) { appSettings.cartDitta = Object.assign(DITTA(), {[el.dataset.d]: el.value}); persistSettings(); later(); }
+      if (el.dataset.c) { state.cart = Object.assign(CART(), {[el.dataset.c]: el.value}); later(true); }
+    });
+    bg.addEventListener('click', e => {
+      const b = e.target.closest('button'); if (!b) { if (e.target === bg) close(); return; }
+      const x = b.dataset.x; if (b.dataset.f) { D.fid = b.dataset.f; tabs(); preview(); return; }
+      if (x === 'close') close();
+      else if (x === 'center') { delete D.centers[D.fid]; preview(); }
+      else if (x === 'logo') bg.querySelector('#prtLogoIn').click();
+      else if (x === 'nologo') { LOGO = ''; try { localStorage.removeItem(LOGO_KEY); } catch (_) {} bg.querySelector('#prtLogoPrev').innerHTML = '<span>nessun logo</span>'; b.hidden = true; preview(); }
+      else if (x === 'print') doPrint();
+      else if (x === 'svg') downloadSVG();
+    });
+    bg.querySelector('#prtLogoIn').onchange = e => { const f = e.target.files && e.target.files[0]; if (f) loadLogo(f); e.target.value = ''; };
+    tabs(); preview(); setupDrag();
+  }
+  let tmr = null, cpT = null;
+  function later(cp) { clearTimeout(tmr); tmr = setTimeout(preview, 350); if (cp) { clearTimeout(cpT); cpT = setTimeout(() => { try { checkpoint(); } catch (_) {} }, 800); } }
+  function tabs() {
+    const t = D.bg.querySelector('#prtTabs'), F = floorsToPrint(D.o);
+    if (!F.some(f => f.id === D.fid)) D.fid = F[0] ? F[0].id : state.currentFloorId;
+    t.innerHTML = F.length > 1 ? F.map((f, i) => `<button class="wt-btn${f.id === D.fid ? ' on' : ''}" data-f="${f.id}">Tav. ${i + 1} · ${esc(f.name)}</button>`).join('') : '';
+  }
+  function preview() {
+    if (!D) return; const o = D.o, F = floorsToPrint(o), fl = F.find(f => f.id === D.fid) || F[0] || floorById(state.currentFloorId), idx = Math.max(0, F.indexOf(fl));
+    const host = D.bg.querySelector('#prtSheet'); host.innerHTML = sheet(o, fl, idx, centerOf(fl.id));
+    const L = layout(o), svg = host.querySelector('svg'); svg.removeAttribute('width'); svg.removeAttribute('height'); svg.style.width = '100%'; svg.style.height = '100%';
+    const w = D.bg.querySelector('#prtWarn'), bad = F.filter(f => !fits(o, f.id));
+    if (bad.length) { const sg = suggest(o, bad[0].id); w.innerHTML = `⚠ ${bad.length > 1 ? 'Alcuni piani non entrano' : 'Il disegno non entra'} nel foglio a 1:${o.scale}: si stampa la parte che vedi nell'anteprima (trascinala).` + (sg ? ` <button class="wt-btn" data-sg="${sg}">Usa 1:${sg}</button>` : ' Prova un foglio più grande.') ; const sb = w.querySelector('[data-sg]'); if (sb) sb.onclick = () => { D.o.scale = +sb.dataset.sg; D.bg.querySelector('[data-o=scale]').value = sb.dataset.sg; D.bg.querySelector('[data-o=scale]').dispatchEvent(new Event('change', {bubbles: true})); }; w.style.display = 'block'; }
+    else { w.style.display = 'none'; w.innerHTML = ''; }
+  }
+  function setupDrag() {
+    const host = D.bg.querySelector('#prtSheet'); let dr = null;
+    host.addEventListener('pointerdown', e => { const g = host.querySelector('.dwg'); if (!g) return; const r = host.getBoundingClientRect(), L = layout(D.o); dr = {x: e.clientX, y: e.clientY, k: L.W / r.width /* mm per px schermo */, g, c: {...centerOf(D.fid)}}; try { host.setPointerCapture(e.pointerId); } catch (_) {} e.preventDefault(); });
+    host.addEventListener('pointermove', e => { if (!dr) return; const dx = (e.clientX - dr.x) * dr.k * PX, dy = (e.clientY - dr.y) * dr.k * PX; dr.g.setAttribute('transform', `translate(${dx.toFixed(1)} ${dy.toFixed(1)})`); dr.dx = dx; dr.dy = dy; });
+    const up = () => { if (!dr) return; const d = dr; dr = null; if (!d.dx && !d.dy) return; const m = D.o.scale / 1000 / PX; D.centers[D.fid] = {x: d.c.x - d.dx * m, y: d.c.y + d.dy * m}; preview(); };
+    host.addEventListener('pointerup', up); host.addEventListener('pointercancel', up);
+  }
+  function loadLogo(file) {
+    const fr = new FileReader();
+    fr.onload = () => { const img = new Image(); img.onload = () => {
+      const k = Math.min(1, 600 / Math.max(img.width, img.height)), c = document.createElement('canvas'); c.width = Math.max(1, Math.round(img.width * k)); c.height = Math.max(1, Math.round(img.height * k));
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); LOGO = c.toDataURL('image/png');
+      try { localStorage.setItem(LOGO_KEY, LOGO); } catch (_) { toast('Logo troppo grande per essere ricordato: usalo ora o scegline uno più leggero'); }
+      if (D) { D.bg.querySelector('#prtLogoPrev').innerHTML = `<img src="${LOGO}">`; const nb = D.bg.querySelector('[data-x=nologo]'); if (nb) nb.hidden = false; preview(); }
+    }; img.onerror = () => toast('Immagine non leggibile'); img.src = fr.result; };
+    fr.readAsDataURL(file);
+  }
+  function allSheets() { const o = D.o, F = floorsToPrint(o); return F.map((f, i) => sheet(o, f, i, centerOf(f.id))); }
+  function doPrint() {
+    const o = D.o, L = layout(o), S = allSheets(); if (!S.length) { toast('Niente da stampare'); return; }
+    let root = document.getElementById('prtRoot'); if (root) root.remove();
+    root = document.createElement('div'); root.id = 'prtRoot';
+    root.innerHTML = S.map(s => `<div class="prt-page" style="width:${L.W}mm;height:${L.H}mm">${s}</div>`).join('');
+    const st = document.createElement('style'); st.id = 'prtPage';
+    st.textContent = `@page{size:${L.W}mm ${L.H}mm;margin:0} @media print{html,body{height:auto!important;overflow:visible!important;background:#fff!important;display:block!important} body>*:not(#prtRoot){display:none!important} #prtRoot{display:block!important} .prt-page{page-break-after:always;break-after:page;overflow:hidden} .prt-page:last-child{page-break-after:auto;break-after:auto} .prt-page svg{display:block;width:100%;height:100%}} #prtRoot{display:none}`;
+    document.head.appendChild(st); document.body.appendChild(root);
+    const clean = () => { setTimeout(() => { root.remove(); st.remove(); }, 300); window.removeEventListener('afterprint', clean); };
+    window.addEventListener('afterprint', clean);
+    setTimeout(() => { try { window.print(); } catch (e) { toast('Stampa non disponibile qui: usa «Scarica SVG»'); clean(); } }, 60);
+  }
+  function downloadSVG() {
+    const S = allSheets(), F = floorsToPrint(D.o), nm = (projectName || 'planimetria').replace(/\.json$/i, '');
+    S.forEach((s, i) => setTimeout(() => download(new Blob(['<?xml version="1.0" encoding="UTF-8"?>\n' + s], {type: 'image/svg+xml'}), `${nm}_tav${i + 1}_${(F[i].name || '').replace(/[^\w]+/g, '_')}_1-${D.o.scale}.svg`), i * 400));
+  }
+  function close() { if (D) { D.bg.remove(); D = null; } }
+
+  const css = document.createElement('style');
+  css.textContent = `.prt-bg{position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:8px}
+  .prt-box{background:#1b2133;color:#e6e9f2;border:1px solid #2f3a55;border-radius:12px;width:min(1180px,100%);height:min(860px,100%);display:flex;flex-direction:column;font:13px system-ui,sans-serif;box-shadow:0 20px 60px #000b}
+  .prt-head,.prt-foot{display:flex;align-items:center;gap:8px;padding:9px 12px}.prt-head{border-bottom:1px solid #2f3a55}.prt-head b{font-size:15px;color:#7dd3fc}.prt-foot{border-top:1px solid #2f3a55}.prt-sp{flex:1}
+  .prt-x{background:none;border:0;color:#9aa3bd;font-size:20px;cursor:pointer}
+  .prt-main{flex:1;display:flex;min-height:0}.prt-side{width:330px;flex:none;overflow:auto;padding:6px 12px 12px;border-right:1px solid #2f3a55}
+  .prt-side label{display:block;margin:6px 0 2px;color:#9aa3bd;font-size:11.5px}.prt-side label.cb{display:flex;gap:7px;align-items:center;color:#cbd5e1;font-size:12.5px}
+  .prt-side input:not([type=checkbox]),.prt-side select{width:100%;box-sizing:border-box;margin-top:2px;padding:7px;border-radius:6px;border:1px solid #39456a;background:#11162a;color:#fff;font-size:13px}
+  .prt-side input[type=checkbox]{width:auto;margin:0;transform:none}
+  .prt-row{display:flex;gap:8px}.prt-row>label{flex:1}.prt-sec{margin:12px 0 2px;color:#7dd3fc;font-weight:700;font-size:12px;border-bottom:1px solid #2f3a55;padding-bottom:3px}.prt-sec small{color:#8b93ad;font-weight:400}
+  .prt-warn{display:none;margin:8px 0;padding:7px 9px;border-radius:7px;background:#3a2f12;border:1px solid #a16207;color:#fde68a;font-size:12px;line-height:1.4}
+  .prt-logo{display:flex;gap:8px;align-items:center;margin:6px 0}.prt-logo>div:first-child{width:90px;height:44px;border:1px dashed #39456a;border-radius:6px;display:flex;align-items:center;justify-content:center;background:#fff;overflow:hidden}
+  .prt-logo img{max-width:100%;max-height:100%}.prt-logo span{color:#888;font-size:10px}
+  .prt-prev{flex:1;display:flex;flex-direction:column;min-width:0;padding:10px;gap:6px;background:#2a3047}
+  .prt-tabs{display:flex;gap:5px;flex-wrap:wrap}.prt-tabs .on{background:#1677a8;border-color:#249bd3;color:#fff}
+  .prt-sheet{flex:1;min-height:0;width:100%;cursor:grab;touch-action:none}.prt-sheet svg{display:block;filter:drop-shadow(0 4px 14px #0009)}
+  .prt-sheet:active{cursor:grabbing}.prt-hint{font-size:11.5px;color:#cbd5e1;text-align:center}
+  .prt-go{background:#16a34a!important;border-color:#22c55e!important;color:#fff!important}
+  @media (max-width:800px){.prt-main{flex-direction:column}.prt-side{width:auto;max-height:45%;border-right:0;border-bottom:1px solid #2f3a55}.prt-sheet{height:auto;width:100%}}`;
+  document.head.appendChild(css);
+
+  /* Stampa / PDF (menu e Ctrl+P) apre il nuovo dialogo */
+  try { printPlan = open; } catch (_) {}
+  const pb = $('printBtn'); if (pb) pb.onclick = () => { document.querySelectorAll('.menu-item.open').forEach(x => x.classList.remove('open')); document.querySelectorAll('.menu-dropdown.open-fixed').forEach(x => x.classList.remove('open-fixed')); open(); };
+
+  window.SCprint = {open, close, sheet: (o, fid) => sheet(Object.assign(PS(), o || {}), floorById(fid || state.currentFloorId), 0, centerOf(fid || state.currentFloorId)), layout, bboxOf, renderPlan, state: () => D};
+})();
+
+/* ========================================================================
+   v15.0 · SI PARTE SEMPRE DA SELEZIONA
+   All'avvio, con un disegno nuovo, aprendo un progetto, ripristinando una sessione chiusa male e dopo ogni
+   importazione (nuovo livello «📥» o nuova immagine) lo strumento attivo è Seleziona.
+   ======================================================================== */
+(function () {
+  function toSel() {
+    try {
+      state.pendingPoint = null;
+      const b = document.querySelector('.tool[data-tool="select"]');
+      if (b && state.tool !== 'select') b.click(); else if (b) { document.querySelectorAll('.tool.active').forEach(x => { if (x.dataset.tool !== 'select') x.classList.remove('active'); }); b.classList.add('active'); }
+      draw2D();
+    } catch (_) {}
+  }
+  window.SCtoSelect = toSel;
+  toSel(); setTimeout(toSel, 300);
+  const imp = () => state.layers.filter(l => /^📥/.test(l.name || '')).length;
+  let nL = imp(), nI = state.images.length;
+  setInterval(() => { const a = imp(), b = state.images.length; if (a > nL || b > nI) setTimeout(toSel, 50); nL = a; nI = b; }, 400);
 })();
 
 </script>
