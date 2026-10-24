@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v18.7</title>
+<title>SimplyCAD Pro · v18.9.1</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -4126,7 +4126,7 @@ const buildProjectBlob = () => {
     floors: state.floors, currentFloorId: state.currentFloorId, floorSeq: state.floorSeq, roofs: state.roofs, holes: state.holes, zones: state.zones, ceils: state.ceils || [], beams: state.beams || [], cmpOff: state.cmpOff || [], cmpCustom: state.cmpCustom || [], cart: state.cart || null,
     photos: window.SCph ? SCph.exportUsed() : undefined,
     images: state.images.filter(i => i.dataUrl).map(i => ({id: i.id, name: i.name, layerId: i.layerId, floorId: i.floorId, opacity: i.opacity, scale: i.scale, x: i.x, y: i.y, rot: i.rot || 0, dataUrl: i.dataUrl})),
-    ...(window.SCauto ? SCauto.extras() : {}), appVersion: '18.7', fileFormat: 4,   /* v18.0: versione del programma che ha salvato */
+    ...(window.SCauto ? SCauto.extras() : {}), appVersion: (window.SC_REL ? SC_REL.v : '18.8'), fileFormat: 4,   /* v18.0: versione del programma che ha salvato */
     settings: {wallThickness: document.getElementById('wallThickness').value, wallHeight: document.getElementById('wallHeight').value, wallMaterial: appSettings.wallMaterial, wallColor: appSettings.wallColor || '', gridSize: document.getElementById('gridSize').value}
   };
   return new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
@@ -4218,8 +4218,8 @@ document.getElementById('fileInput').onchange = (e) => {
       try { data = JSON.parse(txt); } catch (err) { return uiAlert('Il file ' + info + ' non è un progetto SimplyCAD leggibile.\n\n' + (txt.charAt(0) === '<' ? 'Sembra una pagina web: forse è stato scaricato il collegamento invece del file.' : 'Dettaglio: ' + err.message)); }
       if (!data || typeof data !== 'object' || !(Array.isArray(data.walls) || Array.isArray(data.floors))) return uiAlert('Il file ' + info + ' non contiene un progetto SimplyCAD.');
       setProjName(file.name);
-      { const v = String(data.appVersion || '').split('.').map(Number), me = [18, 7];   /* v18.0: file salvato da una versione più nuova */
-        if (v[0] > me[0] || (v[0] === me[0] && (v[1] || 0) > me[1])) setTimeout(() => uiAlert('Il file ' + info + ' è stato salvato con SimplyCAD v' + data.appVersion + ', più nuova di questa (v18.7).\n\nL\'ho aperto, ma le funzioni nuove potrebbero non vedersi e, se lo salvi da qui, andare perse. Aggiorna l\'app (chiudi e riapri, o ricarica la pagina) prima di modificarlo.'), 300); }
+      { const v = String(data.appVersion || '').split('.').map(Number), me = String(window.SC_REL ? SC_REL.v : '18.8').split('.').map(Number);   /* v18.0: file salvato da una versione più nuova */
+        if (v[0] > me[0] || (v[0] === me[0] && (v[1] || 0) > me[1])) setTimeout(() => uiAlert('Il file ' + info + ' è stato salvato con SimplyCAD v' + data.appVersion + ', più nuova di questa (v' + (window.SC_REL ? SC_REL.v : '') + ').\n\nL\'ho aperto, ma le funzioni nuove potrebbero non vedersi e, se lo salvi da qui, andare perse. Aggiorna l\'app (chiudi e riapri, o ricarica la pagina) prima di modificarlo.'), 300); }
       try { window.SCauto && SCauto.preReplace('pre-open'); } catch (_) {}
       state.walls = (data.walls || []).map(w => { if (!(parseFloat(w.thickness) > 0)) w.thickness = parseFloat(data.settings && data.settings.wallThickness) || parseFloat(document.getElementById('wallThickness').value) || 0.2; return w; });
       state.doors = (data.doors || []).map(d => ({rotation: 0, ...d}));
@@ -4613,7 +4613,7 @@ document.getElementById('helpBtn').onclick = () => {
   bg.className = 'prova-modal-bg help-modal';
   bg.innerHTML = `
     <div class="prova-modal" style="max-width:760px;max-height:94vh;overflow:auto">
-      <h2>❓ Guida rapida <span style="font-size:12px;font-weight:400;color:#9ca3b8">· versione 12.3</span></h2>
+      <h2>❓ Guida rapida <span style="font-size:12px;font-weight:400;color:#9ca3b8">· versione ${window.SC_REL ? SC_REL.v + ' del ' + SC_REL.d : ''}</span></h2>
       <div id="hpTabs" style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 10px">
         <button class="prova-btn primary" data-t="pc">PC e Chromebook</button>
         <button class="prova-btn" data-t="tab">Tablet</button>
@@ -10241,11 +10241,11 @@ updateRoomList();
       ctx.beginPath(); S.forEach((s, i) => i ? ctx.lineTo(s.x, s.y) : ctx.moveTo(s.x, s.y)); ctx.closePath();
       ctx.fillStyle = rgba(z.color, 0.35); ctx.fill();
       ctx.strokeStyle = rgba(z.color, 0.95); ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.stroke();
-      const c = worldToScreen(centroid(z.pts).x, centroid(z.pts).y);
+      let c = worldToScreen(centroid(z.pts).x, centroid(z.pts).y);
       const t1 = 'Sup. ' + fmt2(area(z.pts)) + ' m²', t2 = 'Per. ' + fmt2(perim(z.pts)) + ' m';
       const t0 = [(z.name || '').trim(), z.lav && LAV[z.lav] ? LAV[z.lav].s : ''].filter(Boolean).join(' · ');
       const K = lblK(); ctx.font = 'bold ' + Math.round(12 * K) + 'px sans-serif';
-      const w = Math.max(ctx.measureText(t1).width, ctx.measureText(t2).width, t0 ? ctx.measureText(t0).width : 0) + 16 * K, h = (t0 ? 52 : 38) * K, x = c.x - w / 2, y = c.y - h / 2;
+      const w = Math.max(ctx.measureText(t1).width, ctx.measureText(t2).width, t0 ? ctx.measureText(t0).width : 0) + 16 * K, h = (t0 ? 52 : 38) * K; if (window.SCzoneLbl) c = SCzoneLbl(z, c, w, h); const x = c.x - w / 2, y = c.y - h / 2;
       ctx.fillStyle = 'rgba(255,255,255,0.93)'; ctx.strokeStyle = z.color; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, y, w, h, 6) : ctx.rect(x, y, w, h); ctx.fill(); ctx.stroke();
       ctx.fillStyle = '#111827'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -10343,8 +10343,8 @@ updateRoomList();
     pal.querySelector('#zpOk').onclick = closePal;
     document.body.appendChild(pal);
     const r = c2d.getBoundingClientRect(), W = pal.offsetWidth, H = pal.offsetHeight;
-    let x = b ? r.left + b.x + b.w + 8 : r.left + 80, y = b ? r.top + b.y : r.top + 80;
-    if (x + W > innerWidth - 6) x = (b ? r.left + b.x - W - 8 : innerWidth - W - 6);
+    const left = b && (b.x + b.w / 2) > r.width / 2;   /* v18.9: sul lato opposto all'area */
+    let x = left ? r.left + 10 : r.right - W - 10, y = r.top + 60;
     pal.style.left = Math.max(6, Math.min(innerWidth - W - 6, x)) + 'px'; pal.style.top = Math.max(6, Math.min(innerHeight - H - 6, y)) + 'px';
   }
   window.addEventListener('pointerdown', e => { if (pal && !pal.contains(e.target)) closePal(); }, true);
@@ -10391,7 +10391,7 @@ updateRoomList();
     window.removeEventListener('pointermove', zMove, true); window.removeEventListener('pointerup', zUp, true); window.removeEventListener('pointercancel', zUp, true);
     try { c2d.releasePointerCapture(e.pointerId); } catch (_) {}
     if (d.moved) { draw2D(); checkpoint(); }
-    else if (d.openPal) { const b = boxes.find(q => q.z === d.z); openPalette(d.z, b); }
+    else if (d.openPal) { draw2D(); if (window.SCselbar) try { SCselbar.place(); } catch (_) {} }   /* v18.9: niente riquadro al tocco */
   }
   window.__zoneHit = e => {
     if (e.target !== c2d || state.mode !== '2d' || !(state.tool === 'select' || state.tool === 'box') || tmpZ.length || dragZ) return false;
@@ -11252,7 +11252,7 @@ updateRoomList();
     const body = panel.querySelector('#cmpBody');
     if (tab === 'voci') {
       const top = `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:2px 0 6px"><button class="wt-btn" id="cmpAdd" style="background:#1677a8;border-color:#249bd3;color:#fff">➕ Aggiungi voce</button><span class="cmp-note" style="padding:0">Voce tua: descrizione, unità e formula fatta toccando le misure delle stanze.</span></div>` +
-        (!R.L.length && state.walls.length ? '<div class="cmp-note" style="color:#fbbf24">Nessuna stanza chiusa rilevata. Per chiuderle: Geometria → «Controlla chiusure». Per una stanza aperta (o per decidere tu i confini): disegna un\'Area e attiva «Tinteggiatura pareti e soffitto».</div>' : '');
+        (!R.L.length && state.walls.length ? '<div class="cmp-note" style="color:#fbbf24">Nessuna stanza chiusa rilevata. Per chiuderle: Geometria → «Aggancia». Per una stanza aperta (o per decidere tu i confini): disegna un\'Area e attiva «Tinteggiatura pareti e soffitto».</div>' : '');
       if (!R.V.length) { body.innerHTML = top + '<div class="cmp-empty">Nessuna quantità: disegna muri chiusi (locali), assegna lo stato ai muri da demolire o nuovi, inserisci porte e finestre.</div>'; }
       else {
         const nOff = R.V.filter(v => isOff(v.key)).length;
@@ -19366,7 +19366,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     const r = e.currentTarget.getBoundingClientRect(), src = e.currentTarget, c = c2d.getBoundingClientRect();
     ctxRestLast = null; try { ctxItems(screenToWorld(r.left - c.left, r.bottom - c.top)); } catch (_) {}
     const rest = (ctxRestLast || []).filter(x => !(x && x.lb && /^(Copia|Taglia|Seleziona tutto)$/.test(x.lb)));
-    const T = new Set(ents().map(x => x.t)), items = [{ic: '📋', lb: 'Copia', fn: copySel}, {ic: '✂️', lb: 'Taglia', fn: cutSel}];
+    const T = new Set(ents().map(x => x.t)), items = [{ic: '📋', lb: 'Copia', fn: copySel}, {ic: '✂️', lb: 'Taglia', fn: cutSel}, {ic: '🧲', lb: 'Aggancia (unisci punti)', fn: () => { if (window.SCag) SCag.start(); }}];
     if ([...T].some(t => t === 'wall' || t === 'door' || t === 'window')) items.push({ic: '🎨', lb: 'Colore…', fn: () => $('sbCol').onclick({currentTarget: src})});
     if (state.sel.length === 1) items.push({ic: '☑️', lb: 'Seleziona tutti quelli dello stesso tipo', fn: () => $('sbAll').click()});
     if (rest.length) items.push('-', ...rest);
@@ -19451,7 +19451,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     const own = !cache;
     if (own) cache = {w: c2d.clientWidth, h: c2d.clientHeight};
     const t = performance.now();
-    try { return core.apply(self, args); }
+    try { const res = core.apply(self, args); const P = window.SCdraw && SCdraw.post; if (own && !window.__printing && P && P.length && state.mode === '2d') P.forEach(f => { try { f(); } catch (e) { console.warn('disegno', e); } }); return res; }   /* v18.9: strati aggiunti dopo il regista */
     finally { if (own) { cache = null; lastMs = performance.now() - t; frames++; } }
   }
   function flush() { if (raf) { cancelAnimationFrame(raf); raf = 0; } if (pending) { pending = false; run(null, []); } }
@@ -19460,7 +19460,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     pending = true;
     if (!raf) raf = requestAnimationFrame(() => { raf = 0; if (pending) { pending = false; try { run(null, []); } catch (e) { console.warn('disegno', e); } } });
   };
-  window.SCdraw = Object.assign(window.SCdraw || {}, {flush, last: () => lastMs, frames: () => frames});
+  window.SCdraw = Object.assign(window.SCdraw || {}, {post: [], flush, last: () => lastMs, frames: () => frames});
 })();
 
 </script>
@@ -19613,6 +19613,291 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   } catch (_) {}
 
   window.SCbar3 = {pos, empty, hidden: () => appSettings.sbPos === 'hidden'};
+})();
+
+</script>
+<script>
+/* ========================================================================
+   v18.8 · VERSIONE IN UN SOLO PUNTO + «ℹ️ Informazioni e novità»
+   SC_REL.v è l'unica versione: titolo, Guida, file salvato, avvisi e riga messaggi la leggono da qui.
+   ======================================================================== */
+window.SC_REL = {
+  v: '18.9.1', d: '24/10/2026',
+  news: [
+    ['18.9.1', '🧲 Aggancia anche nella barra interattiva (senza selezione) e nel suo menu ⋯.'],
+    ['18.9', '🧲 Aggancia (al posto di Controlla chiusure): tocca il punto da spostare e poi dove agganciarlo; pallini rossi, arancio e azzurri. Aree: il tocco seleziona, il riquadro si apre con ✏; l’etichetta non copre il nome della stanza.'],
+    ['18.8', 'Versione e novità in ❓ › Informazioni; versione in basso a destra nella riga messaggi; «Controlla aggiornamenti».'],
+    ['18.7', 'Barra interattiva agganciata Sopra/Sotto/Sinistra/Destra o nascosta (⚙️); senza selezione mostra Disegna e Annulla. Strumenti rapidi spenti di base.'],
+    ['18.6', 'Prospetto: lo zoom resta; toccando l’interno di nicchie e fori piccoli li sposti.'],
+    ['18.5', '3D: terreno, griglia e soffitto grandi quanto il disegno; niente righe della griglia attraverso i muri.'],
+    ['18.4', 'Riga messaggi su due righe, senza sovrapposizioni.'],
+    ['18.3', 'Riga messaggi fissa sotto il disegno: istruzioni e avvisi non coprono più la pianta.'],
+    ['18.2', 'Pulsante 📋 Verifiche nella barra quando tocchi una stanza.'],
+    ['18.1', 'Verifiche e superfici visibili nel menu Progetto.'],
+    ['18.0', 'Disegno più leggero (meno ridisegni); file con la versione del programma e avviso se più nuovo.'],
+    ['17.2', 'Pulsante Disegna sempre nella barra di modifica.'],
+    ['17.1', 'Barra di modifica secondo l’elemento toccato; messaggi nascosti; linea, cerchio e arco sotto «Forme».'],
+    ['17.0', 'Quota da terra degli oggetti; Verifica locali DM 1975; Superficie commerciale DPR 138/98; Relazione fotografica; Duplica piano completo.']
+  ]
+};
+(function () {
+  const R = window.SC_REL;
+  try { document.title = 'SimplyCAD Pro · v' + R.v; } catch (_) {}
+  const esc = s => String(s).replace(/[&<>]/g, m => ({'&': '&amp;', '<': '&lt;', '>': '&gt;'}[m]));
+
+  /* riga messaggi: versione in grigio quando non c'è nessun messaggio */
+  try {
+    const band = document.getElementById('scBand');
+    if (band) {
+      const s = document.createElement('span'); s.id = 'scBandV'; s.textContent = 'v' + R.v; s.title = 'Versione di SimplyCAD · tocca per novità e aggiornamenti';
+      band.appendChild(s); s.onclick = () => open();
+      const st = document.createElement('style');
+      st.textContent = '#scBandV{margin-left:auto;flex:none;color:#64748b;font:500 11px system-ui,sans-serif;cursor:pointer;padding:4px 2px}#scBand.busy #scBandV{display:none}#scBandR:not(:empty)~#scBandV{margin-left:8px}';
+      document.head.appendChild(st);
+    }
+  } catch (_) {}
+
+  /* ❓ › ℹ️ Informazioni e novità */
+  async function checkUpd(btn) {
+    const web = location.protocol === 'https:' || location.hostname === 'localhost';
+    if (!web || !('serviceWorker' in navigator)) { toast('Gli aggiornamenti arrivano solo all’app aperta dal sito (GitHub Pages)'); return; }
+    btn.disabled = true; btn.textContent = 'Controllo…';
+    try {
+      const reg = await navigator.serviceWorker.getRegistration();
+      if (!reg) { toast('App non ancora installata dal sito: ricarica la pagina'); return; }
+      await reg.update();
+      await new Promise(r => setTimeout(r, 1500));
+      if (reg.waiting || reg.installing) toast('C’è una versione nuova: tra poco ti chiedo se aggiornare');
+      else toast('Hai già l’ultima versione (v' + R.v + ')');
+    } catch (_) { toast('Non riesco a controllare: sei collegato a internet?'); }
+    finally { btn.disabled = false; btn.textContent = '🔄 Controlla aggiornamenti'; }
+  }
+  function open() {
+    try { document.querySelectorAll('.menu-item.open').forEach(x => x.classList.remove('open')); } catch (_) {}
+    const bg = document.createElement('div'); bg.className = 'uidlg-bg';
+    bg.innerHTML = '<div class="uidlg" style="width:min(520px,100%);max-height:86vh;overflow:auto"><p style="margin:0 0 6px"><b style="font-size:17px">SimplyCAD Pro · v' + esc(R.v) + '</b><br><span style="color:#9aa3bd">uscita il ' + esc(R.d) + '</span></p>' +
+      '<p style="font-size:12.5px;color:#cbd5e1;margin:6px 0 10px">Smartphone, tablet e PC devono mostrare la stessa versione: se uno è indietro, usa «Controlla aggiornamenti» su quel dispositivo.</p>' +
+      '<div style="font-weight:700;color:#7dd3fc;margin:6px 0 4px">Novità</div>' +
+      R.news.map(([v, t]) => '<div style="display:flex;gap:8px;font-size:13px;line-height:1.4;margin:4px 0"><b style="flex:none;width:42px;color:' + (v === R.v ? '#fde68a' : '#94a3b8') + '">' + esc(v) + '</b><span>' + esc(t) + '</span></div>').join('') +
+      '<div class="row" style="flex-wrap:wrap;margin-top:12px"><button data-a="u">🔄 Controlla aggiornamenti</button><button class="ok" data-a="x">Chiudi</button></div></div>';
+    document.body.appendChild(bg);
+    bg.addEventListener('click', e => { const b = e.target.closest('button'); if (b && b.dataset.a === 'x') bg.remove(); else if (b && b.dataset.a === 'u') checkUpd(b); else if (e.target === bg) bg.remove(); });
+  }
+  try {
+    const hb = document.getElementById('helpBtn');
+    if (hb) {
+      const b = document.createElement('button'); b.className = 'menu-row'; b.id = 'aboutBtn';
+      b.innerHTML = '<span class="mi-icon">ℹ️</span><span class="mi-label">Informazioni e novità</span><span class="mi-kbd">v' + esc(R.v) + '</span>';
+      hb.after(b); b.onclick = open;
+    }
+  } catch (_) {}
+  window.SCabout = {open};
+})();
+
+</script>
+<script>
+/* ========================================================================
+   v18.9 · 🧲 AGGANCIA (prende il posto di «Controlla chiusure»)
+   Tocca il punto da spostare, poi dove agganciarlo: il primo si sposta, il secondo resta fermo.
+   🔴 estremità di muri staccate · 🟠 vertici di aree, contropareti, controsoffitti, linee quasi unite
+   🔵 altri punti (estremi di muri collegati, bordi di porte e finestre, spigoli di arredi)
+   I tre pallini nella riga messaggi accendono e spengono le categorie (scelta ricordata).
+   Su un 🔴 con chiusura proposta compare il cerchio verde: toccandolo si chiude come prima.
+   ======================================================================== */
+(function () {
+  const F = () => { const a = appSettings.agF; if (!a || typeof a !== 'object') appSettings.agF = {r: true, o: true, b: false}; else ['r', 'o'].forEach(k => { if (a[k] === undefined) a[k] = true; }); return appSettings.agF; };
+  const COL = {r: '#ef4444', o: '#f59e0b', b: '#38bdf8'};
+  let AG = null;   /* {sel, pts} */
+  const Lw = w => Math.hypot(w.p2.x - w.p1.x, w.p2.y - w.p1.y);
+  const same = (a, b, t) => Math.hypot(a.x - b.x, a.y - b.y) < (t || 1e-3);
+  const fl = () => state.currentFloorId;
+  const ok = e => e && isEntityVisible(e) && floorOf(e) === fl() && !isEntityLocked(e);
+  const onWall = (p, o) => { const L = Lw(o); if (L < 1e-6) return false; const t = ((p.x - o.p1.x) * (o.p2.x - o.p1.x) + (p.y - o.p1.y) * (o.p2.y - o.p1.y)) / (L * L); if (t < -1e-4 || t > 1 + 1e-4) return false; return Math.hypot(o.p1.x + (o.p2.x - o.p1.x) * t - p.x, o.p1.y + (o.p2.y - o.p1.y) * t - p.y) < 1e-3; };
+  const isCp = w => !!(window.SCcg && SCcg.isCp && SCcg.isCp(w));
+
+  function collect() {
+    const P = [], W = state.walls.filter(w => ok(w) && Lw(w) > 0.01), sug = new Map();
+    try { (window.SCtin && SCtin.scan ? SCtin.scan() : []).forEach(c => sug.set(c.w.id + c.k, c)); } catch (_) {}
+    W.forEach(w => ['p1', 'p2'].forEach(k => {
+      const p = w[k], conn = W.some(o => o !== w && (same(o.p1, p) || same(o.p2, p) || onWall(p, o)));
+      P.push({cat: isCp(w) ? 'o' : conn ? 'b' : 'r', kind: 'wall', w, k, p: {x: p.x, y: p.y}, sug: sug.get(w.id + k) || null, ent: w});
+    }));
+    (state.zones || []).forEach(z => { if (ok(z) && z.pts) z.pts.forEach((p, i) => P.push({cat: 'o', kind: 'pts', e: z, i, p: {x: p.x, y: p.y}, ent: z})); });
+    ['ceils', 'beams'].forEach(key => (state[key] || []).forEach(e => { if (ok(e) && e.pts) e.pts.forEach((p, i) => P.push({cat: 'o', kind: 'pts', e, i, p: {x: p.x, y: p.y}, ent: e})); }));
+    const ends = []; (state.measurements || []).forEach(m => { if (ok(m) && m.kind === 'line') ['p1', 'p2'].forEach(k => ends.push({m, k, p: m[k]})); });
+    ends.forEach(E => {
+      let d = Infinity; ends.forEach(x => { if (x !== E) d = Math.min(d, Math.hypot(x.p.x - E.p.x, x.p.y - E.p.y)); }); W.forEach(w => [w.p1, w.p2].forEach(q => { d = Math.min(d, Math.hypot(q.x - E.p.x, q.y - E.p.y)); }));
+      P.push({cat: d > 0.001 && d < 0.15 ? 'o' : 'b', kind: 'line', m: E.m, k: E.k, p: {x: E.p.x, y: E.p.y}, ent: E.m});
+    });
+    state.doors.concat(state.windows).forEach(o => {
+      if (!ok(o)) return; const w = state.walls.find(x => x.id === o.wallId); if (!w) return; const L = Lw(w); if (L < 0.01) return;
+      const hw = (+o.width || 0.9) / 2; [-1, 1].forEach(s => { const d = (o.t * L + s * hw) / L; P.push({cat: 'b', kind: 'op', o, w, s, p: ptAt(w, d), ent: o}); });
+    });
+    state.furniture.forEach(f => {
+      if (!ok(f) || f.pil) return; const c = Math.cos(f.rot || 0), s = Math.sin(f.rot || 0);
+      [[-1, -1], [1, -1], [1, 1], [-1, 1]].forEach(([a, b]) => { const x = a * f.w / 2, y = b * f.d / 2; P.push({cat: 'b', kind: 'furn', f, p: {x: f.x + x * c - y * s, y: f.y + x * s + y * c}, ent: f}); });
+    });
+    return P;
+  }
+  const shown = (q, sel) => F()[q.cat] || (sel && q.ent !== sel.ent && Math.hypot(q.p.x - sel.p.x, q.p.y - sel.p.y) * viewScale < 140);
+
+  /* ---------------------------------------------------------------- spostamenti */
+  function moveWallEnd(sel, P) {
+    const old = {x: sel.p.x, y: sel.p.y}, W = state.walls.filter(w => floorOf(w) === fl());
+    const hit = []; W.forEach(w => ['p1', 'p2'].forEach(k => { if (same(w[k], old) && !isEntityLocked(w)) hit.push([w, k]); }));
+    if (!hit.some(([w, k]) => w === sel.w && k === sel.k)) hit.push([sel.w, sel.k]);
+    const affected = [...new Set(hit.map(h => h[0]))], keep = new Map();
+    affected.forEach(w => state.doors.concat(state.windows).forEach(o => { if (o.wallId === w.id) keep.set(o, ptAt(w, o.t)); }));
+    hit.forEach(([w, k]) => { w[k] = {x: r6(P.x), y: r6(P.y)}; });
+    keep.forEach((c, o) => { const w = affected.find(x => x.id === o.wallId), L = Lw(w); if (L < 0.01) return; o.t = ((c.x - w.p1.x) * (w.p2.x - w.p1.x) + (c.y - w.p1.y) * (w.p2.y - w.p1.y)) / (L * L); try { clampDoorWindowT(o); } catch (_) {} });
+  }
+  function apply(sel, P) {
+    if (sel.kind === 'wall') moveWallEnd(sel, P);
+    else if (sel.kind === 'pts') sel.e.pts[sel.i] = {x: r6(P.x), y: r6(P.y)};
+    else if (sel.kind === 'line') sel.m[sel.k] = {x: r6(P.x), y: r6(P.y)};
+    else if (sel.kind === 'furn') { sel.f.x = r6(sel.f.x + P.x - sel.p.x); sel.f.y = r6(sel.f.y + P.y - sel.p.y); }
+    else if (sel.kind === 'op') {
+      const w = sel.w, L = Lw(w), tp = ((P.x - w.p1.x) * (w.p2.x - w.p1.x) + (P.y - w.p1.y) * (w.p2.y - w.p1.y)) / L, hw = (+sel.o.width || 0.9) / 2;
+      sel.o.t = (tp - sel.s * hw) / L; try { clampDoorWindowT(sel.o); } catch (_) {}
+    }
+    try { detectRooms(); } catch (_) {} try { refresh(); } catch (_) {} try { checkpoint(); } catch (_) {}
+  }
+
+  /* ---------------------------------------------------------------- comando */
+  const band = () => document.getElementById('scBandL');
+  let ban = null;
+  function ui() {
+    if (!AG) { if (ban) ban.style.display = 'none'; return; }
+    if (!ban) {
+      ban = document.createElement('div'); ban.id = 'agBan';
+      ban.style.cssText = 'display:flex;align-items:center;gap:6px;flex-wrap:nowrap;--bc:#a855f7';
+      ['pointerdown', 'pointerup', 'touchstart'].forEach(ev => ban.addEventListener(ev, e => e.stopPropagation(), {passive: true}));
+      ban.addEventListener('click', e => {
+        const b = e.target.closest('button'); if (!b) return; const a = b.dataset.a;
+        if (a === 'end') end(); else if (a === 'un') { AG.sel = null; ui(); draw2D(); }
+        else if (a === 'sug' && AG.sel && AG.sel.sug) closeSug(AG.sel.sug);
+        else if ('rob'.includes(a)) { F()[a] = !F()[a]; try { persistSettings(); } catch (_) {} ui(); draw2D(); }
+      });
+      const css = document.createElement('style');
+      css.textContent = '#agBan button.agf{min-width:0;padding:4px 8px;opacity:.45}#agBan button.agf.on{opacity:1}#agBan button.agf i{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:5px;vertical-align:-1px}#agBan .agt{font-weight:600}@media (max-width:1000px){#agBan .agt{display:none}#agBan button.agf i{margin-right:0;width:14px;height:14px}}';
+      document.head.appendChild(css);
+    }
+    const L = band(); if (L && ban.parentNode !== L) L.appendChild(ban);
+    const f = F(), s = AG.sel, nR = AG.pts.filter(q => q.cat === 'r').length;
+    const txt = !s ? '🧲 Aggancia · 1/2 tocca il punto da spostare' + (nR ? ' · ' + nR + ' estremità staccate' : '') : '🧲 2/2 tocca dove agganciarlo' + (s.sug ? ' · cerchio verde = chiusura proposta' : '');
+    const btn = (a, c, t) => '<button class="agf' + (f[a] ? ' on' : '') + '" data-a="' + a + '" title="Mostra / nascondi"><i style="background:' + c + '"></i><b class="agt">' + t + '</b></button>';
+    ban.innerHTML = '<span>' + txt + '</span>' + btn('r', COL.r, 'Muri aperti') + btn('o', COL.o, 'Aree e linee') + btn('b', COL.b, 'Altri punti') +
+      (s && s.sug ? '<button data-a="sug">✔ Chiudi come proposto</button>' : '') + (s ? '<button data-a="un">✖ Annulla punto</button>' : '') + '<button data-a="end">✔ Fine</button>';
+    ban.style.display = 'flex';
+  }
+  function start() {
+    try { document.querySelectorAll('.menu-dropdown.open,.menu-item.open').forEach(m => m.classList.remove('open')); } catch (_) {}
+    try { if (window.SCtin && SCtin.endCheck) SCtin.endCheck(); } catch (_) {}
+    try { ctxTool('select'); } catch (_) {} try { setSel([]); } catch (_) {}
+    AG = {sel: null, pts: collect()}; ui(); draw2D();
+    if (!AG.pts.some(q => q.cat === 'r')) toast('Nessun muro staccato: tocca un punto 🟠 o accendi 🔵 per agganciare altro');
+  }
+  function end() { if (!AG) return; AG = null; ui(); draw2D(); }
+  function closeSug(c) {
+    try { SCtin.closeOne(c); } catch (_) {}
+    try { const tb = document.getElementById('scTinBan'); if (tb) tb.style.display = 'none'; } catch (_) {}   /* closeOne riapre il vecchio riquadro: lo nascondiamo, resta Aggancia */
+    AG.sel = null; AG.pts = collect(); ui(); draw2D();
+  }
+  function near(cx, cy, list, R) {
+    const r = c2d.getBoundingClientRect(), x = cx - r.left, y = cy - r.top; let best = null, bd = R;
+    list.forEach(q => { const s = worldToScreen(q.p.x, q.p.y), d = Math.hypot(s.x - x, s.y - y); if (d < bd) { bd = d; best = q; } });
+    return best;
+  }
+  const _ht = handleTap;
+  handleTap = function (cx, cy) {
+    if (!AG) return _ht.apply(this, arguments);
+    const R = (window.SClastPT && SClastPT() === 'mouse') ? 14 : 26;
+    if (!AG.sel) {
+      const q = near(cx, cy, AG.pts.filter(q => shown(q, null)), R);
+      if (!q) { toast('Tocca un punto colorato (accendi 🔵 per gli altri punti)'); return; }
+      AG.sel = q; ui(); draw2D(); return;
+    }
+    const s = AG.sel, r = c2d.getBoundingClientRect();
+    if (s.sug) { const g = worldToScreen(s.sug.hit.x, s.sug.hit.y); if (Math.hypot(g.x - (cx - r.left), g.y - (cy - r.top)) < R) { closeSug(s.sug); return; } }
+    let q = near(cx, cy, AG.pts.filter(x => x !== s && x.ent !== s.ent && !same(x.p, s.p)), R), P = q ? q.p : null;
+    if (!P) {   /* nessun pallino: aggancio forzato a spigoli, facce, intersezioni */
+      const raw = screenToWorld(cx - r.left, cy - r.top), sp = document.getElementById('snapPts'), old = sp ? sp.checked : null;
+      try { if (sp) sp.checked = true; P = snapToVertex(raw, null); } catch (_) { P = raw; } finally { if (sp) sp.checked = old; }
+    }
+    if (!P || same(P, s.p)) { toast('È lo stesso punto: scegline un altro'); return; }
+    apply(s, P);
+    toast('Agganciato' + (s.kind === 'furn' ? ': arredo spostato' : s.kind === 'op' ? ': ' + (s.o.kind ? 'porta' : 'apertura') + ' allineata' : ''));
+    AG.sel = null; AG.pts = collect(); ui(); draw2D();
+  };
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && AG) { if (AG.sel) { AG.sel = null; ui(); draw2D(); } else end(); } });
+
+  /* ---------------------------------------------------------------- disegno */
+  (window.SCdraw && SCdraw.post || []).push(() => {
+    if (!AG) return;
+    if (state.tool !== 'select' && state.tool !== 'box') { end(); return; }
+    AG.pts = collect(); if (AG.sel) { const k = AG.pts.find(q => q.kind === AG.sel.kind && q.ent === AG.sel.ent && (q.k === AG.sel.k) && (q.i === AG.sel.i) && (q.s === AG.sel.s) && same(q.p, AG.sel.p)); if (k) AG.sel = k; }
+    const s = AG.sel, far = viewScale < 30;
+    ctx.save();
+    ['b', 'o', 'r'].forEach(cat => AG.pts.forEach(q => {
+      if (q.cat !== cat || !shown(q, s) || q === s) return;
+      if (cat === 'b' && far && !(s && Math.hypot(q.p.x - s.p.x, q.p.y - s.p.y) * viewScale < 140)) return;
+      const p = worldToScreen(q.p.x, q.p.y), rr = cat === 'r' ? 7 : cat === 'o' ? 5.5 : 3.8;
+      ctx.beginPath(); ctx.arc(p.x, p.y, rr, 0, 7); ctx.fillStyle = COL[cat]; ctx.fill(); ctx.lineWidth = 1.5; ctx.strokeStyle = '#fff'; ctx.stroke();
+    }));
+    if (s) {
+      const p = worldToScreen(s.p.x, s.p.y);
+      ctx.beginPath(); ctx.arc(p.x, p.y, 11, 0, 7); ctx.lineWidth = 3; ctx.strokeStyle = '#facc15'; ctx.stroke();
+      ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, 7); ctx.fillStyle = '#facc15'; ctx.fill();
+      if (s.sug) {
+        const g = worldToScreen(s.sug.hit.x, s.sug.hit.y);
+        ctx.setLineDash([5, 4]); ctx.lineWidth = 2; ctx.strokeStyle = '#22c55e'; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(g.x, g.y); ctx.stroke(); ctx.setLineDash([]);
+        ctx.beginPath(); ctx.arc(g.x, g.y, 10, 0, 7); ctx.lineWidth = 3; ctx.stroke();
+      }
+    }
+    ctx.restore();
+  });
+
+  /* ---------------------------------------------------------------- menu: «Controlla chiusure» diventa «Aggancia» */
+  const b = document.getElementById('chkCloseBtn');
+  if (b) { b.innerHTML = '<span class="mi-icon">🧲</span><span class="mi-label">Aggancia</span><span class="mi-kbd">unisci punti</span>'; b.onclick = e => { e.stopPropagation(); start(); }; }
+  if (window.SCtin) SCtin.check = start;
+  window.SCag = {start, end, active: () => !!AG, collect, sel: () => AG && AG.sel};
+})();
+
+/* ========================================================================
+   v18.9 · AREE: il tocco seleziona (riquadro solo con ✏ dalla barra), etichetta che non copre il nome della stanza
+   ======================================================================== */
+(function () {
+  /* etichetta dell'area: se cade sul nome di una stanza, scende sotto */
+  window.SCzoneLbl = (z, c, w, h) => {
+    try {
+      if (typeof roomNamesOn === 'function' && !roomNamesOn()) return c;
+      for (const r of state.rooms) {
+        if (!isEntityVisible(r) || !r.polygon || r.polygon.length < 3 || floorOf(r) !== floorOf(z)) continue;
+        const a = window.SCrl ? SCrl.pos(r) : null; if (!a) continue; const s = worldToScreen(a.x, a.y);
+        if (Math.abs(s.x - c.x) < w / 2 + 45 && Math.abs(s.y - c.y) < h / 2 + 20) return {x: c.x, y: s.y + 20 + h / 2 + 6};
+      }
+    } catch (_) {}
+    return c;
+  };
+  /* barra interattiva con un'area selezionata: ✏ Modifica area · 📋 Verifiche · 🗑 Elimina area */
+  const bar = document.getElementById('selBar'); if (!bar || !window.SCbar3) return;
+  const I = d => '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + '</svg>';
+  const zE = document.createElement('button'); zE.id = 'sbZoneEd'; zE.title = 'Modifica l’area: nome, lavorazione, tinteggiatura, colore'; zE.innerHTML = I('<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>'); zE.style.display = 'none';
+  const zD = document.createElement('button'); zD.id = 'sbZoneDel'; zD.className = 'dn'; zD.title = 'Elimina l’area'; zD.innerHTML = I('<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/>'); zD.style.display = 'none';
+  const za = () => window.SCzone && SCzone.active ? SCzone.active() : null;
+  zE.onclick = () => { const z = za(); if (z) SCzone.openPal(z); };
+  zD.onclick = async () => { const z = za(); if (!z) return; if (!await uiConfirm('Eliminare l’area «' + ((z.name || '').trim() || 'senza nome') + '»?')) return; state.zones = state.zones.filter(x => x !== z); try { checkpoint(); } catch (_) {} draw2D(); toast('Area eliminata'); };
+  const aG = document.createElement('button'); aG.id = 'sbAg'; aG.title = 'Aggancia: tocca il punto da spostare, poi dove agganciarlo'; aG.style.display = 'none';
+  aG.innerHTML = I('<path d="M6 3v8a6 6 0 0 0 12 0V3"/><path d="M6 7h4M14 7h4"/>'); aG.onclick = () => { if (window.SCag) SCag.start(); };
+  const u = document.getElementById('sbUndo'); (u || bar.firstChild).after(aG, zE, zD);
+  const e0 = SCbar3.empty;
+  SCbar3.empty = n => {
+    e0(n); const z = n === 0 && za();
+    zE.style.display = zD.style.display = z ? '' : 'none';
+    aG.style.display = (n === 0 && !z && !(window.SCag && SCag.active())) ? '' : 'none';   /* 🧲 sempre a portata senza selezione */
+    if (z) { if (u) u.style.display = 'none'; const vf = document.getElementById('sbVf'); if (vf) vf.style.display = ''; }
+  };
 })();
 
 </script>
