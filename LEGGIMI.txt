@@ -1,4 +1,4 @@
-SimplyCAD Pro - pubblicazione su GitHub Pages (v18.6)
+SimplyCAD Pro - pubblicazione su GitHub Pages (v18.7)
 
 Contenuto (vanno caricati tutti, senza rinominarli e SENZA cartelle intorno):
   index.html  sw.js  manifest.webmanifest  icon-192.png  icon-512.png  icon-maskable.png  README.md
@@ -78,3 +78,8 @@ NOVITÀ v18.5
 NOVITÀ v18.6
  - Prospetto del muro: lo zoom scelto resta (prima tornava alla vista completa); toccando l'interno di una nicchia o di un foro piccolo lo si sposta invece di ridimensionarlo.
  - Barra di modifica: si sposta solo con un trascinamento deciso dalla maniglia e non segue più il mouse; in ⚙️ › Selezione il pulsante per rimetterla in alto al centro.
+
+NOVITÀ v18.7
+ - Barra interattiva: si aggancia Sopra / Sotto / Sinistra / Destra o si nasconde (⚙️ › Icone & messaggi). Ai lati è verticale.
+   Senza selezione mostra Disegna e Annulla. Col prospetto aperto non lampeggia più.
+ - Strumenti rapidi (icone a sinistra) spenti di base: si riaccendono col pulsante «Strumenti» o da ⚙️.

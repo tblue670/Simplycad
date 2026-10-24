@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v18.6</title>
+<title>SimplyCAD Pro · v18.7</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -4126,7 +4126,7 @@ const buildProjectBlob = () => {
     floors: state.floors, currentFloorId: state.currentFloorId, floorSeq: state.floorSeq, roofs: state.roofs, holes: state.holes, zones: state.zones, ceils: state.ceils || [], beams: state.beams || [], cmpOff: state.cmpOff || [], cmpCustom: state.cmpCustom || [], cart: state.cart || null,
     photos: window.SCph ? SCph.exportUsed() : undefined,
     images: state.images.filter(i => i.dataUrl).map(i => ({id: i.id, name: i.name, layerId: i.layerId, floorId: i.floorId, opacity: i.opacity, scale: i.scale, x: i.x, y: i.y, rot: i.rot || 0, dataUrl: i.dataUrl})),
-    ...(window.SCauto ? SCauto.extras() : {}), appVersion: '18.6', fileFormat: 4,   /* v18.0: versione del programma che ha salvato */
+    ...(window.SCauto ? SCauto.extras() : {}), appVersion: '18.7', fileFormat: 4,   /* v18.0: versione del programma che ha salvato */
     settings: {wallThickness: document.getElementById('wallThickness').value, wallHeight: document.getElementById('wallHeight').value, wallMaterial: appSettings.wallMaterial, wallColor: appSettings.wallColor || '', gridSize: document.getElementById('gridSize').value}
   };
   return new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
@@ -4218,8 +4218,8 @@ document.getElementById('fileInput').onchange = (e) => {
       try { data = JSON.parse(txt); } catch (err) { return uiAlert('Il file ' + info + ' non è un progetto SimplyCAD leggibile.\n\n' + (txt.charAt(0) === '<' ? 'Sembra una pagina web: forse è stato scaricato il collegamento invece del file.' : 'Dettaglio: ' + err.message)); }
       if (!data || typeof data !== 'object' || !(Array.isArray(data.walls) || Array.isArray(data.floors))) return uiAlert('Il file ' + info + ' non contiene un progetto SimplyCAD.');
       setProjName(file.name);
-      { const v = String(data.appVersion || '').split('.').map(Number), me = [18, 6];   /* v18.0: file salvato da una versione più nuova */
-        if (v[0] > me[0] || (v[0] === me[0] && (v[1] || 0) > me[1])) setTimeout(() => uiAlert('Il file ' + info + ' è stato salvato con SimplyCAD v' + data.appVersion + ', più nuova di questa (v18.6).\n\nL\'ho aperto, ma le funzioni nuove potrebbero non vedersi e, se lo salvi da qui, andare perse. Aggiorna l\'app (chiudi e riapri, o ricarica la pagina) prima di modificarlo.'), 300); }
+      { const v = String(data.appVersion || '').split('.').map(Number), me = [18, 7];   /* v18.0: file salvato da una versione più nuova */
+        if (v[0] > me[0] || (v[0] === me[0] && (v[1] || 0) > me[1])) setTimeout(() => uiAlert('Il file ' + info + ' è stato salvato con SimplyCAD v' + data.appVersion + ', più nuova di questa (v18.7).\n\nL\'ho aperto, ma le funzioni nuove potrebbero non vedersi e, se lo salvi da qui, andare perse. Aggiorna l\'app (chiudi e riapri, o ricarica la pagina) prima di modificarlo.'), 300); }
       try { window.SCauto && SCauto.preReplace('pre-open'); } catch (_) {}
       state.walls = (data.walls || []).map(w => { if (!(parseFloat(w.thickness) > 0)) w.thickness = parseFloat(data.settings && data.settings.wallThickness) || parseFloat(document.getElementById('wallThickness').value) || 0.2; return w; });
       state.doors = (data.doors || []).map(d => ({rotation: 0, ...d}));
@@ -9805,7 +9805,7 @@ updateRoomList();
   };
   function place() {
     const n = state.sel.length || (state.selected ? 1 : 0), t = state.tool;
-    const show = n > 0 && state.mode === '2d' && (t === 'select' || t === 'box') && !document.body.classList.contains('sv-on');
+    const show = (n > 0 || !!window.SCbar3) && !(window.SCbar3 && SCbar3.hidden()) && state.mode === '2d' && (t === 'select' || t === 'box') && !document.body.classList.contains('sv-on');   /* v18.7: barra interattiva */
     bar.style.display = show ? 'flex' : 'none';
     if (!show) return;
     $('sbN').textContent = n + (n === 1 ? ' sel.' : ' sel.');
@@ -9816,7 +9816,7 @@ updateRoomList();
     $('sbPaste').style.display = clipHas() ? '' : 'none';
     $('sbNum').style.display = (window.SCvkOpen && window.SCvkCanEdit && SCvkCanEdit()) ? '' : 'none';   /* v16.1: anche per ruotare gli oggetti */
     if (window.SCbar2) try { SCbar2.vis(); } catch (_) {}   /* v17.1 */
-    if (window.SCband && SCband.applyBar()) return;   /* v18.3: spostata a mano */
+    if (window.SCbar3) { try { SCbar3.empty(n); SCbar3.pos(); } catch (_) {} return; }   /* v18.7: agganciata al bordo scelto */
     const r = c2d.getBoundingClientRect(), bw = bar.offsetWidth || 220;
     bar.style.left = Math.max(6, Math.min(innerWidth - bw - 6, r.left + (r.width - bw) / 2)) + 'px';
     bar.style.top = Math.max(4, r.top + 6) + 'px';
@@ -15258,10 +15258,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     const g = target(); btn.style.display = g ? '' : 'none';
     btn.title = g && g.o ? 'Prospetto del muro: modifica ' + (g.o.kind === 'door' ? 'la porta' : 'la finestra') + ' sul muro' : 'Prospetto del muro: fori, nicchie, tagli, contropareti';
     if (!bar) return;
-    if (S.open && bar.style.display !== 'none') {   /* con lo schermo diviso la barra resta nella metà della pianta, andando a capo */
-      const r = c2d.getBoundingClientRect(); bar.style.flexWrap = 'wrap'; bar.style.maxWidth = Math.max(160, r.width - 12) + 'px'; bar.style.borderRadius = '14px';
-      const bw = bar.offsetWidth; bar.style.left = Math.max(r.left + 6, Math.min(r.right - bw - 6, r.left + (r.width - bw) / 2)) + 'px';
-    } else if (bar.style.maxWidth) { bar.style.flexWrap = ''; bar.style.maxWidth = ''; bar.style.borderRadius = ''; }
+    if (window.SCselbar) try { SCselbar.place(); } catch (_) {}   /* v18.7: posizione decisa solo dalla barra interattiva */
   };
   const _usp = updateSelectionPanel;
   updateSelectionPanel = function () {
@@ -19474,8 +19471,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
      (guida strumenti, controlla chiusure, tinteggiatura, copia proprietà, nota, allinea immagine),
      avvisi brevi e, a destra, numero di muri e scala. Niente più riquadri sopra la pianta.
    - Il disegno si accorcia una volta per tutte (margine sotto l'area di lavoro): non salta.
-   - Barra di modifica: si trascina dalla maniglia a sinistra, ricorda la posizione,
-     doppio tocco sulla maniglia = torna in alto al centro.
+   - (v18.7: la barra di modifica non si trascina più: si aggancia ai bordi, vedi «barra interattiva»)
    ======================================================================== */
 (function () {
   const ws = document.querySelector('.workspace'); if (!ws) return;
@@ -19507,9 +19503,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   #scBand.busy #scBandR{display:none}
   #scBand #status,#scBand #scaleBadge{position:static!important;transform:none!important;background:transparent!important;padding:0!important;border:0!important;color:#94a3b8!important;font-size:12px!important}
   @media (max-width:700px){#scBandR .scale-badge{display:none}}
-  #selBar #sbN{cursor:grab;touch-action:none;padding:4px 6px 4px 2px;border-radius:12px}
-  #selBar #sbN::before{content:'⠿';margin-right:3px;color:#64748b;font-size:14px}
-  #selBar.sb-drag{box-shadow:0 6px 24px rgba(56,189,248,.45)}`;
+`;
   document.head.appendChild(css);
 
   /* posizione della striscia: sotto l'area di lavoro, larga quanto lei */
@@ -19544,49 +19538,81 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   let svWas = document.body.classList.contains('sv-on');   /* rilievo a tutto schermo: la striscia sparisce e il disegno riprende l'altezza */
   new MutationObserver(() => { const sv = document.body.classList.contains('sv-on'); if (sv === svWas) return; svWas = sv; setTimeout(() => { place(); window.dispatchEvent(new Event('resize')); }, 30); }).observe(document.body, {attributes: true, attributeFilter: ['class']});
 
-  /* ---------------------------------------------------------------- barra di modifica trascinabile */
-  const bar = document.getElementById('selBar'), grip = document.getElementById('sbN');
-  if (bar && grip) {
-    let D = null, lastTap = 0;
-    grip.title = 'Trascina per spostare la barra · doppio tocco: torna in alto al centro';
-    grip.addEventListener('pointerdown', e => {
-      e.preventDefault(); e.stopPropagation();
-      const now = Date.now();
-      if (now - lastTap < 350) { delete appSettings.sbPos; try { persistSettings(); } catch (_) {} lastTap = 0; if (window.SCselbar) SCselbar.place(); toast('Barra di modifica: posizione automatica'); return; }
-      lastTap = now;
-      const r = bar.getBoundingClientRect(); D = {dx: e.clientX - r.left, dy: e.clientY - r.top, x0: e.clientX, y0: e.clientY, id: e.pointerId, moved: false};
-      try { grip.setPointerCapture(e.pointerId); } catch (_) {}
-    });
-    grip.addEventListener('pointermove', e => {
-      if (!D) return;
-      if (e.pointerType === 'mouse' && !e.buttons) { end(e); return; }   /* v18.6: tasto già rilasciato (rilascio perso) → la barra non segue più il mouse */
-      e.preventDefault();
-      const x = e.clientX - D.dx, y = e.clientY - D.dy;
-      if (!D.moved && Math.hypot(e.clientX - D.x0, e.clientY - D.y0) < 10) return;   /* si sposta solo con un trascinamento deciso */
-      D.moved = true; bar.classList.add('sb-drag');
-      appSettings.sbPos = clampPos(x, y); apply();
-    });
-    const end = e => { if (!D) return; if (D.moved) { lastTap = 0; try { persistSettings(); } catch (_) {} } D = null; bar.classList.remove('sb-drag'); };
-    grip.addEventListener('pointerup', end); grip.addEventListener('pointercancel', end); grip.addEventListener('lostpointercapture', end);
-    window.addEventListener('pointerup', e => { if (D && e.pointerId === D.id) end(e); }, true);
-    grip.addEventListener('click', e => e.stopPropagation());
+  window.SCband = {place, move, applyBar: () => false, height: () => document.body.classList.contains('sv-on') ? 0 : H};
+})();
+
+</script>
+<script>
+/* ========================================================================
+   v18.7 · BARRA INTERATTIVA
+   - La barra di modifica si aggancia a un bordo della pianta: Sopra · Sotto · Sinistra · Destra, oppure Nascosta
+     (⚙️ › Icone & messaggi nell'area di lavoro). Ai lati diventa verticale.
+   - Una sola regola decide dove sta (anche con il prospetto a schermo diviso): niente più lampeggi.
+   - Senza selezione resta visibile con 🖊 Disegna e ↩ Annulla; selezionando diventa la barra di modifica.
+   - Strumenti rapidi (colonna di icone a sinistra): nascosti di base, si riaccendono da «Strumenti» o da ⚙️.
+   ======================================================================== */
+(function () {
+  const bar = $('selBar'), ws = document.querySelector('.workspace'); if (!bar || !ws) return;
+  const POS = ['top', 'bottom', 'left', 'right', 'hidden'];
+  if (!POS.includes(appSettings.sbPos)) appSettings.sbPos = 'top';   /* anche la vecchia posizione «trascinata» */
+  if (!appSettings.v187qt) {   /* una volta sola: strumenti rapidi spenti (si riaccendono con «Strumenti») */
+    appSettings.v187qt = 1;
+    if (appSettings.qtPos !== 'hidden') { appSettings.qtLast = appSettings.qtPos; appSettings.qtPos = 'hidden'; }
+    try { persistSettings(); applyDocks(); } catch (_) {}
   }
-  function clampPos(x, y) {
-    const bw = bar.offsetWidth || 220, bh = bar.offsetHeight || 40, r = ws.getBoundingClientRect();
-    return {x: Math.max(4, Math.min(innerWidth - bw - 4, x)) / innerWidth, y: Math.max(4, Math.min(r.bottom - bh - 4, y)) / innerHeight};
+  const css = document.createElement('style');
+  css.textContent = `#selBar.sb-vert{flex-direction:column;border-radius:18px;padding:5px 3px}
+  #selBar.sb-vert .sb-n{padding:2px 0;font-size:11px;text-align:center}
+  #selBar.sb-row{flex-direction:row}`;
+  document.head.appendChild(css);
+
+  /* ↩ Annulla quando non c'è selezione */
+  const u = document.createElement('button'); u.id = 'sbUndo'; u.title = 'Annulla'; u.style.display = 'none';
+  u.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg>';
+  u.onclick = () => { try { undo(); } catch (_) {} };
+  const dr = $('sbDraw'); if (dr) dr.after(u); else bar.prepend(u);
+
+  function empty(n) {
+    const z = n === 0;
+    ['sbN', 'sbAdd', 'sbEdit', 'sbMore', 'sbDel', 'sbEnd'].forEach(id => { const e = $(id); if (e) e.style.display = z ? 'none' : ''; });
+    u.style.display = z ? '' : 'none';
   }
-  function apply() {
-    const p = appSettings.sbPos; if (!p || !bar) return false;
-    const c = clampPos(p.x * innerWidth, p.y * innerHeight);
-    bar.style.left = (c.x * innerWidth) + 'px'; bar.style.top = (c.y * innerHeight) + 'px';
-    return true;
+  const num = k => parseFloat(getComputedStyle(ws).getPropertyValue(k)) || 0;
+  function pos() {
+    const p = appSettings.sbPos, r = c2d.getBoundingClientRect(), vert = p === 'left' || p === 'right';
+    bar.classList.toggle('sb-vert', vert); bar.classList.toggle('sb-row', !vert);
+    bar.style.flexWrap = 'wrap'; bar.style.borderRadius = '';
+    if (vert) { bar.style.maxWidth = ''; bar.style.maxHeight = Math.max(120, r.height - 12) + 'px'; }
+    else { bar.style.maxHeight = ''; bar.style.maxWidth = Math.max(160, r.width - 12) + 'px'; }
+    const bw = bar.offsetWidth || 200, bh = bar.offsetHeight || 40;
+    let x, y;
+    if (p === 'left') { x = r.left + 6 + num('--dl'); y = r.top + (r.height - bh) / 2; }
+    else if (p === 'right') { x = r.right - bw - 6 - num('--dr'); y = r.top + (r.height - bh) / 2; }
+    else if (p === 'bottom') { x = r.left + (r.width - bw) / 2; y = r.bottom - bh - 6 - num('--db'); }
+    else { x = r.left + (r.width - bw) / 2; y = r.top + 6; }
+    x = Math.max(r.left + 4, Math.min(r.right - bw - 4, x)); y = Math.max(r.top + 4, Math.min(r.bottom - bh - 4, y));
+    bar.style.left = Math.round(x) + 'px'; bar.style.top = Math.round(y) + 'px';
   }
-  try {   /* ⚙️ › Selezione: rimettere la barra al suo posto */
-    const host = document.getElementById('setHostSel');
-    if (host) { const bt = document.createElement('button'); bt.type = 'button'; bt.className = 'action'; bt.style.marginTop = '8px'; bt.textContent = '↺ Barra di modifica: rimettila in alto al centro';
-      bt.onclick = () => { delete appSettings.sbPos; try { persistSettings(); } catch (_) {} if (window.SCselbar) SCselbar.place(); toast('Barra di modifica: posizione automatica'); }; host.appendChild(bt); }
+
+  /* ⚙️: riga «Barra interattiva» accanto agli strumenti rapidi */
+  try {
+    const qt = document.querySelector('.dock-grid[data-tb="qt"]');
+    if (qt) {
+      const lab = document.createElement('label'); lab.textContent = 'Barra interattiva (modifica e disegno)';
+      const g = document.createElement('div'); g.className = 'dock-grid'; g.dataset.tb = 'sb';
+      g.innerHTML = [['top', '⬆️ Sopra'], ['bottom', '⬇️ Sotto'], ['left', '⬅️ Sinistra'], ['right', '➡️ Destra'], ['hidden', '🙈 Nascosta']].map(([k, t]) => `<button class="dock-btn" data-tb="sb" data-pos="${k}">${t}</button>`).join('');
+      const ql = qt.previousElementSibling; (ql && ql.tagName === 'LABEL' ? ql : qt).before(lab, g);
+      const sync = () => g.querySelectorAll('.dock-btn').forEach(b => b.classList.toggle('active', appSettings.sbPos === b.dataset.pos));
+      g.querySelectorAll('.dock-btn').forEach(b => b.onclick = e => {
+        e.stopPropagation(); appSettings.sbPos = b.dataset.pos; persistSettings(); sync();
+        if (window.SCselbar) SCselbar.place();
+        if (b.dataset.pos === 'hidden') toast('Barra interattiva nascosta: per modificare usa il menu Modifica o il tocco con due dita');
+      });
+      sync(); setInterval(sync, 1000);
+    }
   } catch (_) {}
-  window.SCband = {place, move, applyBar: apply, height: () => document.body.classList.contains('sv-on') ? 0 : H};
+
+  window.SCbar3 = {pos, empty, hidden: () => appSettings.sbPos === 'hidden'};
 })();
 
 </script>
