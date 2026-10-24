@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v18.4</title>
+<title>SimplyCAD Pro · v18.6</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -4126,7 +4126,7 @@ const buildProjectBlob = () => {
     floors: state.floors, currentFloorId: state.currentFloorId, floorSeq: state.floorSeq, roofs: state.roofs, holes: state.holes, zones: state.zones, ceils: state.ceils || [], beams: state.beams || [], cmpOff: state.cmpOff || [], cmpCustom: state.cmpCustom || [], cart: state.cart || null,
     photos: window.SCph ? SCph.exportUsed() : undefined,
     images: state.images.filter(i => i.dataUrl).map(i => ({id: i.id, name: i.name, layerId: i.layerId, floorId: i.floorId, opacity: i.opacity, scale: i.scale, x: i.x, y: i.y, rot: i.rot || 0, dataUrl: i.dataUrl})),
-    ...(window.SCauto ? SCauto.extras() : {}), appVersion: '18.4', fileFormat: 4,   /* v18.0: versione del programma che ha salvato */
+    ...(window.SCauto ? SCauto.extras() : {}), appVersion: '18.6', fileFormat: 4,   /* v18.0: versione del programma che ha salvato */
     settings: {wallThickness: document.getElementById('wallThickness').value, wallHeight: document.getElementById('wallHeight').value, wallMaterial: appSettings.wallMaterial, wallColor: appSettings.wallColor || '', gridSize: document.getElementById('gridSize').value}
   };
   return new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
@@ -4218,8 +4218,8 @@ document.getElementById('fileInput').onchange = (e) => {
       try { data = JSON.parse(txt); } catch (err) { return uiAlert('Il file ' + info + ' non è un progetto SimplyCAD leggibile.\n\n' + (txt.charAt(0) === '<' ? 'Sembra una pagina web: forse è stato scaricato il collegamento invece del file.' : 'Dettaglio: ' + err.message)); }
       if (!data || typeof data !== 'object' || !(Array.isArray(data.walls) || Array.isArray(data.floors))) return uiAlert('Il file ' + info + ' non contiene un progetto SimplyCAD.');
       setProjName(file.name);
-      { const v = String(data.appVersion || '').split('.').map(Number), me = [18, 4];   /* v18.0: file salvato da una versione più nuova */
-        if (v[0] > me[0] || (v[0] === me[0] && (v[1] || 0) > me[1])) setTimeout(() => uiAlert('Il file ' + info + ' è stato salvato con SimplyCAD v' + data.appVersion + ', più nuova di questa (v18.4).\n\nL\'ho aperto, ma le funzioni nuove potrebbero non vedersi e, se lo salvi da qui, andare perse. Aggiorna l\'app (chiudi e riapri, o ricarica la pagina) prima di modificarlo.'), 300); }
+      { const v = String(data.appVersion || '').split('.').map(Number), me = [18, 6];   /* v18.0: file salvato da una versione più nuova */
+        if (v[0] > me[0] || (v[0] === me[0] && (v[1] || 0) > me[1])) setTimeout(() => uiAlert('Il file ' + info + ' è stato salvato con SimplyCAD v' + data.appVersion + ', più nuova di questa (v18.6).\n\nL\'ho aperto, ma le funzioni nuove potrebbero non vedersi e, se lo salvi da qui, andare perse. Aggiorna l\'app (chiudi e riapri, o ricarica la pagina) prima di modificarlo.'), 300); }
       try { window.SCauto && SCauto.preReplace('pre-open'); } catch (_) {}
       state.walls = (data.walls || []).map(w => { if (!(parseFloat(w.thickness) > 0)) w.thickness = parseFloat(data.settings && data.settings.wallThickness) || parseFloat(document.getElementById('wallThickness').value) || 0.2; return w; });
       state.doors = (data.doors || []).map(d => ({rotation: 0, ...d}));
@@ -4899,12 +4899,21 @@ function build3D() {
   toRemove.forEach(o => { if (o.parent) o.parent.remove(o); });
 
   const wh = getDefaultWallHeight();
-  { const gh = new THREE.GridHelper(40, 40, 0x4a4a6e, 0x2a2a3e); if (document.getElementById('showFloor').checked) gh.position.y = -0.06; scene.add(gh); }   /* v12.9.5: col pavimento la griglia sta sotto il terreno (niente righe che traspaiono) */
+  const BG = (() => {   /* v18.5: estensione di tutto il disegno (tutti i piani) */
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    withAllFloors(() => state.walls.forEach(w => { if (!isEntityVisible(w)) return; [w.p1, w.p2].forEach(p => { x0 = Math.min(x0, p.x); y0 = Math.min(y0, p.y); x1 = Math.max(x1, p.x); y1 = Math.max(y1, p.y); }); }));
+    if (!isFinite(x0)) return {cx: 0, cy: 0, S: 40};
+    return {cx: Math.round((x0 + x1) / 2), cy: Math.round((y0 + y1) / 2), S: Math.max(40, 2 * Math.ceil((Math.max(x1 - x0, y1 - y0) + 24) / 2))};
+  })();
+  if (!document.getElementById('showFloor').checked) {   /* griglia solo senza pavimento, appena sotto lo zero e senza scrivere la profondità: non attraversa muri e pavimenti */
+    const gh = new THREE.GridHelper(BG.S, BG.S, 0x4a4a6e, 0x2a2a3e); gh.position.set(BG.cx, -0.02, -BG.cy);
+    [].concat(gh.material).forEach(m => { m.depthWrite = false; m.transparent = true; m.opacity = 0.85; }); gh.renderOrder = -1; gh.userData.backdrop = true; scene.add(gh);
+  }
 
   if (document.getElementById('showFloor').checked) {
-    const f = new THREE.Mesh(new THREE.PlaneGeometry(40, 40),
+    const f = new THREE.Mesh(new THREE.PlaneGeometry(BG.S, BG.S),
       new THREE.MeshStandardMaterial({color: isNight ? 0x2a2a44 : 0x3a3a5e, roughness: 0.9, polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 2}));
-    f.rotation.x = -Math.PI/2; f.position.y = -0.03; f.receiveShadow = true; scene.add(f);
+    f.rotation.x = -Math.PI/2; f.position.set(BG.cx, -0.03, -BG.cy); f.receiveShadow = true; f.userData.backdrop = true; scene.add(f);
   }
   const floorOn = document.getElementById('showFloor').checked;
   if (floorOn) { try { addOpenFloor3D(); } catch (err) { console.warn('pavimento 3D', err); } }
@@ -4998,9 +5007,9 @@ function build3D() {
     scene.add(grp);
   }
   if (document.getElementById('showCeiling').checked) {
-    const c = new THREE.Mesh(new THREE.PlaneGeometry(40, 40),
+    const c = new THREE.Mesh(new THREE.PlaneGeometry(BG.S, BG.S),
       new THREE.MeshStandardMaterial({color: 0xf0f0f0, roughness: 0.9, transparent: true, opacity: 0.4}));
-    c.rotation.x = Math.PI/2; c.position.y = wh + 0.004; scene.add(c);   /* v12.5: appena sopra le teste dei muri */
+    c.rotation.x = Math.PI/2; c.position.set(BG.cx, wh + 0.004, -BG.cy); c.userData.ceil = true; scene.add(c);   /* v12.5: appena sopra le teste dei muri */
   }
   {
     const showF = document.getElementById('showFurniture').checked;
@@ -11931,8 +11940,8 @@ updateRoomList();
     });
     return out;
   }
-  const isBackdrop = o => o.isGridHelper || o.type === 'GridHelper' || (o.geometry && o.geometry.type === 'PlaneGeometry' && o.geometry.parameters && o.geometry.parameters.width === 40 && o.geometry.parameters.height === 40);
-  const isCeil = o => o.geometry && o.geometry.type === 'PlaneGeometry' && o.geometry.parameters && o.geometry.parameters.width === 40 && o.position.y > 0.5;
+  const isBackdrop = o => (o.userData && o.userData.backdrop) || o.isGridHelper || o.type === 'GridHelper' || (o.geometry && o.geometry.type === 'PlaneGeometry' && o.geometry.parameters && o.geometry.parameters.width === 40 && o.geometry.parameters.height === 40);
+  const isCeil = o => (o.userData && o.userData.ceil) || o.geometry && o.geometry.type === 'PlaneGeometry' && o.geometry.parameters && o.geometry.parameters.width === 40 && o.position.y > 0.5;
   const _b3 = build3D;
   build3D = function () {
     if (state.mode !== '3d') return _b3.apply(this, arguments);
@@ -14282,7 +14291,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     scene.traverse(o => {
       if (!o.isMesh || (o.userData && o.userData.noExport)) return;
       const g = o.geometry; if (!g || !g.attributes || !g.attributes.position) return;
-      if (g.type === 'PlaneGeometry' && g.parameters && g.parameters.width === 40 && g.parameters.height === 40) return;
+      if ((o.userData && (o.userData.backdrop || o.userData.ceil)) || (g.type === 'PlaneGeometry' && g.parameters && g.parameters.width === 40 && g.parameters.height === 40)) return;
       let m = o.material; if (Array.isArray(m)) m = m[0];
       const col = m && m.color ? m.color.getHex() : 0xcccccc, op = m && m.transparent ? m.opacity : 1;
       const key = col + '|' + op;
@@ -14722,7 +14731,11 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   function sizeCanvas() {
     const r = cv.getBoundingClientRect(), dpr = Math.max(1, devicePixelRatio || 1), k = Math.round(r.width) + 'x' + Math.round(r.height);
     if (r.width < 2 || r.height < 2) return;
-    if (k !== lastCv) { lastCv = k; cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr); fitView(); }
+    if (k !== lastCv) {
+      const oW = cv.width / dpr, oH = cv.height / dpr; lastCv = k; cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
+      if (S.keepView && S.view && S.keepFor === S.wallId + ':' + S.face && oW > 2) { S.view.ox += (r.width - oW) / 2; S.view.oy += (r.height - oH) / 2; }   /* v18.6: zoom dell'utente conservato */
+      else fitView();
+    }
   }
   (function grip() {
     const gp = $w('wkGrip'); let d = null, raf = 0;
@@ -14776,7 +14789,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
 
   /* ---------------------------------------------------------------- vista del prospetto */
   function fitView() {
-    const w = wById(S.wallId); if (!w) return;
+    const w = wById(S.wallId); if (!w) return; S.keepView = false;
     const dpr = Math.max(1, devicePixelRatio || 1), W = cv.width / dpr, H = cv.height / dpr, L = Lw(w), Hw = wh(w);
     const ml = 58, mr = 24, mt = 34, mb = 70, s = Math.max(5, Math.min((W - ml - mr) / L, (H - mt - mb) / Hw));
     S.view = {s, ox: ml + (W - ml - mr - L * s) / 2, oy: mt + (H - mt - mb + Hw * s) / 2};
@@ -14953,6 +14966,8 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   }
   function hitHandle(w, k, px, py) {
     const kk = S.oSel ? k : clampWork(w, {...k}); let best = null, bd = 18;
+    { const H0 = handles(w, kk); if (H0.length) { const xs = H0.map(q => sx(q[0])), ys = H0.map(q => sy(q[1])), wpx = Math.max(...xs) - Math.min(...xs), hpx = Math.max(...ys) - Math.min(...ys);
+      bd = Math.max(7, Math.min(18, 0.28 * Math.min(wpx, hpx))); } }   /* v18.6: maniglie più piccole sugli elementi piccoli, così il centro resta «sposta» */
     handles(w, kk).forEach(([u, v, n]) => { const d = Math.hypot(sx(u) - px, sy(v) - py); if (d < bd) { bd = d; best = n; } });
     return best;
   }
@@ -15011,7 +15026,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       const [a, b] = [...S.pts.values()], d = Math.hypot(a.x - b.x, a.y - b.y), mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2, r = cv.getBoundingClientRect();
       const k = Math.max(0.2, Math.min(5, d / Math.max(1, S.pinch.d))), px = mx - r.left, py = my - r.top;
       S.view.ox = px - (px - S.view.ox) * k + (mx - S.pinch.mx); S.view.oy = py - (py - S.view.oy) * k + (my - S.pinch.my); S.view.s *= k;
-      S.pinch = {d, mx, my}; render(); return;
+      S.pinch = {d, mx, my}; S.keepView = true; S.keepFor = S.wallId + ':' + S.face; render(); return;
     }
     const pk = S.pick;
     if (!pk || pk.id !== e.pointerId) {   // mouse senza tasto: anteprima del punto
@@ -15020,7 +15035,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     }
     pk.run += Math.hypot(e.clientX - pk.fx, e.clientY - pk.fy); pk.fx = e.clientX; pk.fy = e.clientY; if (pk.run > 4) pk.moved = true;
     const p = pk.finger ? offsetPos(e.clientX, e.clientY, pk.run) : local(e), uv = toUV(p.x, p.y);
-    if (S.drag && S.drag.kind === 'pan') { S.view.ox += e.clientX - S.drag.x; S.view.oy += e.clientY - S.drag.y; S.drag.x = e.clientX; S.drag.y = e.clientY; S.cur = null; render(); return; }
+    if (S.drag && S.drag.kind === 'pan') { S.keepView = true; S.keepFor = S.wallId + ':' + S.face; S.view.ox += e.clientX - S.drag.x; S.view.oy += e.clientY - S.drag.y; S.drag.x = e.clientX; S.drag.y = e.clientY; S.cur = null; render(); return; }
     if (S.drag) { applyDrag(w, uv); S.cur = uv; render(); return; }
     S.cur = snapUV(w, uv.u, uv.v); render();
   });
@@ -15038,7 +15053,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   };
   cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
   cv.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse' && !S.pick) { S.hover = false; S.cur = null; render(); } });
-  cv.addEventListener('wheel', e => { if (!S.view) return; e.preventDefault(); const p = local(e), k = e.deltaY < 0 ? 1.15 : 1 / 1.15; S.view.ox = p.x - (p.x - S.view.ox) * k; S.view.oy = p.y - (p.y - S.view.oy) * k; S.view.s *= k; render(); }, {passive: false});
+  cv.addEventListener('wheel', e => { if (!S.view) return; e.preventDefault(); const p = local(e), k = e.deltaY < 0 ? 1.15 : 1 / 1.15; S.view.ox = p.x - (p.x - S.view.ox) * k; S.view.oy = p.y - (p.y - S.view.oy) * k; S.view.s *= k; S.keepView = true; S.keepFor = S.wallId + ':' + S.face; render(); }, {passive: false});
   cv.addEventListener('contextmenu', e => e.preventDefault());
 
   /* ---------------------------------------------------------------- pulsanti, campi e tastierino */
@@ -19539,18 +19554,21 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       const now = Date.now();
       if (now - lastTap < 350) { delete appSettings.sbPos; try { persistSettings(); } catch (_) {} lastTap = 0; if (window.SCselbar) SCselbar.place(); toast('Barra di modifica: posizione automatica'); return; }
       lastTap = now;
-      const r = bar.getBoundingClientRect(); D = {dx: e.clientX - r.left, dy: e.clientY - r.top, moved: false};
+      const r = bar.getBoundingClientRect(); D = {dx: e.clientX - r.left, dy: e.clientY - r.top, x0: e.clientX, y0: e.clientY, id: e.pointerId, moved: false};
       try { grip.setPointerCapture(e.pointerId); } catch (_) {}
     });
     grip.addEventListener('pointermove', e => {
-      if (!D) return; e.preventDefault();
+      if (!D) return;
+      if (e.pointerType === 'mouse' && !e.buttons) { end(e); return; }   /* v18.6: tasto già rilasciato (rilascio perso) → la barra non segue più il mouse */
+      e.preventDefault();
       const x = e.clientX - D.dx, y = e.clientY - D.dy;
-      if (!D.moved && Math.hypot(x - bar.getBoundingClientRect().left, y - bar.getBoundingClientRect().top) < 4) return;
+      if (!D.moved && Math.hypot(e.clientX - D.x0, e.clientY - D.y0) < 10) return;   /* si sposta solo con un trascinamento deciso */
       D.moved = true; bar.classList.add('sb-drag');
       appSettings.sbPos = clampPos(x, y); apply();
     });
     const end = e => { if (!D) return; if (D.moved) { lastTap = 0; try { persistSettings(); } catch (_) {} } D = null; bar.classList.remove('sb-drag'); };
-    grip.addEventListener('pointerup', end); grip.addEventListener('pointercancel', end);
+    grip.addEventListener('pointerup', end); grip.addEventListener('pointercancel', end); grip.addEventListener('lostpointercapture', end);
+    window.addEventListener('pointerup', e => { if (D && e.pointerId === D.id) end(e); }, true);
     grip.addEventListener('click', e => e.stopPropagation());
   }
   function clampPos(x, y) {
@@ -19563,6 +19581,11 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     bar.style.left = (c.x * innerWidth) + 'px'; bar.style.top = (c.y * innerHeight) + 'px';
     return true;
   }
+  try {   /* ⚙️ › Selezione: rimettere la barra al suo posto */
+    const host = document.getElementById('setHostSel');
+    if (host) { const bt = document.createElement('button'); bt.type = 'button'; bt.className = 'action'; bt.style.marginTop = '8px'; bt.textContent = '↺ Barra di modifica: rimettila in alto al centro';
+      bt.onclick = () => { delete appSettings.sbPos; try { persistSettings(); } catch (_) {} if (window.SCselbar) SCselbar.place(); toast('Barra di modifica: posizione automatica'); }; host.appendChild(bt); }
+  } catch (_) {}
   window.SCband = {place, move, applyBar: apply, height: () => document.body.classList.contains('sv-on') ? 0 : H};
 })();
 

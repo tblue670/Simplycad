@@ -1,4 +1,4 @@
-SimplyCAD Pro - pubblicazione su GitHub Pages (v18.4)
+SimplyCAD Pro - pubblicazione su GitHub Pages (v18.6)
 
 Contenuto (vanno caricati tutti, senza rinominarli e SENZA cartelle intorno):
   index.html  sw.js  manifest.webmanifest  icon-192.png  icon-512.png  icon-maskable.png  README.md
@@ -70,3 +70,11 @@ NOVITÀ v18.3
 
 NOVITÀ v18.4
  - Riga messaggi: istruzioni e avvisi su due righe invece di troncati; i dati di stato (muri, scala) si nascondono mentre c'è un messaggio e non si sovrappongono più.
+
+NOVITÀ v18.5
+ - 3D: terreno, griglia e soffitto grandi quanto il disegno e centrati su di esso (prima 40x40 m fissi);
+   la griglia compare solo senza pavimento e non attraversa più muri e pavimenti.
+
+NOVITÀ v18.6
+ - Prospetto del muro: lo zoom scelto resta (prima tornava alla vista completa); toccando l'interno di una nicchia o di un foro piccolo lo si sposta invece di ridimensionarlo.
+ - Barra di modifica: si sposta solo con un trascinamento deciso dalla maniglia e non segue più il mouse; in ⚙️ › Selezione il pulsante per rimetterla in alto al centro.
