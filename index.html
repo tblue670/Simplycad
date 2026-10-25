@@ -14648,7 +14648,10 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   #wkPanel.wk-full .wk-grip{display:none}
   /* v12.9.1: a tutto schermo titolo, strumenti e comandi su una sola riga */
   #wkPanel.wk-one .wk-head{flex-wrap:nowrap}
-  #wkPanel.wk-one .wk-head .wk-tools{display:flex;flex-wrap:nowrap;gap:5px;padding:0;border:0;flex:0 0 auto;order:1}
+  #wkPanel.wk-one .wk-head .wk-tools{display:flex;flex-wrap:nowrap;gap:5px;padding:0;border:0;flex:0 1 auto;min-width:0;overflow-x:auto;scrollbar-width:none;order:1}
+  #wkPanel.wk-one .wk-head .wk-tools::-webkit-scrollbar{display:none}
+  #wkPanel.wk-one .wk-head .wk-tools .wk-b{flex:0 0 auto;padding:0 6px;font-size:12px;min-width:0;height:34px}
+  #wkPanel.wk-one .wk-head > .wk-b{flex:0 0 auto}
   #wkPanel.wk-one .wk-title{flex:0 0 auto;max-width:150px;order:0}
   #wkPanel.wk-one .wk-title small{display:none}
   #wkPanel.wk-one .wk-head > .wk-b{order:2}
