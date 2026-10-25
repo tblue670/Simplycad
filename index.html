@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v21.4</title>
+<title>SimplyCAD Pro · v21.5</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -19731,6 +19731,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
 window.SC_REL = {
   v: '21.4', d: '25/10/2026',
   news: [
+    ['21.5', 'Aggancia → «✂ Sgancia»: ora funziona sul punto condiviso di due muri uniti anche con «Altri punti» spenti (il punto si mostra da solo). Il comando riattiva i punti 🔵.'],
     ['21.4', 'Posa a correre: la prima fila parte da una piastrella intera dal punto scelto (anche lontano da muri e porte). Nuovo cursore «Disordine» con «Altra variante» per sfasare le file.'],
     ['21.3', 'Skin sul pavimento: niente più triangoli scoperti lungo i bordi obliqui dell’area (la posa va fino al bordo reale).'],
     ['21.2', 'Aree con skin sul pavimento: porte e finestre aperte, muri e arredi tornano visibili sopra la skin.'],
@@ -19857,7 +19858,7 @@ window.SC_REL = {
     });
     return P;
   }
-  const shown = (q, sel) => F()[q.cat] || (sel && q.ent !== sel.ent && Math.hypot(q.p.x - sel.p.x, q.p.y - sel.p.y) * viewScale < 140);
+  const shown = (q, sel) => F()[q.cat] || (AG && AG.solo && q.cat === 'b') || (sel && q.ent !== sel.ent && Math.hypot(q.p.x - sel.p.x, q.p.y - sel.p.y) * viewScale < 140);
 
   /* ---------------------------------------------------------------- spostamenti */
   function moveWallEnd(sel, P) {
@@ -19894,7 +19895,7 @@ window.SC_REL = {
       ban.addEventListener('click', e => {
         const b = e.target.closest('button'); if (!b) return; const a = b.dataset.a;
         if (a === 'end') end(); else if (a === 'un') { AG.sel = null; ui(); draw2D(); }
-        else if (a === 'solo') { AG.solo = !AG.solo; AG.sel = null; toast(AG.solo ? 'Sgancia attivo: tocca il punto condiviso (accendi 🔵 Altri punti), poi dove portarlo. Si muove solo quel muro' : 'Sgancia spento'); ui(); draw2D(); }
+        else if (a === 'solo') { AG.solo = !AG.solo; AG.sel = null; if (AG.solo) { F().b = true; try { persistSettings(); } catch (_) {} AG.pts = collect(); } toast(AG.solo ? 'Sgancia attivo: tocca il punto condiviso (accendi 🔵 Altri punti), poi dove portarlo. Si muove solo quel muro' : 'Sgancia spento'); ui(); draw2D(); }
         else if (a === 'sug' && AG.sel && AG.sel.sug) closeSug(AG.sel.sug);
         else if ('rob'.includes(a)) { F()[a] = !F()[a]; try { persistSettings(); } catch (_) {} ui(); draw2D(); }
       });
