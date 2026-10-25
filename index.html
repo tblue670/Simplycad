@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v21.5</title>
+<title>SimplyCAD Pro · v21.6</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -14692,6 +14692,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   #wkPanel.wk-l .wk-grip{left:-16px;top:0;bottom:0;width:16px;cursor:ew-resize;border-radius:8px 0 0 8px}
   #wkPanel.wk-p .wk-grip{top:-16px;left:0;right:0;height:16px;cursor:ns-resize;border-radius:8px 8px 0 0}
   #wkPanel.wk-full .wk-grip{display:none}
+  body.wk-p-on #scBand #toast, body.wk-p-on .toast{position:fixed!important;top:8px!important;left:50%!important;transform:translateX(-50%)!important;max-width:90%!important;z-index:600!important}
   /* v12.9.1: a tutto schermo titolo, strumenti e comandi su una sola riga */
   #wkPanel.wk-one .wk-head{flex-wrap:nowrap}
   #wkPanel.wk-one .wk-head .wk-tools{display:flex;flex-wrap:nowrap;gap:5px;padding:0;border:0;flex:0 1 auto;min-width:0;overflow-x:auto;scrollbar-width:none;order:1}
@@ -14777,6 +14778,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     P.classList.toggle('wk-full', full); P.classList.toggle('wk-l', !full && land); P.classList.toggle('wk-p', !full && !land);
     { const hd = P.querySelector('.wk-head'), tl = P.querySelector('.wk-tools'), cvw = P.querySelector('.wk-cv'); if (tl && hd) { const one = full && r.width >= 1000; P.classList.toggle('wk-one', one); if (one && tl.parentElement !== hd) hd.appendChild(tl); else if (!one && tl.parentElement === hd) P.insertBefore(tl, cvw); lastCv = ''; } }   /* una riga sola a tutto schermo */
     document.body.classList.toggle('wk-full-on', full);
+    document.body.classList.toggle('wk-p-on', !full && !land);   /* v21.6: in verticale i messaggi scendono sopra il prospetto */
     let x = r.left, y = r.top, W = r.width, H = r.height;
     if (!full) {
       if (land) { W = Math.round(r.width * S.ratio); x = r.right - W; ws.style.marginRight = W + 'px'; }
@@ -15056,6 +15058,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     const uc = (r.u0 + r.u1) / 2, k = {id: newId(), k: S.tool, sh: S.tool === 'cut' ? 'rect' : S.shape, cx: S.face > 0 ? L - uc : uc, y: r.v0, w: r.u1 - r.u0, h: r.v1 - r.v0};
     if (k.k === 'niche') { k.d = Math.min(0.10, Math.max(0.01, t - 0.03)); k.f = S.face; }
     clampWork(w, k); works(w).push(k); S.selId = k.id;
+    S.tool = 'sel';   /* v21.6: dopo la lavorazione si torna a Seleziona, restando nel prospetto */
     commit(KN[k.k] + ' ' + cm(k.w) + '×' + cm(k.h) + ' cm aggiunto' + (w.portante && k.k !== 'niche' ? ' · muro portante: cerchiatura in computo' : ''));
   }
   function hitWork(w, u, v) {
@@ -19731,6 +19734,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
 window.SC_REL = {
   v: '21.4', d: '25/10/2026',
   news: [
+    ['21.6', 'Prospetto: dopo una nicchia, un foro o un taglio si torna a «Seleziona» restando nel prospetto in modifica (più lavori senza uscire). In verticale i messaggi non coprono più la riga degli strumenti.'],
     ['21.5', 'Aggancia → «✂ Sgancia»: ora funziona sul punto condiviso di due muri uniti anche con «Altri punti» spenti (il punto si mostra da solo). Il comando riattiva i punti 🔵.'],
     ['21.4', 'Posa a correre: la prima fila parte da una piastrella intera dal punto scelto (anche lontano da muri e porte). Nuovo cursore «Disordine» con «Altra variante» per sfasare le file.'],
     ['21.3', 'Skin sul pavimento: niente più triangoli scoperti lungo i bordi obliqui dell’area (la posa va fino al bordo reale).'],
