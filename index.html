@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v21.3</title>
+<title>SimplyCAD Pro · v21.4</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -19729,8 +19729,9 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
    SC_REL.v è l'unica versione: titolo, Guida, file salvato, avvisi e riga messaggi la leggono da qui.
    ======================================================================== */
 window.SC_REL = {
-  v: '21.3', d: '25/10/2026',
+  v: '21.4', d: '25/10/2026',
   news: [
+    ['21.4', 'Posa a correre: la prima fila parte da una piastrella intera dal punto scelto (anche lontano da muri e porte). Nuovo cursore «Disordine» con «Altra variante» per sfasare le file.'],
     ['21.3', 'Skin sul pavimento: niente più triangoli scoperti lungo i bordi obliqui dell’area (la posa va fino al bordo reale).'],
     ['21.2', 'Aree con skin sul pavimento: porte e finestre aperte, muri e arredi tornano visibili sopra la skin.'],
     ['21.1', 'Aggancia → «✂ Sgancia»: separa due muri uniti in un punto condiviso, spostando solo il muro scelto (prima trascinando un punto uniti si spostavano insieme).'],
@@ -20023,13 +20024,16 @@ window.SC_REL = {
 </script>
 <script>
 /* ========================================================================
-   v19.0 · MOTORE DI POSA (pavimenti e rivestimenti)
-   layout({poly, L, W, g, mode, off, rot90, ang, start, avviso, holes}) -> pezzi veri, tagliati, con conteggio.
+   v21.4 · MOTORE DI POSA (pavimenti e rivestimenti)
+   layout({poly, L, W, g, mode, off, rot90, ang, start, avviso, holes, dis, seed}) -> pezzi veri, tagliati, con conteggio.
    - poly: poligono in metri (qualsiasi sistema); L×W formato della piastrella; g fuga (m)
-   - mode: 'dritta' | 'sfalsata' (off = 0.5 o 1/3) | 'correre' (lo scarto dell'ultimo pezzo apre la fila dopo)
+   - mode: 'dritta' | 'sfalsata' (off = 0.5 o 1/3) | 'correre'
    - rot90: scambia lato lungo e corto rispetto alla direzione delle file
    - ang: direzione delle file (rad) · start: punto da cui parte la prima piastrella (null = angolo in basso a sinistra)
    - avviso: segnala i pezzi più corti di questa misura (m, solo «a correre»). Nessun limite fisso sui giunti.
+   - a correre: la fila 0 parte da una piastrella INTERA nel punto iniziale e procede fino a riempire l'area.
+     Ogni fila successiva inizia con lo scarto (la parte tagliata della fila prima), come da posa reale.
+     dis (0–100): disordine. Sfasa ogni fila in modo deterministico (seed = variante). dis 0 = posa regolare.
    I pezzi sono nel sistema u (lungo la fila) / v (tra le file); T porta al sistema del disegno.
    ======================================================================== */
 (function (root) {
@@ -20049,11 +20053,15 @@ window.SC_REL = {
     for (const it of list) { const l = out[out.length - 1]; if (l && it[0] <= l[1] + 1e-6) l[1] = Math.max(l[1], it[1]); else out.push([it[0], it[1]]); }
     return out;
   }
+  /* numero deterministico in [0,1) per fila e variante */
+  const rnd = (k, seed) => { const x = Math.sin((k + 7.31) * 12.9898 + (seed + 1) * 78.233) * 43758.5453; return x - Math.floor(x); };
+  const mod = (a, m) => ((a % m) + m) % m;
   function layout(o) {
     const g = Math.max(0, +o.g || 0), rot90 = !!o.rot90, mode = o.mode || 'dritta';
     const pl = rot90 ? +o.W : +o.L, pw = rot90 ? +o.L : +o.W, pu = pl + g, pv = pw + g;
     const ang = +o.ang || 0, ca = Math.cos(ang), sa = Math.sin(ang);
-    const avviso = +o.avviso || 0;   /* solo avviso: segnala i pezzi più corti (m); la posa a correre non ha limiti fissi */
+    const avviso = +o.avviso || 0;   /* solo avviso: segnala i pezzi più corti (m) */
+    const dis = Math.max(0, Math.min(100, +o.dis || 0)) / 100, seed = +o.seed || 0;
     const poly = o.poly, netW = area(poly) - (o.holes || []).reduce((s, h) => s + area(h), 0);
     const res = {pieces: [], tiles: 0, bought: 0, net: netW, sfrido: 0, rows: 0, minPiece: Infinity, warn: '', pl, pw, g, mode};
     if (!(pl > 0.005 && pw > 0.005) || poly.length < 3) { res.warn = 'formato non valido'; return res; }
@@ -20067,39 +20075,54 @@ window.SC_REL = {
     if ((kE - kS + 1) * Math.max(1, (Math.max(...Pv.map(p => p.u)) - Math.min(...Pv.map(p => p.u))) / pu) > 12000) { res.dense = true; res.tiles = Math.ceil(netW / (pl * pw) * 1.1); res.bought = res.tiles * pl * pw; res.sfrido = netW > 0 ? res.bought / netW - 1 : 0; return res; }
     const holesUV = (o.holes || []).map(h => toUV(h, ox, oy));
     const inHole = (u0, u1, v0, v1) => { const e = 1e-4; u0 += e; u1 -= e; v0 += e; v1 -= e; return holesUV.some(H => [[u0, v0], [u1, v0], [u1, v1], [u0, v1], [(u0 + u1) / 2, (v0 + v1) / 2]].every(([u, v]) => inPoly(u, v, H.map(p => ({x: p.u, y: p.v}))))); };   /* punti appena dentro il pezzo: il bordo del foro non conta */
-    let stock = 0;   /* scarto dell'ultimo pezzo della fila prima: apre la fila successiva */
-    const n = mode === 'sfalsata' ? Math.max(2, Math.round(1 / (+o.off || 0.5))) : 1;
     const add = (u0, u1, v0, v1, cut, c0, c1, k, stk) => { res.pieces.push({u0, u1, v0, v1, cut, c0, c1, row: k, stock: !!stk}); if (u1 - u0 > 1e-6) res.minPiece = Math.min(res.minPiece, u1 - u0); };
+    /* intervalli liberi della fila k: livelli esatti (bordi di fila e vertici), così il bordo obliquo è sempre coperto */
+    const rowInts = k => {
+      const v0 = k * pv, lv = [0.001, 0.999].concat(Pv.map(p => (p.v - v0) / pw).filter(f => f > 0.001 && f < 0.999));
+      return union(lv.flatMap(f => scan(Pv, v0 + f * pw)));
+    };
+    const n = mode === 'sfalsata' ? Math.max(2, Math.round(1 / (+o.off || 0.5))) : 1;
+    /* a correre: fase (posizione del primo giunto) di ogni fila.
+       Fila 0 = punto iniziale. Fila k+1 inizia con lo scarto (ℓ) della fila k, cioè la parte tagliata all'ultimo pezzo. */
+    const phase = new Map(), stockOK = new Map(), rowsI = new Map();
+    if (mode === 'correre') {
+      for (let k = kS; k <= kE; k++) { const it = rowInts(k); if (it.length) rowsI.set(k, it); }
+      const leftover = (it, f) => { const b = it[it.length - 1][1], c0 = f + Math.floor((b - f) / pu) * pu, c1 = c0 + pl; return c1 > b + 1e-9 ? c1 - b : 0; };
+      const fwd = [...rowsI.keys()].filter(k => k >= 0).sort((a, b) => a - b);
+      let prev = null;
+      for (const k of fwd) {
+        const it = rowsI.get(k), a = it[0][0];
+        let f = 0, carry = false;
+        if (k !== 0 && prev) { const l = leftover(prev.it, prev.f); if (l > 1e-9) { f = a + l + g; carry = true; } else f = a; }
+        const d = k === 0 ? 0 : dis * pu * (rnd(k, seed) - 0.5);
+        f = mod(f + d, pu); phase.set(k, f); stockOK.set(k, carry && dis === 0); prev = {f, it};
+      }
+      const dn = [...rowsI.keys()].filter(k => k < 0).sort((a, b) => b - a);
+      let nxt = fwd.length ? {f: phase.get(fwd[0]), it: rowsI.get(fwd[0])} : null;
+      for (const k of dn) {
+        const it = rowsI.get(k), b = it[it.length - 1][1];
+        let f = 0;
+        if (nxt) { const lam = mod(nxt.f - nxt.it[0][0], pu), l = lam < g + 1e-9 ? 0 : lam - g; f = b + l - pl; }
+        const d = dis * pu * (rnd(k, seed) - 0.5);
+        f = mod(f + d, pu); phase.set(k, f); stockOK.set(k, false); nxt = {f, it};
+      }
+    }
     for (let k = kS; k <= kE; k++) {
       const v0 = k * pv, v1 = v0 + pw;
-      /* v21.3: livelli esatti = bordi della fila e vertici del poligono: il pezzo arriva sempre al bordo obliquo, senza triangoli scoperti */
-      const lv = [0.001, 0.999].concat(Pv.map(p => (p.v - v0) / pw).filter(f => f > 0.001 && f < 0.999));
-      const ints = union(lv.flatMap(f => scan(Pv, v0 + f * pw)));
-      if (!ints.length) continue;
-      res.rows++; const rowJ = [];
+      const ints = mode === 'correre' ? rowsI.get(k) : rowInts(k);
+      if (!ints || !ints.length) continue;
+      res.rows++;
+      const s0 = mode === 'sfalsata' ? (((k % n) + n) % n) * pu / n : mode === 'correre' ? phase.get(k) : 0;
       for (const [a, b] of ints) {
-        if (mode === 'dritta' || mode === 'sfalsata') {
-          const s = mode === 'sfalsata' ? (((k % n) + n) % n) * pu / n : 0;
-          let j = Math.floor((a - s) / pu) - 1; while (s + j * pu + pl <= a + 1e-7) j++;
-          for (; s + j * pu < b - 1e-7; j++) {
-            const c0u = s + j * pu, c1u = c0u + pl, u0 = Math.max(c0u, a), u1 = Math.min(c1u, b);
-            if (u1 - u0 < 1e-6 || inHole(u0, u1, v0, v1)) continue;
-            add(u0, u1, v0, v1, u1 - u0 < pl - 1e-6, (u0 - c0u) / pl, (u1 - c0u) / pl, k, false); res.tiles++;
-          }
-        } else {   /* a correre: lo scarto della fila prima apre questa, senza limiti fissi */
-          let pos = a, first = true;
-          while (pos < b - 1e-7) {
-            const rem = b - pos;
-            if (first && stock > EPS) {
-              first = false;
-              const len = Math.min(stock, rem);
-              add(pos, pos + len, v0, v1, true, 1 - stock / pl, 1 - (stock - len) / pl, k, true);
-              stock = stock - len > EPS ? stock - len : 0; pos += len; if (pos < b - 1e-7) rowJ.push(pos); pos += g; continue;
-            }
-            first = false;
-            if (rem >= pl - 1e-7) { add(pos, pos + pl, v0, v1, false, 0, 1, k, false); res.tiles++; pos += pl; if (pos < b - 1e-7) rowJ.push(pos); pos += g; }
-            else { add(pos, b, v0, v1, true, 0, rem / pl, k, false); res.tiles++; stock = pl - rem > EPS ? pl - rem : 0; pos = b; }
-          }
+        let j = Math.floor((a - s0) / pu) - 1; while (s0 + j * pu + pl <= a + 1e-7) j++;
+        for (; s0 + j * pu < b - 1e-7; j++) {
+          const c0u = s0 + j * pu, c1u = c0u + pl, u0 = Math.max(c0u, a), u1 = Math.min(c1u, b);
+          if (u1 - u0 < 1e-6 || inHole(u0, u1, v0, v1)) continue;
+          const cut = u1 - u0 < pl - 1e-6;
+          /* pezzo che viene dallo scarto della fila prima: non è una piastrella nuova */
+          const stk = mode === 'correre' && cut && u0 > c0u + 1e-9 && !!stockOK.get(k);
+          add(u0, u1, v0, v1, cut, (u0 - c0u) / pl, (u1 - c0u) / pl, k, stk);
+          if (!stk) res.tiles++;
         }
       }
     }
@@ -20210,7 +20233,7 @@ window.SC_REL = {
   }
   const layoutOf = (poly, sk, posa, ang, start, holes) => {
     const P = posa || sk.posa || {mode: 'dritta', off: 0.5, rot90: false};
-    const r = SCposa.layout({poly, L: sk.L, W: sk.W, g: sk.g || 0, mode: P.mode, off: P.off, rot90: !!P.rot90, ang: ang || 0, start: start || null, holes: holes || null, avviso: ((sk.posa && sk.posa.avv) || 0) / 100});
+    const r = SCposa.layout({poly, L: sk.L, W: sk.W, g: sk.g || 0, mode: P.mode, off: P.off, rot90: !!P.rot90, ang: ang || 0, start: start || null, holes: holes || null, avviso: ((sk.posa && sk.posa.avv) || 0) / 100, dis: P.dis || 0, seed: P.seed || 0});
     r.rot90 = !!P.rot90; return r;
   };
 
@@ -20288,6 +20311,7 @@ window.SC_REL = {
       '<div class="sk-row"><label>Posa di base<select id="skPosa">' + [['dritta', 'Diritta'], ['sfalsata2', 'Sfalsata a metà'], ['sfalsata3', 'Sfalsata a un terzo'], ['correre', 'A correre (scarto sulla fila dopo)']].map(([k, t]) => '<option value="' + k + '"' + (k === mk ? ' selected' : '') + '>' + t + '</option>').join('') + '</select></label>' +
       '<label style="flex:0 0 auto;flex-direction:row;align-items:center;gap:6px"><input id="skR" type="checkbox" style="width:22px;min-height:22px"' + (e.posa.rot90 ? ' checked' : '') + '> Ruota di 90°</label></div>' +
       '<div class="sk-row"><label>Avvisa pezzi più corti di (cm, 0 = mai)<input id="skAvv" inputmode="decimal" value="' + ((e.posa && e.posa.avv) || 0) + '"></label></div>' +
+      '<div class="sk-row"><label>Disordine a correre (0 = regolare, 100 = massimo): <b id="skDisV">' + ((e.posa && e.posa.dis) || 0) + '</b><input id="skDis" type="range" min="0" max="100" step="5" value="' + ((e.posa && e.posa.dis) || 0) + '"></label><button id="skSeed">🎲 Altra variante</button></div>' +
       '<div class="sk-hint">Pezzetto di prova (2 × 1,2 m). Il punto iniziale e l\'allineamento a un muro si scelgono quando applichi la skin alla stanza.</div><canvas id="skPrev" width="360" height="216"></canvas>' +
       '<div class="sk-row"><button class="pri" id="skSave">Salva in libreria</button><button id="skCancel">Annulla</button></div>';
   }
@@ -20314,11 +20338,13 @@ window.SC_REL = {
     ED.gcol = ($('skGc') || {}).value || ED.gcol; if ($('skCol')) ED.col = $('skCol').value;
     if ($('skHex') && hexRgb($('skHex').value) && ED.kind === 'tinta') ED.col = rgbHex(hexRgb($('skHex').value)).toLowerCase();
     const av = $('skAvv'); if (av) { const v = parseFloat(String(av.value).replace(',', '.')); ED.posa = Object.assign({}, ED.posa, {avv: isFinite(v) && v > 0 ? v : 0}); }
-    const pk = $('skPosa'); if (pk) ED.posa = Object.assign(modeFrom(pk.value), {rot90: !!($('skR') || {}).checked, avv: (ED.posa && ED.posa.avv) || 0});
+    const dr = $('skDis'); if (dr) { ED.posa = Object.assign({}, ED.posa, {dis: +dr.value || 0}); const dv = $('skDisV'); if (dv) dv.textContent = dr.value; }
+    const pk = $('skPosa'); if (pk) ED.posa = Object.assign(modeFrom(pk.value), {rot90: !!($('skR') || {}).checked, avv: (ED.posa && ED.posa.avv) || 0, dis: (ED.posa && ED.posa.dis) || 0, seed: (ED.posa && ED.posa.seed) || 0});
   }
   function b_tones() { return [...P.querySelectorAll('[data-tone]')]; }
   function bindEd() {
-    ['skNm', 'skL', 'skW', 'skG', 'skGc', 'skCol', 'skPosa', 'skR', 'skAvv'].forEach(id => { const e = $(id); if (e) e.oninput = e.onchange = () => { readEd(); preview(); }; });
+    ['skNm', 'skL', 'skW', 'skG', 'skGc', 'skCol', 'skPosa', 'skR', 'skAvv', 'skDis'].forEach(id => { const e = $(id); if (e) e.oninput = e.onchange = () => { readEd(); preview(); }; });
+    const sdb = $('skSeed'); if (sdb) sdb.onclick = () => { readEd(); ED.posa = Object.assign({}, ED.posa, {seed: 1 + Math.floor(Math.random() * 9999)}); preview(); };   /* v21.4: altra variante del disordine */
     const ph = $('skPh'), fl = $('skFile'); if (ph && fl) { ph.onclick = () => fl.click(); fl.onchange = () => { const f = fl.files && fl.files[0]; if (f) loadPhoto(f); fl.value = ''; }; }
     $('skSave').onclick = save; $('skCancel').onclick = () => { ED = null; body(); };
     const hx = $('skHex'); if (hx) hx.onchange = () => { if (hexRgb(hx.value)) setCol(hx.value); else { toast('Codice colore non valido: esempio #A0B2C3'); hx.value = (ED.col || '').toUpperCase(); } };
@@ -20445,7 +20471,7 @@ window.SC_REL = {
   function eff(z) {
     if (!z.sk || !z.pts || z.pts.length < 3) return null; const s = SCskin.get(z.sk.id); if (!s) return null;
     const b = s.posa || {mode: 'dritta', off: 0.5, rot90: false};
-    return {sk: s, posa: {mode: z.sk.mode || b.mode, off: z.sk.mode ? (z.sk.off || 0.5) : b.off, rot90: z.sk.rot90 != null ? !!z.sk.rot90 : !!b.rot90}, ang: z.sk.ang != null ? z.sk.ang : autoAng(z.pts), start: z.sk.start || null};
+    return {sk: s, posa: {mode: z.sk.mode || b.mode, off: z.sk.mode ? (z.sk.off || 0.5) : b.off, rot90: z.sk.rot90 != null ? !!z.sk.rot90 : !!b.rot90, dis: b.dis || 0, seed: b.seed || 0}, ang: z.sk.ang != null ? z.sk.ang : autoAng(z.pts), start: z.sk.start || null};
   }
   function resolve(z) {
     const e = eff(z); if (!e) return null;
@@ -20655,7 +20681,7 @@ window.SC_REL = {
   /* ---------------------------------------------------------------- posa */
   function eff(r) {
     const s = r.sk && SCskin.get(r.sk.id); if (!s) return null; const b = s.posa || {mode: 'dritta', off: 0.5, rot90: false};
-    return {sk: s, posa: {mode: r.sk.mode || b.mode, off: r.sk.mode ? (r.sk.off || 0.5) : b.off, rot90: r.sk.rot90 != null ? !!r.sk.rot90 : !!b.rot90}, corner: r.sk.corner || 'bl'};
+    return {sk: s, posa: {mode: r.sk.mode || b.mode, off: r.sk.mode ? (r.sk.off || 0.5) : b.off, rot90: r.sk.rot90 != null ? !!r.sk.rot90 : !!b.rot90, dis: b.dis || 0, seed: b.seed || 0}, corner: r.sk.corner || 'bl'};
   }
   function resolve(w, r) {
     const e = eff(r); if (!e) return null; const V = view(w, r), it = items(w, r, false);

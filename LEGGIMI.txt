@@ -1,4 +1,4 @@
-SimplyCAD Pro - pubblicazione su GitHub Pages (v21.3)
+SimplyCAD Pro - pubblicazione su GitHub Pages (v21.4)
 
 Contenuto (vanno caricati tutti, senza rinominarli e SENZA cartelle intorno):
   index.html  sw.js  manifest.webmanifest  icon-192.png  icon-512.png  icon-maskable.png  README.md
@@ -93,6 +93,9 @@ NOVITÀ v18.9
 
 NOVITÀ v18.9.1
  - 🧲 Aggancia anche nella barra interattiva (senza selezione) e nel suo menu ⋯.
+
+NOVITÀ v21.4
+Skin sul pavimento, posa a correre: la prima fila parte con un pezzo intero dal punto scelto, anche lontano da muri e porte. Nuovo cursore «Disordine» (0-100) e pulsante «🎲 Altra variante» nell'editor della skin per una posa meno ordinata.
 
 NOVITÀ v21.3
 Skin sul pavimento: niente più triangoli scoperti lungo i bordi obliqui dell'area (la posa arriva fino al bordo reale).
