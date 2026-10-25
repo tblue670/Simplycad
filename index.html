@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v20.0</title>
+<title>SimplyCAD Pro · v20.1</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -19674,9 +19674,9 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
    SC_REL.v è l'unica versione: titolo, Guida, file salvato, avvisi e riga messaggi la leggono da qui.
    ======================================================================== */
 window.SC_REL = {
-  v: '20.0', d: '25/10/2026',
+  v: '20.1', d: '25/10/2026',
   news: [
-    ['20.0', 'Geometria → «Allinea al calco»: tocchi due o più punti del disegno e gli stessi punti sul calco. Il calco si congela; il disegno ruota per seguire il calco, il calco si porta in scala. Con 3 o più punti compare l’errore in cm.'],
+    ['20.1', 'Geometria → «Allinea al calco»: tocchi due o più punti del disegno e gli stessi punti sul calco. Il calco si congela, il disegno ruota per seguire il calco, il calco si porta in scala. Il menu si chiude subito dopo la scelta.'],
     ['19.3', 'Posa a correre: lo scarto apre sempre la fila successiva, senza limiti fissi sui giunti. Nella skin si può impostare l’avviso per i pezzi più corti.'],
     ['19.2', 'Skin: se manca il ritaglio della foto il riquadro si evidenzia e resta in primo piano.'],
     ['19.1', 'Rilievo: riferimento delle misure dei muri a scelta fra interno (da muro a muro), esterno o centro muro. Versione e release nel menu del rilievo e nel file CSV.'],
@@ -20878,7 +20878,7 @@ window.SC_REL = {
     const ref = document.getElementById('arrBtn'); if (!ref) return;
     const b = document.createElement('button'); b.id = 'calBtn'; b.className = 'menu-row'; b.dataset.mn = '1';
     b.innerHTML = '<span class="mi-icon">🎯</span><span class="mi-label">Allinea al calco…</span>';
-    b.addEventListener('click', e => { e.stopPropagation(); try { document.querySelectorAll('.menu-dropdown.open,.menu-item.open').forEach(m => m.classList.remove('open')); } catch (_) {} start(); });
+    b.addEventListener('click', e => { e.stopPropagation(); try { if (typeof closeAllMenus === 'function') closeAllMenus(); else document.querySelectorAll('.menu-dropdown.open,.menu-item.open').forEach(m => m.classList.remove('open')); } catch (_) {} start(); });
     ref.after(b);
   }
   addRow(); setTimeout(addRow, 0); setTimeout(addRow, 300);
