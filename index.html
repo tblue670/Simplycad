@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v19.3</title>
+<title>SimplyCAD Pro · v20.0</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -19674,8 +19674,9 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
    SC_REL.v è l'unica versione: titolo, Guida, file salvato, avvisi e riga messaggi la leggono da qui.
    ======================================================================== */
 window.SC_REL = {
-  v: '19.3', d: '25/10/2026',
+  v: '20.0', d: '25/10/2026',
   news: [
+    ['20.0', 'Geometria → «Allinea al calco»: tocchi due o più punti del disegno e gli stessi punti sul calco. Il calco si congela; il disegno ruota per seguire il calco, il calco si porta in scala. Con 3 o più punti compare l’errore in cm.'],
     ['19.3', 'Posa a correre: lo scarto apre sempre la fila successiva, senza limiti fissi sui giunti. Nella skin si può impostare l’avviso per i pezzi più corti.'],
     ['19.2', 'Skin: se manca il ritaglio della foto il riquadro si evidenzia e resta in primo piano.'],
     ['19.1', 'Rilievo: riferimento delle misure dei muri a scelta fra interno (da muro a muro), esterno o centro muro. Versione e release nel menu del rilievo e nel file CSV.'],
@@ -20724,6 +20725,165 @@ window.SC_REL = {
   }
   window.SCriv = {add, remove, dup, find, hostOf, resolve, draw, afterWorks, panelHTML, bind, items: itemsComputo, drawnArea, add3D};
   if (window.SCwk && SCwk.commit) bind(document.getElementById('wkFoot'), {commit: SCwk.commit, sel: SCwk.sel});
+})();
+
+</script>
+<script>
+/* ========================================================================
+   v20.0 · ALLINEA AL CALCO (Geometria → «Allinea al calco…»)
+   Il calco è un'immagine importata o uno schizzo in un livello. Si tocca un punto del disegno
+   e subito dopo lo stesso punto sul calco; con 2 o più coppie:
+   - il DISEGNO del piano ruota attorno al suo centro per seguire l'orientamento del calco;
+   - il CALCO viene portato in scala e spostato sul disegno (minimi quadrati: con più coppie l'errore è mediato);
+   - le misure del disegno NON cambiano: la scala è quella del disegno. Il calco non viene ruotato.
+   Il livello del calco viene congelato (bloccato) al comando. Livelli bloccati e altri piani non si toccano.
+   ======================================================================== */
+(function () {
+  if (window.SCcalco) return;
+  const r6 = v => Math.round(v * 1e6) / 1e6;
+  const LISTS = ['walls', 'measurements', 'furniture', 'stairs', 'labels', 'holes', 'zones', 'ceils', 'roofs', 'beams'];
+  const POINT_KEYS = ['p1', 'p2', 'qa', 'qb', 'qo', 'ldr'];
+  const ANGLE_KEYS = ['rot', 'rotation', 'ang'];
+  let CP = null;   /* {im, step: 'd'|'c', dTmp, pairs: [{d, c}]} */
+  let ban = null;
+
+  /* ---------------------------------------------------------------- calcolo puro (testabile) */
+  function solve(D, C) {   /* D: punti del disegno, C: stessi punti sul calco → rotazione del disegno, scala e spostamento del calco */
+    const n = D.length; if (n < 2 || C.length !== n) return null;
+    const mean = A => ({x: A.reduce((a, p) => a + p.x, 0) / n, y: A.reduce((a, p) => a + p.y, 0) / n});
+    const db = mean(D), cb = mean(C);
+    let num = 0, den = 0;
+    for (let i = 0; i < n; i++) {
+      const ax = D[i].x - db.x, ay = D[i].y - db.y, bx = C[i].x - cb.x, by = C[i].y - cb.y;
+      num += ax * by - ay * bx; den += ax * bx + ay * by;
+    }
+    const th = Math.atan2(num, den), co = Math.cos(th), si = Math.sin(th);
+    const Dr = D.map(p => ({x: db.x + co * (p.x - db.x) - si * (p.y - db.y), y: db.y + si * (p.x - db.x) + co * (p.y - db.y)}));
+    let sn = 0, sd = 0;
+    for (let i = 0; i < n; i++) {
+      const bx = C[i].x - cb.x, by = C[i].y - cb.y, ax = Dr[i].x - db.x, ay = Dr[i].y - db.y;
+      sn += ax * bx + ay * by; sd += bx * bx + by * by;
+    }
+    if (!(sd > 1e-9) || !(sn > 1e-9)) return null;
+    const s = sn / sd, t = {x: db.x - s * cb.x, y: db.y - s * cb.y};
+    const res = Dr.map((p, i) => Math.hypot(p.x - (s * C[i].x + t.x), p.y - (s * C[i].y + t.y)));
+    return {th, s, t, pv: db, res, maxRes: Math.max(...res), rmsRes: Math.sqrt(res.reduce((a, b) => a + b * b, 0) / n)};
+  }
+
+  /* ---------------------------------------------------------------- applicazione */
+  function rotPt(p, pv, co, si) { return {x: pv.x + co * (p.x - pv.x) - si * (p.y - pv.y), y: pv.y + si * (p.x - pv.x) + co * (p.y - pv.y)}; }
+  function rotateDrawing(fid, pv, th) {
+    const co = Math.cos(th), si = Math.sin(th);
+    const R = p => { const q = rotPt(p, pv, co, si); return {x: r6(q.x), y: r6(q.y)}; };
+    const onF = e => e && floorOf(e) === fid && !isEntityLocked(e);
+    LISTS.forEach(k => (state[k] || []).forEach(e => {
+      if (!onF(e)) return;
+      POINT_KEYS.forEach(key => { if (e[key] && typeof e[key].x === 'number') e[key] = R(e[key]); });
+      if (e.qu && typeof e.qu.x === 'number') e.qu = {x: r6(e.qu.x * co - e.qu.y * si), y: r6(e.qu.x * si + e.qu.y * co)};
+      if (Array.isArray(e.pts)) e.pts = e.pts.map(R);
+      if (typeof e.x === 'number' && typeof e.y === 'number' && !e.p1) { const q = R(e); e.x = q.x; e.y = q.y; }
+      ANGLE_KEYS.forEach(key => { if (typeof e[key] === 'number') e[key] = r6(e[key] + th); });
+      if (e.sk) { if (typeof e.sk.ang === 'number') e.sk.ang = r6(e.sk.ang + th); if (e.sk.start) e.sk.start = R(e.sk.start); }
+    }));
+  }
+  function moveImage(im, s, t) { im.x = r6(s * im.x + t.x); im.y = r6(s * im.y + t.y); im.scale = r6(im.scale * s); }
+  const cm = v => String(Math.round(v * 1000) / 10).replace('.', ',');
+
+  /* ---------------------------------------------------------------- avvio e tocchi */
+  function curImage() {
+    const im = state.images.find(i => i.id === state.activeImageId) || state.images[state.images.length - 1];
+    return im && im.img ? im : null;
+  }
+  function freezeLayer(im) { const l = getLayer(im.layerId); if (l && !l.locked) { l.locked = true; try { renderLayersPanel(); } catch (_) {} } }
+  function start() {
+    const im = curImage();
+    if (!im) return toast('Non c’è un calco: importa un’immagine (o disegna lo schizzo in un livello)');
+    if (!im.floorId) im.floorId = state.currentFloorId;
+    freezeLayer(im);
+    CP = {im, step: 'd', dTmp: null, pairs: []};
+    state.tool = 'calpick'; state.pendingPoint = null;
+    if (!ban) {
+      ban = document.createElement('div'); ban.id = 'calPickBan'; ban.style.cssText = 'display:flex;align-items:center;gap:8px;flex-wrap:wrap';
+      ['pointerdown', 'pointerup', 'touchstart'].forEach(ev => ban.addEventListener(ev, e => e.stopPropagation(), {passive: true}));
+      ban.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; if (b.dataset.a === 'apply') apply(); else cancel(); });
+    }
+    showBan();
+    const L = document.getElementById('scBandL'); if (L && ban.parentNode !== L) L.appendChild(ban); ban.style.display = 'flex';
+    toast('Calco congelato. Tocca un punto del disegno, poi lo stesso punto sul calco');
+    try { draw2D(); } catch (_) {}
+  }
+  function showBan() {
+    if (!ban || !CP) return;
+    const n = CP.pairs.length, tip = CP.step === 'd' ? 'Tocca un punto del disegno' : 'Ora lo stesso punto sul calco';
+    ban.innerHTML = '<span>🎯 Coppia ' + (n + 1) + ' · ' + tip + ' · coppie: ' + n + '</span>' +
+      '<button data-a="apply"' + (n >= 2 && CP.step === 'd' ? '' : ' disabled') + '>✔ Applica</button><button data-a="cancel">✖ Annulla</button>';
+  }
+  function cancel() {
+    CP = null; state.tool = 'select';
+    if (ban) ban.style.display = 'none';
+    try { draw2D(); } catch (_) {}
+  }
+  function apply() {
+    if (!CP || CP.pairs.length < 2) return toast('Servono almeno due coppie di punti');
+    const im = CP.im, D = CP.pairs.map(p => p.d), C = CP.pairs.map(p => p.c);
+    const S = solve(D, C);
+    if (!S) { toast('Punti non validi: scegli punti più distanti tra loro'); return; }
+    const fid = im.floorId || state.currentFloorId;
+    rotateDrawing(fid, S.pv, S.th);
+    moveImage(im, S.s, S.t);
+    try { detectRooms(); } catch (_) {}
+    const n = D.length;
+    const check = n > 2 ? ' · errore medio ' + cm(S.rmsRes) + ' cm, massimo ' + cm(S.maxRes) + ' cm' : ' · 2 coppie: aggiungi un terzo punto per verificare';
+    const sc = Math.abs(S.s - 1) > 0.005 ? ' · calco portato al ' + Math.round(S.s * 1000) / 10 + '% ' : '';
+    cancel(); try { refresh(); } catch (_) {} try { checkpoint(); } catch (_) {}
+    toast('Allineato al calco' + sc + check);
+  }
+
+  /* ---------------------------------------------------------------- tocchi sul disegno */
+  const _ht = handleTap;
+  handleTap = function (cx, cy) {
+    if (!CP || state.tool !== 'calpick') return _ht.apply(this, arguments);
+    const r = c2d.getBoundingClientRect(), raw = screenToWorld(cx - r.left, cy - r.top);
+    if (CP.step === 'd') {
+      let P = raw; try { P = snapToVertex(raw, null) || raw; } catch (_) {}
+      CP.dTmp = {x: P.x, y: P.y}; CP.step = 'c';
+    } else {
+      CP.pairs.push({d: CP.dTmp, c: {x: raw.x, y: raw.y}}); CP.step = 'd'; CP.dTmp = null;
+    }
+    showBan(); try { draw2D(); } catch (_) {}
+    return;
+  };
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && CP) cancel(); });
+
+  /* segni delle coppie sul disegno: punti del disegno in azzurro, del calco in arancio */
+  const _d2 = draw2D;
+  draw2D = function () {
+    const out = _d2.apply(this, arguments);
+    if (CP && typeof ctx !== 'undefined') {
+      ctx.save();
+      CP.pairs.forEach(p => {
+        const a = worldToScreen(p.d.x, p.d.y), b = worldToScreen(p.c.x, p.c.y);
+        ctx.strokeStyle = '#fbbf24'; ctx.setLineDash([4, 4]); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); ctx.setLineDash([]);
+        ctx.fillStyle = '#38bdf8'; ctx.beginPath(); ctx.arc(a.x, a.y, 5, 0, 7); ctx.fill();
+        ctx.fillStyle = '#f97316'; ctx.beginPath(); ctx.arc(b.x, b.y, 5, 0, 7); ctx.fill();
+      });
+      ctx.restore();
+    }
+    return out;
+  };
+
+  /* ---------------------------------------------------------------- voce di menu */
+  function addRow() {
+    if (document.getElementById('calBtn')) return;
+    const ref = document.getElementById('arrBtn'); if (!ref) return;
+    const b = document.createElement('button'); b.id = 'calBtn'; b.className = 'menu-row'; b.dataset.mn = '1';
+    b.innerHTML = '<span class="mi-icon">🎯</span><span class="mi-label">Allinea al calco…</span>';
+    b.addEventListener('click', e => { e.stopPropagation(); try { document.querySelectorAll('.menu-dropdown.open,.menu-item.open').forEach(m => m.classList.remove('open')); } catch (_) {} start(); });
+    ref.after(b);
+  }
+  addRow(); setTimeout(addRow, 0); setTimeout(addRow, 300);
+
+  window.SCcalco = {solve, start, cancel, apply, rotateDrawing, moveImage, get active() { return !!CP; }};
 })();
 
 </script>
