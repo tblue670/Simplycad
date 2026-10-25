@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v21.1</title>
+<title>SimplyCAD Pro · v21.3</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -3324,6 +3324,7 @@ function draw2D() {
   if (!window.__printing) drawGrid();   /* v15.0: in stampa niente griglia */
   drawImages();
   for (const r of state.rooms) drawRoom(r);
+  try { if (window.SCzoneFill) SCzoneFill(ctx); } catch (_) {}   /* v21.2: fondo e pezzi delle aree sotto a muri, porte, finestre e arredi */
   paintWallsScreen();
   for (const wl of state.walls) drawWall(wl);
   for (const wi of state.windows) drawWindow(wi);
@@ -10260,6 +10261,17 @@ updateRoomList();
   window.SCzoneWk = {voce: zVoce, items: () => state.zones.filter(z => isEntityVisible(z)).map(zVoce).filter(Boolean), anyFloor: () => state.zones.some(z => isEntityVisible(z) && z.lav && z.lav !== 'solodem'), LAV};
   const rgba = (hex, a) => { const n = parseInt(hex.slice(1), 16); return 'rgba(' + (n >> 16 & 255) + ',' + (n >> 8 & 255) + ',' + (n & 255) + ',' + a + ')'; };
 
+  /* v21.2: il fondo dell'area (tinta e pezzi della skin) va disegnato prima di muri, porte e arredi */
+  window.SCzoneFill = function (c) {
+    for (const z of state.zones) {
+      if (!isEntityVisible(z) || !z.pts || z.pts.length < 3) continue;
+      const S = z.pts.map(p => worldToScreen(p.x, p.y));
+      c.save(); c.beginPath(); S.forEach((s, i) => i ? c.lineTo(s.x, s.y) : c.moveTo(s.x, s.y)); c.closePath();
+      c.fillStyle = rgba(z.color, 0.35); c.fill();
+      if (z.sk && window.SCfloor) SCfloor.paint2D(c, z, S);
+      c.restore();
+    }
+  };
   function drawZones() {
     boxes = [];
     for (const z of state.zones) {
@@ -10267,8 +10279,6 @@ updateRoomList();
       const S = z.pts.map(p => worldToScreen(p.x, p.y));
       ctx.save();
       ctx.beginPath(); S.forEach((s, i) => i ? ctx.lineTo(s.x, s.y) : ctx.moveTo(s.x, s.y)); ctx.closePath();
-      ctx.fillStyle = rgba(z.color, 0.35); ctx.fill();
-      if (z.sk && window.SCfloor) SCfloor.paint2D(ctx, z, S);   /* v19.0: pezzi della skin */
       ctx.strokeStyle = rgba(z.color, 0.95); ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.stroke();
       let c = worldToScreen(centroid(z.pts).x, centroid(z.pts).y);
       const t1 = 'Sup. ' + fmt2(area(z.pts)) + ' m²', t2 = 'Per. ' + fmt2(perim(z.pts)) + ' m';
@@ -19719,8 +19729,10 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
    SC_REL.v è l'unica versione: titolo, Guida, file salvato, avvisi e riga messaggi la leggono da qui.
    ======================================================================== */
 window.SC_REL = {
-  v: '21.1', d: '25/10/2026',
+  v: '21.3', d: '25/10/2026',
   news: [
+    ['21.3', 'Skin sul pavimento: niente più triangoli scoperti lungo i bordi obliqui dell’area (la posa va fino al bordo reale).'],
+    ['21.2', 'Aree con skin sul pavimento: porte e finestre aperte, muri e arredi tornano visibili sopra la skin.'],
     ['21.1', 'Aggancia → «✂ Sgancia»: separa due muri uniti in un punto condiviso, spostando solo il muro scelto (prima trascinando un punto uniti si spostavano insieme).'],
     ['21.0', 'Pilastri: si trascinano con il cursore in pianta e si agganciano al muro dove li lasci (entro 25 cm dalla faccia); lontano dai muri restano liberi. Visibili e spostabili anche nel prospetto del muro.'],
     ['20.1', 'Geometria → «Allinea al calco»: tocchi due o più punti del disegno e gli stessi punti sul calco. Il calco si congela, il disegno ruota per seguire il calco, il calco si porta in scala. Il menu si chiude subito dopo la scelta.'],
@@ -20060,7 +20072,9 @@ window.SC_REL = {
     const add = (u0, u1, v0, v1, cut, c0, c1, k, stk) => { res.pieces.push({u0, u1, v0, v1, cut, c0, c1, row: k, stock: !!stk}); if (u1 - u0 > 1e-6) res.minPiece = Math.min(res.minPiece, u1 - u0); };
     for (let k = kS; k <= kE; k++) {
       const v0 = k * pv, v1 = v0 + pw;
-      const ints = union([0.1, 0.5, 0.9].flatMap(f => scan(Pv, v0 + f * pw)));
+      /* v21.3: livelli esatti = bordi della fila e vertici del poligono: il pezzo arriva sempre al bordo obliquo, senza triangoli scoperti */
+      const lv = [0.001, 0.999].concat(Pv.map(p => (p.v - v0) / pw).filter(f => f > 0.001 && f < 0.999));
+      const ints = union(lv.flatMap(f => scan(Pv, v0 + f * pw)));
       if (!ints.length) continue;
       res.rows++; const rowJ = [];
       for (const [a, b] of ints) {
