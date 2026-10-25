@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v21.6</title>
+<title>SimplyCAD Pro · v21.7</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -2975,13 +2975,19 @@ function drawWindow(w) {
   ctx.lineWidth = 1.8;
   const nP = Math.max(1, Math.min(4, w.panes || 1));
   if (w.kind === 'slide') {   /* v11.32: scorrevole: ante sfalsate su due binari, con freccia di scorrimento */
-    const pw = 2 * hw / nP, ov = Math.min(pw * 0.1, 8);
-    ctx.lineWidth = 2.4; ctx.lineCap = 'butt';
-    for (let i = 0; i < nP; i++) {
-      const y = (i % 2 ? 1 : -1) * th * 0.17, x0 = -hw + pw * i - (i > 0 ? ov : 0), x1 = -hw + pw * (i + 1) + (i < nP - 1 ? ov : 0);
-      ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x1, y); ctx.stroke();
-      if (pw > 18) { const xc = (x0 + x1) / 2, d = (i % 2 ? -1 : 1) * Math.min(pw * 0.18, 10), a = Math.min(4, th * 0.2); ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(xc - d, y); ctx.lineTo(xc + d, y); ctx.moveTo(xc + d - Math.sign(d) * a, y - a); ctx.lineTo(xc + d, y); ctx.lineTo(xc + d - Math.sign(d) * a, y + a); ctx.stroke(); ctx.lineWidth = 2.4; }
-    }
+    /* v21.7: ante e frecce disegnate prima con un contorno scuro, poi col colore della finestra: restano visibili anche con colori chiari */
+    const pw = 2 * hw / nP, ov = Math.min(pw * 0.1, 8), colW = sel ? '#22d3ee' : (w.color || '#4fc3f7');
+    const lumW = (() => { const m = /^#([0-9a-f]{6})$/i.exec(colW); if (!m) return 0.5; const n = parseInt(m[1], 16); return (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255; })();
+    const haloCol = lumW < 0.5 ? 'rgba(235,240,250,0.92)' : 'rgba(15,18,30,0.9)';   /* contorno di contrasto: chiaro per le ante scure, scuro per quelle chiare */
+    const paint = halo => {
+      ctx.strokeStyle = halo ? haloCol : colW; ctx.lineCap = 'butt';
+      for (let i = 0; i < nP; i++) {
+        const y = (i % 2 ? 1 : -1) * th * 0.17, x0 = -hw + pw * i - (i > 0 ? ov : 0), x1 = -hw + pw * (i + 1) + (i < nP - 1 ? ov : 0);
+        ctx.lineWidth = halo ? 5.6 : 2.4; ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x1, y); ctx.stroke();
+        if (pw > 18) { const xc = (x0 + x1) / 2, d = (i % 2 ? -1 : 1) * Math.min(pw * 0.18, 10), a = Math.min(4, th * 0.2); ctx.lineWidth = halo ? 3.4 : 1.2; ctx.beginPath(); ctx.moveTo(xc - d, y); ctx.lineTo(xc + d, y); ctx.moveTo(xc + d - Math.sign(d) * a, y - a); ctx.lineTo(xc + d, y); ctx.lineTo(xc + d - Math.sign(d) * a, y + a); ctx.stroke(); }
+      }
+    };
+    paint(true); paint(false);
   } else {
     ctx.beginPath();
     ctx.moveTo(-hw, -th * 0.18); ctx.lineTo(hw, -th * 0.18);
@@ -19732,8 +19738,9 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
    SC_REL.v è l'unica versione: titolo, Guida, file salvato, avvisi e riga messaggi la leggono da qui.
    ======================================================================== */
 window.SC_REL = {
-  v: '21.4', d: '25/10/2026',
+  v: '21.7', d: '25/10/2026',
   news: [
+    ['21.7', 'Finestre scorrevoli: le linee delle ante restano visibili anche con colori chiari (contorno scuro sotto il colore della finestra).'],
     ['21.6', 'Prospetto: dopo una nicchia, un foro o un taglio si torna a «Seleziona» restando nel prospetto in modifica (più lavori senza uscire). In verticale i messaggi non coprono più la riga degli strumenti.'],
     ['21.5', 'Aggancia → «✂ Sgancia»: ora funziona sul punto condiviso di due muri uniti anche con «Altri punti» spenti (il punto si mostra da solo). Il comando riattiva i punti 🔵.'],
     ['21.4', 'Posa a correre: la prima fila parte da una piastrella intera dal punto scelto (anche lontano da muri e porte). Nuovo cursore «Disordine» con «Altra variante» per sfasare le file.'],
