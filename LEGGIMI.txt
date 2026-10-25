@@ -1,4 +1,4 @@
-SimplyCAD Pro - pubblicazione su GitHub Pages (v19.0)
+SimplyCAD Pro - pubblicazione su GitHub Pages (v19.1)
 
 Contenuto (vanno caricati tutti, senza rinominarli e SENZA cartelle intorno):
   index.html  sw.js  manifest.webmanifest  icon-192.png  icon-512.png  icon-maskable.png  README.md
@@ -94,6 +94,11 @@ NOVITÀ v18.9
 NOVITÀ v18.9.1
  - 🧲 Aggancia anche nella barra interattiva (senza selezione) e nel suo menu ⋯.
 
+NOVITÀ v19.1
+ - Rilievo › Menu: riferimento delle misure dei muri a scelta fra Interno (da muro a muro, lato stanza), Esterno
+   (lato esterno del muro) e Centro muro. Le stanze e le diagonali si adeguano di conseguenza.
+ - Versione e release nel menu del rilievo e in testa al file CSV.
+
 NOVITÀ v19.0
  - Progetto › Pavimenti e rivestimenti: skin da foto di piastrelle (ritaglio di UNA piastrella con 2 punti) o tinta unita;
    formato, fuga, colore fuga e posa; libreria sul dispositivo, esporta/importa file .simplyskin.
@@ -101,6 +106,8 @@ NOVITÀ v19.0
    angolo. Pezzi e sfrido calcolati e nel computo; texture anche in 3D.
  - Prospetto › Rivestimento: rettangolo con quote da sinistra/destra e da terra/soffitto, orizzontale o verticale, partenza da
    uno dei 4 angoli. Fori, porte e finestre detratti; nicchie e pilastri interni rivestiti (computo); piano in 3D.
+ - Skin tinta unita: campo codice colore, toni rapidi (più chiaro/scuro, più caldo/freddo), colori usati di recente,
+   pulsante ⧉ per duplicare una skin senza toccare l'originale. Nicchie dentro il rivestimento rivestite anche in 3D.
 
 NOVITÀ v18.9.2
  - Prospetto del muro: i pulsanti Porta e Finestra disegnano porta o finestra vera sul muro (tocca due angoli; il lato in basso della porta va a terra, quello della finestra è il davanzale).

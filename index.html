@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v19.0</title>
+<title>SimplyCAD Pro · v19.1</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -12534,6 +12534,8 @@ updateRoomList();
 (function () {
   const LSK = 'simplycad_sv_v2', D2R = Math.PI / 180, HIDE = '__sv__';
   const cfg = {mode: 'auto', interior: true, h: null, t: null, tol: 0.05};
+  const refNow = () => cfg.interior === false || cfg.ref === 'cen' ? 'cen' : (cfg.ref === 'ext' ? 'ext' : 'int');
+  const sr = () => ({int: 1, ext: -1, cen: 0})[refNow()];   /* v19.1: segno della correzione della misura */
   try { Object.assign(cfg, JSON.parse(localStorage.getItem(LSK) || '{}')); } catch (_) {}
   const saveCfg = () => { try { localStorage.setItem(LSK, JSON.stringify(cfg)); } catch (_) {} };
   const $ = id => document.getElementById(id);
@@ -12659,12 +12661,12 @@ updateRoomList();
   }
   // la diagonale si misura tra angoli interni: scostamento (m) del punto interno rispetto al vertice sull'asse
   function cornerOff(pos, nPrev, v, nNext, t) {
-    if (!cfg.interior) return {x: 0, y: 0};
+    const sg = sr(); if (!sg) return {x: 0, y: 0};
     const eP = edgeBetween(nPrev, v), eN = edgeBetween(v, nNext), t1 = eP && eP.k === 'wall' ? t / 2 : 0, t2 = eN && eN.k === 'wall' ? t / 2 : 0;
     const P = pos.get(nPrev), V = pos.get(v), N = pos.get(nNext); if (!P || !V || !N) return {x: 0, y: 0};
     const l1 = Math.hypot(V.x - P.x, V.y - P.y) || 1, l2 = Math.hypot(N.x - V.x, N.y - V.y) || 1, n1 = {x: -(V.y - P.y) / l1, y: (V.x - P.x) / l1}, n2 = {x: -(N.y - V.y) / l2, y: (N.x - V.x) / l2}, c = n1.x * n2.x + n1.y * n2.y, den = 1 - c * c;
-    if (den < 1e-6) return {x: n1.x * t1, y: n1.y * t1};
-    const k1 = (t1 - c * t2) / den, k2 = (t2 - c * t1) / den; return {x: k1 * n1.x + k2 * n2.x, y: k1 * n1.y + k2 * n2.y};
+    if (den < 1e-6) return {x: sg * n1.x * t1, y: sg * n1.y * t1};
+    const k1 = (t1 - c * t2) / den, k2 = (t2 - c * t1) / den; return {x: sg * (k1 * n1.x + k2 * n2.x), y: sg * (k1 * n1.y + k2 * n2.y)};
   }
   function solveDense(M, b) {
     const n = b.length; for (let i = 0; i < n; i++) M[i][i] += 1e-10;
@@ -12705,8 +12707,8 @@ updateRoomList();
   const todoN = () => todoW().length + todoO().length;
   function reconstruct() {
     const s = sk(), t = tDef(), walls = wallEdges().sort((a, b) => a.id - b.id), dir = new Map(), Lc = new Map(), kR = skRatio();
-    const corr = cfg.interior ? endCorrections(t) : new Map(), cOf = (e, n) => corr.has(e.id + ':' + n) ? corr.get(e.id + ':' + n) : (degW(n) >= 2 ? t / 2 : 0);
-    const lc = e => Lof(e, kR) + (cfg.interior ? cOf(e, e.a) + cOf(e, e.b) : 0);
+    const corr = sr() ? endCorrections(t) : new Map(), cOf = (e, n) => corr.has(e.id + ':' + n) ? corr.get(e.id + ':' + n) : (degW(n) >= 2 ? t / 2 : 0);
+    const lc = e => Lof(e, kR) + sr() * (cOf(e, e.a) + cOf(e, e.b));
     walls.forEach(e => Lc.set(e.id, lc(e)));
     walls.forEach(e => dir.set(e.id, (e.dir || 0) * D2R));   // ogni muro ha la sua direzione assoluta (frecce / angolo)
     const ids = s.n.map(n => n.id), eqs = walls.map(e => ({a: e.a, b: e.b, vx: Lc.get(e.id) * Math.cos(dir.get(e.id)), vy: Lc.get(e.id) * Math.sin(dir.get(e.id)), w: 1 / Math.max(0.5, Lc.get(e.id))}));
@@ -12717,7 +12719,7 @@ updateRoomList();
     const fixed = new Map(); comps.forEach(list => fixed.set(Math.min(...list), {x: 0, y: 0}));
     let pos = solveLS(ids, eqs, fixed);
     // linee di chiusura: vincolo di sola lunghezza tra due punti esistenti (direzione dalla soluzione corrente)
-    const closes = s.e.filter(e => e.k === 'close' && e.L > 0 && fd(e.a) === fd(e.b)), cl = e => e.L + (cfg.interior ? t / 2 * ((degW(e.a) >= 1 ? 1 : 0) + (degW(e.b) >= 1 ? 1 : 0)) : 0);
+    const closes = s.e.filter(e => e.k === 'close' && e.L > 0 && fd(e.a) === fd(e.b)), cl = e => e.L + sr() * t / 2 * ((degW(e.a) >= 1 ? 1 : 0) + (degW(e.b) >= 1 ? 1 : 0));
     for (let it = 0; it < 2 && closes.length; it++) {
       const extra = closes.map(e => { const A = pos.get(e.a), B = pos.get(e.b), d = Math.hypot(B.x - A.x, B.y - A.y) || 1; return {a: e.a, b: e.b, vx: cl(e) * (B.x - A.x) / d, vy: cl(e) * (B.y - A.y) / d, w: 1 / Math.max(0.5, cl(e))}; });
       pos = solveLS(ids, eqs.concat(extra), fixed);
@@ -12736,7 +12738,7 @@ updateRoomList();
       AJ.pos.forEach((p, id) => placed.set(id, p)); res = AJ.res; adjusted = true; mis = AJ.maxRes;
       if (AJ.worst) { if (AJ.worst.k === 'diag') { worst = dsm.find(d => d.id === AJ.worst.id) || null; worstK = 'diag'; } else { worst = edgeOf(AJ.worst.id) || null; worstK = 'edge'; } } else worst = null;
     }
-    const cA = new Map(), cB = new Map(); walls.forEach(e => { cA.set(e.id, cfg.interior ? cOf(e, e.a) : 0); cB.set(e.id, cfg.interior ? cOf(e, e.b) : 0); });
+    const cA = new Map(), cB = new Map(); walls.forEach(e => { cA.set(e.id, sr() * cOf(e, e.a)); cB.set(e.id, sr() * cOf(e, e.b)); });
     const thin = walls.filter(e => Lc.get(e.id) < 0.04);
     return {pos: placed, dir, Lc, mis, worst, worstK, comps: comps.size, cA, cB, adjusted, res, fuori, thin};
   }
@@ -12747,10 +12749,10 @@ updateRoomList();
     return seen.has(b);
   }
   let rcKey = '', rcVal = null;
-  function cachedR() { const s = sk(), key = JSON.stringify([s.n.map(n => [n.id, Math.round(n.x * 100), Math.round(n.y * 100)]), s.e.map(e => [e.id, e.k, e.a, e.b, e.L, e.dir, e.t]), (s.d || []).map(d => [d.id, d.a, d.b, d.L]), cfg.interior, tDef()]); if (key !== rcKey) { rcKey = key; try { rcVal = reconstruct(); } catch (_) { rcVal = null; } } return rcVal; }
+  function cachedR() { const s = sk(), key = JSON.stringify([s.n.map(n => [n.id, Math.round(n.x * 100), Math.round(n.y * 100)]), s.e.map(e => [e.id, e.k, e.a, e.b, e.L, e.dir, e.t]), (s.d || []).map(d => [d.id, d.a, d.b, d.L]), sr(), tDef()]); if (key !== rcKey) { rcKey = key; try { rcVal = reconstruct(); } catch (_) { rcVal = null; } } return rcVal; }
   function closureCalc(a, b, R) {
     if (!connected(a, b)) return null; R = R || cachedR(); if (!R) return null; const A = R.pos.get(a), B = R.pos.get(b); if (!A || !B) return null;
-    return Math.max(0, Math.hypot(B.x - A.x, B.y - A.y) - (cfg.interior ? tDef() / 2 * ((degW(a) >= 1 ? 1 : 0) + (degW(b) >= 1 ? 1 : 0)) : 0));
+    return Math.max(0, Math.hypot(B.x - A.x, B.y - A.y) - sr() * tDef() / 2 * ((degW(a) >= 1 ? 1 : 0) + (degW(b) >= 1 ? 1 : 0)));
   }
 
   /* ---------------------------------------------------------------- pianta vera nel modello (riscritta a ogni ricostruzione) */
@@ -13230,8 +13232,9 @@ updateRoomList();
     else if (f === 'wh') { if (!(v > 0.5 && v < 10)) { toast('Altezza non valida (0,5–10 m)'); t.value = f2(ed.h || hDef()); return; } ed.h = v; }
     checkpoint(); buildReal(); refreshTable();
   }
+  const relVer = () => (window.SC_REL && SC_REL.v) || '';
   function csvText() {
-    const c = v => '"' + String(v).replace(/"/g, '""') + '"', n = v => f2(v), out = []; out.push([c('Piano'), c(fl().name)].join(';')); out.push('');
+    const c = v => '"' + String(v).replace(/"/g, '""') + '"', n = v => f2(v), out = []; out.push([c('SimplyCAD Pro'), c('v' + relVer()), c('Misure dei muri: ' + ({int: 'interno', ext: 'esterno', cen: 'centro muro'})[refNow()])].join(';')); out.push([c('Piano'), c(fl().name)].join(';')); out.push('');
     out.push(['Stanza', 'Superficie m2', 'Nota'].map(c).join(';')); roomsNow().forEach(r => out.push([c(r.name || ''), n(roomArea(r)), c(r.note || '')].join(';'))); out.push('');
     out.push(['Muro', 'Lunghezza m', 'Altezza m', 'mq lordi', 'mq netti', 'Porte', 'Finestre', 'Nota'].map(c).join(';'));
     wallEdges().forEach(e => { const q = wallMq(e), o = opsOf(e.id); out.push([c(e.name), e.L > 0 ? n(e.L) : c('da misurare'), n(e.h || hDef()), n(q.gross), n(q.net), o.filter(x => x.k === 'door').length, o.filter(x => x.k === 'window').length, c(e.note || '')].join(';')); });
@@ -13249,18 +13252,18 @@ updateRoomList();
 
   /* ---------------------------------------------------------------- menu ⋮ */
   function openMenu() {
-    S.over = 'menu'; ui.menu.innerHTML = `<div class="sv-th"><b>Menu rilievo</b><span><button type="button" data-a="mclose">✕</button></span></div><div class="sv-tb sv-ml">
+    S.over = 'menu'; ui.menu.innerHTML = `<div class="sv-th"><b>Menu rilievo · v${relVer()}</b><span><button type="button" data-a="mclose">✕</button></span></div><div class="sv-tb sv-ml">
       <button type="button" data-a="mexit" class="sv-sw">🖥 Passa alla modalità CAD</button>
       <div class="sv-rh">💾 Salvataggio automatico attivo${window.SCauto && SCauto.last() ? ' · ultimo alle ' + new Date(SCauto.last()).toLocaleTimeString('it-IT') : ''}. Se esci per errore, riaprendo l\'app ti propone di riprendere il lavoro.</div>
       <div class="sv-set"><label>Altezza muri (m)<input id="mH" inputmode="decimal" value="${f2(hDef())}"></label><label>Spessore muri (m)<input id="mT" inputmode="decimal" value="${f2(tDef())}"></label></div>
       <div class="sv-set"><label>Limite dello scarto (cm)<input id="mTol" inputmode="decimal" value="${f2(tol() * 100, 1)}"></label><div class="sv-rh">Oltre questo scarto, dopo le diagonali, l'app chiede di rimisurare i muri. 2 cm per un progetto, 5 cm per un rilievo di massima.</div></div>
-      <label class="sv-chk"><input type="checkbox" id="mInt"${cfg.interior ? ' checked' : ''}> Misure interne (da muro a muro)</label>
+      <label class="sv-chk" style="flex-direction:column;align-items:flex-start">Riferimento delle misure dei muri<select id="mRef" style="width:100%;min-height:36px;margin-top:4px"><option value="int"${refNow() === 'int' ? ' selected' : ''}>Interno (da muro a muro, lato stanza)</option><option value="ext"${refNow() === 'ext' ? ' selected' : ''}>Esterno (lato esterno del muro)</option><option value="cen"${refNow() === 'cen' ? ' selected' : ''}>Centro del muro (asse)</option></select></label>
       <button type="button" data-a="msave">💾 Salva progetto</button><button type="button" data-a="mshare">📤 Condividi progetto</button><button type="button" data-a="mload">📂 Apri progetto</button><button type="button" data-a="mcsv">📊 Esporta tabella (CSV)</button>
       <button type="button" data-a="madd">🏢 Nuovo piano in cima</button><button type="button" data-a="mfs">⛶ Schermo intero</button>
       <button type="button" data-a="mnew" class="dng">🆕 Nuovo rilievo (cancella lo schizzo del piano)</button></div>`;
     ui.menu.style.display = 'flex'; document.body.classList.add('sv-over-open'); syncUI();
   }
-  function onMenuChange(e) { const t = e.target, v = num(t.value); if (t.id === 'mH' && v > 0.5 && v < 10) cfg.h = v; else if (t.id === 'mT' && v >= 0.03 && v <= 1.5) cfg.t = v; else if (t.id === 'mTol' && v >= 0.2 && v <= 50) cfg.tol = v / 100; else if (t.id === 'mTol') { toast('Limite da 0,2 a 50 cm'); t.value = f2(tol() * 100, 1); } else if (t.id === 'mInt') cfg.interior = t.checked; saveCfg(); }
+  function onMenuChange(e) { const t = e.target, v = num(t.value); if (t.id === 'mH' && v > 0.5 && v < 10) cfg.h = v; else if (t.id === 'mT' && v >= 0.03 && v <= 1.5) cfg.t = v; else if (t.id === 'mTol' && v >= 0.2 && v <= 50) cfg.tol = v / 100; else if (t.id === 'mTol') { toast('Limite da 0,2 a 50 cm'); t.value = f2(tol() * 100, 1); } else if (t.id === 'mRef') { cfg.ref = ['int', 'ext', 'cen'].includes(t.value) ? t.value : 'int'; cfg.interior = cfg.ref !== 'cen'; try { draw2D(); } catch (_) {} } saveCfg(); }
   async function onMenu(e) {
     const b = e.target.closest('[data-a]'); if (!b) return; const a = b.dataset.a;
     if (a === 'mclose') return closeOver();
@@ -13281,7 +13284,7 @@ updateRoomList();
     box.innerHTML = '<label style="display:block">Modalità smartphone (rilievo)</label><select id="svMode"><option value="auto">Automatica (schermi piccoli)</option><option value="on">Sempre attiva</option><option value="off">Mai</option></select><div style="font-size:10px;color:#777;margin-top:3px;line-height:1.3">Schizzo a mano libera per il rilievo in cantiere: muro, porta, finestra, misure. A fine rilievo la pianta viene ricostruita in scala 1:100.</div>';
     host.appendChild(box); const s = box.querySelector('select'); s.value = cfg.mode; s.addEventListener('change', () => { cfg.mode = s.value; saveCfg(); switchTo(null); });
   }
-  window.svRoomArea = r => { const prev = FLOORFILTER.over; FLOORFILTER.over = undefined; try { return on && !cfg.interior ? computeArea(r.polygon) : SCcomputo.roomNet(r).area; } catch (_) { return computeArea(r.polygon); } finally { FLOORFILTER.over = prev; } };
+  window.svRoomArea = r => { const prev = FLOORFILTER.over; FLOORFILTER.over = undefined; try { return on && !sr() ? computeArea(r.polygon) : SCcomputo.roomNet(r).area; } catch (_) { return computeArea(r.polygon); } finally { FLOORFILTER.over = prev; } };
   // dopo annulla/ripeti lo schizzo viene ricaricato dal piano
   const _rs = restore; restore = function () { const r = _rs.apply(this, arguments); if (on && S) { S.from = S.to = S.card = null; setTimeout(syncUI, 0); } return r; };
   const swb = $('svSwitchBtn'); if (swb) swb.addEventListener('click', () => switchTo('on'));
@@ -14651,10 +14654,9 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   #wkPanel.wk-one .wk-head .wk-tools{display:flex;flex-wrap:nowrap;gap:5px;padding:0;border:0;flex:0 1 auto;min-width:0;overflow-x:auto;scrollbar-width:none;order:1}
   #wkPanel.wk-one .wk-head .wk-tools::-webkit-scrollbar{display:none}
   #wkPanel.wk-one .wk-head .wk-tools .wk-b{flex:0 0 auto;padding:0 6px;font-size:12px;min-width:0;height:34px}
-  #wkPanel.wk-one .wk-head > .wk-b{flex:0 0 auto}
   #wkPanel.wk-one .wk-title{flex:0 0 auto;max-width:150px;order:0}
   #wkPanel.wk-one .wk-title small{display:none}
-  #wkPanel.wk-one .wk-head > .wk-b{order:2}
+  #wkPanel.wk-one .wk-head > .wk-b{order:2;flex:0 0 auto}
   #wkPanel.wk-one .wk-head > #wkPrev{margin-left:auto}
   #wkPanel.wk-full .wk-b{height:36px;min-width:36px;padding:0 9px}
   .wk-head,.wk-tools{display:flex;align-items:center;gap:6px;padding:6px 8px;flex-wrap:wrap;border-bottom:1px solid #3f4766}
@@ -19672,8 +19674,9 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
    SC_REL.v è l'unica versione: titolo, Guida, file salvato, avvisi e riga messaggi la leggono da qui.
    ======================================================================== */
 window.SC_REL = {
-  v: '19.0', d: '25/10/2026',
+  v: '19.1', d: '25/10/2026',
   news: [
+    ['19.1', 'Rilievo: riferimento delle misure dei muri a scelta fra interno (da muro a muro), esterno o centro muro. Versione e release nel menu del rilievo e nel file CSV.'],
     ['19.0', 'Skin di pavimenti e rivestimenti: piastrelle da foto o tinta unita, libreria sul dispositivo con esporta/importa. Pavimento con skin sulle aree (posa diritta, sfalsata, a correre; pezzi e sfrido calcolati). Rivestimento sul prospetto con quote da/a, nicchie e pilastri compresi.'],
     ['18.9.2', 'Prospetto: pulsanti Porta e Finestra per disegnarle direttamente sul muro (due angoli). Area: riga «Livello» nel pannello per spostarla su un altro livello.'],
     ['18.9.1', '🧲 Aggancia anche nella barra interattiva (senza selezione) e nel suo menu ⋯.'],
@@ -20187,15 +20190,39 @@ window.SC_REL = {
       const inP = state.skins.some(x => x.id === s.id), u = SKDATA.get(s.id);
       const th = s.kind === 'foto' && u ? '<img class="sk-th" src="' + u + '" alt="">' : '<span class="sk-th" style="background:' + esc(s.col || '#cbd5e1') + '"></span>';
       rows.push('<div class="sk-it' + (ED && ED.id === s.id ? ' cur' : '') + '">' + th + '<div class="sk-nm">' + esc(s.name) + '<small>' + f1(s.L * 100) + '×' + f1(s.W * 100) + ' cm · fuga ' + f1((s.g || 0) * 1000) + ' mm' + (inP ? ' · nel progetto' : '') + '</small></div>' +
-        '<button data-a="edit" data-id="' + esc(s.id) + '" title="Modifica">✏️</button><button class="dng" data-a="del" data-id="' + esc(s.id) + '" title="Elimina dalla libreria">🗑</button></div>');
+        '<button data-a="edit" data-id="' + esc(s.id) + '" title="Modifica">✏️</button><button data-a="dup" data-id="' + esc(s.id) + '" title="Duplica: una copia da modificare, la originale resta com’è">⧉</button><button class="dng" data-a="del" data-id="' + esc(s.id) + '" title="Elimina dalla libreria">🗑</button></div>');
     });
     return rows.length ? rows.join('') : '<div class="sk-hint">Nessuna skin. Crea la prima da una foto di piastrella o da una tinta unita.</div>';
   }
+  /* colore: toni rapidi (sfumature) e colori usati di recente */
+  function hexRgb(h) { const m = /^#?([0-9a-f]{6})$/i.exec(String(h).trim()); if (!m) return null; const n = parseInt(m[1], 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
+  function rgbHex(r) { return '#' + r.map(v => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, '0')).join(''); }
+  function toHsl([r, g, b]) { r /= 255; g /= 255; b /= 255; const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2; let h = 0, sat = 0; if (mx !== mn) { const d = mx - mn; sat = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn); h = mx === r ? (g - b) / d + (g < b ? 6 : 0) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; h *= 60; } return [h, sat, l]; }
+  function fromHsl([h, sat, l]) { const f = (p, q, t) => { t = (t + 1) % 1; if (t < 1 / 6) return p + (q - p) * 6 * t; if (t < 1 / 2) return q; if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6; return p; }; if (sat === 0) return [l * 255, l * 255, l * 255].map(v => v); const q = l < 0.5 ? l * (1 + sat) : l + sat - l * sat, p = 2 * l - q, hh = ((h % 360) + 360) % 360 / 360; return [f(p, q, hh + 1 / 3) * 255, f(p, q, hh) * 255, f(p, q, hh - 1 / 3) * 255]; }
+  function shiftCol(hex, k) {
+    const rgb = hexRgb(hex || '#cbd5e1') || [203, 213, 225], [h, sat, l] = toHsl(rgb);
+    if (k === 'l+') return rgbHex(fromHsl([h, sat, Math.min(0.97, l + 0.06)]));
+    if (k === 'l-') return rgbHex(fromHsl([h, sat, Math.max(0.03, l - 0.06)]));
+    const target = k === 'w+' ? 35 : 215, d = ((target - h) % 360 + 540) % 360 - 180;   /* ruota la tinta verso il caldo (arancio) o il freddo (azzurro) */
+    return rgbHex(fromHsl([h + Math.sign(d) * Math.min(Math.abs(d), 12), Math.min(1, sat + 0.02), l]));
+  }
+  const REC_KEY = 'simplycad_sk_recenti';
+  function recList() { try { const a = JSON.parse(localStorage.getItem(REC_KEY) || '[]'); return Array.isArray(a) ? a.filter(x => hexRgb(x)) : []; } catch (_) { return []; } }
+  function recAdd(hex) { try { const a = [hex.toLowerCase()].concat(recList().filter(x => x.toLowerCase() !== hex.toLowerCase())).slice(0, 10); localStorage.setItem(REC_KEY, JSON.stringify(a)); } catch (_) {} }
+  function recHTML() { const a = recList(); return a.length ? '<span style="font-size:12px;color:#9ca3b8;width:100%">Colori usati di recente</span>' + a.map(c => '<button data-rec="' + esc(c) + '" title="' + esc(c) + '" style="width:34px;min-width:34px;height:34px;padding:0;background:' + esc(c) + '"></button>').join('') : ''; }
+  function setCol(hex) {
+    if (!ED || !hexRgb(hex)) return; ED.col = hex.toLowerCase();
+    const c = $('skCol'); if (c) c.value = ED.col; const x = $('skHex'); if (x) x.value = ED.col.toUpperCase();
+    recAdd(ED.col); const r = $('skRec'); if (r) r.innerHTML = recHTML(); preview();
+  }
+
   function edHTML() {
     const e = ED, mk = modeKey(e.posa);
     return '<div class="sk-row"><label>Nome<input id="skNm" value="' + esc(e.name) + '"></label></div>' +
       (e.kind === 'foto' ? '<div class="sk-row"><button id="skPh">📷 ' + (e.dataUrl ? 'Cambia foto' : 'Scegli foto') + '</button><input id="skFile" type="file" accept="image/*" hidden></div><div id="skPhArea"></div>' :
-        '<div class="sk-row"><label>Colore<input id="skCol" type="color" value="' + esc(e.col || '#cbd5e1') + '"></label></div>') +
+        '<div class="sk-row"><label>Colore<input id="skCol" type="color" value="' + esc(e.col || '#cbd5e1') + '"></label><label>Codice<input id="skHex" value="' + esc((e.col || '#cbd5e1').toUpperCase()) + '" style="text-transform:uppercase"></label></div>' +
+        '<div class="sk-row"><button data-tone="l+">☀ Più chiaro</button><button data-tone="l-">🌘 Più scuro</button><button data-tone="w+">🔥 Più caldo</button><button data-tone="w-">❄ Più freddo</button></div>' +
+        '<div class="sk-row" id="skRec">' + recHTML() + '</div>') +
       '<div class="sk-row"><label>Lunghezza (cm)<input id="skL" inputmode="decimal" value="' + f1(e.L * 100) + '"></label><label>Larghezza (cm)<input id="skW" inputmode="decimal" value="' + f1(e.W * 100) + '"></label>' +
       '<label>Fuga (mm)<input id="skG" inputmode="decimal" value="' + f1(e.g * 1000) + '"></label><label>Colore fuga<input id="skGc" type="color" value="' + esc(e.gcol || '#9ca3af') + '"></label></div>' +
       '<div class="sk-row"><label>Posa di base<select id="skPosa">' + [['dritta', 'Diritta'], ['sfalsata2', 'Sfalsata a metà'], ['sfalsata3', 'Sfalsata a un terzo'], ['correre', 'A correre (scarto sulla fila dopo)']].map(([k, t]) => '<option value="' + k + '"' + (k === mk ? ' selected' : '') + '>' + t + '</option>').join('') + '</select></label>' +
@@ -20224,12 +20251,18 @@ window.SC_REL = {
     const num = id => { const v = parseFloat(String(($(id) || {}).value || '').replace(',', '.')); return isFinite(v) ? v : 0; };
     ED.name = ($('skNm') || {}).value || ED.name; ED.L = Math.max(0.01, num('skL') / 100) || ED.L; ED.W = Math.max(0.01, num('skW') / 100) || ED.W; ED.g = Math.max(0, num('skG') / 1000);
     ED.gcol = ($('skGc') || {}).value || ED.gcol; if ($('skCol')) ED.col = $('skCol').value;
+    if ($('skHex') && hexRgb($('skHex').value) && ED.kind === 'tinta') ED.col = rgbHex(hexRgb($('skHex').value)).toLowerCase();
     const pk = $('skPosa'); if (pk) ED.posa = Object.assign(modeFrom(pk.value), {rot90: !!($('skR') || {}).checked});
   }
+  function b_tones() { return [...P.querySelectorAll('[data-tone]')]; }
   function bindEd() {
     ['skNm', 'skL', 'skW', 'skG', 'skGc', 'skCol', 'skPosa', 'skR'].forEach(id => { const e = $(id); if (e) e.oninput = e.onchange = () => { readEd(); preview(); }; });
     const ph = $('skPh'), fl = $('skFile'); if (ph && fl) { ph.onclick = () => fl.click(); fl.onchange = () => { const f = fl.files && fl.files[0]; if (f) loadPhoto(f); fl.value = ''; }; }
     $('skSave').onclick = save; $('skCancel').onclick = () => { ED = null; body(); };
+    const hx = $('skHex'); if (hx) hx.onchange = () => { if (hexRgb(hx.value)) setCol(hx.value); else { toast('Codice colore non valido: esempio #A0B2C3'); hx.value = (ED.col || '').toUpperCase(); } };
+    const cc = $('skCol'); if (cc) cc.onchange = () => setCol(cc.value);
+    b_tones().forEach(b => b.onclick = () => setCol(shiftCol(ED.col, b.dataset.tone)));
+    const rec = $('skRec'); if (rec) rec.onclick = e => { const b = e.target.closest('[data-rec]'); if (b) setCol(b.dataset.rec); };
   }
 
   /* ---- foto: si toccano due angoli opposti di UNA piastrella; il ritaglio diventa la skin */
@@ -20313,6 +20346,7 @@ window.SC_REL = {
     const a = b.dataset.a, id = b.dataset.id;
     if (a === 'newF' || a === 'newT') { PH = null; ED = newSkin(a === 'newF' ? 'foto' : 'tinta'); body(); }
     else if (a === 'edit') { const s = get(id); if (!s) return; PH = null; ED = Object.assign({}, s, {posa: Object.assign({}, s.posa), dataUrl: SKDATA.get(s.id) || null, _sized: true}); body(); }
+    else if (a === 'dup') { const s = get(id); if (!s) return; const n = Object.assign(META(s), {id: newSkId(), name: s.name + ' (copia)', posa: Object.assign({}, s.posa)}); LIB.push(n); libPut(Object.assign(n, {dataUrl: SKDATA.get(s.id) || null})); if (SKDATA.get(s.id)) SKDATA.set(n.id, SKDATA.get(s.id)); body(); toast('Copia creata: modificala con ✏️'); }
     else if (a === 'del') del(id); else if (a === 'exp') exportLib(); else if (a === 'imp') $('skImpF').click();
   });
   P.addEventListener('change', e => { if (e.target.id === 'skImpF') { const f = e.target.files && e.target.files[0]; if (f) importLib(f); e.target.value = ''; } });
@@ -20657,6 +20691,7 @@ window.SC_REL = {
         const L = Lw(w), t = getWallThickness(w), V = c.V, it = items(w, r, true), Wd = V.u1 - V.u0, Hh = V.z1 - V.z0;
         const ppm = Math.max(60, Math.min(320, 2048 / Math.max(Wd, Hh, 0.5))), bb = {u0: V.u0, u1: V.u1, v0: V.z0, v1: V.z1};
         const cv = SCskin.raster(c.res, c.e.sk, bb, ppm), x = cv.getContext('2d'), kx = cv.width / Wd, ky = cv.height / Hh;
+        const cvN = document.createElement('canvas'); cvN.width = cv.width; cvN.height = cv.height; cvN.getContext('2d').drawImage(cv, 0, 0);   /* copia piena per le pareti interne delle nicchie */
         x.globalCompositeOperation = 'destination-out'; x.fillStyle = '#000';
         it.holes.concat(it.niches).forEach(P => { x.beginPath(); P.forEach((p, i) => { const X = (p.x - V.u0) * kx, Y = (V.z1 - p.y) * ky; i ? x.lineTo(X, Y) : x.moveTo(X, Y); }); x.closePath(); x.fill(); });
         const tex = new THREE.CanvasTexture(cv); if (THREE.sRGBEncoding) tex.encoding = THREE.sRGBEncoding; tex.anisotropy = 4;
@@ -20665,6 +20700,26 @@ window.SC_REL = {
         g.position.set((w.p1.x + w.p2.x) / 2, 0, -(w.p1.y + w.p2.y) / 2); g.rotation.y = ang;
         m.position.set((r.x0 + r.x1) / 2 - L / 2, (V.z0 + V.z1) / 2, (r.f > 0 ? -1 : 1) * (t / 2 + 0.003)); if (r.f > 0) m.rotation.y = Math.PI;
         m.receiveShadow = true; m.userData.rivId = r.id; g.add(m); scene.add(g);
+        /* v19.0: nicchie dentro il rivestimento: fondo, lati, sopra e sotto rivestiti con la stessa posa */
+        const sg = r.f > 0 ? -1 : 1, texN = new THREE.CanvasTexture(cvN); if (THREE.sRGBEncoding) texN.encoding = THREE.sRGBEncoding; texN.anisotropy = 4;
+        (w.works || []).filter(k => k.k === 'niche' && k.f === r.f).forEach(k0 => {
+          const k = SCwk.clamp(w, {...k0}), xa = k.cx - k.w / 2, xb = k.cx + k.w / 2, y0 = k.y, y1 = k.y + k.h;
+          if (!(xa >= r.x0 - 1e-3 && xb <= r.x1 + 1e-3 && y0 >= r.z0 - 1e-3 && y1 <= r.z1 + 1e-3)) return;
+          const zf = sg * (t / 2 + 0.002), zb = sg * (t / 2 - k.d);
+          const UV = (xw, y) => { const uv = r.f > 0 ? L - (xw + L / 2) : xw + L / 2; return [(uv - V.u0) / Wd, (y - V.z0) / Hh]; };
+          const quads = [
+            [[xa, y0, zb], [xb, y0, zb], [xb, y1, zb], [xa, y1, zb]],   /* fondo della nicchia */
+            [[xa, y0, zf], [xa, y0, zb], [xa, y1, zb], [xa, y1, zf]],   /* lato sinistro */
+            [[xb, y0, zf], [xb, y0, zb], [xb, y1, zb], [xb, y1, zf]],   /* lato destro */
+            [[xa, y1, zf], [xb, y1, zf], [xb, y1, zb], [xa, y1, zb]],   /* sopra */
+            [[xa, y0, zf], [xb, y0, zf], [xb, y0, zb], [xa, y0, zb]]    /* sotto */
+          ];
+          const pos = [], uvs = [], idx = [];
+          quads.forEach(q => { const o = pos.length / 3; q.forEach(([xw, y, z]) => { pos.push(xw - L / 2, y, z); uvs.push(...UV(xw, y)); }); idx.push(o, o + 1, o + 2, o, o + 2, o + 3); });
+          const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2)); geo.setIndex(idx); geo.computeVertexNormals();
+          const mn = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({map: texN, side: THREE.DoubleSide, roughness: 0.55}));
+          mn.receiveShadow = true; mn.userData.rivNiche = k.id; g.add(mn);
+        });
       } catch (err) { console.warn('rivestimento 3D', err); }
     });
   }
