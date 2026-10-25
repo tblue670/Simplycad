@@ -1,4 +1,4 @@
-SimplyCAD Pro - pubblicazione su GitHub Pages (v19.1)
+SimplyCAD Pro - pubblicazione su GitHub Pages (v19.3)
 
 Contenuto (vanno caricati tutti, senza rinominarli e SENZA cartelle intorno):
   index.html  sw.js  manifest.webmanifest  icon-192.png  icon-512.png  icon-maskable.png  README.md
@@ -93,6 +93,11 @@ NOVITÀ v18.9
 
 NOVITÀ v18.9.1
  - 🧲 Aggancia anche nella barra interattiva (senza selezione) e nel suo menu ⋯.
+
+NOVITÀ v19.3
+Posa a correre: lo scarto dell'ultimo pezzo apre sempre la fila successiva, senza limiti fissi sui giunti. Nella skin si può impostare un avviso per i pezzi più corti (0 = nessun avviso).
+
+Skin: se si salva una skin da foto senza aver segnato i due angoli, il riquadro della foto si evidenzia con un avviso e non si salva a vuoto.
 
 NOVITÀ v19.1
  - Rilievo › Menu: riferimento delle misure dei muri a scelta fra Interno (da muro a muro, lato stanza), Esterno

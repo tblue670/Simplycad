@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v19.1</title>
+<title>SimplyCAD Pro · v19.3</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -19674,8 +19674,10 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
    SC_REL.v è l'unica versione: titolo, Guida, file salvato, avvisi e riga messaggi la leggono da qui.
    ======================================================================== */
 window.SC_REL = {
-  v: '19.1', d: '25/10/2026',
+  v: '19.3', d: '25/10/2026',
   news: [
+    ['19.3', 'Posa a correre: lo scarto apre sempre la fila successiva, senza limiti fissi sui giunti. Nella skin si può impostare l’avviso per i pezzi più corti.'],
+    ['19.2', 'Skin: se manca il ritaglio della foto il riquadro si evidenzia e resta in primo piano.'],
     ['19.1', 'Rilievo: riferimento delle misure dei muri a scelta fra interno (da muro a muro), esterno o centro muro. Versione e release nel menu del rilievo e nel file CSV.'],
     ['19.0', 'Skin di pavimenti e rivestimenti: piastrelle da foto o tinta unita, libreria sul dispositivo con esporta/importa. Pavimento con skin sulle aree (posa diritta, sfalsata, a correre; pezzi e sfrido calcolati). Rivestimento sul prospetto con quote da/a, nicchie e pilastri compresi.'],
     ['18.9.2', 'Prospetto: pulsanti Porta e Finestra per disegnarle direttamente sul muro (due angoli). Area: riga «Livello» nel pannello per spostarla su un altro livello.'],
@@ -19959,12 +19961,12 @@ window.SC_REL = {
 <script>
 /* ========================================================================
    v19.0 · MOTORE DI POSA (pavimenti e rivestimenti)
-   layout({poly, L, W, g, mode, off, rot90, ang, start, minScarto, minSfal, holes}) -> pezzi veri, tagliati, con conteggio.
+   layout({poly, L, W, g, mode, off, rot90, ang, start, avviso, holes}) -> pezzi veri, tagliati, con conteggio.
    - poly: poligono in metri (qualsiasi sistema); L×W formato della piastrella; g fuga (m)
    - mode: 'dritta' | 'sfalsata' (off = 0.5 o 1/3) | 'correre' (lo scarto dell'ultimo pezzo apre la fila dopo)
    - rot90: scambia lato lungo e corto rispetto alla direzione delle file
    - ang: direzione delle file (rad) · start: punto da cui parte la prima piastrella (null = angolo in basso a sinistra)
-   - minScarto: lo scarto più corto che si riusa · minSfal: distanza minima fra i giunti di file vicine (solo «a correre»)
+   - avviso: segnala i pezzi più corti di questa misura (m, solo «a correre»). Nessun limite fisso sui giunti.
    I pezzi sono nel sistema u (lungo la fila) / v (tra le file); T porta al sistema del disegno.
    ======================================================================== */
 (function (root) {
@@ -19988,7 +19990,7 @@ window.SC_REL = {
     const g = Math.max(0, +o.g || 0), rot90 = !!o.rot90, mode = o.mode || 'dritta';
     const pl = rot90 ? +o.W : +o.L, pw = rot90 ? +o.L : +o.W, pu = pl + g, pv = pw + g;
     const ang = +o.ang || 0, ca = Math.cos(ang), sa = Math.sin(ang);
-    const minS = o.minScarto != null ? +o.minScarto : 0.2, minF = o.minSfal != null ? +o.minSfal : pl / 3;
+    const avviso = +o.avviso || 0;   /* solo avviso: segnala i pezzi più corti (m); la posa a correre non ha limiti fissi */
     const poly = o.poly, netW = area(poly) - (o.holes || []).reduce((s, h) => s + area(h), 0);
     const res = {pieces: [], tiles: 0, bought: 0, net: netW, sfrido: 0, rows: 0, minPiece: Infinity, warn: '', pl, pw, g, mode};
     if (!(pl > 0.005 && pw > 0.005) || poly.length < 3) { res.warn = 'formato non valido'; return res; }
@@ -20002,7 +20004,7 @@ window.SC_REL = {
     if ((kE - kS + 1) * Math.max(1, (Math.max(...Pv.map(p => p.u)) - Math.min(...Pv.map(p => p.u))) / pu) > 12000) { res.dense = true; res.tiles = Math.ceil(netW / (pl * pw) * 1.1); res.bought = res.tiles * pl * pw; res.sfrido = netW > 0 ? res.bought / netW - 1 : 0; return res; }
     const holesUV = (o.holes || []).map(h => toUV(h, ox, oy));
     const inHole = (u0, u1, v0, v1) => { const e = 1e-4; u0 += e; u1 -= e; v0 += e; v1 -= e; return holesUV.some(H => [[u0, v0], [u1, v0], [u1, v1], [u0, v1], [(u0 + u1) / 2, (v0 + v1) / 2]].every(([u, v]) => inPoly(u, v, H.map(p => ({x: p.u, y: p.v}))))); };   /* punti appena dentro il pezzo: il bordo del foro non conta */
-    let stock = 0, prevJ = null;
+    let stock = 0;   /* scarto dell'ultimo pezzo della fila prima: apre la fila successiva */
     const n = mode === 'sfalsata' ? Math.max(2, Math.round(1 / (+o.off || 0.5))) : 1;
     const add = (u0, u1, v0, v1, cut, c0, c1, k, stk) => { res.pieces.push({u0, u1, v0, v1, cut, c0, c1, row: k, stock: !!stk}); if (u1 - u0 > 1e-6) res.minPiece = Math.min(res.minPiece, u1 - u0); };
     for (let k = kS; k <= kE; k++) {
@@ -20019,31 +20021,24 @@ window.SC_REL = {
             if (u1 - u0 < 1e-6 || inHole(u0, u1, v0, v1)) continue;
             add(u0, u1, v0, v1, u1 - u0 < pl - 1e-6, (u0 - c0u) / pl, (u1 - c0u) / pl, k, false); res.tiles++;
           }
-        } else {
+        } else {   /* a correre: lo scarto della fila prima apre questa, senza limiti fissi */
           let pos = a, first = true;
           while (pos < b - 1e-7) {
             const rem = b - pos;
-            if (first && prevJ) {
+            if (first && stock > EPS) {
               first = false;
-              if (stock >= minS - EPS && prevJ.every(x => Math.abs(pos + Math.min(stock, rem) - x) >= minF - 1e-9 || pos + Math.min(stock, rem) >= b - 1e-7)) {
-                const len = Math.min(stock, rem); add(pos, pos + len, v0, v1, true, 1 - stock / pl, 1 - (stock - len) / pl, k, true);
-                stock = stock - len >= minS - EPS ? stock - len : 0; pos += len; if (pos < b - 1e-7) rowJ.push(pos); pos += g; continue;
-              }
-              let l = Math.max(minS, minF), found = false;
-              for (; l <= pl + 1e-9; l = Math.round((l + 0.01) * 1000) / 1000) { if (prevJ.every(x => Math.abs(pos + l - x) >= minF - 1e-9)) { found = true; break; } }
-              if (!found) { l = pl / 2; res.warn = 'giunti allineati fra file vicine'; }
-              l = Math.min(l, pl); const len = Math.min(l, rem);
-              add(pos, pos + len, v0, v1, len < pl - 1e-6, 0, len / pl, k, false); res.tiles++;
-              stock = pl - len >= minS - EPS ? pl - len : 0; pos += len; if (pos < b - 1e-7) rowJ.push(pos); pos += g; continue;
+              const len = Math.min(stock, rem);
+              add(pos, pos + len, v0, v1, true, 1 - stock / pl, 1 - (stock - len) / pl, k, true);
+              stock = stock - len > EPS ? stock - len : 0; pos += len; if (pos < b - 1e-7) rowJ.push(pos); pos += g; continue;
             }
             first = false;
             if (rem >= pl - 1e-7) { add(pos, pos + pl, v0, v1, false, 0, 1, k, false); res.tiles++; pos += pl; if (pos < b - 1e-7) rowJ.push(pos); pos += g; }
-            else { add(pos, b, v0, v1, true, 0, rem / pl, k, false); res.tiles++; stock = pl - rem >= minS - EPS ? pl - rem : 0; pos = b; }
+            else { add(pos, b, v0, v1, true, 0, rem / pl, k, false); res.tiles++; stock = pl - rem > EPS ? pl - rem : 0; pos = b; }
           }
         }
       }
-      if (mode === 'correre') prevJ = rowJ.length ? rowJ : (prevJ || []);
     }
+    if (mode === 'correre' && avviso > 0) { const nShort = res.pieces.filter(p => p.u1 - p.u0 > EPS && p.u1 - p.u0 < avviso - EPS).length; if (nShort) res.warn = 'pezzi più corti di ' + Math.round(avviso * 100) + ' cm: ' + nShort; }
     res.bought = res.tiles * pl * pw; res.sfrido = netW > 0 ? res.bought / netW - 1 : 0;
     if (res.minPiece === Infinity) res.minPiece = 0;
     return res;
@@ -20150,7 +20145,7 @@ window.SC_REL = {
   }
   const layoutOf = (poly, sk, posa, ang, start, holes) => {
     const P = posa || sk.posa || {mode: 'dritta', off: 0.5, rot90: false};
-    const r = SCposa.layout({poly, L: sk.L, W: sk.W, g: sk.g || 0, mode: P.mode, off: P.off, rot90: !!P.rot90, ang: ang || 0, start: start || null, holes: holes || null});
+    const r = SCposa.layout({poly, L: sk.L, W: sk.W, g: sk.g || 0, mode: P.mode, off: P.off, rot90: !!P.rot90, ang: ang || 0, start: start || null, holes: holes || null, avviso: ((sk.posa && sk.posa.avv) || 0) / 100});
     r.rot90 = !!P.rot90; return r;
   };
 
@@ -20227,6 +20222,7 @@ window.SC_REL = {
       '<label>Fuga (mm)<input id="skG" inputmode="decimal" value="' + f1(e.g * 1000) + '"></label><label>Colore fuga<input id="skGc" type="color" value="' + esc(e.gcol || '#9ca3af') + '"></label></div>' +
       '<div class="sk-row"><label>Posa di base<select id="skPosa">' + [['dritta', 'Diritta'], ['sfalsata2', 'Sfalsata a metà'], ['sfalsata3', 'Sfalsata a un terzo'], ['correre', 'A correre (scarto sulla fila dopo)']].map(([k, t]) => '<option value="' + k + '"' + (k === mk ? ' selected' : '') + '>' + t + '</option>').join('') + '</select></label>' +
       '<label style="flex:0 0 auto;flex-direction:row;align-items:center;gap:6px"><input id="skR" type="checkbox" style="width:22px;min-height:22px"' + (e.posa.rot90 ? ' checked' : '') + '> Ruota di 90°</label></div>' +
+      '<div class="sk-row"><label>Avvisa pezzi più corti di (cm, 0 = mai)<input id="skAvv" inputmode="decimal" value="' + ((e.posa && e.posa.avv) || 0) + '"></label></div>' +
       '<div class="sk-hint">Pezzetto di prova (2 × 1,2 m). Il punto iniziale e l\'allineamento a un muro si scelgono quando applichi la skin alla stanza.</div><canvas id="skPrev" width="360" height="216"></canvas>' +
       '<div class="sk-row"><button class="pri" id="skSave">Salva in libreria</button><button id="skCancel">Annulla</button></div>';
   }
@@ -20252,11 +20248,12 @@ window.SC_REL = {
     ED.name = ($('skNm') || {}).value || ED.name; ED.L = Math.max(0.01, num('skL') / 100) || ED.L; ED.W = Math.max(0.01, num('skW') / 100) || ED.W; ED.g = Math.max(0, num('skG') / 1000);
     ED.gcol = ($('skGc') || {}).value || ED.gcol; if ($('skCol')) ED.col = $('skCol').value;
     if ($('skHex') && hexRgb($('skHex').value) && ED.kind === 'tinta') ED.col = rgbHex(hexRgb($('skHex').value)).toLowerCase();
-    const pk = $('skPosa'); if (pk) ED.posa = Object.assign(modeFrom(pk.value), {rot90: !!($('skR') || {}).checked});
+    const av = $('skAvv'); if (av) { const v = parseFloat(String(av.value).replace(',', '.')); ED.posa = Object.assign({}, ED.posa, {avv: isFinite(v) && v > 0 ? v : 0}); }
+    const pk = $('skPosa'); if (pk) ED.posa = Object.assign(modeFrom(pk.value), {rot90: !!($('skR') || {}).checked, avv: (ED.posa && ED.posa.avv) || 0});
   }
   function b_tones() { return [...P.querySelectorAll('[data-tone]')]; }
   function bindEd() {
-    ['skNm', 'skL', 'skW', 'skG', 'skGc', 'skCol', 'skPosa', 'skR'].forEach(id => { const e = $(id); if (e) e.oninput = e.onchange = () => { readEd(); preview(); }; });
+    ['skNm', 'skL', 'skW', 'skG', 'skGc', 'skCol', 'skPosa', 'skR', 'skAvv'].forEach(id => { const e = $(id); if (e) e.oninput = e.onchange = () => { readEd(); preview(); }; });
     const ph = $('skPh'), fl = $('skFile'); if (ph && fl) { ph.onclick = () => fl.click(); fl.onchange = () => { const f = fl.files && fl.files[0]; if (f) loadPhoto(f); fl.value = ''; }; }
     $('skSave').onclick = save; $('skCancel').onclick = () => { ED = null; body(); };
     const hx = $('skHex'); if (hx) hx.onchange = () => { if (hexRgb(hx.value)) setCol(hx.value); else { toast('Codice colore non valido: esempio #A0B2C3'); hx.value = (ED.col || '').toUpperCase(); } };
@@ -20267,6 +20264,7 @@ window.SC_REL = {
 
   /* ---- foto: si toccano due angoli opposti di UNA piastrella; il ritaglio diventa la skin */
   let PH = null;   /* {img, A, B, cur, sc} */
+  let NOCROP = false;   /* «Salva» premuto senza ritaglio: il riquadro della foto si evidenzia */
   function loadPhoto(file) {
     const rd = new FileReader();
     rd.onload = () => { const im = new Image(); im.onload = () => { PH = {img: im, A: null, B: null, cur: null}; if (ED) { ED.dataUrl = null; } photoArea(); }; im.src = rd.result; };
@@ -20274,11 +20272,12 @@ window.SC_REL = {
   }
   function photoArea() {
     const a = $('skPhArea'); if (!a || !ED || ED.kind !== 'foto') return;
-    if (!PH) { a.innerHTML = ED.dataUrl ? '<div class="sk-hint">Foto già ritagliata (una piastrella). «Cambia foto» per rifarla.</div>' : '<div class="sk-hint">Scatta o scegli la foto di <b>una piastrella</b> vista dritta, senza riflessi e senza prospettiva. Poi tocca due angoli opposti di una piastrella.</div>'; return; }
+    const warn = NOCROP ? ' style="color:#fbbf24;font-weight:700;border:2px solid #fbbf24;border-radius:8px;padding:8px"' : '';
+    if (!PH) { a.innerHTML = ED.dataUrl ? '<div class="sk-hint">Foto già ritagliata (una piastrella). «Cambia foto» per rifarla.</div>' : '<div class="sk-hint"' + warn + '>' + (NOCROP ? '⚠ Manca il ritaglio: ' : '') + 'Scatta o scegli la foto di <b>una piastrella</b> vista dritta, senza riflessi e senza prospettiva. Poi tocca due angoli opposti di una piastrella.</div>'; return; }
     a.innerHTML = '<div class="sk-hint" id="skPhH"></div><canvas id="skPhC"></canvas><div class="sk-row"><button id="skPhAll">Usa tutta la foto</button><button id="skPhRe">Rifai i punti</button></div>';
     const c = $('skPhC'), im = PH.img, maxW = Math.min(400, P.clientWidth - 24), sc = Math.min(maxW / im.naturalWidth, 300 / im.naturalHeight); PH.sc = sc;
     c.width = Math.round(im.naturalWidth * sc); c.height = Math.round(im.naturalHeight * sc);
-    const hint = () => { $('skPhH').innerHTML = !PH.A ? 'Tocca il <b>primo angolo</b> di una piastrella (il cursore sta sopra il dito; rilascia per confermare).' : !PH.B ? 'Ora l\'<b>angolo opposto</b>.' : 'Ritaglio pronto: controlla il pezzetto qui sotto, poi salva.'; };
+    const hint = () => { $('skPhH').innerHTML = (NOCROP ? '<b style="color:#fbbf24">⚠ Manca il ritaglio.</b> ' : '') + (!PH.A ? 'Tocca il <b>primo angolo</b> di una piastrella (il cursore sta sopra il dito; rilascia per confermare).' : !PH.B ? 'Ora l\'<b>angolo opposto</b>.' : 'Ritaglio pronto: controlla il pezzetto qui sotto, poi salva.'); };
     const draw = () => {
       const x = c.getContext('2d'); x.clearRect(0, 0, c.width, c.height); x.drawImage(im, 0, 0, c.width, c.height);
       const A = PH.A, B = PH.B || PH.cur; x.strokeStyle = '#fbbf24'; x.lineWidth = 2;
@@ -20301,7 +20300,7 @@ window.SC_REL = {
     if (sw < 8 || sh < 8) { toast('Ritaglio troppo piccolo: tocca due angoli più distanti'); PH.A = PH.B = null; return; }
     const k = Math.min(1, 512 / Math.max(sw, sh)), c = document.createElement('canvas'); c.width = Math.max(8, Math.round(sw * k)); c.height = Math.max(8, Math.round(sh * k));
     c.getContext('2d').drawImage(im, sx, sy, sw, sh, 0, 0, c.width, c.height);
-    ED.dataUrl = c.toDataURL('image/jpeg', 0.85); ED.id = ED.id || newSkId();
+    ED.dataUrl = c.toDataURL('image/jpeg', 0.85); ED.id = ED.id || newSkId(); NOCROP = false;
     SKDATA.set(ED.id, ED.dataUrl); SKIMG.delete(ED.id); SKROT.delete(ED.id);
     if (!ED._sized) { ED.W = ED.L * c.height / c.width; ED._sized = true; const w = $('skW'); if (w) w.value = f1(ED.W * 100); }   /* proporzione della foto come punto di partenza */
     preview();
@@ -20309,7 +20308,7 @@ window.SC_REL = {
   function newSkin(kind) { return {id: null, name: kind === 'foto' ? 'Piastrella' : 'Tinta unita', kind, col: '#cbd5e1', L: 0.6, W: 0.3, g: 0.002, gcol: '#9ca3af', posa: {mode: 'dritta', off: 0.5, rot90: false}, dataUrl: null}; }
   function save() {
     readEd(); const e = ED; if (!e) return;
-    if (e.kind === 'foto' && !e.dataUrl) { toast('Prima ritaglia una piastrella dalla foto'); return; }
+    if (e.kind === 'foto' && !e.dataUrl) { NOCROP = true; body(); const a = $('skPhArea'); if (a) a.scrollIntoView({block: 'center', behavior: 'smooth'}); toast('Manca il ritaglio: segna i due angoli sulla foto'); return; }
     if (!e.id) e.id = newSkId();
     const rec = Object.assign(META(e), {dataUrl: e.kind === 'foto' ? (e.dataUrl || SKDATA.get(e.id) || null) : null});
     if (rec.dataUrl) SKDATA.set(e.id, rec.dataUrl); SKIMG.delete(e.id); SKROT.delete(e.id);
@@ -20344,7 +20343,7 @@ window.SC_REL = {
   P.addEventListener('click', e => {
     const b = e.target.closest('[data-a]'); if (e.target.id === 'skX') { close(); return; } if (!b) return;
     const a = b.dataset.a, id = b.dataset.id;
-    if (a === 'newF' || a === 'newT') { PH = null; ED = newSkin(a === 'newF' ? 'foto' : 'tinta'); body(); }
+    if (a === 'newF' || a === 'newT') { PH = null; NOCROP = false; ED = newSkin(a === 'newF' ? 'foto' : 'tinta'); body(); }
     else if (a === 'edit') { const s = get(id); if (!s) return; PH = null; ED = Object.assign({}, s, {posa: Object.assign({}, s.posa), dataUrl: SKDATA.get(s.id) || null, _sized: true}); body(); }
     else if (a === 'dup') { const s = get(id); if (!s) return; const n = Object.assign(META(s), {id: newSkId(), name: s.name + ' (copia)', posa: Object.assign({}, s.posa)}); LIB.push(n); libPut(Object.assign(n, {dataUrl: SKDATA.get(s.id) || null})); if (SKDATA.get(s.id)) SKDATA.set(n.id, SKDATA.get(s.id)); body(); toast('Copia creata: modificala con ✏️'); }
     else if (a === 'del') del(id); else if (a === 'exp') exportLib(); else if (a === 'imp') $('skImpF').click();
