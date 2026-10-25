@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v21.0</title>
+<title>SimplyCAD Pro · v21.1</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -19719,8 +19719,9 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
    SC_REL.v è l'unica versione: titolo, Guida, file salvato, avvisi e riga messaggi la leggono da qui.
    ======================================================================== */
 window.SC_REL = {
-  v: '21.0', d: '25/10/2026',
+  v: '21.1', d: '25/10/2026',
   news: [
+    ['21.1', 'Aggancia → «✂ Sgancia»: separa due muri uniti in un punto condiviso, spostando solo il muro scelto (prima trascinando un punto uniti si spostavano insieme).'],
     ['21.0', 'Pilastri: si trascinano con il cursore in pianta e si agganciano al muro dove li lasci (entro 25 cm dalla faccia); lontano dai muri restano liberi. Visibili e spostabili anche nel prospetto del muro.'],
     ['20.1', 'Geometria → «Allinea al calco»: tocchi due o più punti del disegno e gli stessi punti sul calco. Il calco si congela, il disegno ruota per seguire il calco, il calco si porta in scala. Il menu si chiude subito dopo la scelta.'],
     ['19.3', 'Posa a correre: lo scarto apre sempre la fila successiva, senza limiti fissi sui giunti. Nella skin si può impostare l’avviso per i pezzi più corti.'],
@@ -19850,6 +19851,7 @@ window.SC_REL = {
     const old = {x: sel.p.x, y: sel.p.y}, W = state.walls.filter(w => floorOf(w) === fl());
     const hit = []; W.forEach(w => ['p1', 'p2'].forEach(k => { if (same(w[k], old) && !isEntityLocked(w)) hit.push([w, k]); }));
     if (!hit.some(([w, k]) => w === sel.w && k === sel.k)) hit.push([sel.w, sel.k]);
+    if (sel.solo) { hit.length = 0; hit.push([sel.w, sel.k]); }   /* v21.1 Sgancia: solo questo muro */
     const affected = [...new Set(hit.map(h => h[0]))], keep = new Map();
     affected.forEach(w => state.doors.concat(state.windows).forEach(o => { if (o.wallId === w.id) keep.set(o, ptAt(w, o.t)); }));
     hit.forEach(([w, k]) => { w[k] = {x: r6(P.x), y: r6(P.y)}; });
@@ -19879,6 +19881,7 @@ window.SC_REL = {
       ban.addEventListener('click', e => {
         const b = e.target.closest('button'); if (!b) return; const a = b.dataset.a;
         if (a === 'end') end(); else if (a === 'un') { AG.sel = null; ui(); draw2D(); }
+        else if (a === 'solo') { AG.solo = !AG.solo; AG.sel = null; toast(AG.solo ? 'Sgancia attivo: tocca il punto condiviso (accendi 🔵 Altri punti), poi dove portarlo. Si muove solo quel muro' : 'Sgancia spento'); ui(); draw2D(); }
         else if (a === 'sug' && AG.sel && AG.sel.sug) closeSug(AG.sel.sug);
         else if ('rob'.includes(a)) { F()[a] = !F()[a]; try { persistSettings(); } catch (_) {} ui(); draw2D(); }
       });
@@ -19891,7 +19894,7 @@ window.SC_REL = {
     const txt = !s ? '🧲 Aggancia · 1/2 tocca il punto da spostare' + (nR ? ' · ' + nR + ' estremità staccate' : '') : '🧲 2/2 tocca dove agganciarlo' + (s.sug ? ' · cerchio verde = chiusura proposta' : '');
     const btn = (a, c, t) => '<button class="agf' + (f[a] ? ' on' : '') + '" data-a="' + a + '" title="Mostra / nascondi"><i style="background:' + c + '"></i><b class="agt">' + t + '</b></button>';
     ban.innerHTML = '<span>' + txt + '</span>' + btn('r', COL.r, 'Muri aperti') + btn('o', COL.o, 'Aree e linee') + btn('b', COL.b, 'Altri punti') +
-      (s && s.sug ? '<button data-a="sug">✔ Chiudi come proposto</button>' : '') + (s ? '<button data-a="un">✖ Annulla punto</button>' : '') + '<button data-a="end">✔ Fine</button>';
+      (s && s.sug ? '<button data-a="sug">✔ Chiudi come proposto</button>' : '') + (s ? '<button data-a="un">✖ Annulla punto</button>' : '') + '<button data-a="solo"' + (AG.solo ? ' class="on"' : '') + ' title="Sgancia: sposta un solo muro, il punto condiviso si separa">✂ Sgancia</button>' + '<button data-a="end">✔ Fine</button>';
     ban.style.display = 'flex';
   }
   function start() {
@@ -19919,7 +19922,7 @@ window.SC_REL = {
     if (!AG.sel) {
       const q = near(cx, cy, AG.pts.filter(q => shown(q, null)), R);
       if (!q) { toast('Tocca un punto colorato (accendi 🔵 per gli altri punti)'); return; }
-      AG.sel = q; ui(); draw2D(); return;
+      AG.sel = q; q.solo = !!AG.solo; ui(); draw2D(); return;
     }
     const s = AG.sel, r = c2d.getBoundingClientRect();
     if (s.sug) { const g = worldToScreen(s.sug.hit.x, s.sug.hit.y); if (Math.hypot(g.x - (cx - r.left), g.y - (cy - r.top)) < R) { closeSug(s.sug); return; } }
@@ -19929,8 +19932,9 @@ window.SC_REL = {
       try { if (sp) sp.checked = true; P = snapToVertex(raw, null); } catch (_) { P = raw; } finally { if (sp) sp.checked = old; }
     }
     if (!P || same(P, s.p)) { toast('È lo stesso punto: scegline un altro'); return; }
-    apply(s, P);
-    toast('Agganciato' + (s.kind === 'furn' ? ': arredo spostato' : s.kind === 'op' ? ': ' + (s.o.kind ? 'porta' : 'apertura') + ' allineata' : ''));
+    s.solo = !!AG.solo; apply(s, P);
+    if (s.solo) AG.solo = false;
+    toast((s.solo ? 'Sganciato: solo quel muro si è spostato' : 'Agganciato') + (s.kind === 'furn' ? ': arredo spostato' : s.kind === 'op' ? ': ' + (s.o.kind ? 'porta' : 'apertura') + ' allineata' : ''));
     AG.sel = null; AG.pts = collect(); ui(); draw2D();
   };
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && AG) { if (AG.sel) { AG.sel = null; ui(); draw2D(); } else end(); } });
