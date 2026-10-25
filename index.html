@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v20.1</title>
+<title>SimplyCAD Pro · v21.0</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -6397,6 +6397,7 @@ function dragMove(e, raw) {
       nx = Math.round(nx / gs) * gs; ny = Math.round(ny / gs) * gs;
     }
     drag.target.x = r6(nx); drag.target.y = r6(ny);
+    if (drag.target.type === 'pilastro' && window.SCpillar) SCpillar.attach(drag.target);   /* v21.0: aggancio al muro dove lo lasci */
     if (state.stairs.includes(drag.target) && $('snapPts').checked) stairAnchor(drag.target, Math.max(0.05, 12 / viewScale), false);
     if (state.mode === '3d') build3D();
   } else if (drag.type === 'measurement') {
@@ -9980,7 +9981,29 @@ updateRoomList();
     } catch (_) {}
     return r;
   };
-  window.SCpillar = { sync };
+  /* v21.0: il pilastro si aggancia al muro vicino (entro 25 cm dalla faccia) nel punto dove lo lasci; lontano dai muri resta libero */
+  const SNAP_PIL = 0.25;
+  function attach(f) {
+    if (!f || f.type !== 'pilastro') return false;
+    let best = null, bd = 1e9;
+    for (const w of state.walls) {
+      if (!isEntityVisible(w) || isEntityLocked(w) || (window.SCcg && SCcg.isCp && SCcg.isCp(w))) continue;
+      const A = w.p1, B = w.p2, dx = B.x - A.x, dy = B.y - A.y, L = Math.hypot(dx, dy);
+      if (L < f.w + 0.02) continue;
+      const ux = dx / L, uy = dy / L, px = f.x - A.x, py = f.y - A.y, t = px * ux + py * uy;
+      if (t < -0.02 || t > L + 0.02) continue;
+      const cr = ux * py - uy * px, gap = Math.abs(cr) - getWallThickness(w) / 2 - f.d / 2;
+      if (gap > SNAP_PIL || gap >= bd) continue;
+      bd = gap; best = {w, L, t, side: Math.abs(cr) < 1e-6 ? ((f.pil && f.pil.side) || 1) : (cr >= 0 ? 1 : -1)};
+    }
+    if (!best) { delete f.pil; return false; }
+    const {w, L} = best, ref = f.pil && f.pil.wallId === w.id && f.pil.ref === 'b' ? 'b' : 'a';
+    const along = Math.max(f.w / 2, Math.min(L - f.w / 2, best.t));
+    const dist = ref === 'b' ? (L - along) - f.w / 2 : along - f.w / 2;
+    f.pil = {wallId: w.id, dist: r6(Math.max(0, dist)), ref, side: best.side};
+    sync(f); return true;
+  }
+  window.SCpillar = { sync, attach };
 })();
 
 /* ========================================================================
@@ -14518,16 +14541,25 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
      Si selezionano e si modificano come le lavorazioni: riquadro {cx, y, w, h} lungo il muro (da p1), poi si riscrive l'oggetto. */
   const isCpW = w => !!(w && window.SCcg && SCcg.isCp && SCcg.isCp(w));
   const cpsOf = w => state.walls.filter(c => isCpW(c) && c.cg.host === w.id && isEntityVisible(c));
-  const ON = {door: 'Porta', window: 'Finestra', cp: 'Controparete', riv: 'Rivestimento'};
-  function objOf(o) { if (!o) return null; if (o.kind === 'riv') return window.SCriv ? SCriv.find(o.id) : null; return o.kind === 'cp' ? wById(o.id) : (o.kind === 'door' ? state.doors : state.windows).find(x => x.id === o.id) || null; }
+  const ON = {door: 'Porta', window: 'Finestra', cp: 'Controparete', riv: 'Rivestimento', pil: 'Pilastro'};
+  /* v21.0: pilastri addossati a questo muro (dalla pianta): si vedono e si spostano anche nel prospetto */
+  const pillarsOf = w => state.furniture.filter(f => f.type === 'pilastro' && f.pil && f.pil.wallId === w.id && isEntityVisible(f));
+  function objOf(o) { if (!o) return null; if (o.kind === 'pil') return state.furniture.find(x => x.id === o.id) || null; if (o.kind === 'riv') return window.SCriv ? SCriv.find(o.id) : null; return o.kind === 'cp' ? wById(o.id) : (o.kind === 'door' ? state.doors : state.windows).find(x => x.id === o.id) || null; }
   function proxy(w, o) {
     const e = objOf(o); if (!e) return null; const L = Lw(w);
+    if (o.kind === 'pil') { const s = e.pil ? (e.pil.ref === 'b' ? L - (e.pil.dist + e.w / 2) : e.pil.dist + e.w / 2) : L / 2; return {sh: 'rect', cx: s, y: 0, w: e.w, h: Math.min(e.h || wh(w), wh(w))}; }
     if (o.kind === 'riv') return {sh: 'rect', cx: (e.x0 + e.x1) / 2, y: e.z0, w: e.x1 - e.x0, h: e.z1 - e.z0};
     if (o.kind === 'cp') { const s = SCcg.span(e); if (!s) return null; return {sh: 'rect', cx: (s.x0 + s.x1) / 2, y: s.z0, w: s.x1 - s.x0, h: s.z1 - s.z0}; }
     return {sh: 'rect', cx: e.t * L, y: o.kind === 'window' ? (e.sillHeight || 0) : 0, w: e.width, h: e.height};
   }
   function writeProxy(w, o, r) {
     const e = objOf(o); if (!e) return; const L = Lw(w), H = wh(w);
+    if (o.kind === 'pil') {
+      e.w = Math.round(Math.max(0.05, Math.min(L, r.w)) * 1000) / 1000; e.h = Math.round(Math.max(0.05, Math.min(H, r.h)) * 1000) / 1000;
+      const s = Math.max(e.w / 2, Math.min(L - e.w / 2, r.cx));
+      if (e.pil) { e.pil.dist = Math.round(Math.max(0, e.pil.ref === 'b' ? (L - s) - e.w / 2 : s - e.w / 2) * 1000) / 1000; if (window.SCpillar) SCpillar.sync(e); }
+      return;
+    }
     if (o.kind === 'riv') { const wd = Math.max(0.05, Math.min(L, r.w)), hh = Math.max(0.05, Math.min(H, r.h)), cx0 = Math.max(wd / 2, Math.min(L - wd / 2, r.cx)), y0 = Math.max(0, Math.min(H - hh, r.y)); e.x0 = Math.round((cx0 - wd / 2) * 1000) / 1000; e.x1 = Math.round((cx0 + wd / 2) * 1000) / 1000; e.z0 = Math.round(y0 * 1000) / 1000; e.z1 = Math.round((y0 + hh) * 1000) / 1000; return; }
     if (o.kind === 'cp') { SCcg.setSpan(e, r.cx - r.w / 2, r.cx + r.w / 2, r.y, r.y + r.h); return; }
     const wd = Math.max(0.2, Math.min(L, r.w)), hh = Math.max(0.2, Math.min(H, r.h));
@@ -14540,6 +14572,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   function hitObj(w, u, v) {
     const L = Lw(w), x = S.face > 0 ? L - u : u, tol = 6 / S.view.s;
     const inR = r => r && x > r.cx - r.w / 2 - tol && x < r.cx + r.w / 2 + tol && v > r.y - tol && v < r.y + r.h + tol;
+    for (const f of pillarsOf(w)) if (inR(proxy(w, {kind: 'pil', id: f.id}))) return {kind: 'pil', id: f.id};
     for (const d of state.doors) if (d.wallId === w.id && isEntityVisible(d) && inR(proxy(w, {kind: 'door', id: d.id}))) return {kind: 'door', id: d.id};
     for (const d of state.windows) if (d.wallId === w.id && isEntityVisible(d) && inR(proxy(w, {kind: 'window', id: d.id}))) return {kind: 'window', id: d.id};
     for (const c of cpsOf(w)) if (c.cg.side === S.face && inR(proxy(w, {kind: 'cp', id: c.id}))) return {kind: 'cp', id: c.id};
@@ -14841,7 +14874,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     const u = toU(w, k.cx), x0 = u - k.w / 2, x1 = u + k.w / 2, y0 = k.y, y1 = k.y + k.h;
     const H = [[x0, y0, 'bl'], [x1, y0, 'br'], [x0, y1, 'tl'], [x1, y1, 'tr']];
     if (k.sh !== 'round') H.push([u, y0, 'b'], [u, y1, 't'], [x0, (y0 + y1) / 2, 'l'], [x1, (y0 + y1) / 2, 'r']);
-    if (S.oSel && S.oSel.kind === 'door') return H.filter(h => !h[2].includes('b'));   /* la porta parte da terra */
+    if (S.oSel && (S.oSel.kind === 'door' || S.oSel.kind === 'pil')) return H.filter(h => !h[2].includes('b'));   /* la porta parte da terra */
     return H;
   }
   function render() {
@@ -14888,6 +14921,16 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       cx.fillStyle = S.phOn ? (o.t === 'door' ? 'rgba(42,48,71,.35)' : 'rgba(41,68,90,.35)') : o.t === 'door' ? '#2a3047' : '#29445a'; cx.fillRect(sx(u0), sy(o.y1), (u1 - u0) * S.view.s, (o.y1 - o.y0) * S.view.s);
       cx.strokeStyle = isS ? '#22d3ee' : '#94a3b8'; cx.lineWidth = isS ? 2.5 : 1.5; cx.strokeRect(sx(u0), sy(o.y1), (u1 - u0) * S.view.s, (o.y1 - o.y0) * S.view.s);
       cx.fillStyle = '#cbd5e1'; cx.font = '11px "Segoe UI",sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.fillText(o.t === 'door' ? 'Porta' : 'Finestra', sx((u0 + u1) / 2), sy((o.y0 + o.y1) / 2));
+    });
+    /* v21.0: pilastri addossati a questo muro: davanti pieni, sull'altro lato tratteggiati */
+    pillarsOf(w).forEach(f => {
+      const r = proxy(w, {kind: 'pil', id: f.id}); if (!r) return;
+      const c0 = toU(w, r.cx), u0 = c0 - r.w / 2, u1 = c0 + r.w / 2, front = f.pil.side === S.face, isS = S.oSel && S.oSel.kind === 'pil' && S.oSel.id === f.id;
+      cx.save();
+      cx.fillStyle = front ? 'rgba(156,163,175,.92)' : 'rgba(156,163,175,.35)'; cx.fillRect(sx(u0), sy(r.h), (u1 - u0) * S.view.s, r.h * S.view.s);
+      cx.setLineDash(front ? [] : [6, 4]); cx.strokeStyle = isS ? '#22d3ee' : '#64748b'; cx.lineWidth = isS ? 2.5 : 1.5; cx.strokeRect(sx(u0), sy(r.h), (u1 - u0) * S.view.s, r.h * S.view.s);
+      cx.restore();
+      if ((u1 - u0) * S.view.s > 60) { cx.fillStyle = '#1e293b'; cx.font = '600 10.5px "Segoe UI",sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.fillText('Pilastro', sx((u0 + u1) / 2), sy(r.h / 2)); }
     });
     cx.strokeStyle = '#e5e7eb'; cx.lineWidth = 1.5; cx.strokeRect(sx(0), sy(Hw), L * S.view.s, Hw * S.view.s);
     /* lavorazioni */
@@ -14947,6 +14990,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     const L = Lw(w), Hw = wh(w), tol = 9 / S.view.s, us = [0, L], vs = [0, Hw];
     openingsOf(w).forEach(o => { if (S.oSel && S.oSel.id === o.id && S.drag) return; us.push(toU(w, o.x0), toU(w, o.x1)); vs.push(o.y0, o.y1); });
     works(w).forEach(k => { if (k.id === S.selId && S.drag) return; const c = toU(w, k.cx); us.push(c - k.w / 2, c + k.w / 2, c); vs.push(k.y, k.y + k.h); });
+    pillarsOf(w).forEach(f => { if (S.oSel && S.oSel.kind === 'pil' && S.oSel.id === f.id && S.drag) return; const r = proxy(w, {kind: 'pil', id: f.id}); if (r) us.push(toU(w, r.cx - r.w / 2), toU(w, r.cx + r.w / 2)); });
     junctions(w).forEach(j => { if (j.sides.includes(S.face)) us.push(toU(w, j.x0), toU(w, j.x1)); });
     cpsOf(w).forEach(c => { if (c.cg.side !== S.face || (S.oSel && S.oSel.id === c.id && S.drag)) return; const r = proxy(w, {kind: 'cp', id: c.id}); if (r) { us.push(toU(w, r.cx - r.w / 2), toU(w, r.cx + r.w / 2)); vs.push(r.y, r.y + r.h); } });
     if (window.SCcg && !isCpW(w)) { const Rg = SCcg.cpRange(w, S.face, 0.06); us.push(toU(w, Rg.a), toU(w, Rg.b)); }
@@ -15041,7 +15085,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       if (n.includes('b')) v0 = Math.min(s.v, v1 - 0.05); if (n.includes('t')) v1 = Math.max(s.v, v0 + 0.05);
       if (o.sh === 'round') { const dd = Math.max(u1 - u0, v1 - v0); if (n.includes('l')) u0 = u1 - dd; else u1 = u0 + dd; if (n.includes('b')) v0 = v1 - dd; else v1 = v0 + dd; }
     }
-    if (S.oSel && S.oSel.kind === 'door') { v1 = v1 - v0; v0 = 0; }
+    if (S.oSel && (S.oSel.kind === 'door' || S.oSel.kind === 'pil')) { v1 = v1 - v0; v0 = 0; }
     const uc = (u0 + u1) / 2; k.cx = S.face > 0 ? L - uc : uc; k.w = u1 - u0; k.h = v1 - v0; k.y = v0;
     if (S.oSel) writeProxy(w, S.oSel, k); else clampWork(w, k);
   }
@@ -15138,7 +15182,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   };
   function fields(w, k) {
     const L = Lw(w), u = toU(w, k.cx) - k.w / 2, F = [['w', 'Larghezza', k.w]];
-    if (S.oSel) { F.push(['h', 'Altezza', k.h], ['u', 'Da sinistra', u]); if (S.oSel.kind !== 'door') F.push(['y', 'Da terra', k.y]); if (S.oSel.kind === 'riv') F.push(['r', 'Da destra', L - (u + k.w)], ['t', 'Dal soffitto', wh(w) - (k.y + k.h)]); return F; }
+    if (S.oSel) { F.push(['h', 'Altezza', k.h], ['u', 'Da sinistra', u]); if (S.oSel.kind !== 'door' && S.oSel.kind !== 'pil') F.push(['y', 'Da terra', k.y]); if (S.oSel.kind === 'riv') F.push(['r', 'Da destra', L - (u + k.w)], ['t', 'Dal soffitto', wh(w) - (k.y + k.h)]); return F; }
     if (k.sh !== 'round') F.push(['h', 'Altezza', k.h]);
     F.push(['u', 'Da sinistra', u], ['y', 'Da terra', k.y]);
     if (k.k === 'niche') F.push(['d', 'Profondità', k.d]);
@@ -15213,11 +15257,11 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
         if (a === 'desel') { S.oSel = null; S.field = null; ui(); return; }
         if (!e2) return;
         if (a === 'oprops' && o.kind === 'riv') { if (lockedO(o)) return toast('Livello bloccato'); const n = SCriv.dup(w, e2); if (!n) return toast('Non c\'è spazio per duplicarlo'); S.oSel = {kind: 'riv', id: n.id}; commit('Rivestimento duplicato'); return; }
-        if (a === 'oprops') { state.selected = {type: o.kind === 'cp' ? 'wall' : o.kind, id: o.id}; state.sel = [state.selected]; try { updateSelectionPanel(); } catch (_) {} const sp = $w('selectionPanel'); if (sp) sp.style.display = 'block'; toast('Proprietà nel riquadro di selezione'); return; }
+        if (a === 'oprops') { state.selected = {type: o.kind === 'cp' ? 'wall' : o.kind === 'pil' ? 'furniture' : o.kind, id: o.id}; state.sel = [state.selected]; try { updateSelectionPanel(); } catch (_) {} const sp = $w('selectionPanel'); if (sp) sp.style.display = 'block'; toast('Proprietà nel riquadro di selezione'); return; }
         if (lockedO(o)) return toast('Livello bloccato');
         if (o.kind === 'riv') SCriv.remove(w, e2);
         else if (o.kind === 'cp') { state.walls = state.walls.filter(x => x !== e2); try { detectRooms(); updateRoomList(); } catch (_) {} }
-        else if (o.kind === 'door') state.doors = state.doors.filter(x => x !== e2); else state.windows = state.windows.filter(x => x !== e2);
+        else if (o.kind === 'pil') state.furniture = state.furniture.filter(x => x !== e2); else if (o.kind === 'door') state.doors = state.doors.filter(x => x !== e2); else state.windows = state.windows.filter(x => x !== e2);
         S.oSel = null; S.field = null; commit(ON[o.kind] + ' eliminata'); return;
       }
       if (a === 'port') { if (isEntityLocked(w)) return toast('Muro su livello bloccato'); w.portante = !w.portante; commit(w.portante ? 'Muro portante: le aperture avranno la cerchiatura in computo' : 'Muro non portante'); return; }
@@ -15303,12 +15347,13 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     const t = state.selected.type;
     if (t === 'wall') { const w = wById(state.selected.id); return w ? {w, o: null} : null; }
     if (t === 'door' || t === 'window') { const e = (t === 'door' ? state.doors : state.windows).find(x => x.id === state.selected.id), w = e && wById(e.wallId); return w ? {w, o: {kind: t, id: e.id}} : null; }
+    if (t === 'furniture') { const f = state.furniture.find(x => x.id === state.selected.id), w = f && f.type === 'pilastro' && f.pil && wById(f.pil.wallId); return w ? {w, o: {kind: 'pil', id: f.id}} : null; }
     return null;
   }
   btn.onclick = () => { const g = target(); if (g) open(g.w.id, undefined, g.o); };
   const syncBtn = () => {
     const g = target(); btn.style.display = g ? '' : 'none';
-    btn.title = g && g.o ? 'Prospetto del muro: modifica ' + (g.o.kind === 'door' ? 'la porta' : 'la finestra') + ' sul muro' : 'Prospetto del muro: fori, nicchie, tagli, contropareti';
+    btn.title = g && g.o ? 'Prospetto del muro: modifica ' + (g.o.kind === 'door' ? 'la porta' : g.o.kind === 'pil' ? 'il pilastro' : 'la finestra') + ' sul muro' : 'Prospetto del muro: fori, nicchie, tagli, contropareti';
     if (!bar) return;
     if (window.SCselbar) try { SCselbar.place(); } catch (_) {}   /* v18.7: posizione decisa solo dalla barra interattiva */
   };
@@ -19674,8 +19719,9 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
    SC_REL.v è l'unica versione: titolo, Guida, file salvato, avvisi e riga messaggi la leggono da qui.
    ======================================================================== */
 window.SC_REL = {
-  v: '20.1', d: '25/10/2026',
+  v: '21.0', d: '25/10/2026',
   news: [
+    ['21.0', 'Pilastri: si trascinano con il cursore in pianta e si agganciano al muro dove li lasci (entro 25 cm dalla faccia); lontano dai muri restano liberi. Visibili e spostabili anche nel prospetto del muro.'],
     ['20.1', 'Geometria → «Allinea al calco»: tocchi due o più punti del disegno e gli stessi punti sul calco. Il calco si congela, il disegno ruota per seguire il calco, il calco si porta in scala. Il menu si chiude subito dopo la scelta.'],
     ['19.3', 'Posa a correre: lo scarto apre sempre la fila successiva, senza limiti fissi sui giunti. Nella skin si può impostare l’avviso per i pezzi più corti.'],
     ['19.2', 'Skin: se manca il ritaglio della foto il riquadro si evidenzia e resta in primo piano.'],

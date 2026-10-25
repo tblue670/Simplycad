@@ -1,4 +1,4 @@
-SimplyCAD Pro - pubblicazione su GitHub Pages (v20.1)
+SimplyCAD Pro - pubblicazione su GitHub Pages (v21.0)
 
 Contenuto (vanno caricati tutti, senza rinominarli e SENZA cartelle intorno):
   index.html  sw.js  manifest.webmanifest  icon-192.png  icon-512.png  icon-maskable.png  README.md
@@ -93,6 +93,9 @@ NOVITÀ v18.9
 
 NOVITÀ v18.9.1
  - 🧲 Aggancia anche nella barra interattiva (senza selezione) e nel suo menu ⋯.
+
+NOVITÀ v21.0
+Pilastri: si trascinano con il cursore in pianta e si agganciano al muro dove li lasci (entro 25 cm dalla faccia). Lontano dai muri restano liberi. Visibili e spostabili anche nel prospetto del muro (quote e pannello compresi).
 
 NOVITÀ v20.1
 Geometria → «Allinea al calco…»: tocchi due o più punti del disegno e gli stessi punti sul calco. Il calco si congela, il disegno ruota per seguire il calco, il calco si porta in scala. Con 3 o più punti compare l’errore in cm.
