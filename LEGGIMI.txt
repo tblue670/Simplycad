@@ -1,4 +1,4 @@
-SimplyCAD Pro - pubblicazione su GitHub Pages (v21.8)
+SimplyCAD Pro - pubblicazione su GitHub Pages (v22.0)
 
 Contenuto (vanno caricati tutti, senza rinominarli e SENZA cartelle intorno):
   index.html  sw.js  manifest.webmanifest  icon-192.png  icon-512.png  icon-maskable.png  README.md
@@ -93,6 +93,12 @@ NOVITÀ v18.9
 
 NOVITÀ v18.9.1
  - 🧲 Aggancia anche nella barra interattiva (senza selezione) e nel suo menu ⋯.
+
+NOVITÀ v22.0
+Stampa professionale: il cartiglio si compila dai Dati progetto (Cliente, Indirizzo, Nome progetto), che ora vengono salvati anche nel file del progetto. Il PDF prende un nome automatico (committente, elaborato, scala). Abaco porte e finestre con sigle P1, F1 sulla pianta e tabella accanto alle superfici. Se il disegno entra a una scala più grande, l'anteprima la propone. Le scritte sui muri in stampa non mostrano l'angolo e la quota va dal lato senza ante aperte.
+
+NOVITÀ v21.9
+Tablet e touch: tasto ✖ fisso in basso a sinistra che interrompe il comando in corso (equivale a Esc).
 
 NOVITÀ v21.8
 Geometria → «∥ Parallelo (2 muri)»: tocchi il muro di riferimento, poi il muro da raddrizzare. Il secondo ruota sulla direzione del primo, mantiene lunghezza e collegamenti (ruota attorno all'estremo collegato, altrimenti attorno al centro). Esc annulla.

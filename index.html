@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v21.8</title>
+<title>SimplyCAD Pro · v22.0</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -2669,7 +2669,8 @@ function drawWallDimension(w, p1, p2, thickness) {
   if (sl < 8) return;
   const ux = sdx / sl, uy = sdy / sl;
   const off = Number.isFinite(Number(appSettings.dimOffset)) ? Number(appSettings.dimOffset) : 0.4;
-  const side = off < 0 ? -1 : 1;
+  let side = off < 0 ? -1 : 1;
+  if (window.__printing) { try { const sw = state.doors.filter(d => d.wallId === w.id && isEntityVisible(d) && !['slide', 'pocket', 'open'].includes(d.kind || 'single')); if (sw.length && sw.every(d => doorProps(d).side === side)) side = -side; } catch (_) {} }   /* v22.0: in stampa la quota va dal lato senza ante */
   const nx = -uy * side, ny = ux * side;
   const face = (thickness / 2) * viewScale;
   const dist = face + Math.abs(off) * viewScale;
@@ -2690,7 +2691,7 @@ function drawWallDimension(w, p1, p2, thickness) {
   const tk = 4 * 0.7071, tx = (ux + nx) * tk, ty = (uy + ny) * tk;
   for (const q of [q1, q2]) { ctx.moveTo(q.x - tx, q.y - ty); ctx.lineTo(q.x + tx, q.y + ty); }
   ctx.stroke();
-  const label = fmtLen(len) + (appSettings.dimShowAngle !== false ? ` · ${ad}°` : '');
+  const label = fmtLen(len) + (appSettings.dimShowAngle !== false && !window.__printing ? ` · ${ad}°` : '');   /* v22.0: niente angolo sul foglio */
   let ta = Math.atan2(uy, ux);
   if (ta > Math.PI / 2 || ta < -Math.PI / 2) ta += Math.PI;
   ctx.translate((q1.x + q2.x) / 2 + nx * 9, (q1.y + q2.y) / 2 + ny * 9);
@@ -4133,6 +4134,7 @@ const buildProjectBlob = () => {
     layers: state.layers, currentLayerId: state.currentLayerId,
     nextLayerId: state.nextLayerId, nextId: state.nextId,
     floors: state.floors, currentFloorId: state.currentFloorId, floorSeq: state.floorSeq, roofs: state.roofs, holes: state.holes, zones: state.zones, ceils: state.ceils || [], beams: state.beams || [], cmpOff: state.cmpOff || [], cmpCustom: state.cmpCustom || [], cart: state.cart || null,
+    meta: window.SCmeta ? SCmeta.get() : undefined,   /* v22.0: Dati progetto nel file */
     skins: state.skins || [], skinData: window.SCskin ? SCskin.exportUsed() : undefined,
     photos: window.SCph ? SCph.exportUsed() : undefined,
     images: state.images.filter(i => i.dataUrl).map(i => ({id: i.id, name: i.name, layerId: i.layerId, floorId: i.floorId, opacity: i.opacity, scale: i.scale, x: i.x, y: i.y, rot: i.rot || 0, dataUrl: i.dataUrl})),
@@ -4242,7 +4244,7 @@ document.getElementById('fileInput').onchange = (e) => {
       state.stairs = data.stairs || [];
       state.floors = (data.floors && data.floors.length) ? data.floors : [{id: 'f0', name: 'Piano terra', elev: 0, h: 3, slabT: 0.3}];
       state.currentFloorId = state.floors.some(f => f.id === data.currentFloorId) ? data.currentFloorId : sortedFloors()[0].id;
-      state.floorSeq = data.floorSeq || state.floors.length; state.roofs = data.roofs || []; state.holes = data.holes || []; state.zones = data.zones || []; state.skins = data.skins || []; if (window.SCskin) SCskin.ingest(data.skinData, state.skins); state.ceils = data.ceils || []; state.beams = data.beams || []; state.cmpOff = data.cmpOff || []; state.cmpCustom = data.cmpCustom || []; state.cart = data.cart || null; try { if (window.SCph) { SCph.importAll(data.photos); const np = data.photos ? Object.keys(data.photos).length : 0, miss = SCph.missing(); setTimeout(() => toast('Progetto aperto' + (np ? ' · ' + np + ' foto' : '') + (miss ? ' · ⚠ ' + miss + ' foto non contenute nel file' : '')), 700); } } catch (_) {}
+      state.floorSeq = data.floorSeq || state.floors.length; state.roofs = data.roofs || []; state.holes = data.holes || []; state.zones = data.zones || []; state.skins = data.skins || []; if (window.SCskin) SCskin.ingest(data.skinData, state.skins); state.ceils = data.ceils || []; state.beams = data.beams || []; state.cmpOff = data.cmpOff || []; state.cmpCustom = data.cmpCustom || []; state.cart = data.cart || null; try { if (data.meta && window.SCmeta) SCmeta.set(data.meta); } catch (_) {} try { if (window.SCph) { SCph.importAll(data.photos); const np = data.photos ? Object.keys(data.photos).length : 0, miss = SCph.missing(); setTimeout(() => toast('Progetto aperto' + (np ? ' · ' + np + ' foto' : '') + (miss ? ' · ⚠ ' + miss + ' foto non contenute nel file' : '')), 700); } } catch (_) {}
       state.nextId = data.nextId || 1;
       state.layers = data.layers && data.layers.length ? data.layers :
         [{id: DEFAULT_LAYER_ID, name: '0', color: null, visible: true, locked: false}];
@@ -4326,7 +4328,7 @@ async function newSession() {
   state.furniture = []; state.labels = []; state.stairs = []; state.images = []; state.activeImageId = null;
   state.layers = [{id: DEFAULT_LAYER_ID, name: '0', color: null, visible: true, locked: false}];
   state.currentLayerId = DEFAULT_LAYER_ID; state.nextLayerId = 1;
-  state.floors = [{id: 'f0', name: 'Piano terra', elev: 0, h: 3, slabT: 0.3}]; state.currentFloorId = 'f0'; state.floorSeq = 1; state.roofs = []; state.holes = []; state.zones = []; state.skins = []; state.ceils = []; state.beams = []; state.cmpOff = []; state.cmpCustom = []; state.cart = null;
+  state.floors = [{id: 'f0', name: 'Piano terra', elev: 0, h: 3, slabT: 0.3}]; state.currentFloorId = 'f0'; state.floorSeq = 1; state.roofs = []; state.holes = []; state.zones = []; state.skins = []; state.ceils = []; state.beams = []; state.cmpOff = []; state.cmpCustom = []; state.cart = null; try { if (window.SCmeta) SCmeta.set(null); } catch (_) {}
   state.sel = []; state.selected = null; state.pendingPoint = null;
   tmp = null; boxSel = null; drag = null; place = null;
   syncBgControls(); renderLayersPanel(); updateSelectionPanel(); updateRoomList(); refresh(); checkpoint(); fit();
@@ -8853,6 +8855,8 @@ $('impAnyInput').onchange = async e => {
     settings: { wallHeight: $('wallHeight')?.value, wallThickness: $('wallThickness')?.value, gridSize: $('gridSize')?.value }
   };}
   function persist() { try { meta.updated = new Date().toISOString(); localStorage.setItem(METAKEY, JSON.stringify(meta)); } catch(e) {} lastJ = ''; saveNow(); }
+  /* v22.0: i Dati progetto viaggiano nel file e servono al cartiglio di stampa */
+  window.SCmeta = {get: () => ({...meta}), set: m => { Object.assign(meta, {name: 'Nuovo progetto', client: '', address: '', notes: '', updated: ''}, m || {}); try { localStorage.setItem(METAKEY, JSON.stringify(meta)); } catch (_) {} }};
   function stats() { return withAllFloors(stats0); }
   function stats0() {
     const wallLen = state.walls.filter(isEntityVisible).reduce((a, w) => a + Math.hypot(w.p2.x-w.p1.x, w.p2.y-w.p1.y), 0);
@@ -17841,11 +17845,45 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   const LOGO_KEY = 'simplycad_logo_v1';
   let LOGO = ''; try { LOGO = localStorage.getItem(LOGO_KEY) || ''; } catch (_) {}
   const PS = () => {   /* impostazioni di stampa (nell'app) */
-    const d = {paper: 'A3', orient: 'L', scale: +appSettings.printScale || 100, floors: 'cur', color: 'bn', table: true, legend: true, bar: true, wallDims: false, wallNames: false, tav: 'comp'};
+    const d = {paper: 'A3', orient: 'L', scale: +appSettings.printScale || 100, floors: 'cur', color: 'bn', table: true, legend: true, bar: true, wallDims: false, wallNames: false, tav: 'comp', abaco: true};
     const s = Object.assign({}, d, appSettings.prt || {}); if (!PAPERS[s.paper]) s.paper = 'A3'; if (!SCALES.includes(+s.scale)) s.scale = 100; return s;
   };
   const DITTA = () => Object.assign({n: '', r2: '', r3: ''}, appSettings.cartDitta || {});
   const CART = () => Object.assign({committente: '', indirizzo: '', oggetto: '', titolo: '', tav: '1', data: new Date().toLocaleDateString('it-IT'), redattore: '', note: ''}, state.cart || {});
+  /* v22.0: i campi vuoti del cartiglio si compilano dai Dati progetto */
+  const META = () => { try { return window.SCmeta ? SCmeta.get() : {}; } catch (_) { return {}; } };
+  const FALLBACK = () => { const M = META(); return {committente: M.client || '', indirizzo: M.address || '', oggetto: M.name && M.name !== 'Nuovo progetto' ? M.name : ''}; };
+  const CARTV = () => { const C = CART(), F = FALLBACK(); ['committente', 'indirizzo', 'oggetto'].forEach(k => { if (!String(C[k] || '').trim()) C[k] = F[k]; }); return C; };
+  /* v22.0: abaco delle aperture (sigle P1… porte, F1… finestre) */
+  const DK = {single: 'Battente', double: 'Battente 2 ante', slide: 'Scorrevole', pocket: 'A scrigno', bifold: 'A soffietto', armored: 'Blindata', open: 'Vano libero'};
+  function opsOf(fid) {
+    const vis = e => { const l = getLayer(e.layerId); return !(l && l.visible === false) && floorOf(e) === fid; };
+    const wi = new Map(state.walls.map((w, i) => [w.id, i]));
+    const ord = (a, b) => (wi.get(a.wallId) - wi.get(b.wallId)) || ((a.t || 0) - (b.t || 0));
+    const Dd = state.doors.filter(d => wi.has(d.wallId) && vis(d)).sort(ord).map((o, i) => ({o, door: true, code: 'P' + (i + 1)}));
+    const Fw = state.windows.filter(d => wi.has(d.wallId) && vis(d)).sort(ord).map((o, i) => ({o, door: false, code: 'F' + (i + 1)}));
+    return Dd.concat(Fw);
+  }
+  const opType = q => q.door ? (DK[q.o.kind || 'single'] || 'Porta') : ((q.o.kind === 'slide' ? 'Scorrevole' : 'Battente') + ((q.o.panes || 1) > 1 ? ' ' + q.o.panes + ' ante' : ''));
+  const opSize = q => f2(+q.o.width || 0) + '×' + f2(+q.o.height || (q.door ? 2.1 : 0)) + (q.door ? '' : ' · dav. ' + f2(+q.o.sillHeight || 0));
+  function drawSigle(fid) {   /* sigle sulla pianta, dal lato libero: porte opposte all'anta, finestre verso l'esterno */
+    const L = opsOf(fid); if (!L.length) return;
+    const fs = 2.2 * PX, padX = 1.1 * PX, h = fs + 1.3 * PX;
+    const roomsF = state.rooms.filter(r => floorOf(r) === fid && r.polygon && r.polygon.length > 2);
+    const inRoom = (sx, sy) => { const q = screenToWorld(sx, sy); return roomsF.some(r => { try { return pointInPolygon(q, r.polygon); } catch (_) { return false; } }); };
+    L.forEach(q => {
+      const w = state.walls.find(x => x.id === q.o.wallId); if (!w) return;
+      const a = worldToScreen(w.p1.x, w.p1.y), b = worldToScreen(w.p2.x, w.p2.y), dx = b.x - a.x, dy = b.y - a.y, Ls = Math.hypot(dx, dy); if (Ls < 1e-6) return;
+      const ux = dx / Ls, uy = dy / Ls, nx = -uy, ny = ux, cx = a.x + dx * q.o.t, cy = a.y + dy * q.o.t, th = getWallThickness(w) * viewScale, d0 = th / 2 + 2.4 * PX + h / 2;
+      let sg = 1;
+      if (q.door && !['slide', 'pocket', 'open'].includes(q.o.kind || 'single')) sg = -doorProps(q.o).side;
+      else { const pin = inRoom(cx + nx * d0, cy + ny * d0), min = inRoom(cx - nx * d0, cy - ny * d0); if (pin && !min) sg = -1; }
+      const x = cx + nx * d0 * sg, y = cy + ny * d0 * sg;
+      ctx.save(); ctx.setLineDash([]); ctx.font = 'bold ' + fs.toFixed(2) + 'px Arial'; const wd = ctx.measureText(q.code).width + 2 * padX;
+      ctx.beginPath(); ctx.roundRect(x - wd / 2, y - h / 2, wd, h, h / 2); ctx.fillStyle = '#ffffff'; ctx.fill(); ctx.lineWidth = 0.18 * PX; ctx.strokeStyle = '#000000'; ctx.stroke();
+      ctx.fillStyle = '#000000'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(q.code, x, y); ctx.restore();
+    });
+  }
 
   /* ================================================================ registratore Canvas → SVG */
   const mctx = document.createElement('canvas').getContext('2d');   /* solo per misurare i testi */
@@ -18042,6 +18080,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       RV = state.rooms;
       undo = hijack(R);
       draw2D();
+      if (opt.abaco !== false) { try { drawSigle(fid); } catch (e) { console.warn('sigle', e); } }   /* v22.0 */
     } catch (e) { console.warn('stampa', e); }
     finally {
       if (undo) undo();
@@ -18084,7 +18123,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   const Rc = (x, y, w, h, sw = 0.25, fill = 'none') => `<rect x="${mm(x).toFixed(2)}" y="${mm(y).toFixed(2)}" width="${mm(w).toFixed(2)}" height="${mm(h).toFixed(2)}" fill="${fill}" stroke="${sw ? '#000' : 'none'}" stroke-width="${mm(sw).toFixed(2)}"/>`;
   const VNAME = {fatto: 'Stato di fatto', prog: 'Stato di progetto', comp: 'Comparativa (gialli e rossi)'};
   function cartiglio(L, o, fl, idx, v) {
-    const C = CART(), Dt = DITTA(), x = L.W - L.m - L.cartW, y = L.by, w = L.cartW, h = L.band; let s = Rc(x, y, w, h, 0.5);
+    const C = CARTV(), Dt = DITTA(), x = L.W - L.m - L.cartW, y = L.by, w = L.cartW, h = L.band; let s = Rc(x, y, w, h, 0.5);
     const rows = [16, 7, 7, 8, 6]; let yy = y;
     /* riga 1: logo + ditta */
     const lw = LOGO ? 32 : 0;
@@ -18127,17 +18166,28 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       [['demolire', '#facc15', 'Da demolire'], ['nuovo', '#ef4444', 'Di nuova costruzione']].forEach(([k, c, t]) => { if (!st.has(k)) return; s += Rc(x, y - 2.4, 6, 3, 0.25, c) + T(x + 8, y, t, 2.4); x += 45; });
       x = L.m + 3; y += 5;
     }
-    /* tabella superfici */
+    /* tabella superfici + abaco aperture (v22.0: affiancati) */
+    const rowH = 3.1, top = y + 1, avail = L.H - L.m - 2 - top - rowH * 2, perCol = Math.max(1, Math.floor(avail / rowH));
+    const ops = o.abaco !== false ? opsOf(fl.id) : [], abCol = 68; let ax = x;
     if (o.table) {
       const rooms = (RV || state.rooms).filter(r => { const l = getLayer(r.layerId); return floorOf(r) === fl.id && !(l && l.visible === false); });
       if (rooms.length) {
-        const area = r => (window.svRoomArea ? svRoomArea(r) : computeArea(r.polygon)), rowH = 3.1, top = y + 1, avail = L.H - L.m - 2 - top - rowH * 2, perCol = Math.max(1, Math.floor(avail / rowH)), colW = 46;
-        const cols = Math.max(1, Math.floor((maxX - x) / colW)), cap = perCol * cols; let tot = 0; rooms.forEach(r => tot += area(r));
+        const area = r => (window.svRoomArea ? svRoomArea(r) : computeArea(r.polygon)), colW = 46;
+        const maxCols = Math.max(1, Math.floor((maxX - x - (ops.length ? abCol + 4 : 0)) / colW)), cols = Math.min(maxCols, Math.ceil(rooms.length / perCol)), cap = perCol * cols; let tot = 0; rooms.forEach(r => tot += area(r));
         const list = rooms.slice(0, rooms.length > cap ? cap - 1 : cap);
         s += T(x, top, 'Superfici nette · totale ' + f2(tot) + ' m²', 2.4, {b: 1});
         list.forEach((r, i) => { const c = Math.floor(i / perCol), rr = i % perCol, xx = x + c * colW, yy = top + 3.4 + rr * rowH; s += T(xx, yy, fitText(r.name || 'Locale', colW - 18, 2.3), 2.3) + T(xx + colW - 4, yy, f2(area(r)) + ' m²', 2.3, {a: 'end'}); });
         if (rooms.length > list.length) { const i = list.length, c = Math.floor(i / perCol), rr = i % perCol; s += T(x + c * colW, top + 3.4 + rr * rowH, '… altri ' + (rooms.length - list.length) + ' locali', 2.2, {c: '#555'}); }
+        ax = x + Math.max(cols * colW, 52) + 4;
       }
+    }
+    if (ops.length && maxX - ax >= 44) {
+      const cw = Math.min(abCol, maxX - ax), cols = Math.max(1, Math.floor((maxX - ax) / cw)), cap = perCol * cols, list = ops.slice(0, ops.length > cap ? cap - 1 : cap);
+      const nP = ops.filter(q => q.door).length, nF = ops.length - nP;
+      s += T(ax, top, 'Abaco aperture · ' + nP + (nP === 1 ? ' porta' : ' porte') + ', ' + nF + (nF === 1 ? ' finestra' : ' finestre') + ' (L×H m)', 2.4, {b: 1});
+      list.forEach((q, i) => { const c = Math.floor(i / perCol), rr = i % perCol, xx = ax + c * cw, yy = top + 3.4 + rr * rowH;
+        s += T(xx, yy, q.code, 2.3, {b: 1}) + T(xx + 7, yy, fitText(opType(q), cw - 36, 2.2), 2.2) + T(xx + cw - 3, yy, opSize(q), 2.2, {a: 'end'}); });
+      if (ops.length > list.length) { const i = list.length, c = Math.floor(i / perCol), rr = i % perCol; s += T(ax + c * cw, top + 3.4 + rr * rowH, '… altre ' + (ops.length - list.length) + ' aperture', 2.2, {c: '#555'}); }
     }
     return s;
   }
@@ -18173,11 +18223,13 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   const pagesOf = o => { const V = o.tav === 'tre' ? ['fatto', 'comp', 'prog'] : [o.tav || 'comp']; const P = []; floorsToPrint(o).forEach(f => V.forEach(v => P.push({fl: f, v, k: f.id + '|' + v}))); return P; };
   function fits(o, fid) { const b = bboxOf(fid); if (!b) return true; const L = layout(o); return (b.x1 - b.x0) * 1000 / o.scale <= L.vw && (b.y1 - b.y0) * 1000 / o.scale <= L.vh; }
   function suggest(o, fid) { const b = bboxOf(fid); if (!b) return null; const L = layout(o); return SCALES.find(s => (b.x1 - b.x0) * 1000 / s <= L.vw && (b.y1 - b.y0) * 1000 / s <= L.vh) || null; }
+  /* v22.0: la scala più grande che fa stare il disegno con 12 mm di margine per le quote */
+  function suggestFill(o, fid) { const b = bboxOf(fid); if (!b) return null; const L = layout(o), mg = 24; return SCALES.find(s => (b.x1 - b.x0) * 1000 / s + mg <= L.vw && (b.y1 - b.y0) * 1000 / s + mg <= L.vh) || null; }
   function centerOf(fid) { const c = D && D.centers[fid]; if (c) return c; const b = bboxOf(fid); return b ? {x: (b.x0 + b.x1) / 2, y: (b.y0 + b.y1) / 2} : {x: 0, y: 0}; }
 
   function open() {
     if (D) close();
-    const o = PS(), C = CART(), Dt = DITTA();
+    const o = PS(), C = CART(), Dt = DITTA(), FB = FALLBACK(), ph = (v, d) => v ? `dai Dati progetto: ${esc(v)}` : d;
     const bg = document.createElement('div'); bg.className = 'prt-bg';
     bg.innerHTML = `<div class="prt-box">
       <div class="prt-head"><b>🖨 Stampa in scala</b><span class="prt-sp"></span><button data-x="close" class="prt-x" title="Chiudi">✕</button></div>
@@ -18191,7 +18243,8 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
           <label class="cb"><input type="checkbox" data-o="table"> Tabella delle superfici</label>
           <label class="cb"><input type="checkbox" data-o="legend"> Legenda gialli / rossi</label>
           <label class="cb"><input type="checkbox" data-o="bar"> Barra della scala</label>
-          <label class="cb"><input type="checkbox" data-o="wallDims"> Scritte sui muri (lunghezza · angolo)</label>
+          <label class="cb"><input type="checkbox" data-o="wallDims"> Scritte sui muri (lunghezza)</label>
+          <label class="cb"><input type="checkbox" data-o="abaco"> Abaco porte e finestre (sigle P1, F1)</label>
           <label class="cb"><input type="checkbox" data-o="wallNames"> Nomi dei muri (Muro A, B…)</label>
           <div class="prt-warn" id="prtWarn"></div>
           <div class="prt-sec">Dettagli in questo foglio <small>(altre viste, anche a scala diversa)</small></div>
@@ -18202,9 +18255,9 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
           <label>Indirizzo<input data-d="r2" value="${esc(Dt.r2)}"></label>
           <label>Telefono · email · P. IVA<input data-d="r3" value="${esc(Dt.r3)}"></label>
           <div class="prt-sec">Cartiglio · commessa <small>(salvato nel progetto)</small></div>
-          <label>Committente<input data-c="committente" value="${esc(C.committente)}"></label>
-          <label>Ubicazione<input data-c="indirizzo" value="${esc(C.indirizzo)}"></label>
-          <label>Oggetto<input data-c="oggetto" value="${esc(C.oggetto)}" placeholder="es. Ristrutturazione appartamento"></label>
+          <label>Committente<input data-c="committente" value="${esc(C.committente)}" placeholder="${ph(FB.committente, 'vuoto = Cliente dei Dati progetto')}"></label>
+          <label>Ubicazione<input data-c="indirizzo" value="${esc(C.indirizzo)}" placeholder="${ph(FB.indirizzo, 'vuoto = Indirizzo dei Dati progetto')}"></label>
+          <label>Oggetto<input data-c="oggetto" value="${esc(C.oggetto)}" placeholder="${ph(FB.oggetto, 'es. Ristrutturazione appartamento')}"></label>
           <label>Titolo dell'elaborato<input data-c="titolo" value="${esc(C.titolo)}" placeholder="vuoto = Pianta + nome del piano"></label>
           <div class="prt-row"><label>Tavola n.<input data-c="tav" value="${esc(C.tav)}"></label><label>Data<input data-c="data" value="${esc(C.data)}"></label></div>
           <label>Redattore<input data-c="redattore" value="${esc(C.redattore)}"></label>
@@ -18268,7 +18321,11 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     const L = layout(o), svg = host.querySelector('svg'); svg.removeAttribute('width'); svg.removeAttribute('height'); svg.style.width = '100%'; svg.style.height = '100%';
     const w = D.bg.querySelector('#prtWarn'), bad = F.filter(f => !fits(o, f.id));
     if (bad.length) { const sg = suggest(o, bad[0].id); w.innerHTML = `⚠ ${bad.length > 1 ? 'Alcuni piani non entrano' : 'Il disegno non entra'} nel foglio a 1:${o.scale}: si stampa la parte che vedi nell'anteprima (trascinala).` + (sg ? ` <button class="wt-btn" data-sg="${sg}">Usa 1:${sg}</button>` : ' Prova un foglio più grande.') ; const sb = w.querySelector('[data-sg]'); if (sb) sb.onclick = () => { D.o.scale = +sb.dataset.sg; D.bg.querySelector('[data-o=scale]').value = sb.dataset.sg; D.bg.querySelector('[data-o=scale]').dispatchEvent(new Event('change', {bubbles: true})); }; w.style.display = 'block'; }
-    else { w.style.display = 'none'; w.innerHTML = ''; }
+    else {
+      const sf = suggestFill(o, fl.id);
+      if (sf && sf < o.scale) { w.innerHTML = `ℹ Il disegno entra anche a 1:${sf}: più grande e leggibile. <button class="wt-btn" data-sg="${sf}">Usa 1:${sf}</button>`; const sb = w.querySelector('[data-sg]'); sb.onclick = () => { D.o.scale = +sb.dataset.sg; const se = D.bg.querySelector('[data-o=scale]'); se.value = sb.dataset.sg; se.dispatchEvent(new Event('change', {bubbles: true})); }; w.style.display = 'block'; }
+      else { w.style.display = 'none'; w.innerHTML = ''; }
+    }
   }
   function setupDrag() {
     const host = D.bg.querySelector('#prtSheet'); let dr = null;
@@ -18311,7 +18368,11 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     const st = document.createElement('style'); st.id = 'prtPage';
     st.textContent = `@page{size:${L.W}mm ${L.H}mm;margin:0} @media print{html,body{height:auto!important;overflow:visible!important;background:#fff!important;display:block!important} body>*:not(#prtRoot){display:none!important} #prtRoot{display:block!important} .prt-page{page-break-after:always;break-after:page;overflow:hidden} .prt-page:last-child{page-break-after:auto;break-after:auto} .prt-page svg{display:block;width:100%;height:100%}} #prtRoot{display:none}`;
     document.head.appendChild(st); document.body.appendChild(root);
-    const clean = () => { setTimeout(() => { root.remove(); st.remove(); }, 300); window.removeEventListener('afterprint', clean); };
+    /* v22.0: il browser propone come nome del PDF il titolo della pagina */
+    const oldTitle = document.title, P0 = pagesOf(o), C0 = CARTV(), f0 = P0[0] ? P0[0].fl : floorById(state.currentFloorId);
+    const who = C0.committente || (projectName || '').replace(/\.json$/i, '') || 'Planimetria', what = P0.length > 1 ? P0.length + '_tavole' : (C0.titolo || 'Pianta ' + f0.name);
+    document.title = (who + '_' + what + '_1-' + o.scale).replace(/[\\/:*?"<>|]+/g, '').replace(/\s+/g, '_').slice(0, 90);
+    const clean = () => { setTimeout(() => { root.remove(); st.remove(); document.title = oldTitle; }, 300); window.removeEventListener('afterprint', clean); };
     window.addEventListener('afterprint', clean);
     setTimeout(() => { try { window.print(); } catch (e) { toast('Stampa non disponibile qui: usa «Scarica SVG»'); clean(); } }, 60);
   }
@@ -19739,8 +19800,10 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
    SC_REL.v è l'unica versione: titolo, Guida, file salvato, avvisi e riga messaggi la leggono da qui.
    ======================================================================== */
 window.SC_REL = {
-  v: '21.7', d: '25/10/2026',
+  v: '22.0', d: '26/10/2026',
   news: [
+    ['22.0', 'Stampa professionale: cartiglio compilato dai Dati progetto (ora salvati anche nel file), nome del PDF automatico, abaco porte e finestre con sigle P1/F1 sulla pianta, scala consigliata per riempire il foglio, quote sui muri senza angolo e dal lato senza ante aperte.'],
+    ['21.9', 'Tablet e touch: tasto ✖ fisso in basso a sinistra che interrompe il comando in corso (equivale a Esc).'],
     ['21.8', 'Geometria → «∥ Parallelo»: tocchi il muro di riferimento, poi il muro da raddrizzare. Il secondo ruota sulla direzione del primo e mantiene lunghezza e collegamenti.'],
     ['21.7', 'Finestre scorrevoli: le linee delle ante restano visibili anche con colori chiari (contorno scuro sotto il colore della finestra).'],
     ['21.6', 'Prospetto: dopo una nicchia, un foro o un taglio si torna a «Seleziona» restando nel prospetto in modifica (più lavori senza uscire). In verticale i messaggi non coprono più la riga degli strumenti.'],
@@ -21045,6 +21108,29 @@ window.SC_REL = {
   window.SCcalco = {solve, start, cancel, apply, rotateDrawing, moveImage, get active() { return !!CP; }};
 })();
 
+</script>
+
+<style>
+  #scStopBtn{position:fixed;left:10px;bottom:62px;z-index:9000;width:46px;height:46px;border-radius:50%;border:2px solid #f87171;background:rgba(30,30,46,.92);color:#fca5a5;font:700 20px 'Segoe UI',system-ui,sans-serif;display:none;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,.45);touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+  #scStopBtn:active{background:#7f1d1d}
+  body.sc-touch #scStopBtn{display:flex}
+</style>
+<script>
+/* v21.9 · tasto ✖ per tablet senza tastiera: interrompe il comando in corso (stesso effetto di Esc) */
+(function () {
+  const touch = matchMedia('(pointer: coarse)').matches || ('ontouchstart' in window);
+  if (!touch) return;
+  document.body.classList.add('sc-touch');
+  const b = document.createElement('button');
+  b.id = 'scStopBtn'; b.type = 'button'; b.title = 'Interrompi il comando (Esc)'; b.setAttribute('aria-label', 'Interrompi il comando'); b.textContent = '✖';
+  b.addEventListener('pointerdown', e => e.stopPropagation());
+  b.addEventListener('click', e => {
+    e.stopPropagation();
+    document.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', code: 'Escape', bubbles: true, cancelable: true}));
+    try { if (typeof toast === 'function') toast('Comando interrotto'); } catch (_) {}
+  });
+  document.body.appendChild(b);
+})();
 </script>
 </body>
 </html>
