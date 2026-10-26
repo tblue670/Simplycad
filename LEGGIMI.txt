@@ -1,4 +1,4 @@
-SimplyCAD Pro - pubblicazione su GitHub Pages (v22.0)
+SimplyCAD Pro - pubblicazione su GitHub Pages (v22.6)
 
 Contenuto (vanno caricati tutti, senza rinominarli e SENZA cartelle intorno):
   index.html  sw.js  manifest.webmanifest  icon-192.png  icon-512.png  icon-maskable.png  README.md
@@ -93,6 +93,29 @@ NOVITÀ v18.9
 
 NOVITÀ v18.9.1
  - 🧲 Aggancia anche nella barra interattiva (senza selezione) e nel suo menu ⋯.
+
+NOVITÀ v22.6
+Finestre spostabili: pannello proprietà (muri, porte, finestre, arredi, stanze…), riquadri di aree e controsoffitti, skin, stampa, Dati progetto, Analisi, Computo, Tabella muri, Piani, Verifiche e voci aggiunte hanno in cima la maniglia ⠿⠿⠿: si trascinano con dito o mouse. La posizione resta memorizzata su questo dispositivo; doppio tocco sulla maniglia = posizione iniziale. Le finestre non escono dallo schermo.
+In verticale prospetto e sezione partono sotto la riga messaggi: prima la riga copriva i pulsanti del prospetto.
+
+NOVITÀ v22.5
+Sezioni complete: parti in vista (i muri oltre il taglio, solo quelli che si vedono davvero, con porte e finestre a linea sottile), gradini delle scale tagliate con la soletta della rampa, falde dei tetti tagliate con lo sporto di gronda. Valgono sia a schermo sia in stampa.
+Stampa: corretto un difetto per cui, dopo un ritaglio annidato, una parte del disegno poteva sparire dal foglio.
+
+NOVITÀ v22.4
+Stampa con la sezione: nel dialogo di stampa «➕ Aggiungi sezione» mette la sezione nello stesso foglio della pianta, alla stessa scala (si può cambiare). Si sposta trascinando la targhetta e si centra trascinando dentro, come i dettagli. «Traccia delle sezioni in pianta» la mostra o la nasconde sul foglio. Il cartiglio diventa «Pianta … e sezione A–A».
+
+NOVITÀ v22.3
+Sezioni: Disegna → «✂ Sezione», tocchi due punti in pianta e nasce la traccia A–A (poi B–B…). La finestra Sezione si affianca alla pianta come il prospetto: muri e solai tagliati, porte e finestre attraversate, terreno, quota orizzontale dei muri con totale, quote di livello dei piani, altezze nette dei locali, davanzali e altezze delle aperture. Tutti i piani insieme. ⇄ Gira guarda dall'altra parte; toccando la lettera in pianta la sezione si riapre. Disegna → «Nascondi tracce delle sezioni» per toglierle dalla pianta.
+
+NOVITÀ v22.2
+Luci nel 3D: seleziona un «Punto luce» (Impianti) e nel pannello scegli tipo (plafoniera, faretto a incasso, sospensione, applique, striscia LED), potenza in lumen e temperatura colore (2700–6500 K). In 3D con 🌙 Notte: colore dai Kelvin, intensità dai lumen, faretti a cono verso il basso, ombre della luce più vicina, colori senza bruciature. Vale anche nella Modalità cliente (3D).
+
+NOVITÀ v22.1
+Angoli dei muri pieni nel 3D: prima sullo spigolo esterno restava un vuoto (quadrato negli angoli a L, cuneo negli angoli obliqui).
+Geometria → «⭕ Chiudi muri» torna come comando dedicato ai muri, con il nuovo pulsante «Chiudi tutte» (un solo Annulla). Aggancia resta per aree, linee, porte e arredi.
+Annulla: quando un'operazione chiudeva una stanza (aggancio, chiusura muri), il primo Annulla sembrava non fare nulla. Ora torna indietro subito.
+Doppia linea dei muri più sottile. Menu Vista › Muri › Tratto della doppia linea: finissimo (1 pixel), sottile (predefinito), normale.
 
 NOVITÀ v22.0
 Stampa professionale: il cartiglio si compila dai Dati progetto (Cliente, Indirizzo, Nome progetto), che ora vengono salvati anche nel file del progetto. Il PDF prende un nome automatico (committente, elaborato, scala). Abaco porte e finestre con sigle P1, F1 sulla pianta e tabella accanto alle superfici. Se il disegno entra a una scala più grande, l'anteprima la propone. Le scritte sui muri in stampa non mostrano l'angolo e la quota va dal lato senza ante aperte.
