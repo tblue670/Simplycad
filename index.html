@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v22.6</title>
+<title>SimplyCAD Pro · v22.7</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -11730,6 +11730,7 @@ updateRoomList();
   /* ---------------------------------------------------------------- tetti */
   const ROOF_TYPES = {doppia: 'A due falde', singola: 'A falda singola', padiglione: 'A padiglione', piana: 'Piana (terrazzo)'};
   function roofPoly(r) {
+    if (isV2(r)) return eavePoly(r);
     const fp = footprint(r.floorId), base = fp ? fp.base : r.base; if (!base || base.length < 3) return null;
     if (fp) r.base = fp.base.map(p => ({x: p.x, y: p.y}));
     const B = G.ccw(base), e = Math.max(0, +r.eave || 0);
@@ -11737,11 +11738,316 @@ updateRoomList();
   }
   function autoAng(E) { let best = 0, ang = 0; for (let i = 0; i < E.length; i++) { const a = E[i], b = E[(i + 1) % E.length], l = Math.hypot(b.x - a.x, b.y - a.y); if (l > best + 1e-9) { best = l; ang = Math.atan2(b.y - a.y, b.x - a.x); } } return ang; }
   function roofGeo(r, E) {
+    if (isV2(r)) return roofV2(r, E);
     E = E || roofPoly(r); if (!E) return null;
     const ang = (r.ang === null || r.ang === undefined || r.ang === '') ? autoAng(E) : r.ang * D2R;
     return G.roof(E, {type: r.type, slope: (+r.slope || 0) / 100, thick: +r.thick || 0.2, ang});
   }
   const roofs = () => state.roofs.map(r => { const E = roofPoly(r); if (!E) return null; const res = roofGeo(r, E), f = floorById(r.floorId); return {roof: r, floor: f, res, E}; }).filter(Boolean);
+
+  /* ================================================================ v22.7 · TETTO DA CONTORNO
+     Come il «tetto da contorno» dei CAD: il contorno lo decide l'utente (disegnato o preso dai muri),
+     ogni lato è «falda» (pendenza, sporto) oppure «timpano». Su un contorno convesso il tetto è il più basso
+     dei piani dei lati a falda: falde, colmi e displuvi escono esatti. Piante a L, T, U: un tetto per ala;
+     dove due tetti si sovrappongono si vede il più alto e nascono i compluvi. */
+  const isV2 = r => !!(r && Array.isArray(r.pts) && r.pts.length >= 3);
+  const RCOL = '#8a4b38';
+  function v2Lines(r) {
+    const P = r.pts, n = P.length, out = [];
+    for (let i = 0; i < n; i++) {
+      const a = P[i], b = P[(i + 1) % n], len = Math.hypot(b.x - a.x, b.y - a.y) || 1, ux = (b.x - a.x) / len, uy = (b.y - a.y) / len, nx = -uy, ny = ux, e = (r.edges && r.edges[i]) || {};
+      out.push({i, a, b, len, ux, uy, nx, ny, c: -(nx * a.x + ny * a.y), g: !!e.g, s: e.g ? null : Math.max(0, +e.s || 0) / 100, o: Math.max(0, e.o != null && e.o !== '' ? +e.o : 0.5)});
+    }
+    return out;
+  }
+  function eavePoly(r) { const L = v2Lines(r), E = G.offset(r.pts.map(p => ({x: p.x, y: p.y})), L.map(l => l.o)); return E && E.length >= 3 ? E : null; }
+  const convex = P => { let sg = 0; for (let i = 0; i < P.length; i++) { const a = P[i], b = P[(i + 1) % P.length], c = P[(i + 2) % P.length], cr = (b.x - a.x) * (c.y - b.y) - (b.y - a.y) * (c.x - b.x); if (Math.abs(cr) < 1e-9) continue; const s = Math.sign(cr); if (sg && s !== sg) return false; sg = s; } return true; };
+  function roofV2(r, E) {
+    E = E || eavePoly(r); if (!E) return null;
+    const L = v2Lines(r), th = Math.max(0.05, +r.thick || 0.25), f = floorById(r.floorId), wt = wallTopOf(f);
+    const z0 = (r.zi !== undefined && r.zi !== null && r.zi !== '' && isFinite(+r.zi) ? +r.zi - wt : 0) + th;   /* in alto alla falda, misurata dalla sommità dei muri */
+    const S = L.filter(l => l.s !== null), dist = (l, p) => l.nx * p.x + l.ny * p.y + l.c;
+    const zTop = p => { let z = Infinity; S.forEach(l => { const v = l.s * dist(l, p); if (v < z) z = v; }); return z0 + (isFinite(z) ? z : 0); };
+    const res = {top: [], side: [], maxZ: -Infinity, ridge: null, eaveLen: 0, areaTop: 0, areaPlan: Math.abs(G.area(E)), poly: E, faces: [], lines: [], v2: true, zTop, z0, th};
+    let faces = S.map(l => { let F = E.map(p => ({x: p.x, y: p.y})); S.forEach(m => { if (m === l || F.length < 3) return; F = G.clip(F, m.s * m.nx - l.s * l.nx, m.s * m.ny - l.s * l.ny, m.s * m.c - l.s * l.c); }); return {l, poly: F}; })
+      .filter(o => o.poly.length >= 3 && Math.abs(G.area(o.poly)) > 1e-6);
+    if (!faces.length) faces = [{l: null, poly: E}];
+    const area3 = (a, b, c) => { const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2], vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2]; return Math.hypot(uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx) / 2; };
+    faces.forEach(F => {
+      const zf = p => F.l ? z0 + F.l.s * dist(F.l, p) : z0, P = F.poly;
+      for (let k = 1; k < P.length - 1; k++) {
+        const V = [P[0], P[k], P[k + 1]].map(p => [p.x, p.y, zf(p)]); res.top.push(...V[0], ...V[1], ...V[2]); res.areaTop += area3(V[0], V[1], V[2]);
+        res.side.push(V[0][0], V[0][1], V[0][2] - th, V[2][0], V[2][1], V[2][2] - th, V[1][0], V[1][1], V[1][2] - th);   /* intradosso */
+      }
+      P.forEach(p => { const z = zf(p); if (z > res.maxZ) res.maxZ = z; });
+      res.faces.push({poly: P, l: F.l, zf});
+    });
+    if (!isFinite(res.maxZ)) res.maxZ = z0;
+    /* fascia lungo il bordo: spessore del tetto, spezzata dove cambiano le falde */
+    const n = E.length, onSeg = (p, a, b) => { const l = Math.hypot(b.x - a.x, b.y - a.y) || 1, t = ((p.x - a.x) * (b.x - a.x) + (p.y - a.y) * (b.y - a.y)) / (l * l), d = Math.abs((p.x - a.x) * (b.y - a.y) - (p.y - a.y) * (b.x - a.x)) / l; return d < 1e-5 && t > -1e-6 && t < 1 + 1e-6 ? t : null; };
+    const allV = res.faces.flatMap(F => F.poly);
+    for (let i = 0; i < n; i++) {
+      const a = E[i], b = E[(i + 1) % n], pts = [{p: a, t: 0}, {p: b, t: 1}]; allV.forEach(p => { const t = onSeg(p, a, b); if (t !== null && t > 1e-6 && t < 1 - 1e-6) pts.push({p, t}); });
+      pts.sort((x, y) => x.t - y.t);
+      for (let k = 0; k + 1 < pts.length; k++) { const p = pts[k].p, q = pts[k + 1].p, zp = zTop(p), zq = zTop(q); res.side.push(p.x, p.y, zp, q.x, q.y, zq, q.x, q.y, zq - th, p.x, p.y, zp, q.x, q.y, zq - th, p.x, p.y, zp - th); }
+      if (!L[i].g) res.eaveLen += Math.hypot(b.x - a.x, b.y - a.y);
+    }
+    /* linee interne: colmi (orizzontali) e displuvi */
+    const seen = new Set(), onE = (p, q) => { for (let i = 0; i < n; i++) { const a = E[i], b = E[(i + 1) % n]; if (onSeg(p, a, b) !== null && onSeg(q, a, b) !== null) return true; } return false; };
+    res.faces.forEach(F => { const P = F.poly; for (let k = 0; k < P.length; k++) { const p = P[k], q = P[(k + 1) % P.length]; if (Math.hypot(q.x - p.x, q.y - p.y) < 1e-4 || onE(p, q)) continue; const key = [p, q].map(v => v.x.toFixed(3) + ',' + v.y.toFixed(3)).sort().join('|'); if (seen.has(key)) continue; seen.add(key); const zp = zTop(p), zq = zTop(q); res.lines.push({a: p, b: q, z: Math.max(zp, zq), kind: Math.abs(zp - zq) < 1e-3 ? 'colmo' : 'displuvio'}); } });
+    const rg = res.lines.find(x => x.kind === 'colmo'); if (rg) res.ridge = {a: rg.a, b: rg.b, z: rg.z};
+    return res;
+  }
+  function defaultEdges(P, s, o) {   /* due falde: il lato più lungo e quello più opposto a lui; gli altri a timpano */
+    const n = P.length, U = P.map((a, i) => { const b = P[(i + 1) % n], l = Math.hypot(b.x - a.x, b.y - a.y) || 1; return {l, ux: (b.x - a.x) / l, uy: (b.y - a.y) / l}; });
+    let i0 = 0; U.forEach((u, i) => { if (u.l > U[i0].l) i0 = i; });
+    let i1 = -1, best = 2; U.forEach((u, i) => { if (i === i0) return; const d = u.ux * U[i0].ux + u.uy * U[i0].uy; if (d < best) { best = d; i1 = i; } });
+    return P.map((_, i) => (i === i0 || i === i1) ? {s, o} : {g: true, o: Math.min(o, 0.3)});
+  }
+  function wallHull(fid) {   /* contorno dai muri del piano: filo esterno */
+    const pts = [];
+    wallsOf(fid).forEach(w => { const L = Math.hypot(w.p2.x - w.p1.x, w.p2.y - w.p1.y); if (L < 0.01) return; const t = getWallThickness(w) / 2, nx = -(w.p2.y - w.p1.y) / L * t, ny = (w.p2.x - w.p1.x) / L * t; const ux = (w.p2.x - w.p1.x) / L * t, uy = (w.p2.y - w.p1.y) / L * t; [[w.p1, -1], [w.p2, 1]].forEach(([p, k]) => { pts.push({x: p.x + k * ux + nx, y: p.y + k * uy + ny}, {x: p.x + k * ux - nx, y: p.y + k * uy - ny}); }); });   /* angoli esterni: testata prolungata di mezzo spessore */
+    if (pts.length < 3) return null; let H = G.simplify(G.ccw(G.hull(pts)), 0.004);
+    /* angoli non retti: lo smusso corto fra due muri diventa lo spigolo vero (incontro dei due fili esterni) */
+    for (let g = 0; g < 50 && H.length > 3; g++) {
+      const n = H.length; let k = -1, best = 0.8;
+      for (let i = 0; i < n; i++) { const a = H[i], b = H[(i + 1) % n], l = Math.hypot(b.x - a.x, b.y - a.y); if (l < best) { best = l; k = i; } }
+      if (k < 0) break;
+      const p0 = H[(k - 1 + n) % n], a = H[k], b = H[(k + 1) % n], q = H[(k + 2) % n], ux = a.x - p0.x, uy = a.y - p0.y, vx = q.x - b.x, vy = q.y - b.y, cr = ux * vy - uy * vx;
+      if (Math.abs(cr) < 1e-9) break;
+      const t = ((b.x - a.x) * vy - (b.y - a.y) * vx) / cr, X = {x: a.x + ux * t, y: a.y + uy * t};
+      if (Math.hypot(X.x - a.x, X.y - a.y) > 1.5) break;
+      H.splice(k, 1, X); H.splice((k + 1) % H.length, 1); H = G.simplify(H, 0.004);
+    }
+    return H.length >= 3 ? H.map(p => ({x: r6(p.x), y: r6(p.y)})) : null;
+  }
+  function toV2(r) {   /* i tetti delle versioni precedenti diventano modificabili */
+    if (isV2(r)) return r;
+    const base = (footprint(r.floorId) || {}).base || r.base, P = wallHull(r.floorId) || (base && G.simplify(G.ccw(G.hull(base))));
+    if (!P || P.length < 3) return null;
+    const s = +r.slope || 35, o = r.eave != null ? +r.eave : 0.5;
+    let E;
+    if (r.type === 'padiglione') E = P.map(() => ({s, o}));
+    else if (r.type === 'piana') E = P.map(() => ({s: 0, o}));
+    else if (r.type === 'singola') { const D = defaultEdges(P, s, o), i0 = D.findIndex(e => !e.g); E = P.map((_, i) => i === i0 ? {s, o} : {g: true, o: Math.min(o, 0.3)}); }
+    else E = defaultEdges(P, s, o);
+    r.pts = P.map(p => ({x: r6(p.x), y: r6(p.y)})); r.edges = E; r.thick = r.thick || 0.25; r.color = r.color || RCOL; return r;
+  }
+  /* compluvi: dove due tetti dello stesso piano si sovrappongono, linea in cui le falde si incontrano */
+  function valleys(list) {
+    const out = [], clipBy = (Q, B) => { for (let i = 0; i < B.length && Q.length >= 3; i++) { const a = B[i], b = B[(i + 1) % B.length]; Q = G.clip(Q, -(b.y - a.y), b.x - a.x, (b.y - a.y) * a.x - (b.x - a.x) * a.y); } return Q; };
+    const coef = (F, R) => { const l = F.l; return l ? {a: l.s * l.nx, b: l.s * l.ny, k: R.z0 + l.s * l.c} : {a: 0, b: 0, k: R.z0}; };
+    for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) {
+      const A = list[i], B = list[j];
+      A.faces.forEach(fa => B.faces.forEach(fb => {
+        const Q = clipBy(G.ccw(fa.poly), G.ccw(fb.poly)); if (Q.length < 3) return;
+        const ca = coef(fa, A), cb = coef(fb, B), a = ca.a - cb.a, b = ca.b - cb.b, k = ca.k - cb.k; if (Math.hypot(a, b) < 1e-9) return;
+        const P = []; for (let t = 0; t < Q.length; t++) { const p = Q[t], q = Q[(t + 1) % Q.length], fp = a * p.x + b * p.y + k, fq = a * q.x + b * q.y + k; if (Math.abs(fp) < 1e-9) P.push(p); else if (fp * fq < 0) { const u = fp / (fp - fq); P.push({x: p.x + (q.x - p.x) * u, y: p.y + (q.y - p.y) * u}); } }
+        if (P.length >= 2) out.push({a: P[0], b: P[P.length - 1]});
+      }));
+    }
+    return out;
+  }
+
+  /* ---------------------------------------------------------------- comando Tetto: contorno e modifica */
+  let RT = null;   /* {mode:'draw', fid, pts:[], cur} · {mode:'edit', id, vsel} */
+  const rById = id => state.roofs.find(r => String(r.id) === String(id));
+  let rpal = null;
+  function palEl() {
+    if (rpal && rpal.isConnected) return rpal;
+    rpal = document.createElement('div'); rpal.className = 'sc-pal'; rpal.id = 'roofPal';
+    rpal.style.cssText = 'position:fixed;z-index:9500;right:12px;top:110px;width:min(340px,calc(100vw - 24px));max-height:calc(100vh - 150px);overflow:auto;background:#1e1e2e;border:1px solid #c084fc;border-radius:10px;padding:8px;box-shadow:0 6px 22px rgba(0,0,0,.55);font:13px sans-serif;color:#e5e7eb';
+    ['pointerdown', 'pointerup', 'touchstart', 'wheel', 'contextmenu'].forEach(ev => rpal.addEventListener(ev, e => e.stopPropagation(), {passive: true}));
+    rpal.addEventListener('click', palClick); rpal.addEventListener('change', palChange);
+    document.body.appendChild(rpal); return rpal;
+  }
+  const RB = 'min-height:34px;padding:4px 10px;border-radius:8px;border:1px solid #c084fc;background:#2a2340;color:#f1f5f9;font:600 13px system-ui,sans-serif;cursor:pointer';
+  const RI = 'width:100%;box-sizing:border-box;padding:6px 7px;border-radius:6px;border:1px solid #475569;background:#12151f;color:#e5e7eb;font:14px sans-serif';
+  function palUI() {
+    const P = palEl();
+    if (!RT) { P.remove(); rpal = null; return; }
+    if (RT.mode === 'draw') {
+      P.innerHTML = `<div style="font-weight:700;color:#d8b4fe">🏠 Nuovo tetto · ${esc(floorById(RT.fid).name)}</div>
+        <div style="font-size:12px;color:#cbd5e1;margin:4px 0 6px;line-height:1.35">Tocca gli angoli del contorno sul <b>filo esterno dei muri</b> (lo sporto si aggiunge dopo). Tocca il primo punto per chiudere. Contorno convesso: per piante a L o T fai un tetto per ala.</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px"><button data-a="hull" style="${RB}">🧱 Dai muri del piano</button><button data-a="back" style="${RB}"${RT.pts.length ? '' : ' disabled'}>↩ Togli punto</button><button data-a="close" style="${RB}"${RT.pts.length >= 3 ? '' : ' disabled'}>✔ Chiudi contorno</button><button data-a="cancel" style="${RB}">✖ Annulla</button></div>
+        <div style="font-size:12px;color:#9ca3b8;margin-top:6px">Punti: ${RT.pts.length}</div>`;
+      return;
+    }
+    const r = rById(RT.id); if (!r) { endRoof(); return; }
+    const L = v2Lines(r), res = roofV2(r), f = floorById(r.floorId), base = f.elev + wallTopOf(f), sl = L.find(l => l.s !== null), s0 = sl ? sl.s * 100 : 35, deg = Math.atan(s0 / 100) * 180 / Math.PI;
+    P.innerHTML = `<div style="display:flex;align-items:center;gap:6px"><b style="color:#d8b4fe">🏠 Tetto · ${esc(f.name)}</b><button data-a="fine" style="${RB};margin-left:auto">✔ Fine</button></div>
+      <div style="font-size:12px;color:#cbd5e1;margin:4px 0 6px;line-height:1.35">In pianta: tocca un <b>lato</b> per passare da falda a timpano · tocca un <b>vertice</b> e poi il punto dove spostarlo.</div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px"><button data-q="due" style="${RB}">Due falde</button><button data-q="padi" style="${RB}">Padiglione</button><button data-q="una" style="${RB}">Falda unica</button><button data-q="piano" style="${RB}">Piano</button></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        <label style="font-size:12px">Pendenza %<input data-g="s" inputmode="decimal" value="${f2(s0, 1)}" style="${RI}"></label>
+        <label style="font-size:12px">Pendenza °<input data-g="deg" inputmode="decimal" value="${f2(deg, 1)}" style="${RI}"></label>
+        <label style="font-size:12px">Sporto m<input data-g="o" inputmode="decimal" value="${f2(sl ? sl.o : 0.5)}" style="${RI}"></label>
+        <label style="font-size:12px">Spessore m<input data-g="th" inputmode="decimal" value="${f2(+r.thick || 0.25)}" style="${RI}"></label>
+        <label style="font-size:12px">Imposta da pavimento m<input data-g="zi" inputmode="decimal" placeholder="sopra i muri" value="${r.zi !== undefined && r.zi !== null && r.zi !== '' ? f2(+r.zi) : ''}" style="${RI}"></label>
+        <label style="font-size:12px">Colore<input data-g="col" type="color" value="${r.color || RCOL}" style="${RI};height:34px;padding:2px"></label></div>
+      <div style="font-size:12px;color:#9ca3b8;margin:6px 0 2px">Lati del contorno</div>
+      ${L.map(l => `<div data-e="${l.i}" style="display:grid;grid-template-columns:58px 1fr 64px 60px;gap:4px;align-items:center;margin:3px 0"><b style="font-size:12px">${l.i + 1} · ${f2(l.len)}</b>
+        <select data-k="g" style="${RI};padding:4px"><option value="0"${l.g ? '' : ' selected'}>Falda</option><option value="1"${l.g ? ' selected' : ''}>Timpano</option></select>
+        <input data-k="s" inputmode="decimal" title="pendenza %" value="${l.g ? '' : f2(l.s * 100, 1)}" placeholder="%"${l.g ? ' disabled' : ''} style="${RI};padding:4px">
+        <input data-k="o" inputmode="decimal" title="sporto m" value="${f2(l.o)}" style="${RI};padding:4px"></div>`).join('')}
+      <div style="font-size:12px;color:#cbd5e1;margin-top:6px">${res ? `Colmo a ${f2(base + res.maxZ)} m · falde ${f2(res.areaTop, 1)} m² · gronde ${f2(res.eaveLen, 1)} m` : 'Contorno non valido'}</div>
+      <div style="display:flex;gap:6px;margin-top:6px"><button data-a="del" style="${RB}">🗑 Elimina tetto</button></div>`;
+  }
+  function startRoof(fid) {
+    try { document.querySelectorAll('.menu-dropdown.open,.menu-item.open').forEach(m => m.classList.remove('open')); } catch (_) {}
+    if (state.mode !== '2d') { toast('Il tetto si disegna nella vista 2D'); return; }
+    try { ctxTool('select'); } catch (_) {} try { setSel([]); } catch (_) {}
+    if (panelOpen) closePanel();
+    cfg.roof2d = true; RT = {mode: 'draw', fid: fid || state.currentFloorId, pts: [], cur: null}; palUI(); draw2D();
+    toast('Tetto: tocca gli angoli del contorno, oppure «Dai muri del piano»');
+  }
+  function editRoofV2(id) { const r = rById(id); if (!r) return; if (!isV2(r) && !toV2(r)) { toast('Non riesco a ricavare il contorno: disegnalo a mano'); return; } if (panelOpen) closePanel(); RT = {mode: 'edit', id: r.id, vsel: null}; palUI(); draw2D(); }
+  function endRoof() { RT = null; palUI(); try { draw2D(); } catch (_) {} try { renderPanel(); } catch (_) {} }
+  function finishContour(pts) {
+    let P = G.simplify(G.ccw(pts.map(p => ({x: p.x, y: p.y}))), 0.004);
+    if (P.length < 3) { toast('Servono almeno 3 punti'); return; }
+    if (!convex(P)) { toast('Il contorno ha angoli rientranti: per piante a L o T disegna un tetto per ala (il secondo arriva fino al colmo del primo)'); return; }
+    const r = {id: newId(), floorId: RT.fid, type: 'doppia', slope: 35, eave: 0.5, thick: 0.25, ang: null, color: RCOL, pts: P.map(p => ({x: r6(p.x), y: r6(p.y)})), edges: defaultEdges(P, 35, 0.5)};
+    /* lato che entra sotto un tetto già fatto (attacco dell'ala): timpano senza sporto */
+    const prev = state.roofs.filter(x => x.floorId === RT.fid && isV2(x)).map(x => eavePoly(x)).filter(Boolean);
+    P.forEach((a, i) => { const b = P[(i + 1) % P.length], m = {x: (a.x + b.x) / 2, y: (a.y + b.y) / 2}; if (prev.some(E => pointInPolygon(m, E))) { r.edges[i] = {g: true, o: 0}; } });
+    syncType(r);
+    state.roofs.push(r); checkpoint(); refresh(); RT = {mode: 'edit', id: r.id, vsel: null}; palUI(); draw2D();
+    toast('Tetto creato a due falde: tocca un lato per cambiarlo in falda o timpano');
+  }
+  function preset(r, q, s, o) {
+    s = s || 35; o = o != null ? o : 0.5;
+    if (q === 'due' || q === 'doppia') r.edges = defaultEdges(r.pts, s, o);
+    else if (q === 'padi' || q === 'padiglione') r.edges = r.pts.map(() => ({s, o}));
+    else if (q === 'piano' || q === 'piana') r.edges = r.pts.map(() => ({s: 0, o}));
+    else if (q === 'una' || q === 'singola') { const D = defaultEdges(r.pts, s, o), i0 = D.findIndex(x => !x.g); r.edges = r.pts.map((_, i) => i === i0 ? {s, o} : {g: true, o: Math.min(o, 0.3)}); }
+    syncType(r);
+  }
+  function syncType(r) {   /* il tipo serve al computo e alla riga di comando */
+    const F = (r.edges || []).filter(e => !e.g), sl = F.find(e => +e.s > 0);
+    r.type = !F.length || !sl ? 'piana' : F.length === 1 ? 'singola' : F.length === r.pts.length ? 'padiglione' : 'doppia';
+    r.slope = sl ? +sl.s : 0; r.eave = F.length ? +F[0].o : 0.3;
+  }
+  function palClick(e) {
+    const b = e.target.closest('button'); if (!b || !RT) return;
+    const a = b.dataset.a, q = b.dataset.q;
+    if (RT.mode === 'draw') {
+      if (a === 'cancel') return endRoof();
+      if (a === 'back') { RT.pts.pop(); palUI(); draw2D(); return; }
+      if (a === 'close') return finishContour(RT.pts);
+      if (a === 'hull') {
+        const H = wallHull(RT.fid); if (!H) return toast('Nessun muro su questo piano');
+        const fp = footprint(RT.fid); if (fp && fp.area < Math.abs(G.area(H)) * 0.93) return toast('La pianta ha angoli rientranti (L, T, U): disegna un tetto per ala toccando gli angoli');
+        return finishContour(H);
+      }
+      return;
+    }
+    const r = rById(RT.id); if (!r) return endRoof();
+    if (a === 'fine') return endRoof();
+    if (a === 'del') { state.roofs = state.roofs.filter(x => x !== r); checkpoint(); refresh(); return endRoof(); }
+    if (q) {
+      const L = v2Lines(r), sl = L.find(l => l.s !== null && l.s > 0), s = sl ? sl.s * 100 : 35, o = sl ? sl.o : 0.5;
+      preset(r, q, s, o); checkpoint(); refresh(); palUI(); draw2D();
+    }
+  }
+  function palChange(e) {
+    const t = e.target, r = RT && RT.mode === 'edit' && rById(RT.id); if (!r) return;
+    const v = pn(t.value), row = t.closest('[data-e]');
+    if (row) {
+      const i = +row.dataset.e, ed = r.edges[i] = Object.assign({}, r.edges[i] || {}), k = t.dataset.k;
+      if (k === 'g') { if (t.value === '1') ed.g = true; else { delete ed.g; if (!(+ed.s > 0)) ed.s = 35; } }
+      else if (k === 's' && isFinite(v)) ed.s = Math.max(0, Math.min(300, v));
+      else if (k === 'o' && isFinite(v)) ed.o = Math.max(0, Math.min(3, v));
+    } else {
+      const g = t.dataset.g;
+      if (g === 's' || g === 'deg') { const s = g === 'deg' ? Math.tan(Math.max(0, Math.min(75, v)) * Math.PI / 180) * 100 : v; if (isFinite(s)) r.edges.forEach(ed => { if (!ed.g) ed.s = Math.max(0, Math.min(300, s)); }); }
+      else if (g === 'o' && isFinite(v)) r.edges.forEach(ed => { ed.o = ed.g ? Math.min(v, ed.o != null ? Math.max(ed.o, 0) : 0.3) : Math.max(0, Math.min(3, v)); });
+      else if (g === 'th' && isFinite(v)) r.thick = Math.max(0.05, Math.min(1, v));
+      else if (g === 'zi') r.zi = String(t.value).trim() === '' ? null : (isFinite(v) ? v : r.zi);
+      else if (g === 'col') r.color = t.value;
+    }
+    syncType(r); checkpoint(); refresh(); palUI(); draw2D();
+  }
+  const snapR = raw => { const sp = document.getElementById('snapPts'), old = sp ? sp.checked : null; try { if (sp) sp.checked = true; return snapToVertex(raw, null) || raw; } catch (_) { return raw; } finally { if (sp) sp.checked = old; } };
+  c2d.addEventListener('pointermove', e => { if (!RT || !(RT.mode === 'draw' || (RT.mode === 'edit' && RT.vsel !== null))) return; const rc = c2d.getBoundingClientRect(); RT.cur = screenToWorld(e.clientX - rc.left, e.clientY - rc.top); draw2D(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && RT) { if (RT.mode === 'edit' && RT.vsel !== null) { RT.vsel = null; draw2D(); } else endRoof(); } });
+  const _htR = handleTap;
+  handleTap = function (cx, cy) {
+    const rc = c2d.getBoundingClientRect(), sx = cx - rc.left, sy = cy - rc.top;
+    if (RT && RT.mode === 'draw') {
+      const p = snapR(screenToWorld(sx, sy));
+      if (RT.pts.length >= 3) { const s0 = worldToScreen(RT.pts[0].x, RT.pts[0].y); if (Math.hypot(s0.x - sx, s0.y - sy) < 20) return finishContour(RT.pts); }
+      RT.pts.push({x: r6(p.x), y: r6(p.y)}); palUI(); draw2D(); return;
+    }
+    if (RT && RT.mode === 'edit') {
+      const r = rById(RT.id); if (!r) return endRoof();
+      if (RT.vsel !== null) {
+        const p = snapR(screenToWorld(sx, sy)), old = r.pts[RT.vsel]; r.pts[RT.vsel] = {x: r6(p.x), y: r6(p.y)};
+        if (!convex(r.pts) || Math.abs(G.area(r.pts)) < 0.05) { r.pts[RT.vsel] = old; toast('Così il contorno avrebbe un angolo rientrante: vertice non spostato'); }
+        else { if (G.area(r.pts) < 0) { r.pts.reverse(); r.edges = r.edges.slice(0, -1).reverse().concat(r.edges.slice(-1)); } checkpoint(); refresh(); }
+        RT.vsel = null; RT.cur = null; palUI(); draw2D(); return;
+      }
+      for (let i = 0; i < r.pts.length; i++) { const s = worldToScreen(r.pts[i].x, r.pts[i].y); if (Math.hypot(s.x - sx, s.y - sy) < 18) { RT.vsel = i; toast('Vertice ' + (i + 1) + ': tocca il punto dove spostarlo (Esc = annulla)'); draw2D(); return; } }
+      let bi = -1, bd = 16; v2Lines(r).forEach(l => { const a = worldToScreen(l.a.x, l.a.y), b = worldToScreen(l.b.x, l.b.y), L2 = (b.x - a.x) ** 2 + (b.y - a.y) ** 2 || 1, t = Math.max(0, Math.min(1, ((sx - a.x) * (b.x - a.x) + (sy - a.y) * (b.y - a.y)) / L2)), d = Math.hypot(a.x + (b.x - a.x) * t - sx, a.y + (b.y - a.y) * t - sy); if (d < bd) { bd = d; bi = l.i; } });
+      if (bi >= 0) { const ed = r.edges[bi] = Object.assign({}, r.edges[bi] || {}); if (ed.g) { delete ed.g; if (!(+ed.s > 0)) { const s = v2Lines(r).find(l => l.s !== null); ed.s = s ? s.s * 100 : 35; } ed.o = Math.max(+ed.o || 0, 0.5); toast('Lato ' + (bi + 1) + ': falda'); } else { ed.g = true; toast('Lato ' + (bi + 1) + ': timpano'); } syncType(r); checkpoint(); refresh(); palUI(); draw2D(); return; }
+      endRoof(); return _htR.apply(this, arguments);   /* tocco altrove: fine modifica */
+    }
+    if (cfg.roof2d && state.tool === 'select') {   /* toccando la scritta del tetto si apre la modifica */
+      const hit = state.roofs.filter(r => r.floorId === state.currentFloorId && isV2(r) && RLBL[r.id]).find(r => Math.abs(RLBL[r.id].x - sx) < 60 && Math.abs(RLBL[r.id].y - sy) < 14);
+      if (hit) { editRoofV2(hit.id); return; }
+    }
+    return _htR.apply(this, arguments);
+  };
+  const RLBL = {};   /* posizione a video della scritta di ogni tetto (per aprirne la modifica) */
+  function drawRoofV2(r, E, res, f, others) {
+    const sel = RT && RT.mode === 'edit' && String(RT.id) === String(r.id), base = f.elev + wallTopOf(f), W = p => worldToScreen(p.x, p.y), pr = !!window.__printing;
+    const col = sel ? '#f0abfc' : '#c084fc';
+    /* parti coperte da un tetto più alto dello stesso piano: non si disegnano */
+    const hid = p => (others || []).some(o => pointInPolygon(p, o.poly) && o.zTop(p) > res.zTop(p) + 1e-3);
+    const seg = (a, b) => {
+      if (!others || !others.length) { const A = W(a), B = W(b); ctx.moveTo(A.x, A.y); ctx.lineTo(B.x, B.y); return; }
+      const N = 48; let on = false;
+      for (let k = 0; k <= N; k++) { const t = k / N, p = {x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t}, v = !hid(p), S = W(p); if (v) { on ? ctx.lineTo(S.x, S.y) : ctx.moveTo(S.x, S.y); } on = v; }
+    };
+    const ring = P => P.forEach((p, i) => seg(p, P[(i + 1) % P.length]));
+    ctx.save(); ctx.lineCap = 'round';
+    ctx.strokeStyle = col; ctx.lineWidth = 1.6; ctx.setLineDash([9, 5]); ctx.beginPath(); ring(E); ctx.stroke();   /* gronda */
+    ctx.setLineDash([2, 4]); ctx.lineWidth = 1; ctx.beginPath(); ring(r.pts); ctx.stroke(); ctx.setLineDash([]);   /* imposta (filo muri) */
+    res.lines.forEach(l => { ctx.lineWidth = l.kind === 'colmo' ? 2.4 : 1.6; ctx.beginPath(); seg(l.a, l.b); ctx.stroke(); });
+    ctx.fillStyle = col; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    res.faces.forEach(F => {
+      if (!F.l || !(F.l.s > 0)) return; let cx = 0, cy = 0; F.poly.forEach(p => { cx += p.x; cy += p.y; }); cx /= F.poly.length; cy /= F.poly.length; if (hid({x: cx, y: cy})) return;
+      const c = W({x: cx, y: cy}), tip = W({x: cx - F.l.nx * 0.7, y: cy - F.l.ny * 0.7}), dx = tip.x - c.x, dy = tip.y - c.y, dl = Math.hypot(dx, dy) || 1;
+      if (dl < 10) return; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(c.x, c.y); ctx.lineTo(tip.x, tip.y); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(tip.x, tip.y); ctx.lineTo(tip.x - dx / dl * 8 - dy / dl * 4, tip.y - dy / dl * 8 + dx / dl * 4); ctx.lineTo(tip.x - dx / dl * 8 + dy / dl * 4, tip.y - dy / dl * 8 - dx / dl * 4); ctx.closePath(); ctx.fill();
+      ctx.fillText(f2(F.l.s * 100, 0) + '%', c.x - dx / dl * 12, c.y - dy / dl * 12);
+    });
+    const rg = res.lines.filter(l => l.kind === 'colmo').sort((a, b) => Math.hypot(b.b.x - b.a.x, b.b.y - b.a.y) - Math.hypot(a.b.x - a.a.x, a.b.y - a.a.y))[0];
+    if (rg) { const mw = {x: (rg.a.x + rg.b.x) / 2, y: (rg.a.y + rg.b.y) / 2}; if (hid(mw)) { const K = 12; for (let k = 1; k < K; k++) { const t = k / K, p = {x: rg.a.x + (rg.b.x - rg.a.x) * t, y: rg.a.y + (rg.b.y - rg.a.y) * t}; if (!hid(p)) { const q = {x: rg.a.x + (rg.b.x - rg.a.x) * (1 - t), y: rg.a.y + (rg.b.y - rg.a.y) * (1 - t)}; Object.assign(mw, hid(q) ? p : q); break; } } } const m = W(mw); ctx.fillText('colmo ' + (base + rg.z >= 0 ? '+' : '') + f2(base + rg.z), m.x, m.y - 10); }
+    else { let best = null; res.faces.forEach(F => F.poly.forEach(p => { const z = res.zTop(p); if (!best || z > best.z) best = {p, z}; })); if (best) { const m = W(best.p); ctx.fillText('colmo +' + f2(base + best.z), m.x, m.y - 10); } }
+    const L = v2Lines(r), out = (i, px) => { const a = E[i], b = E[(i + 1) % E.length], mw = {x: (a.x + b.x) / 2, y: (a.y + b.y) / 2}, m = W(mw), q = W({x: mw.x - L[i].nx, y: mw.y - L[i].ny}), dx = q.x - m.x, dy = q.y - m.y, dl = Math.hypot(dx, dy) || 1; return {x: m.x + dx / dl * px, y: m.y + dy / dl * px, mw}; };
+    let ge = -1; L.forEach((l, i) => { if (!l.g && !hid(out(i, 0).mw) && (ge < 0 || l.len > L[ge].len)) ge = i; });   /* gronda: il lato a falda più lungo e in vista */
+    L.forEach((l, i) => { if (!l.g || hid(out(i, 0).mw) || (others || []).some(o => pointInPolygon(out(i, 0).mw, o.poly))) return; const o = out(i, 9); ctx.font = 'italic 10px sans-serif'; ctx.fillText('timpano', o.x, o.y); ctx.font = 'bold 11px sans-serif'; });
+    if (ge >= 0) { const o = out(ge, 13), zg = base + res.zTop(o.mw) - res.th; ctx.fillText((pr ? '' : '🏠 ') + 'gronda ' + (zg >= 0 ? '+' : '') + f2(zg) + (pr || !sel ? '' : ' · in modifica'), o.x, o.y); RLBL[r.id] = {x: o.x, y: o.y}; }
+    else { const s0 = W(E[0]); if (!pr) ctx.fillText('🏠 Tetto', s0.x + 30, s0.y - 12); RLBL[r.id] = {x: s0.x + 30, y: s0.y - 12}; }
+    if (sel && !pr) {   /* lati numerati e vertici */
+      L.forEach(l => { const a = W(l.a), b = W(l.b); ctx.strokeStyle = l.g ? '#94a3b8' : '#f0abfc'; ctx.lineWidth = 5; ctx.globalAlpha = 0.5; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); ctx.globalAlpha = 1;
+        const m = {x: (a.x + b.x) / 2, y: (a.y + b.y) / 2}; ctx.fillStyle = '#1e1e2e'; ctx.beginPath(); ctx.arc(m.x, m.y, 9, 0, 7); ctx.fill(); ctx.strokeStyle = '#f0abfc'; ctx.lineWidth = 1.2; ctx.stroke(); ctx.fillStyle = '#f0abfc'; ctx.textAlign = 'center'; ctx.fillText(String(l.i + 1), m.x, m.y + 0.5); });
+      r.pts.forEach((p, i) => { const s = W(p); ctx.fillStyle = RT.vsel === i ? '#fbbf24' : '#f0abfc'; ctx.beginPath(); ctx.arc(s.x, s.y, RT.vsel === i ? 7 : 5, 0, 7); ctx.fill(); });
+      if (RT.vsel !== null && RT.cur) { const a = W(r.pts[RT.vsel]), b = W(RT.cur); ctx.strokeStyle = '#fbbf24'; ctx.setLineDash([5, 4]); ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); ctx.setLineDash([]); }
+    }
+    ctx.restore();
+  }
+  function drawRoofTool() {
+    if (!RT || RT.mode !== 'draw' || window.__printing) return;
+    const P = RT.pts.concat(RT.cur ? [RT.cur] : []); if (!P.length) return;
+    ctx.save(); ctx.strokeStyle = '#f0abfc'; ctx.fillStyle = 'rgba(192,132,252,.12)'; ctx.lineWidth = 2; ctx.setLineDash([8, 5]);
+    ctx.beginPath(); P.forEach((p, i) => { const s = worldToScreen(p.x, p.y); i ? ctx.lineTo(s.x, s.y) : ctx.moveTo(s.x, s.y); }); if (P.length >= 3) { ctx.closePath(); ctx.fill(); } ctx.stroke(); ctx.setLineDash([]);
+    RT.pts.forEach((p, i) => { const s = worldToScreen(p.x, p.y); ctx.fillStyle = i === 0 ? '#fbbf24' : '#f0abfc'; ctx.beginPath(); ctx.arc(s.x, s.y, i === 0 ? 7 : 5, 0, 7); ctx.fill(); });
+    ctx.restore();
+  }
+  window.SCroof = {start: startRoof, edit: editRoofV2, end: endRoof, active: () => !!RT, geo: roofV2, toV2, wallHull, preset, syncType, valleys, isV2};
+
 
   /* ---------------------------------------------------------------- stampa piano su entita' nuove */
   window.SCstamp = () => stampAll();
@@ -11819,12 +12125,21 @@ updateRoomList();
   function addRoof(fid) {
     const f = floorById(fid);
     if (state.roofs.some(r => r.floorId === fid)) return toast('Questo piano ha già un tetto');
-    if (!footprint(fid)) return toast('Servono muri chiusi sul piano «' + f.name + '» per il tetto');
-    state.roofs.push({id: newId(), floorId: fid, type: 'doppia', slope: 35, eave: 0.5, thick: 0.2, ang: null, color: '#8a4b38'});
+    const H = wallHull(fid); if (!H) return toast('Servono muri sul piano «' + f.name + '» per il tetto');
+    const r = {id: newId(), floorId: fid, type: 'doppia', slope: 35, eave: 0.5, thick: 0.25, ang: null, color: '#8a4b38', pts: H, edges: defaultEdges(H, 35, 0.5)}; syncType(r); state.roofs.push(r);
     checkpoint(); renderPanel(); refresh(); toast('Tetto aggiunto: visibile in 3D');
   }
   function editRoof(id, field, raw) {
     const r = state.roofs.find(x => x.id === id); if (!r) return;
+    if (isV2(r)) {   /* tetto da contorno: tipo, pendenza e sporto agiscono sui lati */
+      const sl = (r.edges || []).find(e => !e.g && +e.s > 0), s = sl ? +sl.s : 35, o = sl ? +sl.o : 0.5, v = pn(raw);
+      if (field === 'type' && ROOF_TYPES[raw]) preset(r, raw, s, o);
+      else if (field === 'slope' && isFinite(v)) r.edges.forEach(e => { if (!e.g) e.s = Math.max(0, Math.min(150, v)); });
+      else if (field === 'eave' && isFinite(v)) r.edges.forEach(e => { if (!e.g) e.o = Math.max(0, Math.min(3, v)); });
+      else if (field === 'thick' && isFinite(v)) r.thick = Math.max(0.05, Math.min(1, v));
+      else if (field === 'color') r.color = raw;
+      syncType(r); checkpoint(); renderPanel(); refresh(); return;
+    }
     if (field === 'type') r.type = ROOF_TYPES[raw] ? raw : r.type;
     else if (field === 'ang') { const v = pn(raw); r.ang = isFinite(v) ? ((v % 180) + 180) % 180 : null; }
     else if (field === 'color') r.color = raw;
@@ -11890,6 +12205,13 @@ updateRoomList();
     // tetti
     h += '<div class="fl-sec">Tetti</div>';
     state.roofs.forEach(r => {
+      if (isV2(r)) {
+        const f = floorById(r.floorId), res = roofV2(r), nF = r.edges.filter(e => !e.g).length, sl = r.edges.find(e => !e.g && +e.s > 0);
+        h += `<div class="fl-card" data-rid="${r.id}"><div class="fl-ct"><b>Tetto sul piano «${esc(f.name)}» · ${ROOF_TYPES[r.type] || 'da contorno'}</b><button data-a="delroof" title="Elimina tetto">🗑</button></div>` +
+          `<div class="fl-note">${r.pts.length} lati · ${nF} falde${sl ? ' al ' + f2(+sl.s, 0) + '%' : ''}${res ? ` · colmo a +${f2(res.maxZ)} m sopra i muri · falde ${f2(res.areaTop, 1)} m² · pianta ${f2(res.areaPlan, 1)} m²` : ''}</div>` +
+          `<div class="fl-row"><button data-a="editRoof2">✏ Modifica in pianta</button></div></div>`;
+        return;
+      }
       const f = floorById(r.floorId), E = roofPoly(r), res = E && roofGeo(r, E), deg = Math.atan((+r.slope || 0) / 100) / D2R;
       const angShown = (r.ang === null || r.ang === undefined || r.ang === '') ? '' : String(r.ang).replace('.', ',');
       h += `<div class="fl-card" data-rid="${r.id}"><div class="fl-ct"><b>Tetto sul piano «${esc(f.name)}»</b><button data-a="delroof" title="Elimina tetto">🗑</button></div>` +
@@ -11899,9 +12221,10 @@ updateRoomList();
         `<label>Spessore m<input data-r="thick" inputmode="decimal" value="${f2(r.thick)}"></label>` +
         `<label>Colmo a (°)<input data-r="ang" inputmode="decimal" placeholder="auto" value="${angShown}"></label>` +
         `<label>Colore<span id="roofCol${r.id}">${colorPickerHTML('roofColor' + r.id, r.color, false)}</span></label></div>` +
+        `<div class="fl-row"><button data-a="editRoof2">✏ Modifica in pianta (contorno e lati)</button></div>` +
         `<div class="fl-note">${E ? `Pendenza ${f2(deg, 1)}° · colmo a +${f2(res.maxZ)} m sopra i muri · superficie falde ${f2(res.areaTop, 1)} m² · pianta ${f2(res.areaPlan, 1)} m²` : 'Contorno non disponibile: chiudi i muri del piano.'}</div></div>`;
     });
-    if (!state.roofs.some(r => r.floorId === cur)) h += `<div class="fl-row"><button data-a="addRoof">➕ Tetto sul piano «${esc(curF.name)}»</button></div>`;
+    h += `<div class="fl-row"><button data-a="addRoof">➕ Disegna tetto sul piano «${esc(curF.name)}»</button></div><div class="fl-note">Disegni il contorno (o lo prendi dai muri), poi scegli per ogni lato falda o timpano. Per piante a L o T: un tetto per ala.</div>`;
     // fori
     const mine = state.holes.filter(x => x.floorId === cur);
     h += '<div class="fl-sec">Fori nel solaio di «' + esc(curF.name) + '»</div>';
@@ -11925,7 +12248,8 @@ updateRoomList();
     else if (a === 'addUp') addFloor('up', false);
     else if (a === 'dupUp') (window.SCdupAsk ? SCdupAsk() : Promise.resolve(1)).then(r => { if (r) addFloor('up', r); });   /* v17.0 */
     else if (a === 'addDown') addFloor('down', false);
-    else if (a === 'addRoof') addRoof(state.currentFloorId);
+    else if (a === 'addRoof') startRoof(state.currentFloorId);
+    else if (a === 'editRoof2') editRoofV2(card.dataset.rid);
     else if (a === 'delroof') { state.roofs = state.roofs.filter(r => String(r.id) !== card.dataset.rid); checkpoint(); renderPanel(); refresh(); }
     else if (a === 'delhole') { state.holes = state.holes.filter(x => String(x.id) !== card.dataset.hid); checkpoint(); renderPanel(); refresh(); }
     else if (a === 'drawHole') { closePanel(); const t = document.querySelector('.tool[data-tool="hole"]'); if (t) t.click(); toast('Tocca i due angoli opposti del foro'); }
@@ -11994,11 +12318,17 @@ updateRoomList();
       const c = worldToScreen(poly.reduce((s, q) => s + q.x, 0) / 4, poly.reduce((s, q) => s + q.y, 0) / 4); ctx.fillStyle = '#fde68a'; ctx.fillText(auto ? 'foro scala' : 'foro', c.x - 18, c.y + 4);
     });
     if (cfg.roof2d) state.roofs.filter(r => r.floorId === fid).forEach(r => {
-      const E = roofPoly(r); if (!E) return; const res = roofGeo(r, E);
+      const E = roofPoly(r); if (!E) return; const res = roofGeo(r, E); if (!res) return;
+      if (res.v2) { const oth = state.roofs.filter(x => x !== r && x.floorId === fid && isV2(x)).map(x => roofV2(x)).filter(Boolean); drawRoofV2(r, E, res, floorById(fid), oth); return; }
       ctx.strokeStyle = '#c084fc'; ctx.lineWidth = 1.6; ctx.setLineDash([9, 5]); ctx.beginPath(); polyPath(E); ctx.stroke();
       if (res.ridge) { const a = worldToScreen(res.ridge.a.x, res.ridge.a.y), b = worldToScreen(res.ridge.b.x, res.ridge.b.y); ctx.lineWidth = 2.2; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); }
       ctx.setLineDash([]); const s0 = worldToScreen(E[0].x, E[0].y); ctx.fillStyle = '#d8b4fe'; ctx.fillText('Tetto ' + ROOF_TYPES[r.type].toLowerCase() + ' ' + f2(r.slope, 0) + '%', s0.x + 8, s0.y - 8);
     });
+    if (cfg.roof2d) {   /* compluvi fra tetti dello stesso piano */
+      const L = state.roofs.filter(r => r.floorId === fid && isV2(r)).map(r => roofV2(r)).filter(Boolean);
+      if (L.length > 1) { ctx.save(); ctx.strokeStyle = '#c084fc'; ctx.lineWidth = 1.8; ctx.setLineDash([3, 3]); valleys(L).forEach(v => { const a = worldToScreen(v.a.x, v.a.y), b = worldToScreen(v.b.x, v.b.y); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); }); ctx.restore(); }
+    }
+    drawRoofTool();
     if (state.tool === 'hole' && holeStart) {
       const cur = hover || lastMouseWorld;
       if (cur) { const a = holeStart, poly = [{x: a.x, y: a.y}, {x: cur.x, y: a.y}, {x: cur.x, y: cur.y}, {x: a.x, y: cur.y}]; ctx.strokeStyle = '#38bdf8'; ctx.lineWidth = 1.6; ctx.setLineDash([6, 4]); ctx.beginPath(); polyPath(poly); ctx.stroke(); ctx.setLineDash([]); const q = worldToScreen(cur.x, cur.y); ctx.fillStyle = '#38bdf8'; ctx.fillText(f2(Math.abs(cur.x - a.x)) + ' × ' + f2(Math.abs(cur.y - a.y)) + ' m', q.x + 12, q.y - 10); }
@@ -13541,8 +13871,13 @@ updateRoomList();
     if (t === 'moveBg') return {c: I.c, t: 'Sposta sfondo · trascina l\'immagine', b: [['done', '✔ Fine']]};
     return null;
   }
+  function specMin() {   /* v22.7: con la guida spenta restano almeno i pulsanti per finire il comando */
+    const s = spec(); if (s || !(state.mode === '2d' && !document.body.classList.contains('sv-on') && !guideOn())) return s;
+    const keep = appSettings.guide; appSettings.guide = true; let f = null; try { f = spec(); } finally { appSettings.guide = keep; }
+    if (!f) return null; const b = f.b.filter(([a]) => ['done', 'end', 'ok', 'zclose', 'csfin'].includes(a)); return b.length ? {c: f.c, t: '', b} : null;
+  }
   function banner() {
-    const s = spec(), sb = document.getElementById('selBar'), low = !!(sb && sb.style.display === 'flex'), key = JSON.stringify(s) + low;
+    const s = specMin(), sb = document.getElementById('selBar'), low = !!(sb && sb.style.display === 'flex'), key = JSON.stringify(s) + low;
     if (key === bkey) return; bkey = key;
     ban.style.top = 'calc(var(--dt,0px) + ' + (low ? 52 : 6) + 'px)';
     if (!s) { ban.style.display = 'none'; return; }
@@ -14791,6 +15126,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   #wkPanel.wk-one .wk-head > .wk-b{order:2;flex:0 0 auto}
   #wkPanel.wk-one .wk-head > #wkPrev{margin-left:auto}
   #wkPanel.wk-full .wk-b{height:36px;min-width:36px;padding:0 9px}
+  #wkPanel .wk-fine{background:#14532d;border-color:#22c55e;color:#dcfce7;font-weight:700}
   .wk-head,.wk-tools{display:flex;align-items:center;gap:6px;padding:6px 8px;flex-wrap:wrap;border-bottom:1px solid #3f4766}
   .wk-head{background:#23273a}
   .wk-title{font-weight:700;color:#7dd3fc;flex:1 1 140px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -15236,7 +15572,8 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     if (S.pinch) { if (S.pts.size < 2) S.pinch = null; return; }
     const w = wById(S.wallId), pk = S.pick; if (!w || !pk || pk.id !== e.pointerId) return;
     S.pick = null;
-    if (S.drag) { const was = S.drag.kind; S.drag = null; if (was !== 'pan' && pk.moved) commit(); else { S.cur = null; render(); ui(); } return; }
+    if (S.drag) { const was = S.drag.kind; S.drag = null; if (was !== 'pan' && pk.moved) commit(); else { if (was === 'pan' && !pk.moved && S.tool === 'sel' && (S.selId || S.oSel)) { S.selId = null; S.oSel = null; S.field = null; S.buf = ''; }   /* v22.7: tocco nel vuoto = torna allo stato iniziale */
+      S.cur = null; render(); ui(); } return; }
     if (S.tool !== 'sel' && S.cur && e.type === 'pointerup') {
       if (!S.first) { S.first = S.cur; toast('Ora il secondo angolo'); render(); ui(); return; }
       const a = S.first; S.first = null; createWork(a, S.cur); S.cur = null; render(); return;
@@ -15303,23 +15640,24 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       h += '<div class="wk-hint">' + (S.tool === 'door' ? "<b>Porta</b>: tocca il primo angolo, poi l'angolo opposto. Il lato in basso va a terra. Larghezza e altezza si leggono dal rettangolo." : S.tool === 'window' ? "<b>Finestra</b>: tocca il primo angolo, poi l'angolo opposto. Il lato in basso è il davanzale." : S.tool === 'riv' ? "<b>Rivestimento</b> sul lato che guardi: tocca il primo angolo, poi l'angolo opposto (può partire da qualsiasi quota). Poi scegli la skin; le quote si scrivono nei campi da sinistra o da destra, da terra o dal soffitto." : S.tool === 'cp' ? '<b>Controparete</b> sul lato che guardi: tocca il primo angolo, poi l\'angolo opposto. Vicino ai bordi (entro 15 cm) arriva al bordo; agli angoli si ferma contro i muri. Stratigrafia: quella dell\'ultima usata.' : S.tool === 'cut' ? '<b>Taglio</b>: tocca il primo angolo, poi l\'angolo opposto. Vicino ai bordi del muro (entro 15 cm) il taglio arriva al bordo. Per abbassare tutto il muro usa «Abbassa muro».' :
         '<b>' + KN[S.tool] + '</b> ' + SN[S.shape] + ': tocca il primo angolo, poi l\'angolo opposto.' + (S.tool === 'niche' ? ' La nicchia va sul lato che stai guardando.' : '')) +
         ' Col dito: tocca e trascina, il cursore si stacca dal dito; al rilascio il punto è confermato.' + (S.first ? ' <b>Ora il secondo angolo.</b>' : '') + '</div>';
+      h += '<div class="wk-row"><button class="wk-b wk-fine" data-a="done" title="Interrompe il comando e torna a Seleziona">✔ Fine</button></div>';   /* v22.7 */
     } else if (S.oSel && objOf(S.oSel)) {
       const o = S.oSel, e = objOf(o), r = proxy(w, o), F = fields(w, r), lk = lockedO(o);
       const extra = o.kind === 'cp' ? '<span class="wk-hint">' + esc((e.name || '') + ' · sp. ' + cm(wt(e)) + ' cm') + '</span>' : (o.kind === 'window' && e.kind === 'slide' ? '<span class="wk-hint">scorrevole</span>' : '');
-      h += '<div class="wk-row"><b style="color:#22d3ee">' + ON[o.kind] + '</b>' + extra + '</div>';
+      h += '<div class="wk-row"><b style="color:#22d3ee">' + ON[o.kind] + '</b>' + extra + '<button class="wk-b" data-a="odel" style="margin-left:auto;color:#fca5a5">🗑 Elimina</button><button class="wk-b wk-fine" data-a="done" title="Fine: deseleziona e torna allo stato iniziale">✔ Fine</button></div>';
       if (lk) h += '<div class="wk-hint wk-warn">Su un livello bloccato: puoi solo guardare.</div>';
       h += '<div class="wk-row">' + F.map(([key, lab, v]) => '<button class="wk-f' + (S.field === key ? ' on' : '') + '" data-f="' + key + '"><small>' + lab + ' (m)</small><b>' + (S.field === key ? (S.buf ? esc(S.buf) : '<i>' + f2(v) + '</i>') : f2(v)) + '</b></button>').join('') + '</div>';
       if (S.field) h += keypadHTML();
       if (o.kind === 'cp') { const v = SCcg.voce(e); if (v) h += S.sumOpen ? '<div class="wk-sum" data-a="sum" style="cursor:pointer"><b>Voce di computo (a corpo) ▾</b><br>' + esc(v.desc) + '<br><span style="color:#9ca3b8">' + esc(v.det) + '</span></div>' : '<button class="wk-b" data-a="sum" style="height:30px;font-weight:400;color:#cbd5e1">Voce di computo ▸ <span style="color:#9ca3b8">' + esc(v.det) + '</span></button>'; }
       if (o.kind === 'riv' && window.SCriv) h += SCriv.panelHTML(w, e);
-      h += '<div class="wk-row"><button class="wk-b" data-a="oprops">' + (o.kind === 'cp' ? 'Stratigrafia e prezzo' : o.kind === 'riv' ? 'Duplica' : 'Altre proprietà') + '</button><button class="wk-b" data-a="odel" style="color:#fca5a5">Elimina</button><button class="wk-b" data-a="desel">Fine</button></div>';
+      h += '<div class="wk-row"><button class="wk-b" data-a="oprops">' + (o.kind === 'cp' ? 'Stratigrafia e prezzo' : o.kind === 'riv' ? 'Duplica' : 'Altre proprietà') + '</button></div>';
       if (o.kind === 'door') h += '<div class="wk-hint">La porta parte sempre da terra.</div>';
     } else if (k) {
       const F = fields(w, k);
-      h += '<div class="wk-row"><b style="color:#22d3ee">' + KN[k.k] + (k.sh !== 'rect' ? ' ' + SN[k.sh] : '') + '</b>' + (k.k === 'niche' ? '<span class="wk-hint">sul ' + (k.f === S.face ? 'lato che guardi' : 'lato opposto') + '</span>' : '') + '</div>';
+      h += '<div class="wk-row"><b style="color:#22d3ee">' + KN[k.k] + (k.sh !== 'rect' ? ' ' + SN[k.sh] : '') + '</b>' + (k.k === 'niche' ? '<span class="wk-hint">sul ' + (k.f === S.face ? 'lato che guardi' : 'lato opposto') + '</span>' : '') + '<button class="wk-b" data-a="del" style="margin-left:auto;color:#fca5a5">🗑 Elimina</button><button class="wk-b wk-fine" data-a="done" title="Fine: deseleziona e torna allo stato iniziale">✔ Fine</button></div>';
       h += '<div class="wk-row">' + F.map(([key, lab, v]) => '<button class="wk-f' + (S.field === key ? ' on' : '') + '" data-f="' + key + '"><small>' + lab + ' (m)</small><b>' + (S.field === key ? (S.buf ? esc(S.buf) : '<i>' + f2(v) + '</i>') : f2(v)) + '</b></button>').join('') + '</div>';
       if (S.field) h += keypadHTML();
-      h += '<div class="wk-row">' + (k.k === 'niche' ? '<button class="wk-b" data-a="face">Sposta sull\'altro lato</button>' : '') + '<button class="wk-b" data-a="dup">Duplica</button><button class="wk-b" data-a="del" style="color:#fca5a5">Elimina</button><button class="wk-b" data-a="desel">Fine</button></div>';
+      h += '<div class="wk-row">' + (k.k === 'niche' ? '<button class="wk-b" data-a="face">Sposta sull\'altro lato</button>' : '') + '<button class="wk-b" data-a="dup">Duplica</button></div>';
     } else {
       const v = voce(w), q = v ? v.q : null;
       h += '<div class="wk-row"><button class="wk-b' + (w.portante ? ' on' : '') + '" data-a="port">' + (w.portante ? '✓ ' : '') + 'Muro portante</button>' +
@@ -15353,6 +15691,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     if (ab) {
       const a = ab.dataset.a, k = selWork(w);
       if (a === 'sum') { S.sumOpen = !S.sumOpen; ui(); return; }
+      if (a === 'done') { S.selId = null; S.oSel = null; S.field = null; S.buf = ''; S.tool = 'sel'; S.first = null; S.cur = null; ui(); render(); return; }   /* v22.7: Fatto / Fine */
       if (S.oSel && ['oprops', 'odel', 'desel'].includes(a)) {
         const o = S.oSel, e2 = objOf(o);
         if (a === 'desel') { S.oSel = null; S.field = null; ui(); return; }
@@ -19912,8 +20251,9 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
    SC_REL.v è l'unica versione: titolo, Guida, file salvato, avvisi e riga messaggi la leggono da qui.
    ======================================================================== */
 window.SC_REL = {
-  v: '22.6', d: '26/10/2026',
+  v: '22.7', d: '26/10/2026',
   news: [
+    ['22.7', 'Tetto da contorno: menu Disegna → Tetto (o Piani → Disegna tetto). Tocchi gli angoli sul filo esterno dei muri, oppure «Dai muri del piano»; ogni lato si tocca per farlo falda o timpano, con pendenza e sporto propri. Falde, colmi, displuvi e compluvi calcolati; piante a L o T: un tetto per ala. In pianta frecce di pendenza, quota di colmo e gronda. Comandi che finiscono: il tasto rosso ✖ non c\'è più; in prospetto ogni elemento selezionato ha in cima 🗑 Elimina e ✔ Fine, un tocco nel vuoto deseleziona.'],
     ['22.6', 'Finestre spostabili: proprietà, aree, skin, stampa, dati progetto, computo, tabella muri, piani, verifiche hanno in cima la maniglia ⠿⠿⠿ (doppio tocco = posizione iniziale). In verticale prospetto e sezione partono sotto la riga messaggi: niente più sovrapposizioni con i pulsanti.'],
     ['22.5', 'Sezioni: parti in vista (i muri oltre il taglio, solo quelli che si vedono davvero, con porte e finestre), gradini delle scale tagliate, falde dei tetti tagliate.'],
     ['22.4', 'Stampa: «➕ Aggiungi sezione» mette la sezione nello stesso foglio della pianta, alla stessa scala, spostabile come i dettagli. Traccia A–A in pianta a scelta. Il cartiglio diventa «Pianta … e sezione A–A».'],
@@ -21235,28 +21575,7 @@ window.SC_REL = {
 
 </script>
 
-<style>
-  #scStopBtn{position:fixed;left:10px;bottom:62px;z-index:9000;width:46px;height:46px;border-radius:50%;border:2px solid #f87171;background:rgba(30,30,46,.92);color:#fca5a5;font:700 20px 'Segoe UI',system-ui,sans-serif;display:none;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,.45);touch-action:manipulation;-webkit-tap-highlight-color:transparent}
-  #scStopBtn:active{background:#7f1d1d}
-  body.sc-touch #scStopBtn{display:flex}
-</style>
-<script>
-/* v21.9 · tasto ✖ per tablet senza tastiera: interrompe il comando in corso (stesso effetto di Esc) */
-(function () {
-  const touch = matchMedia('(pointer: coarse)').matches || ('ontouchstart' in window);
-  if (!touch) return;
-  document.body.classList.add('sc-touch');
-  const b = document.createElement('button');
-  b.id = 'scStopBtn'; b.type = 'button'; b.title = 'Interrompi il comando (Esc)'; b.setAttribute('aria-label', 'Interrompi il comando'); b.textContent = '✖';
-  b.addEventListener('pointerdown', e => e.stopPropagation());
-  b.addEventListener('click', e => {
-    e.stopPropagation();
-    document.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', code: 'Escape', bubbles: true, cancelable: true}));
-    try { if (typeof toast === 'function') toast('Comando interrotto'); } catch (_) {}
-  });
-  document.body.appendChild(b);
-})();
-</script>
+<!-- v22.7: tasto ✖ tolto: ogni comando ha il suo «Fine» e torna allo stato iniziale -->
 <script>
 /* ========================================================================
    v22.3 · SEZIONI
@@ -21588,7 +21907,10 @@ window.SC_REL = {
     const b2 = document.createElement('button'); b2.className = 'menu-row'; b2.id = 'secShowBtn';
     const lab = () => '<span class="mi-icon">👁</span><span class="mi-label">' + (appSettings.secShow === false ? 'Mostra' : 'Nascondi') + ' tracce delle sezioni</span>';
     b2.innerHTML = lab(); b2.onclick = e => { e.stopPropagation(); appSettings.secShow = appSettings.secShow === false; try { persistSettings(); } catch (_) {} b2.innerHTML = lab(); draw2D(); };
-    dm.append(sp, b, b2);
+    const b3 = document.createElement('button'); b3.className = 'menu-row'; b3.id = 'roofBtn';
+    b3.innerHTML = '<span class="mi-icon">🏠</span><span class="mi-label">Tetto</span><span class="mi-kbd">contorno e falde</span>';
+    b3.onclick = e => { e.stopPropagation(); if (window.SCroof) SCroof.start(); };
+    dm.append(sp, b, b2, b3);
   }
   /* v22.4: disegno su un altro contesto (stampa) con vista e colori dati */
   const PAPER = {paper: true, view: '#000000', ink: '#000000', cut: '#ffffff', cutP: '#ffffff', slab: '#ffffff', hatch: '#000000', glass: '#000000', dim: '#000000', room: '#000000', ground: 'rgba(0,0,0,0.10)'};

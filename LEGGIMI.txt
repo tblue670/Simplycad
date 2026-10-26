@@ -1,4 +1,4 @@
-SimplyCAD Pro - pubblicazione su GitHub Pages (v22.6)
+SimplyCAD Pro - pubblicazione su GitHub Pages (v22.7)
 
 Contenuto (vanno caricati tutti, senza rinominarli e SENZA cartelle intorno):
   index.html  sw.js  manifest.webmanifest  icon-192.png  icon-512.png  icon-maskable.png  README.md
@@ -93,6 +93,22 @@ NOVITÀ v18.9
 
 NOVITÀ v18.9.1
  - 🧲 Aggancia anche nella barra interattiva (senza selezione) e nel suo menu ⋯.
+
+NOVITÀ v22.7
+Tetto da contorno, come nei CAD professionali: il tetto non si indovina più dai locali, lo decidi tu.
+ - Menu Disegna → «Tetto» (oppure Piani → «Disegna tetto»). Tocca gli angoli sul filo esterno dei muri
+   (aggancio ai vertici attivo) e chiudi toccando il primo punto, oppure «Dai muri del piano».
+ - Si apre la finestra del tetto: Due falde, Padiglione, Falda unica, Piano; pendenza in % o in gradi,
+   sporto, spessore, quota d'imposta, colore; ogni lato ha falda/timpano, pendenza e sporto propri.
+ - In pianta: tocca un lato per passarlo da falda a timpano; tocca un vertice e poi il punto dove spostarlo.
+ - Falde, colmi, displuvi calcolati in automatico. Piante a L, T, U: un tetto per ala; dove si incontrano
+   nascono i compluvi e il lato d'attacco diventa timpano senza sporto.
+ - In pianta e in stampa: gronda tratteggiata, filo muri puntinato, colmo e displuvi, frecce di pendenza
+   con il valore, quota di colmo e di gronda. Toccando la scritta «🏠 gronda» si riapre la modifica.
+ - I tetti delle versioni precedenti: Piani → «Modifica in pianta» li trasforma in tetti da contorno.
+Comandi che finiscono: il tasto rosso ✖ non c'è più. In prospetto ogni elemento selezionato (nicchia, foro,
+taglio, porta, finestra, controparete, rivestimento) ha in cima «🗑 Elimina» e «✔ Fine»; durante un comando
+c'è «✔ Fine»; un tocco nel vuoto deseleziona.
 
 NOVITÀ v22.6
 Finestre spostabili: pannello proprietà (muri, porte, finestre, arredi, stanze…), riquadri di aree e controsoffitti, skin, stampa, Dati progetto, Analisi, Computo, Tabella muri, Piani, Verifiche e voci aggiunte hanno in cima la maniglia ⠿⠿⠿: si trascinano con dito o mouse. La posizione resta memorizzata su questo dispositivo; doppio tocco sulla maniglia = posizione iniziale. Le finestre non escono dallo schermo.
