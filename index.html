@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v22.7</title>
+<title>SimplyCAD Pro · v22.8</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -663,6 +663,9 @@
 #toolBanner .tb-t{padding:0 2px}
 #toolBanner button{pointer-events:auto;min-height:34px;padding:4px 10px;border-radius:8px;border:1px solid var(--bc,#38bdf8);background:#1e293b;color:#f1f5f9;font:600 13px system-ui,sans-serif;cursor:pointer}
 #toolBanner button:active{background:var(--bc,#38bdf8);color:#0f172a}
+.sc-fine{background:#14532d!important;border-color:#22c55e!important;color:#dcfce7!important;font-weight:700!important}
+.sc-fine:active{background:#22c55e!important;color:#052e16!important}
+.sc-del{color:#fca5a5!important}
 body.hide-strip #infoStrip .strip-row{display:none!important}
 #fingerCursor svg g{stroke:var(--fc,#fbbf24)}
 #fingerCursor svg>circle{fill:var(--fc,#fbbf24)}
@@ -1852,6 +1855,15 @@ const state = {
                '#f4a460','#87ceeb','#98fb98','#dda0dd','#afeeee','#f0e68c']
 };
 const newId = () => state.nextId++;
+/* v22.8 · PULSANTI DEI COMANDI: stesse parole e stesso aspetto in tutto il programma
+   ✔ Fine          chiude il comando, tiene quello che è fatto, torna a Seleziona (verde, sempre ultimo)
+   ↩ Togli punto   toglie l'ultimo punto toccato
+   ✖ Scarta        butta quello che è in corso (anteprima, punto in sospeso) e resta nel comando
+   ✔ Conferma      applica l'anteprima          ✔ Chiudi …   chiude un contorno o una catena
+   🗑 Elimina       cancella l'elemento           ↶ Annulla    torna indietro di un'operazione
+   ✕ in alto a destra chiude una finestra. */
+const scBtnCls = l => { l = String(l); return l.startsWith('✔ Fine') ? ' sc-fine' : l.startsWith('🗑') ? ' sc-del' : ''; };
+const scBtns = list => list.map(([a, l, t]) => '<button type="button" class="sc-b' + scBtnCls(l) + '" data-a="' + a + '"' + (t ? ' title="' + t + '"' : '') + '>' + l + '</button>').join('');
 const imageStore = new Map(); // tutte le immagini mai caricate (serve per l'annulla/ripeti)
 function getActiveImage() { return state.images.find(i => i.id === state.activeImageId) || state.images[state.images.length - 1] || null; }
 function syncBgControls() {
@@ -4600,7 +4612,7 @@ document.getElementById('helpBtn').onclick = () => {
     ['<kbd>Ctrl</kbd>+<kbd>C</kbd> <kbd>X</kbd> <kbd>V</kbd> <kbd>D</kbd> <kbd>A</kbd>', 'Copia · Taglia · Incolla · Duplica · Seleziona tutto'],
     ['<kbd>Ctrl</kbd>+<kbd>S</kbd> / <kbd>Ctrl</kbd>+<kbd>P</kbd>', 'Salva progetto · Stampa / PDF'],
     ['<kbd>Frecce</kbd>', 'Sposta la selezione (con <kbd>Maiusc</kbd> a passi più grandi)'],
-    ['<kbd>Invio</kbd>', 'Termina il muro in corso; con Area chiude il poligono'],
+    ['<kbd>Invio</kbd>', 'Interrompe la catena di muri; con Area chiude il contorno'],
     ['<kbd>Esc</kbd> / <kbd>Canc</kbd>', 'Annulla l\'azione · Elimina la selezione'],
     ['<kbd>Backspace</kbd>', 'Con Area in disegno: toglie l\'ultimo punto']
   ];
@@ -4610,7 +4622,7 @@ document.getElementById('helpBtn').onclick = () => {
     ['<b>Due dita: trascina / pizzica</b>', 'Spostano la vista e fanno lo zoom.'],
     ['<b>Tocco rapido con due dita ferme</b>', 'Menu rapido: seleziona tutto, adatta, annulla, ripeti, scelta dello strumento. Durante un comando: termina, annulla l\'ultimo punto, inserisci valori.'],
     ['<b>Doppio tocco su un elemento in modalità disegno</b>', 'Seleziona quell\'elemento, passa a Seleziona e compare la barra. Un tocco nel vuoto deseleziona e ti riporta allo strumento di prima. Un tocco singolo su un muro esistente continua a servire per agganciare il disegno.'],
-    ['<b>Doppio tocco nel vuoto in modalità disegno o posa</b>', 'Termina il comando in corso (muro, linea, area…); se non ce n\'è uno, esce dallo strumento (porta, finestra, arredo, muro…) e passa a Seleziona.'],
+    ['<b>Doppio tocco nel vuoto in modalità disegno o posa</b>', 'Chiude quello che stai disegnando (catena di muri, linea, area…); se non c\'è niente in corso è come ✔ Fine: torna a Seleziona.'],
     ['<b>Doppio tocco nel vuoto (Seleziona)</b>', 'Attiva il riquadro di selezione: trascina per selezionare più elementi. Su un elemento il doppio tocco lo seleziona soltanto.'],
     ['<b>Tastierino numerico</b>', 'Icona vicino al cursore durante muro, linea, misura, cerchio, arco, parallela, incolla: digita lunghezza e angolo.'],
     ['<b>Area</b>', 'Tocca i punti e richiudi toccando il primo punto (o due dita ferme → Chiudi area). Tocca il riquadro con Seleziona per colore, spostamento e deformazione.'],
@@ -4624,7 +4636,7 @@ document.getElementById('helpBtn').onclick = () => {
     ['Copia · Taglia · Incolla', 'Copia e taglia per i muri; Incolla compare se hai qualcosa copiato.'],
     ['Rifila · Estendi · Dividi · Angolo', 'Compaiono se nella selezione c\'è un muro.'],
     ['⋯', 'Altre azioni: duplica, sposta, ruota, specchio, matrice, parallela, stato (esistente, da demolire, nuovo) e, per le porte, cerniera e verso.'],
-    ['Cestino · ✔', 'Elimina la selezione · Termina la selezione.']
+    ['🗑 · ✔', 'Elimina la selezione · Fine: deseleziona.']
   ];
   const ph = [
     ['<b>Rilievo</b>', 'Su schermi stretti l\'app parte in modalità Rilievo (schizzo a mano libera, non in scala); si cambia con il pulsante 📱 Rilievo in alto o dalle Impostazioni.'],
@@ -5928,13 +5940,13 @@ function ctxItems(w) {
     return I;
   }
   if (isShapeTool(state.tool) && shapeTmp.length) {
-    add('✔️', 'Termina', () => { shapeTmp = []; draw2D(); });
+    add('✖', 'Scarta', () => { shapeTmp = []; draw2D(); });
     add('↩️', 'Annulla ultimo punto', () => { shapeTmp.pop(); draw2D(); });
     add('⌨️', 'Inserisci valori…', shapeKeys);
     return I;
   }
   if (state.tool === 'wall' && state.pendingPoint) {
-    add('✔️', 'Termina muro', () => { state.pendingPoint = null; draw2D(); });
+    add('⏹', 'Interrompi catena', () => { state.pendingPoint = null; draw2D(); });
     [['trim', '✂️', 'Rifila'], ['extend', '↔️', 'Estendi'], ['split', '🔪', 'Dividi'], ['corner', '📐', 'Angolo']].forEach(([t, ic, n]) => add(ic, n, () => { state.pendingPoint = null; ctxTool(t); }));
     add('↩️', 'Annulla ultimo punto', () => { state.pendingPoint = null; draw2D(); });
     add('📏', 'Lunghezza muro…', async () => { const v = await uiPrompt('Lunghezza muro (m), vuoto = libero', $('wallLength').value); if (v !== null) $('wallLength').value = v.replace(',', '.'); });
@@ -9838,7 +9850,7 @@ updateRoomList();
    ======================================================================== */
 (function () {
   const bar = document.createElement('div'); bar.id = 'selBar';
-  bar.innerHTML = '<span class="sb-n" id="sbN"></span><button id="sbAdd" title="Continua a selezionare: ogni tocco aggiunge o toglie">➕</button><button id="sbAll" title="Seleziona tutti gli elementi dello stesso tipo (piano attuale, livelli visibili e sbloccati)">🟰</button><button id="sbEdit" title="Modifica tutto il selezionato">✏️</button><button id="sbDraw" title="Disegna: muro, porta, finestra, arco, cerchio, linea, misura">🖊️</button><button class="sbw" data-act="copy" title="Copia">📋</button><button class="sbw" data-act="cut" title="Taglia">✂️</button><button id="sbPaste" title="Incolla">📥</button><button class="sbw" data-qt="trim" title="Rifila">✂️</button><button class="sbw" data-qt="extend" title="Estendi">↔️</button><button class="sbw" data-qt="split" title="Dividi">🔪</button><button class="sbw" data-qt="corner" title="Angolo">📐</button><button id="sbCol" title="Colore: telaio per le finestre, anta per le porte, oggetto per scale, arredi, muri">🎨</button><button id="sbNum" title="Tastierino: lunghezza e angolo esatti del muro">123</button><button id="sbMore" title="Altre azioni: duplica, sposta, ruota, specchio, matrice, parallela, stato…">⋯</button><button id="sbDel" class="dn" title="Elimina la selezione">🗑️</button><button id="sbEnd" class="ok" title="Termina la selezione">✔</button>';
+  bar.innerHTML = '<span class="sb-n" id="sbN"></span><button id="sbAdd" title="Continua a selezionare: ogni tocco aggiunge o toglie">➕</button><button id="sbAll" title="Seleziona tutti gli elementi dello stesso tipo (piano attuale, livelli visibili e sbloccati)">🟰</button><button id="sbEdit" title="Modifica tutto il selezionato">✏️</button><button id="sbDraw" title="Disegna: muro, porta, finestra, arco, cerchio, linea, misura">🖊️</button><button class="sbw" data-act="copy" title="Copia">📋</button><button class="sbw" data-act="cut" title="Taglia">✂️</button><button id="sbPaste" title="Incolla">📥</button><button class="sbw" data-qt="trim" title="Rifila">✂️</button><button class="sbw" data-qt="extend" title="Estendi">↔️</button><button class="sbw" data-qt="split" title="Dividi">🔪</button><button class="sbw" data-qt="corner" title="Angolo">📐</button><button id="sbCol" title="Colore: telaio per le finestre, anta per le porte, oggetto per scale, arredi, muri">🎨</button><button id="sbNum" title="Tastierino: lunghezza e angolo esatti del muro">123</button><button id="sbMore" title="Altre azioni: duplica, sposta, ruota, specchio, matrice, parallela, stato…">⋯</button><button id="sbDel" class="dn sc-del" title="Elimina la selezione">🗑️</button><button id="sbEnd" class="ok sc-fine" title="Fine: deseleziona">✔</button>';
   document.body.appendChild(bar);
   /* v9.3: icone vettoriali (stesso tratto, colore del testo) al posto delle emoji */
   {
@@ -10405,7 +10417,7 @@ updateRoomList();
     pal = document.createElement('div'); pal.className = 'sc-pal';   /* v22.6: spostabile */
     pal.style.cssText = 'position:fixed;z-index:9500;background:#1e1e2e;border:1px solid #38bdf8;border-radius:10px;padding:8px;box-shadow:0 6px 22px rgba(0,0,0,.55);font:13px sans-serif;color:#e5e7eb;display:flex;flex-direction:column;gap:6px;width:min(290px,calc(100vw - 12px));max-height:calc(100vh - 12px);overflow:auto';
     const ist = 'width:100%;box-sizing:border-box;padding:7px 8px;border-radius:6px;border:1px solid #475569;background:#12151f;color:#e5e7eb;font:14px sans-serif';
-    pal.innerHTML = '<div style="font-weight:700;color:#7dd3fc">Area · ' + fmt2(area(z.pts)) + ' m²</div>' +
+    pal.innerHTML = '<div style="display:flex;align-items:center;gap:6px"><b style="flex:1;color:#7dd3fc">Area · ' + fmt2(area(z.pts)) + ' m²</b><button id="zpDel" class="sc-del" style="padding:5px 9px;border-radius:7px;border:1px solid #475569;background:#1e293b;color:#f1f5f9;font:600 13px system-ui,sans-serif;cursor:pointer">🗑 Elimina</button><button id="zpOk" class="sc-fine" style="padding:5px 9px;border-radius:7px;border:1px solid #475569;background:#1e293b;color:#f1f5f9;font:600 13px system-ui,sans-serif;cursor:pointer">✔ Fine</button></div>' +
       '<label style="font-size:12px">Nome (es. Cucina)<input id="zpName" style="' + ist + '" value="' + String(z.name || '').replace(/"/g, '&quot;') + '"></label>' +
       '<label style="font-size:12px">Lavorazione a pavimento<select id="zpLav" style="' + ist + '">' + Object.keys(LAV).map(k => '<option value="' + k + '"' + ((z.lav || '') === k ? ' selected' : '') + '>' + LAV[k].t + '</option>').join('') + '</select></label>' +
       '<div id="zpMore" style="display:flex;flex-direction:column;gap:6px">' +
@@ -10421,7 +10433,7 @@ updateRoomList();
       '<label style="font-size:12px">Livello<select id="zpLay" style="' + ist + '">' + state.layers.map(l => '<option value="' + l.id + '"' + ((z.layerId || DEFAULT_LAYER_ID) === l.id ? ' selected' : '') + '>' + escHtml(l.name) + (l.locked ? ' 🔒' : '') + '</option>').join('') + '</select></label>' +
       '<div style="font-weight:700;color:#7dd3fc">Colore area</div><div id="zpSw" style="display:flex;flex-wrap:wrap;gap:5px"></div>' +
       '<div style="display:flex;gap:6px;align-items:center"><input type="color" id="zpCol" style="width:38px;height:28px;padding:0;border:0;background:none"><span style="font-size:12px;opacity:.8">altro colore</span></div>' +
-      '<div style="display:flex;gap:6px"><button id="zpDel" style="flex:1;padding:6px;border-radius:6px;border:1px solid #7f1d1d;background:#3f1d1d;color:#fca5a5;cursor:pointer">Elimina</button><button id="zpOk" style="flex:1;padding:6px;border-radius:6px;border:1px solid #166534;background:#15803d;color:#fff;cursor:pointer">Fatto</button></div>';
+      '';
     const sw = pal.querySelector('#zpSw'), col = pal.querySelector('#zpCol');
     const setC = c => { z.color = c; lastColor = c; col.value = c; draw2D(); };
     COLORS.forEach(c => { const bt = document.createElement('button'); bt.style.cssText = 'width:26px;height:26px;border-radius:50%;border:2px solid #475569;cursor:pointer;background:' + c; bt.onclick = () => { setC(c); checkpoint(); }; sw.appendChild(bt); });
@@ -10908,7 +10920,7 @@ updateRoomList();
       ${['7','8','9','⌫','4','5','6','C','1','2','3','±','0',',','⇥'].map(k => `<button type="button" class="vk-k${k === '0' ? ' vk-zero' : ''}${'⌫C±⇥'.includes(k) ? ' vk-fn' : ''}" data-k="${k}">${k}</button>`).join('')}
     </div>
     <div class="vk-act">
-      <button type="button" class="vk-b" id="vkEnd" title="Chiude la sequenza di tratti">Termina</button>
+      <button type="button" class="vk-b" id="vkEnd" title="Chiude la sequenza di tratti">⏹ Interrompi</button>
       <button type="button" class="vk-b vk-ok" id="vkOk">Inserisci ✓</button>
     </div>
     <div class="vk-note" id="vkNote"></div>`;
@@ -11869,13 +11881,14 @@ updateRoomList();
     if (RT.mode === 'draw') {
       P.innerHTML = `<div style="font-weight:700;color:#d8b4fe">🏠 Nuovo tetto · ${esc(floorById(RT.fid).name)}</div>
         <div style="font-size:12px;color:#cbd5e1;margin:4px 0 6px;line-height:1.35">Tocca gli angoli del contorno sul <b>filo esterno dei muri</b> (lo sporto si aggiunge dopo). Tocca il primo punto per chiudere. Contorno convesso: per piante a L o T fai un tetto per ala.</div>
-        <div style="display:flex;flex-wrap:wrap;gap:6px"><button data-a="hull" style="${RB}">🧱 Dai muri del piano</button><button data-a="back" style="${RB}"${RT.pts.length ? '' : ' disabled'}>↩ Togli punto</button><button data-a="close" style="${RB}"${RT.pts.length >= 3 ? '' : ' disabled'}>✔ Chiudi contorno</button><button data-a="cancel" style="${RB}">✖ Annulla</button></div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px"><button data-a="hull" style="${RB}">🧱 Dai muri del piano</button><button data-a="back" style="${RB}"${RT.pts.length ? '' : ' disabled'}>↩ Togli punto</button><button data-a="close" style="${RB}"${RT.pts.length >= 3 ? '' : ' disabled'}>✔ Chiudi contorno</button><button data-a="cancel" class="sc-fine" style="${RB}">✔ Fine</button></div>
         <div style="font-size:12px;color:#9ca3b8;margin-top:6px">Punti: ${RT.pts.length}</div>`;
       return;
     }
     const r = rById(RT.id); if (!r) { endRoof(); return; }
     const L = v2Lines(r), res = roofV2(r), f = floorById(r.floorId), base = f.elev + wallTopOf(f), sl = L.find(l => l.s !== null), s0 = sl ? sl.s * 100 : 35, deg = Math.atan(s0 / 100) * 180 / Math.PI;
-    P.innerHTML = `<div style="display:flex;align-items:center;gap:6px"><b style="color:#d8b4fe">🏠 Tetto · ${esc(f.name)}</b><button data-a="fine" style="${RB};margin-left:auto">✔ Fine</button></div>
+    P.innerHTML = `<div style="display:flex;align-items:center;gap:6px"><b style="color:#d8b4fe">🏠 Tetto · ${esc(f.name)}</b><button data-a="del" class="sc-del" style="${RB};margin-left:auto">🗑 Elimina</button><button data-a="fine" class="sc-fine" style="${RB}">✔ Fine</button></div>
+      ${RT.vsel !== null ? `<div style="display:flex;align-items:center;gap:6px;margin:6px 0;padding:6px;border:1px solid #fbbf24;border-radius:8px"><span style="flex:1;color:#fde68a">Vertice ${RT.vsel + 1}: tocca il punto dove spostarlo</span><button data-a="vno" style="${RB}">✖ Scarta</button></div>` : ''}
       <div style="font-size:12px;color:#cbd5e1;margin:4px 0 6px;line-height:1.35">In pianta: tocca un <b>lato</b> per passare da falda a timpano · tocca un <b>vertice</b> e poi il punto dove spostarlo.</div>
       <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px"><button data-q="due" style="${RB}">Due falde</button><button data-q="padi" style="${RB}">Padiglione</button><button data-q="una" style="${RB}">Falda unica</button><button data-q="piano" style="${RB}">Piano</button></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
@@ -11891,7 +11904,7 @@ updateRoomList();
         <input data-k="s" inputmode="decimal" title="pendenza %" value="${l.g ? '' : f2(l.s * 100, 1)}" placeholder="%"${l.g ? ' disabled' : ''} style="${RI};padding:4px">
         <input data-k="o" inputmode="decimal" title="sporto m" value="${f2(l.o)}" style="${RI};padding:4px"></div>`).join('')}
       <div style="font-size:12px;color:#cbd5e1;margin-top:6px">${res ? `Colmo a ${f2(base + res.maxZ)} m · falde ${f2(res.areaTop, 1)} m² · gronde ${f2(res.eaveLen, 1)} m` : 'Contorno non valido'}</div>
-      <div style="display:flex;gap:6px;margin-top:6px"><button data-a="del" style="${RB}">🗑 Elimina tetto</button></div>`;
+      `;
   }
   function startRoof(fid) {
     try { document.querySelectorAll('.menu-dropdown.open,.menu-item.open').forEach(m => m.classList.remove('open')); } catch (_) {}
@@ -11944,6 +11957,7 @@ updateRoomList();
     }
     const r = rById(RT.id); if (!r) return endRoof();
     if (a === 'fine') return endRoof();
+    if (a === 'vno') { RT.vsel = null; RT.cur = null; palUI(); draw2D(); return; }
     if (a === 'del') { state.roofs = state.roofs.filter(x => x !== r); checkpoint(); refresh(); return endRoof(); }
     if (q) {
       const L = v2Lines(r), sl = L.find(l => l.s !== null && l.s > 0), s = sl ? sl.s * 100 : 35, o = sl ? sl.o : 0.5;
@@ -11970,7 +11984,7 @@ updateRoomList();
   }
   const snapR = raw => { const sp = document.getElementById('snapPts'), old = sp ? sp.checked : null; try { if (sp) sp.checked = true; return snapToVertex(raw, null) || raw; } catch (_) { return raw; } finally { if (sp) sp.checked = old; } };
   c2d.addEventListener('pointermove', e => { if (!RT || !(RT.mode === 'draw' || (RT.mode === 'edit' && RT.vsel !== null))) return; const rc = c2d.getBoundingClientRect(); RT.cur = screenToWorld(e.clientX - rc.left, e.clientY - rc.top); draw2D(); });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape' && RT) { if (RT.mode === 'edit' && RT.vsel !== null) { RT.vsel = null; draw2D(); } else endRoof(); } });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && RT) { if (RT.mode === 'edit' && RT.vsel !== null) { RT.vsel = null; palUI(); draw2D(); } else endRoof(); } });
   const _htR = handleTap;
   handleTap = function (cx, cy) {
     const rc = c2d.getBoundingClientRect(), sx = cx - rc.left, sy = cy - rc.top;
@@ -11987,7 +12001,7 @@ updateRoomList();
         else { if (G.area(r.pts) < 0) { r.pts.reverse(); r.edges = r.edges.slice(0, -1).reverse().concat(r.edges.slice(-1)); } checkpoint(); refresh(); }
         RT.vsel = null; RT.cur = null; palUI(); draw2D(); return;
       }
-      for (let i = 0; i < r.pts.length; i++) { const s = worldToScreen(r.pts[i].x, r.pts[i].y); if (Math.hypot(s.x - sx, s.y - sy) < 18) { RT.vsel = i; toast('Vertice ' + (i + 1) + ': tocca il punto dove spostarlo (Esc = annulla)'); draw2D(); return; } }
+      for (let i = 0; i < r.pts.length; i++) { const s = worldToScreen(r.pts[i].x, r.pts[i].y); if (Math.hypot(s.x - sx, s.y - sy) < 18) { RT.vsel = i; palUI(); draw2D(); return; } }
       let bi = -1, bd = 16; v2Lines(r).forEach(l => { const a = worldToScreen(l.a.x, l.a.y), b = worldToScreen(l.b.x, l.b.y), L2 = (b.x - a.x) ** 2 + (b.y - a.y) ** 2 || 1, t = Math.max(0, Math.min(1, ((sx - a.x) * (b.x - a.x) + (sy - a.y) * (b.y - a.y)) / L2)), d = Math.hypot(a.x + (b.x - a.x) * t - sx, a.y + (b.y - a.y) * t - sy); if (d < bd) { bd = d; bi = l.i; } });
       if (bi >= 0) { const ed = r.edges[bi] = Object.assign({}, r.edges[bi] || {}); if (ed.g) { delete ed.g; if (!(+ed.s > 0)) { const s = v2Lines(r).find(l => l.s !== null); ed.s = s ? s.s * 100 : 35; } ed.o = Math.max(+ed.o || 0, 0.5); toast('Lato ' + (bi + 1) + ': falda'); } else { ed.g = true; toast('Lato ' + (bi + 1) + ': timpano'); } syncType(r); checkpoint(); refresh(); palUI(); draw2D(); return; }
       endRoof(); return _htR.apply(this, arguments);   /* tocco altrove: fine modifica */
@@ -12788,7 +12802,7 @@ updateRoomList();
   tool('riquadro', 'box', 'riquadro', 'Attiva la selezione a riquadro: trascina sul disegno', 'Modifica');
   def('Modifica', 'parallela', 'parallela [distanza]', 'Attiva Parallela; con un numero imposta la distanza (es. parallela 0.5)', (a) => { if (a.length) { const v = lenOf(a[0]); if (!(v >= 0.05)) fail('Distanza non valida (minimo 5 cm)'); $$('offDist').value = String(v); } activate('offset'); ok('Parallela attiva' + (a.length ? ' a ' + lenOf(a[0]) + ' m' : '') + ': tocca il muro o la linea'); });
   def('Modifica', 'seleziona', 'seleziona', 'Attiva Seleziona', () => { activate('select'); ok('Seleziona attivo'); });
-  def('Modifica', 'fine', 'fine', 'Termina la funzione in corso e torna a Seleziona', () => { activate('select'); ok('Funzione terminata: Seleziona attivo'); });
+  def('Modifica', 'fine', 'fine', 'Chiude la funzione in corso e torna a Seleziona', () => { activate('select'); ok('Funzione terminata: Seleziona attivo'); });
   /* --- Selezione e trasformazioni --- */
   const needSel = () => { if (!(state.sel && state.sel.length) && !state.selected) fail('Seleziona prima uno o più oggetti'); };
   def('Modifica', 'sposta', 'sposta dx dy', 'Sposta la selezione (m). Es. sposta 1 0', a => { needSel(); const x = lenOf(a[0] || ''), y = lenOf(a[1] || '0'); if (x === null || y === null) fail('Uso: sposta dx dy'); $$('moveDx').value = x; $$('moveDy').value = y; click('moveBtn'); ok('Selezione spostata di ' + x + ', ' + y + ' m'); });
@@ -13821,28 +13835,33 @@ updateRoomList();
   /* ---------- riquadro guida ---------- */
   const ws = document.querySelector('.workspace'), ban = document.createElement('div'); ban.id = 'toolBanner'; ws.appendChild(ban);
   let bkey = '';
+  /* v22.8: i comandi fuori dagli strumenti (sezione, parallelo…) usano lo stesso riquadro
+     SCban.add({spec: () => ({c, t, b: [[azione, etichetta]…]}) | null, click: azione => …}) */
+  const EXT = [];
+  window.SCban = {add: o => EXT.push(o), refresh: () => { bkey = ''; banner(); }};
   function spec() {
     if (state.mode !== '2d' || document.body.classList.contains('sv-on') || !guideOn()) return null;
+    for (const o of EXT) { const r = o.spec(); if (r) return r; }
     if (placeAlive()) {
       if (place.mode === 'ops') return {c: '#38bdf8', t: 'Incolla · tocca il muro dove inserire porta/finestra', b: [['end', '✔ Fine']]};
       if (place.mode === 'paste') return {c: '#38bdf8', t: 'Incolla · tocca dove posizionare (Invio = valori)', b: [['end', '✔ Fine']]};
-      return {c: '#e879f9', t: 'Parallela · muovi e tocca per posizionare', b: [['end', '✖ Annulla']]};
+      return {c: '#e879f9', t: 'Parallela · muovi e tocca per posizionare', b: [['end', '✔ Fine']]};
     }
     const t = state.tool, I = INFO[t]; if (!I) return null;
     const single = appSettings.wallMode === 'single';
     const WN = window.SCcg && SCcg.drawing && SCcg.drawing() ? 'Parete cartongesso' : 'Muro';
     if (t === 'wall') return {c: I.c, t: !state.pendingPoint ? WN + ' · tocca il punto di partenza' : single ? WN + ' · tocca il punto finale' : WN + ' · tocca il punto successivo',
-      b: [['mode', single ? '▭ Singolo' : '⛓ A catena'], ['wstyle', appSettings.wallStyle === 'solid' ? '▬ Piena' : '▭ Doppia']].concat(state.pendingPoint ? [['end', single ? '✖ Annulla' : '✔ Fine catena']] : []).concat([['done', '⏹ Esci']])};
-    const TAIL = [['undo', '↩ Annulla'], ['done', '✔ Fine']];
+      b: [['mode', single ? '▭ Singolo' : '⛓ A catena'], ['wstyle', appSettings.wallStyle === 'solid' ? '▬ Piena' : '▭ Doppia']].concat(state.pendingPoint ? [['end', single ? '↩ Togli punto' : '⏹ Interrompi catena']] : []).concat([['done', '✔ Fine']])};
+    const TAIL = [['undo', '↶ Annulla'], ['done', '✔ Fine']];
     if (t === 'trim') return {c: I.c, t: 'Rifila · tocca la parte di muro da eliminare (in rosso)', b: [['swap', '⇄ Estendi']].concat(TAIL)};
     if (t === 'extend') return pv && pv.tool === 'extend'
-      ? {c: I.c, t: 'Estendi · anteprima +' + fmtLen(pv.hit.add), b: [['ok', '✔ Conferma'], ['no', '✖'], ['done', '✔ Fine']]}
+      ? {c: I.c, t: 'Estendi · anteprima +' + fmtLen(pv.hit.add), b: [['ok', '✔ Conferma'], ['no', '✖ Scarta'], ['done', '✔ Fine']]}
       : {c: I.c, t: 'Estendi · tocca l\'ESTREMITÀ (punto verde) del muro da allungare', b: [['swap', '⇄ Rifila']].concat(TAIL)};
-    if (t === 'split') return pv && pv.tool === 'split' ? {c: I.c, t: 'Dividi · punto scelto', b: [['ok', '✔ Conferma'], ['no', '✖'], ['done', '✔ Fine']]} : {c: I.c, t: 'Dividi · tocca il punto del muro dove tagliare', b: TAIL};
-    if (t === 'corner') return tmp && tmp.t === 'c' ? {c: I.c, t: 'Angolo · 2/2 tocca il secondo muro', b: [['no', '✖'], ['done', '✔ Fine']]} : {c: I.c, t: 'Angolo · 1/2 tocca il primo muro', b: TAIL};
-    if (t === 'rescale') return rs.a ? {c: I.c, t: 'Porta in scala · 2/2 tocca il secondo punto noto', b: [['no', '✖ Annulla']]} : {c: I.c, t: 'Porta in scala · 1/2 tocca il primo punto noto (resta fermo)', b: []};
+    if (t === 'split') return pv && pv.tool === 'split' ? {c: I.c, t: 'Dividi · punto scelto', b: [['ok', '✔ Conferma'], ['no', '✖ Scarta'], ['done', '✔ Fine']]} : {c: I.c, t: 'Dividi · tocca il punto del muro dove tagliare', b: TAIL};
+    if (t === 'corner') return tmp && tmp.t === 'c' ? {c: I.c, t: 'Angolo · 2/2 tocca il secondo muro', b: [['no', '✖ Scarta'], ['done', '✔ Fine']]} : {c: I.c, t: 'Angolo · 1/2 tocca il primo muro', b: TAIL};
+    if (t === 'rescale') return rs.a ? {c: I.c, t: 'Porta in scala · 2/2 tocca il secondo punto noto', b: [['no', '✖ Scarta'], ['done', '✔ Fine']]} : {c: I.c, t: 'Porta in scala · 1/2 tocca il primo punto noto (resta fermo)', b: [['done', '✔ Fine']]};
     const sh = (typeof shapeTmp !== 'undefined' && shapeTmp.length) || 0, ms = typeof measureStart !== 'undefined' && measureStart;
-    const T2 = [['undo', '↩ Annulla'], ['done', '✔ Fine']];
+    const T2 = [['undo', '↶ Annulla'], ['done', '✔ Fine']];
     const mk = (txt, b) => ({c: I.c, t: txt, b: b || T2});
     if (t === 'door') return mk('Porta · tocca il muro dove inserirla');
     if (t === 'window') return mk('Finestra · tocca il muro dove inserirla');
@@ -13859,14 +13878,14 @@ updateRoomList();
     if (t === 'text') return mk('Testo · tocca dove scrivere');
     if (t === 'pillar') return mk('Pilastro · tocca dove posizionarlo');
     if (t === 'hole') return mk('Foro nel solaio · tocca due angoli opposti');
-    if (t === 'zone') { const bz = !!(window.SCzone && SCzone.busy()); return mk(bz ? 'Area · tocca il vertice successivo, poi «Chiudi area»' : 'Area · tocca il primo vertice', bz ? [['zclose', '✔ Chiudi area'], ['undo', '↩ Annulla'], ['done', '✔ Fine']] : T2); }
+    if (t === 'zone') { const bz = !!(window.SCzone && SCzone.busy()); return mk(bz ? 'Area · tocca il vertice successivo, poi «Chiudi area»' : 'Area · tocca il primo vertice', bz ? [['zclose', '✔ Chiudi area'], ['undo', '↩ Togli punto'], ['done', '✔ Fine']] : T2); }
     if (t === 'offset') return mk('Parallela · tocca il muro o la forma da cui partire');
     if (t === 'cgcp') return mk('Controparete · tocca il muro dal lato dove va');
     if (t === 'cgceil' || t === 'cgbeam') { const n = window.SCcs ? SCcs.count() : 0, nm = t === 'cgceil' ? 'Controsoffitto' : 'Falsa trave', M = t === 'cgceil' && window.SCcs ? SCcs.mode() : 'pts';
       const MB = t === 'cgceil' && !n ? [['csmode', SCcs.modeName() + ' ›']] : [];
-      if (M === 'room') return mk(nm + ' · tocca dentro un locale o un\'Area: la copre tutta', MB.concat([['done', '⏹ Esci']]));
-      if (M === 'rect') return mk(n ? nm + ' · tocca l\'angolo opposto' : nm + ' · tocca il primo angolo', n ? [['csundo', '↩ Annulla punto'], ['done', '⏹ Esci']] : MB.concat([['done', '⏹ Esci']]));
-      return mk(n === 0 ? nm + ' · tocca il primo punto' : nm + ' · tocca il punto successivo, poi «Fine»', n >= (t === 'cgceil' ? 3 : 2) ? [['csfin', '✔ Fine'], ['csundo', '↩ Annulla punto'], ['done', '⏹ Esci']] : n ? [['csundo', '↩ Annulla punto'], ['done', '⏹ Esci']] : MB.concat([['done', '⏹ Esci']])); }
+      if (M === 'room') return mk(nm + ' · tocca dentro un locale o un\'Area: la copre tutta', MB.concat([['done', '✔ Fine']]));
+      if (M === 'rect') return mk(n ? nm + ' · tocca l\'angolo opposto' : nm + ' · tocca il primo angolo', n ? [['csundo', '↩ Togli punto'], ['done', '✔ Fine']] : MB.concat([['done', '✔ Fine']]));
+      return mk(n === 0 ? nm + ' · tocca il primo punto' : nm + ' · tocca il punto successivo, poi «Chiudi contorno»', n >= (t === 'cgceil' ? 3 : 2) ? [['csfin', '✔ Chiudi contorno'], ['csundo', '↩ Togli punto'], ['done', '✔ Fine']] : n ? [['csundo', '↩ Togli punto'], ['done', '✔ Fine']] : MB.concat([['done', '✔ Fine']])); }
     if (t === 'box') return {c: I.c, t: 'Riquadro · trascina per selezionare più elementi', b: [['done', '✔ Fine']]};
     if (t === 'moveBg') return {c: I.c, t: 'Sposta sfondo · trascina l\'immagine', b: [['done', '✔ Fine']]};
     return null;
@@ -13874,7 +13893,7 @@ updateRoomList();
   function specMin() {   /* v22.7: con la guida spenta restano almeno i pulsanti per finire il comando */
     const s = spec(); if (s || !(state.mode === '2d' && !document.body.classList.contains('sv-on') && !guideOn())) return s;
     const keep = appSettings.guide; appSettings.guide = true; let f = null; try { f = spec(); } finally { appSettings.guide = keep; }
-    if (!f) return null; const b = f.b.filter(([a]) => ['done', 'end', 'ok', 'zclose', 'csfin'].includes(a)); return b.length ? {c: f.c, t: '', b} : null;
+    if (!f) return null; const b = f.b.filter(([a, l]) => a === 'done' || /^✔/.test(l)); return b.length ? {c: f.c, t: '', b} : null;
   }
   function banner() {
     const s = specMin(), sb = document.getElementById('selBar'), low = !!(sb && sb.style.display === 'flex'), key = JSON.stringify(s) + low;
@@ -13882,13 +13901,14 @@ updateRoomList();
     ban.style.top = 'calc(var(--dt,0px) + ' + (low ? 52 : 6) + 'px)';
     if (!s) { ban.style.display = 'none'; return; }
     ban.style.setProperty('--bc', s.c);
-    ban.innerHTML = '<span class="tb-t">' + s.t + '</span>' + s.b.map(([a, l]) => '<button data-a="' + a + '">' + l + '</button>').join('');
+    ban.innerHTML = '<span class="tb-t">' + s.t + '</span>' + scBtns(s.b);
     ban.style.display = 'flex';
   }
   ban.addEventListener('click', e => {
     const b = e.target.closest && e.target.closest('button'); if (!b) return;
     const a = b.dataset.a;
-    if (a === 'mode') { appSettings.wallMode = appSettings.wallMode === 'single' ? 'chain' : 'single'; persistSettings(); syncSet(); toast(appSettings.wallMode === 'single' ? 'Muro singolo: un muro per volta, lo strumento resta attivo' : 'Muro a catena: i muri si susseguono, «Fine catena» per interrompere'); }
+    for (const o of EXT) if (o.spec()) { o.click(a); bkey = ''; banner(); draw2D(); return; }
+    if (a === 'mode') { appSettings.wallMode = appSettings.wallMode === 'single' ? 'chain' : 'single'; persistSettings(); syncSet(); toast(appSettings.wallMode === 'single' ? 'Muro singolo: un muro per volta, lo strumento resta attivo' : 'Muro a catena: i muri si susseguono, «Interrompi catena» per staccare'); }
     else if (a === 'wstyle') {
       appSettings.wallStyle = appSettings.wallStyle === 'solid' ? 'double' : 'solid'; persistSettings();
       const e1 = g('wallStyle'), e2 = g('wallFill'); if (e1) e1.value = appSettings.wallStyle; if (e2) e2.disabled = appSettings.wallStyle === 'solid';
@@ -14456,7 +14476,7 @@ function SCwalkFactory(THREE, scene, camera, dom, host) {
     ui.style.cssText = 'position:fixed;left:0;top:0;right:0;bottom:0;z-index:2500;pointer-events:none;display:none;font-family:system-ui,sans-serif;-webkit-user-select:none;user-select:none';
     var css = 'position:absolute;pointer-events:auto;border:0;border-radius:12px;background:rgba(15,23,42,.82);color:#fff;font-size:15px;padding:10px 14px;cursor:pointer;';
     ui.innerHTML =
-      '<button data-a="x" style="' + css + 'top:64px;right:12px">✕ Esci</button>' +
+      '<button data-a="x" style="' + css + 'top:64px;right:12px;background:rgba(20,83,45,.92);border:1px solid #22c55e">✔ Fine</button>' +
       '<button data-a="n" style="' + css + 'top:64px;right:104px">🌙 Notte</button>' +
       '<div data-a="j" style="position:absolute;pointer-events:auto;touch-action:none;left:22px;bottom:84px;width:132px;height:132px;border-radius:50%;background:rgba(15,23,42,.45);border:2px solid rgba(255,255,255,.35)"><div data-a="k" style="position:absolute;left:39px;top:39px;width:54px;height:54px;border-radius:50%;background:rgba(255,255,255,.55)"></div></div>' +
       '<div style="position:absolute;left:50%;top:50%;width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;background:rgba(255,255,255,.7)"></div>' +
@@ -15126,7 +15146,6 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   #wkPanel.wk-one .wk-head > .wk-b{order:2;flex:0 0 auto}
   #wkPanel.wk-one .wk-head > #wkPrev{margin-left:auto}
   #wkPanel.wk-full .wk-b{height:36px;min-width:36px;padding:0 9px}
-  #wkPanel .wk-fine{background:#14532d;border-color:#22c55e;color:#dcfce7;font-weight:700}
   .wk-head,.wk-tools{display:flex;align-items:center;gap:6px;padding:6px 8px;flex-wrap:wrap;border-bottom:1px solid #3f4766}
   .wk-head{background:#23273a}
   .wk-title{font-weight:700;color:#7dd3fc;flex:1 1 140px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -15640,11 +15659,11 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       h += '<div class="wk-hint">' + (S.tool === 'door' ? "<b>Porta</b>: tocca il primo angolo, poi l'angolo opposto. Il lato in basso va a terra. Larghezza e altezza si leggono dal rettangolo." : S.tool === 'window' ? "<b>Finestra</b>: tocca il primo angolo, poi l'angolo opposto. Il lato in basso è il davanzale." : S.tool === 'riv' ? "<b>Rivestimento</b> sul lato che guardi: tocca il primo angolo, poi l'angolo opposto (può partire da qualsiasi quota). Poi scegli la skin; le quote si scrivono nei campi da sinistra o da destra, da terra o dal soffitto." : S.tool === 'cp' ? '<b>Controparete</b> sul lato che guardi: tocca il primo angolo, poi l\'angolo opposto. Vicino ai bordi (entro 15 cm) arriva al bordo; agli angoli si ferma contro i muri. Stratigrafia: quella dell\'ultima usata.' : S.tool === 'cut' ? '<b>Taglio</b>: tocca il primo angolo, poi l\'angolo opposto. Vicino ai bordi del muro (entro 15 cm) il taglio arriva al bordo. Per abbassare tutto il muro usa «Abbassa muro».' :
         '<b>' + KN[S.tool] + '</b> ' + SN[S.shape] + ': tocca il primo angolo, poi l\'angolo opposto.' + (S.tool === 'niche' ? ' La nicchia va sul lato che stai guardando.' : '')) +
         ' Col dito: tocca e trascina, il cursore si stacca dal dito; al rilascio il punto è confermato.' + (S.first ? ' <b>Ora il secondo angolo.</b>' : '') + '</div>';
-      h += '<div class="wk-row"><button class="wk-b wk-fine" data-a="done" title="Interrompe il comando e torna a Seleziona">✔ Fine</button></div>';   /* v22.7 */
+      h += '<div class="wk-row"><button class="wk-b sc-fine" data-a="done" title="Interrompe il comando e torna a Seleziona">✔ Fine</button></div>';   /* v22.7 */
     } else if (S.oSel && objOf(S.oSel)) {
       const o = S.oSel, e = objOf(o), r = proxy(w, o), F = fields(w, r), lk = lockedO(o);
       const extra = o.kind === 'cp' ? '<span class="wk-hint">' + esc((e.name || '') + ' · sp. ' + cm(wt(e)) + ' cm') + '</span>' : (o.kind === 'window' && e.kind === 'slide' ? '<span class="wk-hint">scorrevole</span>' : '');
-      h += '<div class="wk-row"><b style="color:#22d3ee">' + ON[o.kind] + '</b>' + extra + '<button class="wk-b" data-a="odel" style="margin-left:auto;color:#fca5a5">🗑 Elimina</button><button class="wk-b wk-fine" data-a="done" title="Fine: deseleziona e torna allo stato iniziale">✔ Fine</button></div>';
+      h += '<div class="wk-row"><b style="color:#22d3ee">' + ON[o.kind] + '</b>' + extra + '<button class="wk-b" data-a="odel" style="margin-left:auto;color:#fca5a5">🗑 Elimina</button><button class="wk-b sc-fine" data-a="done" title="Fine: deseleziona e torna allo stato iniziale">✔ Fine</button></div>';
       if (lk) h += '<div class="wk-hint wk-warn">Su un livello bloccato: puoi solo guardare.</div>';
       h += '<div class="wk-row">' + F.map(([key, lab, v]) => '<button class="wk-f' + (S.field === key ? ' on' : '') + '" data-f="' + key + '"><small>' + lab + ' (m)</small><b>' + (S.field === key ? (S.buf ? esc(S.buf) : '<i>' + f2(v) + '</i>') : f2(v)) + '</b></button>').join('') + '</div>';
       if (S.field) h += keypadHTML();
@@ -15654,7 +15673,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       if (o.kind === 'door') h += '<div class="wk-hint">La porta parte sempre da terra.</div>';
     } else if (k) {
       const F = fields(w, k);
-      h += '<div class="wk-row"><b style="color:#22d3ee">' + KN[k.k] + (k.sh !== 'rect' ? ' ' + SN[k.sh] : '') + '</b>' + (k.k === 'niche' ? '<span class="wk-hint">sul ' + (k.f === S.face ? 'lato che guardi' : 'lato opposto') + '</span>' : '') + '<button class="wk-b" data-a="del" style="margin-left:auto;color:#fca5a5">🗑 Elimina</button><button class="wk-b wk-fine" data-a="done" title="Fine: deseleziona e torna allo stato iniziale">✔ Fine</button></div>';
+      h += '<div class="wk-row"><b style="color:#22d3ee">' + KN[k.k] + (k.sh !== 'rect' ? ' ' + SN[k.sh] : '') + '</b>' + (k.k === 'niche' ? '<span class="wk-hint">sul ' + (k.f === S.face ? 'lato che guardi' : 'lato opposto') + '</span>' : '') + '<button class="wk-b" data-a="del" style="margin-left:auto;color:#fca5a5">🗑 Elimina</button><button class="wk-b sc-fine" data-a="done" title="Fine: deseleziona e torna allo stato iniziale">✔ Fine</button></div>';
       h += '<div class="wk-row">' + F.map(([key, lab, v]) => '<button class="wk-f' + (S.field === key ? ' on' : '') + '" data-f="' + key + '"><small>' + lab + ' (m)</small><b>' + (S.field === key ? (S.buf ? esc(S.buf) : '<i>' + f2(v) + '</i>') : f2(v)) + '</b></button>').join('') + '</div>';
       if (S.field) h += keypadHTML();
       h += '<div class="wk-row">' + (k.k === 'niche' ? '<button class="wk-b" data-a="face">Sposta sull\'altro lato</button>' : '') + '<button class="wk-b" data-a="dup">Duplica</button></div>';
@@ -16446,7 +16465,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     const inp = (id, lab, v, im) => '<label style="font-size:12px">' + lab + '<input id="' + id + '" style="' + ist + '"' + (im ? ' inputmode="decimal"' : '') + ' value="' + esc(v) + '"></label>';
     pal = document.createElement('div'); pal.className = 'sc-pal';   /* v22.6: spostabile */
     pal.style.cssText = 'position:fixed;z-index:9500;background:#1e1e2e;border:1px solid ' + (isC ? COL_C : COL_B) + ';border-radius:10px;padding:8px;box-shadow:0 6px 22px rgba(0,0,0,.55);font:13px sans-serif;color:#e5e7eb;display:flex;flex-direction:column;gap:6px;width:min(290px,calc(100vw - 12px));max-height:calc(100vh - 12px);overflow:auto';
-    pal.innerHTML = '<div style="font-weight:700;color:' + (isC ? COL_C : COL_B) + '">' + (isC ? 'Controsoffitto' : 'Falsa trave') + '</div>' +
+    pal.innerHTML = '<div style="display:flex;align-items:center;gap:6px"><b style="flex:1;color:' + (isC ? COL_C : COL_B) + '">' + (isC ? 'Controsoffitto' : 'Falsa trave') + '</b><button id="csDel" class="sc-del" style="padding:5px 9px;border-radius:7px;border:1px solid #475569;background:#1e293b;color:#f1f5f9;font:600 13px system-ui,sans-serif;cursor:pointer">🗑 Elimina</button><button id="csOk" class="sc-fine" style="padding:5px 9px;border-radius:7px;border:1px solid #475569;background:#1e293b;color:#f1f5f9;font:600 13px system-ui,sans-serif;cursor:pointer">✔ Fine</button></div>' +
       inp('csName', 'Nome (es. ' + (isC ? 'Corridoio' : 'Passaggio impianti') + ')', el.name || '') +
       (isC ? inp('csH', 'Quota da pavimento (m)', f2(el.h), 1)
            : '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">' + inp('csW', 'Larghezza (m)', f2(el.w), 1) + inp('csHh', 'Altezza (m)', f2(el.hh), 1) + '</div>' + '<label style="font-size:12px">Sezione' + sel('csSez', [['U', 'A U (libera sui due lati)'], ['L', 'A L (addossata a muro)']], el.sez) + '</label>') +
@@ -16463,8 +16482,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       '<div id="csSum" style="font-size:11.5px;line-height:1.4;color:#cbd5e1;background:#151826;border:1px solid #2f3550;border-radius:6px;padding:5px 7px"></div>' +
       '<div style="font-size:11px;color:#9ca3b8;line-height:1.35">Riquadro: sposta tutto · quadratini: punti · pallini: lati</div>' +
       '<div style="display:flex;gap:6px;flex-wrap:wrap"><button id="csStraight" style="flex:1;padding:7px;border-radius:6px;border:1px solid #475569;background:#334155;color:#e5e7eb;cursor:pointer">Lati dritti</button>' +
-      '<button id="csDel" style="flex:1;padding:7px;border-radius:6px;border:1px solid #7f1d1d;background:#3f1d1d;color:#fca5a5;cursor:pointer">Elimina</button>' +
-      '<button id="csOk" style="flex:1;padding:7px;border-radius:6px;border:1px solid #0369a1;background:#0369a1;color:#fff;cursor:pointer">OK</button></div>';
+      '</div>';
     document.body.appendChild(pal);
     const $p = id => pal.querySelector('#' + id);
     const sum = () => { const v = isC ? voceC(el) : voceB(el); $p('csSum').innerHTML = v ? '<b>Voce di computo (a corpo)</b><br>' + esc(v.desc) + '<br><span style="color:#9ca3b8">' + esc(v.det) + '</span>' : ''; };
@@ -17295,7 +17313,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     '#scTinBan button{min-height:34px;padding:4px 10px;border-radius:8px;border:1px solid var(--bc,#22c55e);background:#1e293b;color:#f1f5f9;font:600 13px system-ui,sans-serif;cursor:pointer}';
   document.head.appendChild(st);
   ['pointerdown', 'pointerup', 'touchstart', 'wheel'].forEach(ev => ban.addEventListener(ev, e => e.stopPropagation(), {passive: true}));
-  function showBan(c, t, btns) { ban.style.setProperty('--bc', c); ban.innerHTML = '<span>' + t + '</span>' + btns.map(([a, l]) => '<button data-a="' + a + '">' + l + '</button>').join(''); ban.style.display = 'flex'; }
+  function showBan(c, t, btns) { ban.style.setProperty('--bc', c); ban.innerHTML = '<span>' + t + '</span>' + scBtns(btns); ban.style.display = 'flex'; }
   const hideBan = () => { ban.style.display = 'none'; };
   ban.onclick = e => { const b = e.target.closest('button'); if (!b) return; if (b.dataset.a === 'pfine') endPick(); if (b.dataset.a === 'cfine') endChk(); if (b.dataset.a === 'call') closeAll(); };
 
@@ -17632,12 +17650,12 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   }
   const sumM = () => MP.reduce((s, p, i) => i ? s + Math.hypot(p.x - MP[i - 1].x, p.y - MP[i - 1].y) : 0, 0);
   function specM(mk) {
-    const B = [['qundo', '↩ Annulla punto'], ['qreset', '⟲ Azzera'], ['done', '✔ Fine']];
+    const B = [['qundo', '↩ Togli punto'], ['qreset', '⟲ Azzera'], ['done', '✔ Fine']];
     if (!MP.length) return mk('Misura al volo · tocca il primo punto (non resta nel disegno)', [['done', '✔ Fine']]);
     return mk('Misura · ' + (MP.length - 1) + (MP.length === 2 ? ' tratto' : ' tratti') + ' · totale ' + fmtLen(sumM()) + ' · tocca il punto successivo', B);
   }
   function specD(mk) {
-    const B = [['qundo', '↩ Annulla punto'], ['done', '✔ Fine']], md = window.SCq2 ? SCq2.mode() : 'al', TY = window.SCq2 ? [['qtype', SCq2.modeName() + ' ›']] : [];
+    const B = [['qundo', '↩ Togli punto'], ['done', '✔ Fine']], md = window.SCq2 ? SCq2.mode() : 'al', TY = window.SCq2 ? [['qtype', SCq2.modeName() + ' ›']] : [];
     if (D.st === 'a1') return mk('Quota angolare · tocca il secondo muro o la seconda linea', B);
     if (D.st === 'a2') return mk('Quota angolare · tocca dove mettere l\'arco (scegli anche quale angolo)', B);
     if (D.st === 'r1') return mk((md === 'dia' ? 'Diametro' : 'Raggio') + ' · tocca dove mettere la quota', B);
@@ -17649,7 +17667,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     }
     if (D.st === 1) return mk('Quota · tocca il secondo punto', B);
     if (D.st === 2) return mk('Quota · tocca dove mettere la linea di quota', B);
-    return mk('Quota · catena: tocca il punto successivo, oppure «Fine»', [['qend', '⏹ Chiudi catena'], ['done', '✔ Fine']]);
+    return mk('Quota · catena: tocca il punto successivo, oppure «Fine»', [['qend', '⏹ Interrompi catena'], ['done', '✔ Fine']]);
   }
   const tb = document.getElementById('toolBanner');
   if (tb) tb.addEventListener('click', e => {
@@ -19140,7 +19158,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   ban.addEventListener('pointerdown', e => e.stopPropagation());
   const css = document.createElement('style'); css.textContent = '#v16Ban button{min-height:34px;padding:4px 10px;border-radius:8px;border:1px solid #f472b6;background:#1e293b;color:#f1f5f9;font:600 13px system-ui,sans-serif;cursor:pointer} body.v16-mode #toolBanner{display:none!important}';
   document.head.appendChild(css);
-  function showBan(t, btns) { ban.innerHTML = '<span>' + t + '</span>' + btns.map(([a, l]) => `<button data-a="${a}">${l}</button>`).join(''); ban.style.display = 'flex'; document.body.classList.add('v16-mode'); }
+  function showBan(t, btns) { ban.innerHTML = '<span>' + t + '</span>' + scBtns(btns); ban.style.display = 'flex'; document.body.classList.add('v16-mode'); }
   function hideBan() { ban.style.display = 'none'; document.body.classList.remove('v16-mode'); }
   ban.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; if (b.dataset.a === 'end') { endCP(); endLD(); } if (b.dataset.a === 'back' && LD) { LD = {st: 0}; ldBan(); draw2D(); } });
 
@@ -19193,7 +19211,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
 
   /* ================================================================ NOTA CON FRECCIA */
   let LD = null;
-  const ldBan = () => showBan(LD.st === 0 ? '↖ Nota · tocca il punto da indicare (punta della freccia)' : '↖ Nota · tocca dove scrivere il testo', LD.st === 0 ? [['end', '✖ Annulla']] : [['back', '↩ Annulla punto'], ['end', '✖ Annulla']]);
+  const ldBan = () => showBan(LD.st === 0 ? '↖ Nota · tocca il punto da indicare (punta della freccia)' : '↖ Nota · tocca dove scrivere il testo', LD.st === 0 ? [['end', '✔ Fine']] : [['back', '↩ Togli punto'], ['end', '✔ Fine']]);
   function startLD() {
     endCP(); LD = {st: 0};
     const tb = document.querySelector('.tool[data-tool="text"]'); if (tb && state.tool !== 'text') tb.click();   /* cursore sfalsato dal dito e snap come per il testo */
@@ -20251,8 +20269,9 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
    SC_REL.v è l'unica versione: titolo, Guida, file salvato, avvisi e riga messaggi la leggono da qui.
    ======================================================================== */
 window.SC_REL = {
-  v: '22.7', d: '26/10/2026',
+  v: '22.8', d: '26/10/2026',
   news: [
+    ['22.8', 'Comandi coerenti: stesse parole e stesso aspetto ovunque. ✔ Fine (verde, sempre ultimo) chiude il comando e torna a Seleziona; ↩ Togli punto toglie l\'ultimo punto; ✖ Scarta butta quello che è in corso; 🗑 Elimina cancella; ↶ Annulla torna indietro. Sezione e Parallelo ora hanno i pulsanti nel riquadro in alto (prima solo Esc). Aree, controsoffitti e tetto: 🗑 Elimina e ✔ Fine in cima alla finestra.'],
     ['22.7', 'Tetto da contorno: menu Disegna → Tetto (o Piani → Disegna tetto). Tocchi gli angoli sul filo esterno dei muri, oppure «Dai muri del piano»; ogni lato si tocca per farlo falda o timpano, con pendenza e sporto propri. Falde, colmi, displuvi e compluvi calcolati; piante a L o T: un tetto per ala. In pianta frecce di pendenza, quota di colmo e gronda. Comandi che finiscono: il tasto rosso ✖ non c\'è più; in prospetto ogni elemento selezionato ha in cima 🗑 Elimina e ✔ Fine, un tocco nel vuoto deseleziona.'],
     ['22.6', 'Finestre spostabili: proprietà, aree, skin, stampa, dati progetto, computo, tabella muri, piani, verifiche hanno in cima la maniglia ⠿⠿⠿ (doppio tocco = posizione iniziale). In verticale prospetto e sezione partono sotto la riga messaggi: niente più sovrapposizioni con i pulsanti.'],
     ['22.5', 'Sezioni: parti in vista (i muri oltre il taglio, solo quelli che si vedono davvero, con porte e finestre), gradini delle scale tagliate, falde dei tetti tagliate.'],
@@ -20442,7 +20461,7 @@ window.SC_REL = {
     const txt = !s ? '🧲 Aggancia · 1/2 tocca il punto da spostare' + (nR ? ' · ' + nR + ' estremità staccate' : '') : '🧲 2/2 tocca dove agganciarlo' + (s.sug ? ' · cerchio verde = chiusura proposta' : '');
     const btn = (a, c, t) => '<button class="agf' + (f[a] ? ' on' : '') + '" data-a="' + a + '" title="Mostra / nascondi"><i style="background:' + c + '"></i><b class="agt">' + t + '</b></button>';
     ban.innerHTML = '<span>' + txt + '</span>' + btn('r', COL.r, 'Muri aperti') + btn('o', COL.o, 'Aree e linee') + btn('b', COL.b, 'Altri punti') +
-      (s && s.sug ? '<button data-a="sug">✔ Chiudi come proposto</button>' : '') + (s ? '<button data-a="un">✖ Annulla punto</button>' : '') + '<button data-a="solo"' + (AG.solo ? ' class="on"' : '') + ' title="Sgancia: sposta un solo muro, il punto condiviso si separa">✂ Sgancia</button>' + '<button data-a="end">✔ Fine</button>';
+      (s && s.sug ? '<button data-a="sug">✔ Chiudi come proposto</button>' : '') + (s ? '<button data-a="un">✖ Scarta</button>' : '') + '<button data-a="solo"' + (AG.solo ? ' class="on"' : '') + ' title="Sgancia: sposta un solo muro, il punto condiviso si separa">✂ Sgancia</button>' + scBtns([['end', '✔ Fine']]);
     ban.style.display = 'flex';
   }
   function start() {
@@ -20595,7 +20614,7 @@ window.SC_REL = {
   function start() {
     try { document.querySelectorAll('.menu-dropdown.open,.menu-item.open').forEach(m => m.classList.remove('open')); } catch (_) {}
     try { ctxTool('select'); } catch (_) {} try { setSel([]); } catch (_) {}
-    PA = {ref: null}; toast('Parallelo: tocca il muro di riferimento (Esc = annulla)'); draw2D();
+    PA = {ref: null}; draw2D(); if (window.SCban) SCban.refresh();
   }
   function end() { if (!PA) return; PA = null; draw2D(); }
   const _ht = handleTap;
@@ -20603,10 +20622,10 @@ window.SC_REL = {
     if (!PA) return _ht.apply(this, arguments);
     const r = c2d.getBoundingClientRect(), wp = screenToWorld(cx - r.left, cy - r.top), w = findWallAt(wp);
     if (!w) { toast('Tocca un muro'); return; }
-    if (!PA.ref) { PA.ref = w; toast('Ora tocca il muro da raddrizzare (Esc = annulla)'); draw2D(); return; }
+    if (!PA.ref) { PA.ref = w; draw2D(); if (window.SCban) SCban.refresh(); return; }
     if (w === PA.ref) { toast('Scegli un muro diverso dal riferimento'); return; }
     if (isEntityLocked(w)) { toast('Muro bloccato'); return; }
-    const ref = PA.ref; PA = null; apply(ref, w); draw2D();
+    const ref = PA.ref; PA = null; apply(ref, w); draw2D(); if (window.SCban) SCban.refresh();
   };
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && PA) end(); });
   (window.SCdraw && SCdraw.post || []).push(() => {   /* evidenzia il muro di riferimento */
@@ -20615,6 +20634,8 @@ window.SC_REL = {
     ctx.save(); ctx.strokeStyle = 'rgba(250,204,21,0.9)'; ctx.lineWidth = 4; ctx.setLineDash([8, 5]);
     ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); ctx.restore();
   });
+  if (window.SCban) SCban.add({spec: () => PA ? {c: '#facc15', t: PA.ref ? 'Parallelo · 2/2 tocca il muro da raddrizzare' : 'Parallelo · 1/2 tocca il muro di riferimento', b: (PA.ref ? [['no', '✖ Scarta']] : []).concat([['done', '✔ Fine']])} : null,
+    click: a => { if (a === 'no' && PA) { PA.ref = null; draw2D(); } else end(); }});
   window.SCpar = {start, end, active: () => !!PA};
   const pb = document.getElementById('parBtn'); if (pb) pb.onclick = () => start();
 })();
@@ -21122,7 +21143,7 @@ window.SC_REL = {
       ['pointerdown', 'pointerup', 'touchstart'].forEach(ev => ban.addEventListener(ev, e => e.stopPropagation(), {passive: true}));
       ban.addEventListener('click', e => { if (e.target.closest('button')) pickEnd(true); });
     }
-    ban.innerHTML = '<span>🧱 ' + (kind === 'wall' ? 'Tocca il muro a cui allineare la posa' : 'Tocca il punto da cui parte la prima piastrella') + '</span><button>✖ Annulla</button>';
+    ban.innerHTML = '<span>🧱 ' + (kind === 'wall' ? 'Tocca il muro a cui allineare la posa' : 'Tocca il punto da cui parte la prima piastrella') + '</span>' + scBtns([['end', '✔ Fine']]);
     const L = document.getElementById('scBandL'); if (L && ban.parentNode !== L) L.appendChild(ban); ban.style.display = 'flex';
     try { draw2D(); } catch (_) {}
   }
@@ -21503,7 +21524,7 @@ window.SC_REL = {
     if (!ban || !CP) return;
     const n = CP.pairs.length, tip = CP.step === 'd' ? 'Tocca un punto del disegno' : 'Ora lo stesso punto sul calco';
     ban.innerHTML = '<span>🎯 Coppia ' + (n + 1) + ' · ' + tip + ' · coppie: ' + n + '</span>' +
-      '<button data-a="apply"' + (n >= 2 && CP.step === 'd' ? '' : ' disabled') + '>✔ Applica</button><button data-a="cancel">✖ Annulla</button>';
+      '<button data-a="apply"' + (n >= 2 && CP.step === 'd' ? '' : ' disabled') + '>✔ Applica</button>' + scBtns([['cancel', '✖ Scarta']]);
   }
   function cancel() {
     CP = null; state.tool = 'select';
@@ -21852,11 +21873,13 @@ window.SC_REL = {
   function startTrace() {
     try { document.querySelectorAll('.menu-dropdown.open,.menu-item.open').forEach(m => m.classList.remove('open')); } catch (_) {}
     if (state.mode !== '2d') { toast('Le sezioni si tracciano nella vista 2D'); return; }
-    try { ctxTool('select'); } catch (_) {} T = {p1: null, cur: null}; toast('Sezione: tocca il primo punto della traccia (Esc o ✖ per annullare)'); draw2D();
+    try { ctxTool('select'); } catch (_) {} T = {p1: null, cur: null}; draw2D(); if (window.SCban) SCban.refresh();
   }
   const snapP = raw => { const sp = document.getElementById('snapPts'), old = sp ? sp.checked : null; try { if (sp) sp.checked = true; return snapToVertex(raw, null) || raw; } catch (_) { return raw; } finally { if (sp) sp.checked = old; } };
   c2d.addEventListener('pointermove', e => { if (!T || !T.p1) return; const r = c2d.getBoundingClientRect(); T.cur = screenToWorld(e.clientX - r.left, e.clientY - r.top); draw2D(); });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape' && T) { T = null; draw2D(); toast('Sezione annullata'); } });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && T) { T = null; draw2D(); } });
+  if (window.SCban) SCban.add({spec: () => T ? {c: '#f472b6', t: T.p1 ? 'Sezione · 2/2 tocca il secondo punto della traccia' : 'Sezione · 1/2 tocca il primo punto della traccia', b: (T.p1 ? [['no', '↩ Togli punto']] : []).concat([['done', '✔ Fine']])} : null,
+    click: a => { if (a === 'no' && T) { T.p1 = null; T.cur = null; } else T = null; draw2D(); }});
   function labelsOf(s) {   /* posizioni (mondo) delle lettere: oltre le estremità, dal lato in cui si guarda */
     const L = Math.hypot(s.p2.x - s.p1.x, s.p2.y - s.p1.y) || 1, ux = (s.p2.x - s.p1.x) / L, uy = (s.p2.y - s.p1.y) / L, sd = s.side || 1, nx = -uy * sd, ny = ux * sd;
     return {ux, uy, nx, ny, a: {x: s.p1.x - ux * 0.35, y: s.p1.y - uy * 0.35}, b: {x: s.p2.x + ux * 0.35, y: s.p2.y + uy * 0.35}};
@@ -21866,7 +21889,7 @@ window.SC_REL = {
     const r = c2d.getBoundingClientRect();
     if (T) {
       const p = snapP(screenToWorld(cxp - r.left, cyp - r.top));
-      if (!T.p1) { T.p1 = {x: r6(p.x), y: r6(p.y)}; T.cur = T.p1; toast('Ora tocca il secondo punto'); draw2D(); return; }
+      if (!T.p1) { T.p1 = {x: r6(p.x), y: r6(p.y)}; T.cur = T.p1; draw2D(); if (window.SCban) SCban.refresh(); return; }
       if (Math.hypot(p.x - T.p1.x, p.y - T.p1.y) < 0.1) { toast('Punti troppo vicini'); return; }
       const s = {id: 'sz' + newId(), name: nextName(), p1: T.p1, p2: {x: r6(p.x), y: r6(p.y)}, side: 1, floorId: state.currentFloorId};
       SEC().push(s); T = null; try { checkpoint(); } catch (_) {} draw2D(); toast('Sezione ' + s.name + '–' + s.name + ' creata · ⇄ Gira per guardare dall\'altra parte'); open(s.id); return;

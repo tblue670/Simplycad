@@ -1,4 +1,4 @@
-SimplyCAD Pro - pubblicazione su GitHub Pages (v22.7)
+SimplyCAD Pro - pubblicazione su GitHub Pages (v22.8)
 
 Contenuto (vanno caricati tutti, senza rinominarli e SENZA cartelle intorno):
   index.html  sw.js  manifest.webmanifest  icon-192.png  icon-512.png  icon-maskable.png  README.md
@@ -93,6 +93,17 @@ NOVITÀ v18.9
 
 NOVITÀ v18.9.1
  - 🧲 Aggancia anche nella barra interattiva (senza selezione) e nel suo menu ⋯.
+
+NOVITÀ v22.8
+Comandi coerenti: stesse parole e stesso aspetto in tutto il programma.
+ - ✔ Fine (verde, sempre ultimo): chiude il comando, tiene quello che è fatto, torna a Seleziona.
+ - ↩ Togli punto: toglie l'ultimo punto toccato.
+ - ✖ Scarta: butta quello che è in corso (anteprima, punto in sospeso) e resta nel comando.
+ - ✔ Conferma applica l'anteprima; ✔ Chiudi area / Chiudi contorno chiude il contorno; ⏹ Interrompi catena stacca la catena.
+ - 🗑 Elimina cancella l'elemento; ↶ Annulla torna indietro di un'operazione; ✕ in alto a destra chiude una finestra.
+ - Sezione e Parallelo hanno i pulsanti nel riquadro in alto (prima si usciva solo con Esc).
+ - Aree, controsoffitti, false travi e tetto: 🗑 Elimina e ✔ Fine in cima alla finestra, come nel prospetto.
+ - Spostando un vertice del tetto compare ✖ Scarta per rinunciare.
 
 NOVITÀ v22.7
 Tetto da contorno, come nei CAD professionali: il tetto non si indovina più dai locali, lo decidi tu.
