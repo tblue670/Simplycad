@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v21.7</title>
+<title>SimplyCAD Pro · v21.8</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -892,6 +892,7 @@ body.mode-3d #infoStrip .scale-badge{display:none}
         <button class="tool" data-tool="rescale" title="Porta in scala: due punti noti e la loro distanza reale">📏 Porta in scala</button>
       </div>
       <button class="menu-row" id="arrBtn"><span class="mi-icon">▦</span><span class="mi-label">Matrice…</span></button>
+      <button class="menu-row" id="parBtn" title="Raddrizza un muro sulla direzione di un altro"><span class="mi-icon">∥</span><span class="mi-label">Parallelo (2 muri)</span></button>
       <div class="menu-sep"></div>
       <div class="menu-label">Trasforma selezione</div>
       <div class="menu-pad">
@@ -19740,6 +19741,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
 window.SC_REL = {
   v: '21.7', d: '25/10/2026',
   news: [
+    ['21.8', 'Geometria → «∥ Parallelo»: tocchi il muro di riferimento, poi il muro da raddrizzare. Il secondo ruota sulla direzione del primo e mantiene lunghezza e collegamenti.'],
     ['21.7', 'Finestre scorrevoli: le linee delle ante restano visibili anche con colori chiari (contorno scuro sotto il colore della finestra).'],
     ['21.6', 'Prospetto: dopo una nicchia, un foro o un taglio si torna a «Seleziona» restando nel prospetto in modifica (più lavori senza uscire). In verticale i messaggi non coprono più la riga degli strumenti.'],
     ['21.5', 'Aggancia → «✂ Sgancia»: ora funziona sul punto condiviso di due muri uniti anche con «Altri punti» spenti (il punto si mostra da solo). Il comando riattiva i punti 🔵.'],
@@ -20033,6 +20035,61 @@ window.SC_REL = {
   };
 })();
 
+
+/* ===== v21.8 · PARALLELO: il secondo muro si raddrizza sulla direzione del primo ===== */
+(function () {
+  let PA = null;   /* {ref} */
+  const Lw = w => Math.hypot(w.p2.x - w.p1.x, w.p2.y - w.p1.y);
+  const sameP = (a, b) => Math.hypot(a.x - b.x, a.y - b.y) < 1e-3;
+  const fl = () => state.currentFloorId;
+  const connected = (w, k) => state.walls.some(o => o !== w && isEntityVisible(o) && floorOf(o) === fl() && (sameP(o.p1, w[k]) || sameP(o.p2, w[k])));
+  function align(ref, w) {
+    const L = Lw(w), R = Lw(ref); if (L < 1e-6 || R < 1e-6) return null;
+    let ux = (ref.p2.x - ref.p1.x) / R, uy = (ref.p2.y - ref.p1.y) / R;
+    if (ux * (w.p2.x - w.p1.x) + uy * (w.p2.y - w.p1.y) < 0) { ux = -ux; uy = -uy; }   /* stesso verso del muro */
+    const c1 = connected(w, 'p1'), c2 = connected(w, 'p2');
+    let p1, p2, how;
+    if (c1 && !c2) { p1 = {x: w.p1.x, y: w.p1.y}; p2 = {x: w.p1.x + ux * L, y: w.p1.y + uy * L}; how = 'ruotando attorno all’estremo collegato'; }
+    else if (c2 && !c1) { p2 = {x: w.p2.x, y: w.p2.y}; p1 = {x: w.p2.x - ux * L, y: w.p2.y - uy * L}; how = 'ruotando attorno all’estremo collegato'; }
+    else {
+      const mx = (w.p1.x + w.p2.x) / 2, my = (w.p1.y + w.p2.y) / 2;
+      p1 = {x: mx - ux * L / 2, y: my - uy * L / 2}; p2 = {x: mx + ux * L / 2, y: my + uy * L / 2};
+      how = c1 && c2 ? 'ruotando attorno al centro (entrambi gli estremi sono collegati: i collegamenti si staccano)' : 'ruotando attorno al centro';
+    }
+    return {p1: {x: r6(p1.x), y: r6(p1.y)}, p2: {x: r6(p2.x), y: r6(p2.y)}, how};
+  }
+  function apply(ref, w) {
+    const g = align(ref, w); if (!g) return toast('Muro troppo corto');
+    w.p1 = g.p1; w.p2 = g.p2;
+    try { detectRooms(); } catch (_) {} try { refresh(); } catch (_) {} try { checkpoint(); } catch (_) {}
+    toast('Muro parallelo al riferimento, ' + g.how + ' · ctrl+z per annullare');
+  }
+  function start() {
+    try { document.querySelectorAll('.menu-dropdown.open,.menu-item.open').forEach(m => m.classList.remove('open')); } catch (_) {}
+    try { ctxTool('select'); } catch (_) {} try { setSel([]); } catch (_) {}
+    PA = {ref: null}; toast('Parallelo: tocca il muro di riferimento (Esc = annulla)'); draw2D();
+  }
+  function end() { if (!PA) return; PA = null; draw2D(); }
+  const _ht = handleTap;
+  handleTap = function (cx, cy) {
+    if (!PA) return _ht.apply(this, arguments);
+    const r = c2d.getBoundingClientRect(), wp = screenToWorld(cx - r.left, cy - r.top), w = findWallAt(wp);
+    if (!w) { toast('Tocca un muro'); return; }
+    if (!PA.ref) { PA.ref = w; toast('Ora tocca il muro da raddrizzare (Esc = annulla)'); draw2D(); return; }
+    if (w === PA.ref) { toast('Scegli un muro diverso dal riferimento'); return; }
+    if (isEntityLocked(w)) { toast('Muro bloccato'); return; }
+    const ref = PA.ref; PA = null; apply(ref, w); draw2D();
+  };
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && PA) end(); });
+  (window.SCdraw && SCdraw.post || []).push(() => {   /* evidenzia il muro di riferimento */
+    if (!PA || !PA.ref) return;
+    const a = worldToScreen(PA.ref.p1.x, PA.ref.p1.y), b = worldToScreen(PA.ref.p2.x, PA.ref.p2.y);
+    ctx.save(); ctx.strokeStyle = 'rgba(250,204,21,0.9)'; ctx.lineWidth = 4; ctx.setLineDash([8, 5]);
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); ctx.restore();
+  });
+  window.SCpar = {start, end, active: () => !!PA};
+  const pb = document.getElementById('parBtn'); if (pb) pb.onclick = () => start();
+})();
 </script>
 <script>
 /* ========================================================================

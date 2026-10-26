@@ -1,4 +1,4 @@
-SimplyCAD Pro - pubblicazione su GitHub Pages (v21.7)
+SimplyCAD Pro - pubblicazione su GitHub Pages (v21.8)
 
 Contenuto (vanno caricati tutti, senza rinominarli e SENZA cartelle intorno):
   index.html  sw.js  manifest.webmanifest  icon-192.png  icon-512.png  icon-maskable.png  README.md
@@ -93,6 +93,9 @@ NOVITÀ v18.9
 
 NOVITÀ v18.9.1
  - 🧲 Aggancia anche nella barra interattiva (senza selezione) e nel suo menu ⋯.
+
+NOVITÀ v21.8
+Geometria → «∥ Parallelo (2 muri)»: tocchi il muro di riferimento, poi il muro da raddrizzare. Il secondo ruota sulla direzione del primo, mantiene lunghezza e collegamenti (ruota attorno all'estremo collegato, altrimenti attorno al centro). Esc annulla.
 
 NOVITÀ v21.7
 Finestre scorrevoli: le linee delle ante restano visibili anche con colori scuri o chiari (contorno di contrasto). Corretto anche il numero di versione mostrato nell'app.
