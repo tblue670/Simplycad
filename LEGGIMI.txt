@@ -1,4 +1,4 @@
-SimplyCAD Pro - pubblicazione su GitHub Pages (v22.8)
+SimplyCAD Pro - pubblicazione su GitHub Pages (v23.2)
 
 Contenuto (vanno caricati tutti, senza rinominarli e SENZA cartelle intorno):
   index.html  sw.js  manifest.webmanifest  icon-192.png  icon-512.png  icon-maskable.png  README.md
@@ -93,6 +93,44 @@ NOVITÀ v18.9
 
 NOVITÀ v18.9.1
  - 🧲 Aggancia anche nella barra interattiva (senza selezione) e nel suo menu ⋯.
+
+NOVITÀ v23.2
+ - Illuminazione del 3D: entrando nel 3D parte la notte con i punti luce messi in pianta; se in pianta non ci sono
+   punti luce, parte il giorno. Il pulsante Notte/Giorno resta: se lo usi, la scelta si salva nel progetto.
+ - Barra «☀ Luce» nel 3D (sotto Tour) e nella copia per il cliente: luminosità di tutta la scena
+   (giorno: sole e ambiente; notte: lampade). Il valore si salva nel progetto e il cliente vede la tua regolazione.
+ - Di notte vista da fuori: si accendono lampade sparse in tutta la casa (non solo le più vicine) più una luce di base
+   calda e tenue; nel tour restano le lampade vicine a te, come prima.
+
+NOVITÀ v23.1
+ - Presentazione per il cliente (File → copia cliente / tour): ora si vede il lavoro finito, cioè pavimenti delle Aree
+   con la skin, rivestimenti con la skin, pittura e finiture dei muri, con le stesse immagini del 3D dell'app.
+   Il file è un po' più pesante (le immagini viaggiano dentro il file, compresse).
+
+NOVITÀ v23.0
+ - Vista → Etichette (anche in stampa, si salvano nel progetto): Aree nome / superficie / perimetro, altezze h+ dei punti
+   impianti; «🏷 Nascondi tutte» / «Mostra tutte» (comprende anche nomi stanze, nomi muri e testi).
+ - Stampa: le scritte nei riquadri delle Aree ora si leggono (prima uscivano bianche su bianco); la tabella «Superfici nette»
+   usa le Aree quando il piano ne ha; superfici delle stanze con la virgola (10,36 m²); altezze h+ e sigle P/F cercano
+   un posto libero e non si sovrappongono alle altre scritte.
+ - 3D: chiuse le fessure tra i pezzi dei muri (accanto a porte, finestre, nicchie) e le teste dei muri sovrapposte agli
+   incroci: erano le righe scure che comparivano muovendo, ruotando o ingrandendo la vista.
+ - Tour 3D: Vista → «📍 Partenza del tour 3D»: tocchi in pianta dove stare, poi verso dove guardare; in alternativa durante
+   il tour «📍 Parti da qui». La partenza si vede in pianta (omino verde), si salva nel progetto e vale anche nel file
+   per il cliente. «✖ Torna automatica» la toglie.
+
+NOVITÀ v22.9
+Pittura sui muri e libreria finiture.
+ - Prospetto → «🎨 Pittura»: superficie colorata sul lato che guardi. «⬠ Punto per punto» (come le Aree: tocchi i punti,
+   chiudi toccando il primo o con «✔ Chiudi contorno») oppure «▭ Rettangolo» (due angoli).
+ - Selezionata: trascini i quadratini per sagomarla; trascinando il pallino a metà di un lato aggiungi un vertice;
+   «✖ Togli il vertice» toglie l'ultimo toccato. Larghezza, altezza e posizione si scrivono nei campi. Duplica, 🗑 Elimina, ✔ Fine.
+ - «🎨 Cambia finitura…» apre la libreria: tinte RAL (colori a schermo indicativi), smalto, velature, spugnato/tampone,
+   stucco veneziano, marmorino, spatolato, rigato/graffiato, effetto cemento/resina, sabbiato.
+   «➕ Nuova» o modifica di una esistente: colore di fondo, colore dell'effetto, intensità, lucentezza, grana, codice e prezzo €/m².
+   Le tue finiture (★) restano su questo dispositivo; ogni superficie ne tiene una copia nel progetto, quindi si apre uguale ovunque.
+ - 3D: la finitura si vede sulla faccia del muro (aperture escluse). Computo: voce «Pitture e finiture» in m² netti,
+   con il prezzo €/m² della finitura se l'hai scritto.
 
 NOVITÀ v22.8
 Comandi coerenti: stesse parole e stesso aspetto in tutto il programma.
