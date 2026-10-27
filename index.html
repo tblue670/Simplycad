@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v23.7</title>
+<title>SimplyCAD Pro · v23.9</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -5828,6 +5828,7 @@ function fit() {
    ======================================================================== */
 let place = null, placeCur = null;
 const placeAlive = () => { if (place && place.tool !== state.tool) place = null; return !!place; };
+window.SCplaceEnd = () => { const was = !!place; place = null; return was; };   /* v23.9: chiude Incolla / Parallela (spunta verde) */
 function cutSel() {
   if (!needAny()) return;
   copySel();
@@ -9974,7 +9975,7 @@ updateRoomList();
   bar.querySelectorAll('.sbw').forEach(x => { x.onclick = () => { if (x.dataset.act) { if (x.dataset.act === 'copy') copySel(); else cutSel(); return; } try { window.SCclearPrevDraw && SCclearPrevDraw(); } catch (_) {} ctxTool(x.dataset.qt); }; });
   $('sbMore').onclick = e => { const r = e.currentTarget.getBoundingClientRect(); ctxOpen(r.left, r.bottom + 6, {keep: true, rest: true}); };
   $('sbDel').onclick = () => { performDeleteSelection(); editOpen = false; updateSelectionPanel(); };
-  $('sbEnd').onclick = () => { ms().checked = false; editOpen = false; setSel([]); };
+  $('sbEnd').onclick = () => { try { if (window.SCplaceEnd && SCplaceEnd()) ctxTool('select'); } catch (_) {} ms().checked = false; editOpen = false; setSel([]); try { draw2D(); } catch (_) {} };   /* v23.9: la spunta verde chiude anche Incolla e Parallela */
   $('closeSelectionPanel').addEventListener('click', () => { editOpen = false; place(); });
   /* tool o modalità cambiati: aggiorna visibilità */
   setInterval(place, 400);
@@ -20416,8 +20417,10 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
    SC_REL.v è l'unica versione: titolo, Guida, file salvato, avvisi e riga messaggi la leggono da qui.
    ======================================================================== */
 window.SC_REL = {
-  v: '23.7', d: '27/10/2026',
+  v: '23.9', d: '27/10/2026',
   news: [
+    ['23.9', 'Incolla: la spunta verde della barra di selezione chiude anche Incolla (e Parallela), senza dover premere «Fine» nel riquadro in alto.'],
+    ['23.8', 'Porte coperte nel 3D: un rivestimento senza skin (tinta unita) copriva anche i vani di porte e finestre e la porta spariva da quel lato; ora i vani restano aperti.'],
     ['23.7', 'Zoccolini nel 3D: i pavimenti nel 3D erano 3–5 cm sopra lo zero e coprivano la parte bassa di zoccolini e rivestimenti; ora sono a quota zero, come nel prospetto.'],
     ['23.6', 'Rivestimenti e zoccolini: la pittura sta sempre sotto il rivestimento (prospetto, 3D e tocco); un rivestimento senza skin si vede comunque in 3D, in tinta unita. Ombre del 3D più nitide (niente righe seghettate sotto i davanzali e lungo i muri).'],
     ['23.5', 'Prospetto: il primo tocco seleziona l\'oggetto senza muoverlo; trascinando l\'oggetto già selezionato lo sposti e lo sagomi col dito, come prima. Misure minime scrivibili: 1 cm (zoccoli, fasce).'],
@@ -21552,11 +21555,16 @@ window.SC_REL = {
     all().forEach(({w, r}) => {
       try {
         const c = resolve(w, r);
-        if (!c || !c.res.pieces.length) {   /* v23.6: senza skin (o pezzi non calcolati) si vede comunque, in tinta unita */
-          const L0 = Lw(w), t0 = getWallThickness(w), V0 = view(w, r), sk0 = r.sk && SCskin.get(r.sk.id), Wd0 = r.x1 - r.x0, Hh0 = r.z1 - r.z0; if (Wd0 < 0.005 || Hh0 < 0.005) return;
-          const m0 = new THREE.Mesh(new THREE.PlaneGeometry(Wd0, Hh0), new THREE.MeshStandardMaterial({color: new THREE.Color((sk0 && sk0.col) || '#e7e2d8'), roughness: 0.5, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2}));
+        if (!c || !c.res.pieces.length) {   /* v23.6 · v23.8: senza skin si vede in tinta unita, con i vani di porte, finestre e nicchie */
+          const L0 = Lw(w), t0 = getWallThickness(w), V0 = view(w, r), sk0 = r.sk && SCskin.get(r.sk.id), Wd0 = V0.u1 - V0.u0, Hh0 = V0.z1 - V0.z0; if (Wd0 < 0.005 || Hh0 < 0.005) return;
+          const it0 = items(w, r, true), ppm0 = Math.max(60, Math.min(320, 2048 / Math.max(Wd0, Hh0, 0.5))), cv0 = document.createElement('canvas'); cv0.width = Math.max(4, Math.round(Wd0 * ppm0)); cv0.height = Math.max(4, Math.round(Hh0 * ppm0));
+          const x0 = cv0.getContext('2d'), kx0 = cv0.width / Wd0, ky0 = cv0.height / Hh0; x0.fillStyle = (sk0 && sk0.col) || '#e7e2d8'; x0.fillRect(0, 0, cv0.width, cv0.height);
+          x0.globalCompositeOperation = 'destination-out'; x0.fillStyle = '#000';
+          it0.holes.concat(it0.niches).forEach(P => { x0.beginPath(); P.forEach((q, i) => { const X = (q.x - V0.u0) * kx0, Y = (V0.z1 - q.y) * ky0; i ? x0.lineTo(X, Y) : x0.moveTo(X, Y); }); x0.closePath(); x0.fill(); });
+          const tx0 = new THREE.CanvasTexture(cv0); if (THREE.sRGBEncoding) tx0.encoding = THREE.sRGBEncoding;
+          const m0 = new THREE.Mesh(new THREE.PlaneGeometry(Wd0, Hh0), new THREE.MeshStandardMaterial({map: tx0, transparent: true, alphaTest: 0.5, roughness: 0.5, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2}));
           const a0 = Math.atan2(w.p2.y - w.p1.y, w.p2.x - w.p1.x), g0 = new THREE.Group(); g0.position.set((w.p1.x + w.p2.x) / 2, 0, -(w.p1.y + w.p2.y) / 2); g0.rotation.y = a0;
-          m0.position.set((r.x0 + r.x1) / 2 - L0 / 2, (r.z0 + r.z1) / 2, (r.f > 0 ? -1 : 1) * (t0 / 2 + 0.003)); m0.userData.rivId = r.id; g0.add(m0); scene.add(g0); return;
+          m0.position.set((r.x0 + r.x1) / 2 - L0 / 2, (V0.z0 + V0.z1) / 2, (r.f > 0 ? -1 : 1) * (t0 / 2 + 0.003)); if (r.f > 0) m0.rotation.y = Math.PI; m0.receiveShadow = true; m0.userData.rivId = r.id; g0.add(m0); scene.add(g0); return;
         }
         const L = Lw(w), t = getWallThickness(w), V = c.V, it = items(w, r, true), Wd = V.u1 - V.u0, Hh = V.z1 - V.z0;
         const ppm = Math.max(60, Math.min(320, 2048 / Math.max(Wd, Hh, 0.5))), bb = {u0: V.u0, u1: V.u1, v0: V.z0, v1: V.z1};
