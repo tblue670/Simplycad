@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v23.4</title>
+<title>SimplyCAD Pro · v23.5</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -15054,9 +15054,9 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   /* tiene la lavorazione dentro il muro (fori e nicchie interni, i tagli possono toccare i bordi) */
   function clampWork(w, k) {
     const L = Lw(w), H = wh(w), t = wt(w);
-    k.w = Math.max(0.05, Math.min(L, +k.w || 0.05));
+    k.w = Math.max(0.01, Math.min(L, +k.w || 0.05));
     if (k.sh === 'round') k.h = k.w;
-    k.h = Math.max(0.05, Math.min(H, +k.h || 0.05));
+    k.h = Math.max(0.01, Math.min(H, +k.h || 0.05));
     if (k.sh === 'arch' && k.h < k.w / 2) k.h = Math.min(H, k.w / 2);
     if (k.sh === 'round' && k.h > H) { k.h = k.w = H; }
     k.cx = Math.max(k.w / 2, Math.min(L - k.w / 2, +k.cx || 0));
@@ -15098,7 +15098,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       return;
     }
     if (o.kind === 'pit') { SCpit.fitBox(w, e, r); return; }
-    if (o.kind === 'riv') { const wd = Math.max(0.05, Math.min(L, r.w)), hh = Math.max(0.05, Math.min(H, r.h)), cx0 = Math.max(wd / 2, Math.min(L - wd / 2, r.cx)), y0 = Math.max(0, Math.min(H - hh, r.y)); e.x0 = Math.round((cx0 - wd / 2) * 1000) / 1000; e.x1 = Math.round((cx0 + wd / 2) * 1000) / 1000; e.z0 = Math.round(y0 * 1000) / 1000; e.z1 = Math.round((y0 + hh) * 1000) / 1000; return; }
+    if (o.kind === 'riv') { const wd = Math.max(0.01, Math.min(L, r.w)), hh = Math.max(0.01, Math.min(H, r.h)), cx0 = Math.max(wd / 2, Math.min(L - wd / 2, r.cx)), y0 = Math.max(0, Math.min(H - hh, r.y)); e.x0 = Math.round((cx0 - wd / 2) * 1000) / 1000; e.x1 = Math.round((cx0 + wd / 2) * 1000) / 1000; e.z0 = Math.round(y0 * 1000) / 1000; e.z1 = Math.round((y0 + hh) * 1000) / 1000; return; }
     if (o.kind === 'cp') { SCcg.setSpan(e, r.cx - r.w / 2, r.cx + r.w / 2, r.y, r.y + r.h); return; }
     const wd = Math.max(0.2, Math.min(L, r.w)), hh = Math.max(0.2, Math.min(H, r.h));
     e.width = Math.round(wd * 1000) / 1000; e.height = Math.round(hh * 1000) / 1000;
@@ -15413,7 +15413,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   const selWork = w => works(w).find(k => k.id === S.selId) || null;
   /* v23.4: un tocco seleziona; trascinare sposta la vista. L'oggetto si sposta o si sagoma col dito solo con «✥ Sposta» acceso */
   const selKey = () => S.oSel ? S.oSel.kind + ':' + S.oSel.id : S.selId ? 'w:' + S.selId : '';
-  const isMove = () => !!S.moveOn && S.moveOn === selKey();
+  const isMove = () => !!selKey();   /* v23.5: l'oggetto già selezionato si sposta e si sagoma col dito; il primo tocco seleziona soltanto */
   function handles(w, k) {
     const u = toU(w, k.cx), x0 = u - k.w / 2, x1 = u + k.w / 2, y0 = k.y, y1 = k.y + k.h;
     const H = [[x0, y0, 'bl'], [x1, y0, 'br'], [x0, y1, 'tl'], [x1, y1, 'tr']];
@@ -15789,7 +15789,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     } else if (S.oSel && objOf(S.oSel)) {
       const o = S.oSel, e = objOf(o), r = proxy(w, o), F = fields(w, r), lk = lockedO(o);
       const extra = o.kind === 'cp' ? '<span class="wk-hint">' + esc((e.name || '') + ' · sp. ' + cm(wt(e)) + ' cm') + '</span>' : (o.kind === 'window' && e.kind === 'slide' ? '<span class="wk-hint">scorrevole</span>' : '');
-      h += '<div class="wk-row"><b style="color:#22d3ee">' + ON[o.kind] + '</b>' + extra + '<button class="wk-b' + (isMove() ? ' on' : '') + '" data-a="mv" style="margin-left:auto" title="Acceso: trascini l\'oggetto e le maniglie col dito">✥ Sposta</button><button class="wk-b" data-a="odel" style="color:#fca5a5">🗑 Elimina</button><button class="wk-b sc-fine" data-a="done" title="Fine: deseleziona e torna allo stato iniziale">✔ Fine</button></div>';
+      h += '<div class="wk-row"><b style="color:#22d3ee">' + ON[o.kind] + '</b>' + extra + '<button class="wk-b" data-a="odel" style="margin-left:auto;color:#fca5a5">🗑 Elimina</button><button class="wk-b sc-fine" data-a="done" title="Fine: deseleziona e torna allo stato iniziale">✔ Fine</button></div>';
       if (lk) h += '<div class="wk-hint wk-warn">Su un livello bloccato: puoi solo guardare.</div>';
       h += '<div class="wk-row">' + F.map(([key, lab, v]) => '<button class="wk-f' + (S.field === key ? ' on' : '') + '" data-f="' + key + '"><small>' + lab + ' (m)</small><b>' + (S.field === key ? (S.buf ? esc(S.buf) : '<i>' + f2(v) + '</i>') : f2(v)) + '</b></button>').join('') + '</div>';
       if (S.field) h += keypadHTML();
@@ -15800,7 +15800,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       if (o.kind === 'door') h += '<div class="wk-hint">La porta parte sempre da terra.</div>';
     } else if (k) {
       const F = fields(w, k);
-      h += '<div class="wk-row"><b style="color:#22d3ee">' + KN[k.k] + (k.sh !== 'rect' ? ' ' + SN[k.sh] : '') + '</b>' + (k.k === 'niche' ? '<span class="wk-hint">sul ' + (k.f === S.face ? 'lato che guardi' : 'lato opposto') + '</span>' : '') + '<button class="wk-b' + (isMove() ? ' on' : '') + '" data-a="mv" style="margin-left:auto" title="Acceso: trascini l\'oggetto e le maniglie col dito">✥ Sposta</button><button class="wk-b" data-a="del" style="color:#fca5a5">🗑 Elimina</button><button class="wk-b sc-fine" data-a="done" title="Fine: deseleziona e torna allo stato iniziale">✔ Fine</button></div>';
+      h += '<div class="wk-row"><b style="color:#22d3ee">' + KN[k.k] + (k.sh !== 'rect' ? ' ' + SN[k.sh] : '') + '</b>' + (k.k === 'niche' ? '<span class="wk-hint">sul ' + (k.f === S.face ? 'lato che guardi' : 'lato opposto') + '</span>' : '') + '<button class="wk-b" data-a="del" style="margin-left:auto;color:#fca5a5">🗑 Elimina</button><button class="wk-b sc-fine" data-a="done" title="Fine: deseleziona e torna allo stato iniziale">✔ Fine</button></div>';
       h += '<div class="wk-row">' + F.map(([key, lab, v]) => '<button class="wk-f' + (S.field === key ? ' on' : '') + '" data-f="' + key + '"><small>' + lab + ' (m)</small><b>' + (S.field === key ? (S.buf ? esc(S.buf) : '<i>' + f2(v) + '</i>') : f2(v)) + '</b></button>').join('') + '</div>';
       if (S.field) h += keypadHTML();
       h += '<div class="wk-row">' + (k.k === 'niche' ? '<button class="wk-b" data-a="face">Sposta sull\'altro lato</button>' : '') + '<button class="wk-b" data-a="dup">Duplica</button></div>';
@@ -15813,7 +15813,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       else h += '<div class="wk-sum"' + (v ? ' data-a="sum" style="cursor:pointer"' : '') + '>' + (v ? '<b>Voce di computo (a corpo) ▾</b><br>' + esc(v.desc) + '<br><span style="color:#9ca3b8">' + esc(v.det) + '</span>' +
         (w.portante && q.cerch ? '<br><span class="wk-warn">⚠ Muro portante: le aperture richiedono progetto strutturale e pratica edilizia. La cerchiatura è in computo come voce da dimensionare.</span>' : '') :
         'Nessuna lavorazione su questo muro. Scegli <b>Foro</b>, <b>Nicchia</b> o <b>Taglio</b> e tocca due angoli sul prospetto.') + '</div>';
-      h += '<div class="wk-hint">Tocca un elemento per selezionarlo · trascina per spostare la vista · due dita: ingrandisci. Per spostarlo col dito: «✥ Sposta».</div>';
+      h += '<div class="wk-hint">Tocca un elemento per selezionarlo, poi trascinalo per spostarlo · trascinando altrove sposti la vista · due dita: ingrandisci.</div>';
     }
     if (locked) h = '<div class="wk-hint wk-warn">Muro su un livello bloccato: puoi solo guardare.</div>' + h;
     foot.innerHTML = h;
@@ -15874,8 +15874,8 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     if (S.oSel) {
       const k = proxy(w, S.oSel); if (!k) return; const L = Lw(w), u0 = toU(w, k.cx) - k.w / 2;
       if (!(v >= 0)) return toast('Valore non valido');
-      if (S.field === 'w') { if (v < 0.1) return toast('Almeno 0,10 m'); k.w = v; const uc = u0 + v / 2; k.cx = S.face > 0 ? L - uc : uc; }
-      else if (S.field === 'h') { if (v < 0.1) return toast('Almeno 0,10 m'); k.h = v; }
+      if (S.field === 'w') { if (v < 0.01) return toast('Almeno 0,01 m'); k.w = v; const uc = u0 + v / 2; k.cx = S.face > 0 ? L - uc : uc; }
+      else if (S.field === 'h') { if (v < 0.01) return toast('Almeno 0,01 m'); k.h = v; }
       else if (S.field === 'u') { const uc = v + k.w / 2; k.cx = S.face > 0 ? L - uc : uc; }
       else if (S.field === 'y') k.y = v;
       else if (S.field === 'r') { const uc = (L - v) - k.w / 2; k.cx = S.face > 0 ? L - uc : uc; }
@@ -15884,8 +15884,8 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     }
     const k = selWork(w); if (!k) return;
     const L = Lw(w), u0 = toU(w, k.cx) - k.w / 2;
-    if (S.field === 'w') { if (!(v >= 0.05)) return toast('Almeno 0,05 m'); const nu0 = u0; k.w = v; if (k.sh === 'round') k.h = v; const uc = nu0 + v / 2; k.cx = S.face > 0 ? L - uc : uc; }
-    else if (S.field === 'h') { if (!(v >= 0.05)) return toast('Almeno 0,05 m'); k.h = v; }
+    if (S.field === 'w') { if (!(v >= 0.01)) return toast('Almeno 0,01 m'); const nu0 = u0; k.w = v; if (k.sh === 'round') k.h = v; const uc = nu0 + v / 2; k.cx = S.face > 0 ? L - uc : uc; }
+    else if (S.field === 'h') { if (!(v >= 0.01)) return toast('Almeno 0,01 m'); k.h = v; }
     else if (S.field === 'u') { if (!(v >= 0)) return toast('Valore non valido'); const uc = v + k.w / 2; k.cx = S.face > 0 ? L - uc : uc; }
     else if (S.field === 'y') { if (!(v >= 0)) return toast('Valore non valido'); if (k.k === 'cut' && edgesOn(w, k).t) { const top = k.y + k.h; k.y = Math.min(v, top - 0.05); k.h = top - k.y; } else k.y = v; }
     else if (S.field === 'd') { if (!(v > 0) || v > wt(w) - 0.02) return toast('Profondità da 0,01 a ' + f2(wt(w) - 0.02) + ' m (spessore ' + f2(wt(w)) + ')'); k.d = v; }
@@ -20416,8 +20416,9 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
    SC_REL.v è l'unica versione: titolo, Guida, file salvato, avvisi e riga messaggi la leggono da qui.
    ======================================================================== */
 window.SC_REL = {
-  v: '23.4', d: '27/10/2026',
+  v: '23.5', d: '27/10/2026',
   news: [
+    ['23.5', 'Prospetto: il primo tocco seleziona l\'oggetto senza muoverlo; trascinando l\'oggetto già selezionato lo sposti e lo sagomi col dito, come prima. Misure minime scrivibili: 1 cm (zoccoli, fasce).'],
     ['23.4', 'Prospetto: un tocco seleziona e basta, trascinare sposta la vista; per spostare o sagomare un oggetto col dito si accende «✥ Sposta» (accanto a Elimina e Fine). Tastierino: «✓ OK» dentro la griglia (in verticale finiva sotto il bordo e il valore non si confermava); cambiando campo o toccando il disegno il valore scritto si applica.'],
     ['23.3', 'Righe scure nel 3D su tablet: su tablet e telefoni il 3D usa ora la profondità normale invece di quella logaritmica, che su alcune schede grafiche mobili disegnava righe attraverso i muri; nel tour la griglia del terreno è nascosta. In ⚙ si può scegliere a mano «3D · profondità» per provare (vale dalla riapertura).'],
     ['23.2', 'Illuminazione del 3D: entrando nel 3D parte la notte con i punti luce messi in pianta; se non ci sono luci, il giorno. Il pulsante Notte/Giorno resta e la scelta si salva nel progetto. Nuova barra «☀ Luce» nel 3D (e nella copia per il cliente) per la luminosità. Di notte vista da fuori si accendono lampade sparse in tutta la casa, con una luce di base calda.'],
@@ -21724,7 +21725,7 @@ window.SC_REL = {
   /* il riquadro (larghezza, altezza, posizione) si cambia scalando il contorno */
   function fitBox(w, r, q) {
     const b = bbox(r), L = Lw(w), H = getWallHeight(w), bw = Math.max(1e-6, b.x1 - b.x0), bh = Math.max(1e-6, b.z1 - b.z0);
-    const nw = Math.max(0.05, Math.min(L, q.w)), nh = Math.max(0.05, Math.min(H, q.h)), x0 = Math.max(0, Math.min(L - nw, q.cx - nw / 2)), z0 = Math.max(0, Math.min(H - nh, q.y));
+    const nw = Math.max(0.01, Math.min(L, q.w)), nh = Math.max(0.01, Math.min(H, q.h)), x0 = Math.max(0, Math.min(L - nw, q.cx - nw / 2)), z0 = Math.max(0, Math.min(H - nh, q.y));
     r.pts.forEach(p => { p.x = Math.round((x0 + (p.x - b.x0) / bw * nw) * 1000) / 1000; p.z = Math.round((z0 + (p.z - b.z0) / bh * nh) * 1000) / 1000; });
   }
   /* aperture e lavorazioni che bucano la superficie (rettangoli in coordinate del muro) */
@@ -21792,7 +21793,7 @@ window.SC_REL = {
       '<div style="flex:1;min-width:0"><b>' + esc(f.name) + '</b>' + (f.code ? ' <span style="color:#9ca3b8">' + esc(f.code) + '</span>' : '') + '<br><span style="color:#cbd5e1;font-size:12px">' + TYPES[f.type] + ' · ' + f2(a) + ' m² netti' + (f.pr != null ? ' · € ' + f2(f.pr) + '/m²' : '') + '</span></div>' +
       '<button class="wk-b" data-pt="lib">🎨 Cambia finitura…</button></div>' +
       (CV && CV.id === r.id && r.pts[CV.i] && r.pts.length > 3 ? '<div class="wk-row"><button class="wk-b" data-pt="vdel">✖ Togli il vertice ' + (CV.i + 1) + '</button></div>' : '') +
-      '<div class="wk-hint">Con «✥ Sposta» acceso: trascini la superficie, i quadratini per sagomarla, il pallino a metà di un lato per aggiungere un vertice.</div>';
+      '<div class="wk-hint">Trascina la superficie per spostarla, i quadratini per sagomarla, il pallino a metà di un lato per aggiungere un vertice.</div>';
   }
   function bind(foot, ctl) {
     foot.addEventListener('click', ev => {
