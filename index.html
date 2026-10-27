@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v23.5</title>
+<title>SimplyCAD Pro · v23.6</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -4905,7 +4905,7 @@ function build3DWindow(g, wi, T) {
     if (pf) box3(g, hdMat, 0.02, 0.1, 0.03, hx, hy, -(sd / 2 + 0.012), false);
   }
   /* davanzale */
-  if (y0 > 0.05) box3(g, sMat, W + 0.1, 0.03, T + 0.08, W / 2, y0 - 0.015, 0);
+  if (y0 > 0.05) box3(g, sMat, W + 0.1, 0.03, T + 0.08, W / 2, y0 - 0.015, 0, false);   /* v23.6: niente ombra seghettata sotto il davanzale */
   else if (pf) box3(g, sMat, W, 0.03, T + 0.04, W / 2, 0.015, 0);   /* soglia */
 }
 
@@ -15114,8 +15114,8 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     for (const d of state.doors) if (d.wallId === w.id && isEntityVisible(d) && inR(proxy(w, {kind: 'door', id: d.id}))) return {kind: 'door', id: d.id};
     for (const d of state.windows) if (d.wallId === w.id && isEntityVisible(d) && inR(proxy(w, {kind: 'window', id: d.id}))) return {kind: 'window', id: d.id};
     for (const c of cpsOf(w)) if (c.cg.side === S.face && inR(proxy(w, {kind: 'cp', id: c.id}))) return {kind: 'cp', id: c.id};
-    if (window.SCpit) { const q = SCpit.hit(w, S.face, x, v); if (q) return {kind: 'pit', id: q.id}; }
     for (const q of (w.riv || []).slice().reverse()) if (q.f === S.face && inR(proxy(w, {kind: 'riv', id: q.id}))) return {kind: 'riv', id: q.id};
+    if (window.SCpit) { const q = SCpit.hit(w, S.face, x, v); if (q) return {kind: 'pit', id: q.id}; }
     return null;
   }
   const selRect = w => S.oSel ? proxy(w, S.oSel) : (selWork(w) ? clampWork(w, {...selWork(w)}) : null);
@@ -15436,8 +15436,8 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     /* v12.8: foto raddrizzata del muro come sfondo (solo dal lato da cui è stata scattata) */
     S.phOn = false;
     if (window.SCph && S.photo !== false) { const bg = SCph.bgOf(w); if (bg && (bg.face == null ? defaultFace(w) : bg.face) === S.face) { const pc = SCph.rectified(bg, L, Hw); if (pc) { cx.drawImage(pc, sx(0), sy(Hw), L * S.view.s, Hw * S.view.s); S.phOn = true; } } }
+    if (window.SCpit) { try { SCpit.draw(cx, w, S.face, sx, sy, S.view.s, S.oSel, isMove()); } catch (e) { console.warn('pittura', e); } }   /* v22.9 · v23.6: la pittura sta sotto il rivestimento */
     if (window.SCriv) { try { SCriv.draw(cx, w, S.face, sx, sy, S.view.s, S.oSel); } catch (e) { console.warn('rivestimento', e); } }   /* v19.0 */
-    if (window.SCpit) { try { SCpit.draw(cx, w, S.face, sx, sy, S.view.s, S.oSel, isMove()); } catch (e) { console.warn('pittura', e); } }   /* v22.9 */
     /* v12.9.4: muri che si innestano (fascia tratteggiata dal lato che guardi, contorno sottile dall'altro) e stanze */
     const J = junctions(w);
     J.forEach(j => {
@@ -20416,8 +20416,9 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
    SC_REL.v è l'unica versione: titolo, Guida, file salvato, avvisi e riga messaggi la leggono da qui.
    ======================================================================== */
 window.SC_REL = {
-  v: '23.5', d: '27/10/2026',
+  v: '23.6', d: '27/10/2026',
   news: [
+    ['23.6', 'Rivestimenti e zoccolini: la pittura sta sempre sotto il rivestimento (prospetto, 3D e tocco); un rivestimento senza skin si vede comunque in 3D, in tinta unita. Ombre del 3D più nitide (niente righe seghettate sotto i davanzali e lungo i muri).'],
     ['23.5', 'Prospetto: il primo tocco seleziona l\'oggetto senza muoverlo; trascinando l\'oggetto già selezionato lo sposti e lo sagomi col dito, come prima. Misure minime scrivibili: 1 cm (zoccoli, fasce).'],
     ['23.4', 'Prospetto: un tocco seleziona e basta, trascinare sposta la vista; per spostare o sagomare un oggetto col dito si accende «✥ Sposta» (accanto a Elimina e Fine). Tastierino: «✓ OK» dentro la griglia (in verticale finiva sotto il bordo e il valore non si confermava); cambiando campo o toccando il disegno il valore scritto si applica.'],
     ['23.3', 'Righe scure nel 3D su tablet: su tablet e telefoni il 3D usa ora la profondità normale invece di quella logaritmica, che su alcune schede grafiche mobili disegnava righe attraverso i muri; nel tour la griglia del terreno è nascosta. In ⚙ si può scegliere a mano «3D · profondità» per provare (vale dalla riapertura).'],
@@ -21549,7 +21550,13 @@ window.SC_REL = {
     if (!window.THREE || !THREE.CanvasTexture) return;
     all().forEach(({w, r}) => {
       try {
-        const c = resolve(w, r); if (!c || !c.res.pieces.length) return;
+        const c = resolve(w, r);
+        if (!c || !c.res.pieces.length) {   /* v23.6: senza skin (o pezzi non calcolati) si vede comunque, in tinta unita */
+          const L0 = Lw(w), t0 = getWallThickness(w), V0 = view(w, r), sk0 = r.sk && SCskin.get(r.sk.id), Wd0 = r.x1 - r.x0, Hh0 = r.z1 - r.z0; if (Wd0 < 0.005 || Hh0 < 0.005) return;
+          const m0 = new THREE.Mesh(new THREE.PlaneGeometry(Wd0, Hh0), new THREE.MeshStandardMaterial({color: new THREE.Color((sk0 && sk0.col) || '#e7e2d8'), roughness: 0.5, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2}));
+          const a0 = Math.atan2(w.p2.y - w.p1.y, w.p2.x - w.p1.x), g0 = new THREE.Group(); g0.position.set((w.p1.x + w.p2.x) / 2, 0, -(w.p1.y + w.p2.y) / 2); g0.rotation.y = a0;
+          m0.position.set((r.x0 + r.x1) / 2 - L0 / 2, (r.z0 + r.z1) / 2, (r.f > 0 ? -1 : 1) * (t0 / 2 + 0.003)); m0.userData.rivId = r.id; g0.add(m0); scene.add(g0); return;
+        }
         const L = Lw(w), t = getWallThickness(w), V = c.V, it = items(w, r, true), Wd = V.u1 - V.u0, Hh = V.z1 - V.z0;
         const ppm = Math.max(60, Math.min(320, 2048 / Math.max(Wd, Hh, 0.5))), bb = {u0: V.u0, u1: V.u1, v0: V.z0, v1: V.z1};
         const cv = SCskin.raster(c.res, c.e.sk, bb, ppm), x = cv.getContext('2d'), kx = cv.width / Wd, ky = cv.height / Hh;
@@ -21883,10 +21890,10 @@ window.SC_REL = {
         g.globalCompositeOperation = 'destination-out'; g.fillStyle = '#000'; cutsOf(w, r).forEach(q => g.fillRect(X(q.x0), Y(q.z1), (q.x1 - q.x0) * ppm, (q.z1 - q.z0) * ppm));
         (w.works || []).forEach(k0 => { if (k0.k !== 'niche' || k0.f !== r.f) return; const k = SCwk.clamp(w, {...k0}); g.fillRect(X(k.cx - k.w / 2), Y(k.y + k.h), k.w * ppm, k.h * ppm); });
         const tex = new THREE.CanvasTexture(cv); if (THREE.sRGBEncoding) tex.encoding = THREE.sRGBEncoding; tex.anisotropy = 4;
-        const C = r.pts.map(p => new THREE.Vector2(p.x, p.z)), tri = THREE.ShapeUtils.triangulateShape(C, []), sg = r.f > 0 ? -1 : 1, z = sg * (t / 2 + 0.004);
+        const C = r.pts.map(p => new THREE.Vector2(p.x, p.z)), tri = THREE.ShapeUtils.triangulateShape(C, []), sg = r.f > 0 ? -1 : 1, z = sg * (t / 2 + 0.0015);   /* v23.6: sotto il rivestimento (che sta a 3 mm) */
         const pos = [], uv = [], idx = []; r.pts.forEach(p => { pos.push(p.x - L / 2, p.z, z); uv.push((p.x - b.x0) / Wd, (p.z - b.z0) / Hh); }); tri.forEach(T => idx.push(T[0], T[1], T[2]));
         const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); geo.setIndex(idx); geo.computeVertexNormals();
-        const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({map: tex, transparent: true, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 1 - 0.75 * f.gl, metalness: 0, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3}));
+        const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({map: tex, transparent: true, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 1 - 0.75 * f.gl, metalness: 0, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1}));
         const ang = Math.atan2(w.p2.y - w.p1.y, w.p2.x - w.p1.x), G = new THREE.Group(); G.position.set((w.p1.x + w.p2.x) / 2, 0, -(w.p1.y + w.p2.y) / 2); G.rotation.y = ang;
         m.receiveShadow = true; m.userData.pitId = r.id; G.add(m); scene.add(G);
       } catch (err) { console.warn('pittura 3D', err); }
@@ -22567,8 +22574,22 @@ window.SC_REL = {
       if (k !== sig) { sig = k; setDayNight(want()); }
       sync();
     }
-    return _b.apply(this, arguments);
+    const r = _b.apply(this, arguments);
+    try { fitShadow(); } catch (_) {}
+    return r;
   };
+  /* v23.6: l'ombra del sole copre solo la casa (prima 50 m): ombre nitide, niente bordi a dente di sega */
+  function fitShadow() {
+    if (state.mode !== '3d' || typeof scene === 'undefined' || !scene || !dirLight) return;
+    const B = new THREE.Box3(), tmp = new THREE.Box3();
+    scene.traverse(o => { if (!o.isMesh || !o.geometry || (o.userData && (o.userData.backdrop || o.userData.noExport))) return; const g = o.geometry; if (g.type === 'PlaneGeometry' && g.parameters && g.parameters.width >= 30) return; tmp.setFromObject(o); if (!tmp.isEmpty()) B.union(tmp); });
+    if (B.isEmpty()) return;
+    const c = B.getCenter(new THREE.Vector3()), sz = B.getSize(new THREE.Vector3()), R = Math.max(4, Math.hypot(sz.x, sz.y, sz.z) / 2 + 0.5);
+    const cam = dirLight.shadow.camera; cam.left = -R; cam.right = R; cam.top = R; cam.bottom = -R; cam.near = 0.5; cam.far = 4 * R + 30; cam.updateProjectionMatrix();
+    const d = new THREE.Vector3(10, 20, 10).normalize().multiplyScalar(2 * R + 10); dirLight.position.copy(c).add(d);
+    if (!dirLight.target.parent) scene.add(dirLight.target); dirLight.target.position.copy(c); dirLight.target.updateMatrixWorld();
+    dirLight.shadow.normalBias = Math.max(0.01, R / 400); dirLight.shadow.needsUpdate = true;
+  }
   if (box) {
     box.addEventListener('input', () => { state.light3d = Object.assign({}, state.light3d, {k: +box.value}); sig = ((state.light3d.m) || 'auto') + '|' + hasLights2D() + '|' + lightK(); setDayNight(isNight); });
     box.addEventListener('change', () => { try { checkpoint(); } catch (_) {} });
