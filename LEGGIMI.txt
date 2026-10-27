@@ -1,4 +1,4 @@
-SimplyCAD Pro - pubblicazione su GitHub Pages (v24.0)
+SimplyCAD Pro - pubblicazione su GitHub Pages (v24.3)
 
 Contenuto (vanno caricati tutti, senza rinominarli e SENZA cartelle intorno):
   index.html  sw.js  manifest.webmanifest  icon-192.png  icon-512.png  icon-maskable.png  README.md
@@ -93,6 +93,25 @@ NOVITÀ v18.9
 
 NOVITÀ v18.9.1
  - 🧲 Aggancia anche nella barra interattiva (senza selezione) e nel suo menu ⋯.
+
+NOVITÀ v24.3
+ - Sezione, punti della traccia col cursore sfalsato (come il Muro): il primo punto resta segnato con «Inizio A–A»,
+   il secondo mostra la linea in anteprima.
+ - La traccia si sposta e si stira in pianta: dalla lettera o dall'estremo la stiri, dal tratto (a sezione aperta)
+   la sposti tutta. La sezione cambia in tempo reale. ↶ annulla.
+ - Misura anche nel prospetto e nella sezione (pulsante «📏 Misura»): due punti, distanza orizzontale, verticale e
+   inclinata. Si aggancia a spigoli, aperture, solai, controsoffitti e livelli. È temporanea: non si stampa.
+
+NOVITÀ v24.2
+ - Vista → «Solo nel 3D»: Pavimenti e Soffitto dei locali. Il soffitto è ora vero (uno per locale, all'altezza dei
+   muri, visibile da sotto nel tour; i controsoffitti gli stanno davanti) e il 3D si aggiorna subito.
+   Con «Pavimenti» spento sparisce anche il pavimento delle Aree.
+ - Etichette: nuova voce «Controsoffitti e false travi» (compresa in «Nascondi tutte»). Con le etichette nascoste
+   si apre il riquadro toccando la forma.
+
+NOVITÀ v24.1
+ - 3D: soffitti e controsoffitti visti da sotto risultavano grigi (arrivava solo la luce dall'alto), così la
+   fascia bianca lungo i muri sembrava uno spessore. Aggiunta la luce riflessa dal pavimento: il bianco è bianco.
 
 NOVITÀ v24.0 · PROGETTO SOFFITTO
  - Controsoffitti a livelli: disegna in pianta un controsoffitto (anche ovale o a forma libera) dentro un altro e

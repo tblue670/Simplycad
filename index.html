@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v24.0</title>
+<title>SimplyCAD Pro · v24.3</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -946,8 +946,6 @@ body.mode-3d #infoStrip .scale-badge{display:none}
       <div class="menu-sep"></div>
       <div class="menu-label">Visualizzazione</div>
       <div class="menu-pad">
-        <label><input type="checkbox" id="showFloor" checked> Pavimento</label>
-        <label><input type="checkbox" id="showCeiling"> Soffitto</label>
         <label><input type="checkbox" id="showDimensions" checked> Quote muri</label>
         <label><input type="checkbox" id="showFurniture" checked> Arredi</label>
         <label><input type="checkbox" id="showLabels" checked> Testi</label>
@@ -956,11 +954,18 @@ body.mode-3d #infoStrip .scale-badge{display:none}
         <label><input type="checkbox" id="showWallNames" checked> Nomi muri</label>
       </div>
       <div class="menu-sep"></div>
+      <div class="menu-label">Solo nel 3D</div>
+      <div class="menu-pad">
+        <label><input type="checkbox" id="showFloor" checked> Pavimenti (locali e Aree)</label>
+        <label><input type="checkbox" id="showCeil3d" checked> Soffitto dei locali</label>
+      </div>
+      <div class="menu-sep"></div>
       <div class="menu-label">Etichette (anche in stampa)</div>
       <div class="menu-pad">
         <label><input type="checkbox" id="lblZoneName" checked> Aree: nome e lavorazione</label>
         <label><input type="checkbox" id="lblZoneSup" checked> Aree: superficie</label>
         <label><input type="checkbox" id="lblZonePer" checked> Aree: perimetro</label>
+        <label><input type="checkbox" id="lblCs" checked> Controsoffitti e false travi</label>
         <label><input type="checkbox" id="lblH" checked> Altezze dei punti impianti (h+)</label>
         <div style="display:flex;gap:5px;margin:6px 0"><button class="wt-btn" id="lblAllOff" style="flex:1">🏷 Nascondi tutte</button><button class="wt-btn" id="lblAllOn" style="flex:1">🏷 Mostra tutte</button></div>
         <div style="font-size:10px;color:#777;line-height:1.3">«Tutte» comprende anche Nomi stanze, Nomi muri e Testi. Le scelte si salvano nel progetto.</div>
@@ -2442,6 +2447,7 @@ document.getElementById('wallAngle').addEventListener('input', e => {
    7) CANVAS
    ======================================================================== */
 const c2d = document.getElementById('canvas2d');
+window.addEventListener('pointerdown', e => { if (window.__traceHit && window.__traceHit(e)) { e.stopImmediatePropagation(); return; } }, true);   /* v24.3: la traccia di sezione ha la precedenza su etichette e Aree */
 window.addEventListener('pointerdown', e => { if (window.__zoneHit && window.__zoneHit(e)) { e.stopImmediatePropagation(); e.preventDefault(); } }, true);   /* v10.0: clic sul riquadro di un'area, prima di ogni altro gestore */
 const ctx = c2d.getContext('2d');
 let viewOffset = {x: 0, y: 0};
@@ -4755,7 +4761,7 @@ function init3D() {
   controls.enableDamping = true;
   controls.target.set(0, 1.5, 0);
   ambientLight = new THREE.AmbientLight(0xffffff, 0.6); scene.add(ambientLight);
-  hemiLight = new THREE.HemisphereLight(0xffffff, 0x444455, 0.5); scene.add(hemiLight);
+  hemiLight = new THREE.HemisphereLight(0xffffff, 0xb9b3a8, 0.5); scene.add(hemiLight);   /* v24.0: luce riflessa dal pavimento, i soffitti visti da sotto non sono più grigi */
   dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
   dirLight.position.set(10, 20, 10);
   dirLight.castShadow = true;
@@ -5110,11 +5116,6 @@ function build3D() {
     grp.position.set(wall.p1.x + dx * (wi.t - halfTOffset), 0, -(wall.p1.y + dy * (wi.t - halfTOffset))); grp.rotation.y = ang + (wi.rotation || 0);
     build3DWindow(grp, wi, getWallThickness(wall));
     scene.add(grp);
-  }
-  if (document.getElementById('showCeiling').checked) {
-    const c = new THREE.Mesh(new THREE.PlaneGeometry(BG.S, BG.S),
-      new THREE.MeshStandardMaterial({color: 0xf0f0f0, roughness: 0.9, transparent: true, opacity: 0.4}));
-    c.rotation.x = Math.PI/2; c.position.set(BG.cx, wh + 0.004, -BG.cy); c.userData.ceil = true; scene.add(c);   /* v12.5: appena sopra le teste dei muri */
   }
   {
     const showF = document.getElementById('showFurniture').checked;
@@ -9109,7 +9110,7 @@ $('impAnyInput').onchange = async e => {
      - storico: ultimi salvataggi, uno per sessione (anche di versioni precedenti dell'app), prima di Nuovo / Apri / Ripristina,
        prima di un calo improvviso del lavoro e la versione piu' completa mai vista
      ===================================================================== */
-  const APPV = '8.0', IDBN = 'simplycad_auto', TOGIDS = ['showFloor', 'showCeiling', 'showDimensions', 'showFurniture', 'showLabels', 'showWallNames', 'showRoomNames', 'lblZoneName', 'lblZoneSup', 'lblZonePer', 'lblH', 'snapAngles', 'snapGrid', 'snapPts'];
+  const APPV = '8.0', IDBN = 'simplycad_auto', TOGIDS = ['showFloor', 'showCeil3d', 'showDimensions', 'lblCs', 'showFurniture', 'showLabels', 'showWallNames', 'showRoomNames', 'lblZoneName', 'lblZoneSup', 'lblZonePer', 'lblH', 'snapAngles', 'snapGrid', 'snapPts'];
   let idbP = null, lastSaved = 0, allowEmpty = false, saveT = 0, busy = false, again = false, lastJ = '', lastHist = 0, lastPeakAt = 0, failWarned = false, ready = false;
   const idb = () => idbP || (idbP = new Promise((res, rej) => {
     try {
@@ -9596,7 +9597,7 @@ applyMenuPosition();
   ws.appendChild(cur);
   const NOT = ['select', 'box', 'moveBg', 'sv'], OFF_MAX = 72, OX_RATIO = 44 / 72, GAIN = 0.6;
   let g = null;
-  const eligible = () => appSettings.finger !== 'off' && state.mode === '2d' && !document.body.classList.contains('sv-on') && !NOT.includes(state.tool);
+  const eligible = () => appSettings.finger !== 'off' && state.mode === '2d' && !document.body.classList.contains('sv-on') && (!NOT.includes(state.tool) || !!(window.SCsez && SCsez.tracing && SCsez.tracing()));   /* v24.3: anche per la traccia di sezione */
   // Offset progressivo: al tocco il cursore sta sotto il dito (un tocco rapido mette il punto sotto il dito);
   // trascinando si stacca, in proporzione alla strada percorsa, fino a OFF_MAX px sopra il dito.
   function cursorAt(fx, fy, run) {
@@ -9650,7 +9651,7 @@ applyMenuPosition();
   sel.value = appSettings.finger;
   sel.onchange = () => { appSettings.finger = sel.value; persistSettings(); if (g) end(); };
   /* uso da parte della modifica dei vertici (tocco): stesso cursore sfalsato rispetto al dito */
-  window.SCfinger = { eligible,
+  window.SCfinger = { eligible, active: () => !!g,
     on: () => appSettings.finger !== 'off' && state.mode === '2d',
     pos: cursorAt,
     show(c) { const wr = ws.getBoundingClientRect(); cur.style.display = 'block'; cur.style.left = (c.x - wr.left) + 'px'; cur.style.top = (c.y - wr.top) + 'px'; },
@@ -10201,7 +10202,7 @@ updateRoomList();
    (anche se il browser ricarica la pagina, ad esempio dopo il selettore file)
    ======================================================================== */
 (function () {
-  const KEY = 'simplycad_toggles_v1', IDS = ['showFloor', 'showCeiling', 'showDimensions', 'showFurniture', 'showLabels', 'showWallNames', 'showRoomNames', 'lblZoneName', 'lblZoneSup', 'lblZonePer', 'lblH', 'snapAngles', 'snapGrid', 'snapPts'];
+  const KEY = 'simplycad_toggles_v1', IDS = ['showFloor', 'showCeil3d', 'showDimensions', 'lblCs', 'showFurniture', 'showLabels', 'showWallNames', 'showRoomNames', 'lblZoneName', 'lblZoneSup', 'lblZonePer', 'lblH', 'snapAngles', 'snapGrid', 'snapPts'];
   let saved = {}; try { saved = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (_) {}
   const save = () => { const o = {}; IDS.forEach(id => { const e = document.getElementById(id); if (e) o[id] = !!e.checked; });
     try { if (window.SCsv && SCsv.active() && SCsv.state() && SCsv.state().prevDim !== undefined) o.showDimensions = !!SCsv.state().prevDim; } catch (_) {}   /* in Rilievo le quote sono nascoste solo temporaneamente */
@@ -10582,6 +10583,7 @@ updateRoomList();
   /* 3D: l'area compare come campitura colorata sul pavimento del suo piano */
   function addZones3D() {
     if (state.mode !== '3d' || typeof scene === 'undefined' || !scene || !state.zones.length) return;
+    { const e = document.getElementById('showFloor'); if (e && !e.checked) return; }   /* v24.2: «Pavimenti» spento toglie anche le Aree */
     const cf = (window.SCfl && SCfl.cfg) || {}, cur = state.floors.find(f => f.id === state.currentFloorId);
     state.zones.forEach(z => {
       if (!z.pts || z.pts.length < 3) return;
@@ -12891,7 +12893,7 @@ updateRoomList();
   [['tutto', 'vzAll'], ['+', 'vzIn'], ['-', 'vzOut'], ['100', 'vzReset'], ['selezione', 'vzSel'], ['finestra', 'vzWin'], ['prec', 'vzPrev']].forEach(([k, id]) => def('Vista', 'zoom ' + k, 'zoom ' + k, {tutto: 'Adatta la vista a tutto il disegno', '+': 'Ingrandisce', '-': 'Riduce', 100: 'Zoom 100%', selezione: 'Zoom sulla selezione', finestra: 'Zoom finestra: trascina un riquadro', prec: 'Zoom precedente'}[k], () => { click(id); }));
   def('Vista', '2d', '2d', 'Passa alla vista 2D', () => { document.querySelector('.tab[data-mode="2d"]').click(); ok('Vista 2D'); });
   def('Vista', '3d', '3d', 'Passa alla vista 3D', () => { document.querySelector('.tab[data-mode="3d"]').click(); ok('Vista 3D'); });
-  const SH = {quote: 'showDimensions', arredi: 'showFurniture', testi: 'showLabels', pavimento: 'showFloor', soffitto: 'showCeiling'};
+  const SH = {quote: 'showDimensions', arredi: 'showFurniture', testi: 'showLabels', pavimento: 'showFloor', soffitto: 'showCeil3d'};
   ['mostra', 'nascondi'].forEach(m => def('Vista', m, m + ' quote|arredi|testi|pavimento|soffitto', (m === 'mostra' ? 'Mostra' : 'Nasconde') + ' quote muri, arredi, testi, pavimento o soffitto', a => { const id = SH[norm(a[0] || '')]; if (!id) fail('Uso: ' + m + ' quote|arredi|testi|pavimento|soffitto'); const el = $$(id); el.checked = m === 'mostra'; el.dispatchEvent(new Event('change', {bubbles: true})); refresh(); ok(a[0] + (m === 'mostra' ? ' visibili' : ' nascosti')); }));
   def('Vista', 'schermo intero', 'schermo intero', 'Attiva o esce dallo schermo intero', () => { const b = $$('fsBtn'); if (!b || b.style.display === 'none') fail('Schermo intero non disponibile qui'); b.click(); });
 
@@ -14797,7 +14799,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
 'document.getElementById("v").appendChild(renderer.domElement);',
 'var scene=new THREE.Scene();scene.background=new THREE.Color(0xdfe6ee);',
 'var camera=new THREE.PerspectiveCamera(55,1,0.05,500);camera.rotation.order="YXZ";',
-'var amb=new THREE.AmbientLight(0xffffff,0.7),hemi=new THREE.HemisphereLight(0xffffff,0x8a8a99,0.5),sun=new THREE.DirectionalLight(0xffffff,0.6);',
+'var amb=new THREE.AmbientLight(0xffffff,0.7),hemi=new THREE.HemisphereLight(0xffffff,0xb9b3a8,0.5),sun=new THREE.DirectionalLight(0xffffff,0.6);',
 'sun.position.set(8,20,6);scene.add(amb);scene.add(hemi);scene.add(sun);',
 'var group=new THREE.Group();scene.add(group);',
 'D.m.forEach(function(g){var geo=new THREE.BufferGeometry();var p=new Float32Array(g.p.length);',
@@ -15278,6 +15280,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     </div>
     <div class="wk-tools">
       <button class="wk-b" data-t="sel">Seleziona</button>
+      <button class="wk-b" data-t="mis" title="Misura: tocca due punti, leggi distanza orizzontale, verticale e inclinata">📏 Misura</button>
       <button class="wk-b" data-t="hole">Foro</button>
       <button class="wk-b" data-t="niche">Nicchia</button>
       <button class="wk-b" data-t="cut">Taglio</button>
@@ -15360,7 +15363,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     if (isCpW(w)) { const h = wById(w.cg.host); if (h) return open(h.id, w.cg.side, {kind: 'cp', id: w.id}); }
     if (state.mode !== '2d') { toast('Il prospetto si usa nella vista 2D'); return; }
     if (Lw(w) < 0.05) return;
-    S.open = true; S.wallId = id; S.face = face || defaultFace(w); S.selId = null; S.oSel = oSel || null; S.first = null; S.field = null; S.buf = ''; S.drag = null; lastCv = '';
+    S.open = true; S.m = null; S.wallId = id; S.face = face || defaultFace(w); S.selId = null; S.oSel = oSel || null; S.first = null; S.field = null; S.buf = ''; S.drag = null; lastCv = '';
     if (!['sel', 'hole', 'niche', 'cut', 'cp', 'door', 'window', 'riv', 'pit'].includes(S.tool) || oSel) S.tool = 'sel'; S.pp = [];
     layout(); centerPlan(w); ui();
   }
@@ -15512,6 +15515,20 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     cx.textAlign = 'right'; cx.fillText(nr ? (nr.name || '') + ' ▶' : '', sx(L), sy(0) + (S.bays && S.bays.length > 1 ? 58 : 34));
     /* creazione in corso */
     if (S.tool === 'pit' && S.pitMode === 'poly' && window.SCpit) SCpit.drawTmp(cx, w, S.face, sx, sy, S.pp || [], S.cur);
+    if (S.tool === 'mis' && S.m) {   /* v24.3: misura temporanea (non si stampa) */
+      const A = S.m.a, B = S.m.b || S.cur; cx.save(); cx.strokeStyle = '#22d3ee'; cx.fillStyle = '#22d3ee';
+      if (A && B) {
+        const ax = sx(A.u), ay = sy(A.v), bx = sx(B.u), by = sy(B.v), du = B.u - A.u, dv = B.v - A.v;
+        cx.setLineDash([5, 4]); cx.lineWidth = 1.2; cx.beginPath(); cx.moveTo(ax, ay); cx.lineTo(bx, ay); cx.lineTo(bx, by); cx.stroke(); cx.setLineDash([]); cx.lineWidth = 2; cx.beginPath(); cx.moveTo(ax, ay); cx.lineTo(bx, by); cx.stroke();
+        cx.font = '700 12px "Segoe UI",sans-serif'; cx.textBaseline = 'bottom';
+        const lab = (t, x, y, al) => { cx.textAlign = al; const tw = cx.measureText(t).width; cx.fillStyle = 'rgba(11,18,32,.85)'; cx.fillRect(al === 'center' ? x - tw / 2 - 3 : al === 'left' ? x - 3 : x - tw - 3, y - 15, tw + 6, 17); cx.fillStyle = '#22d3ee'; cx.fillText(t, x, y); };
+        if (Math.abs(du) > 0.004) lab(f2(Math.abs(du)), (ax + bx) / 2, ay + (dv > 0 ? -2 : 18), 'center');
+        if (Math.abs(dv) > 0.004) lab(f2(Math.abs(dv)), bx + (du >= 0 ? 8 : -8), (ay + by) / 2 + 6, du >= 0 ? 'left' : 'right');
+        if (S.m.b && Math.abs(du) > 0.004 && Math.abs(dv) > 0.004) lab('d ' + f2(Math.hypot(du, dv)), (ax + bx) / 2, (ay + by) / 2 - 6, 'center');
+      }
+      [A, S.m.b].forEach(q => { if (!q) return; cx.fillStyle = '#22d3ee'; cx.beginPath(); cx.arc(sx(q.u), sy(q.v), 5, 0, 7); cx.fill(); cx.strokeStyle = '#0b1220'; cx.lineWidth = 1.5; cx.stroke(); });
+      cx.restore();
+    }
     if (S.first && S.cur) {
       const r = rectFrom(S.first, S.cur); cx.setLineDash([6, 4]); cx.strokeStyle = '#38bdf8'; cx.lineWidth = 1.5; cx.strokeRect(sx(r.u0), sy(r.v1), (r.u1 - r.u0) * S.view.s, (r.v1 - r.v0) * S.view.s); cx.setLineDash([]);
       cx.fillStyle = '#38bdf8'; cx.font = '600 12px "Segoe UI",sans-serif'; cx.textAlign = 'left'; cx.textBaseline = 'bottom'; cx.fillText(f2(r.u1 - r.u0) + ' × ' + f2(r.v1 - r.v0), sx(r.u1) + 6, sy(r.v1) - 2);
@@ -15713,6 +15730,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
         else { S.selId = null; S.oSel = null; S.moveOn = null; }
       }
       S.cur = null; render(); ui(); } return; }
+    if (S.tool === 'mis' && S.cur && e.type === 'pointerup') { if (!S.m || S.m.b) S.m = {a: S.cur, b: null}; else S.m.b = S.cur; S.cur = null; render(); ui(); return; }
     if (S.tool === 'pit' && S.pitMode === 'poly' && S.cur && e.type === 'pointerup') { pitPoint(w, S.cur); S.cur = null; return; }
     if (S.tool !== 'sel' && S.cur && e.type === 'pointerup') {
       if (!S.first) { S.first = S.cur; toast('Ora il secondo angolo'); render(); ui(); return; }
@@ -15726,7 +15744,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   cv.addEventListener('contextmenu', e => e.preventDefault());
 
   /* ---------------------------------------------------------------- pulsanti, campi e tastierino */
-  P.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { S.tool = b.dataset.t; S.first = null; S.cur = null; S.pp = []; if (S.tool !== 'sel') { S.selId = null; S.oSel = null; } ui(); render(); });
+  P.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { S.tool = b.dataset.t; S.first = null; S.cur = null; S.pp = []; S.m = null; if (S.tool !== 'sel') { S.selId = null; S.oSel = null; } ui(); render(); });
   P.querySelectorAll('[data-s]').forEach(b => b.onclick = () => {
     S.shape = b.dataset.s; const w = wById(S.wallId), k = w && selWork(w);
     if (k && k.k !== 'cut' && !isEntityLocked(w)) { k.sh = S.shape; if (k.sh === 'round') k.h = k.w; clampWork(w, k); commit(); } else { ui(); render(); }
@@ -15740,7 +15758,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     const hs = SCph.holders(w), main = hs[hs.length - 1];
     SCph.open({list, i: 0, title: w.name || 'Muro', holder: main, holders: hs, canBg: true, face: S.face, onChange: () => { S.photo = true; ui(); }});
   };
-  $w('wkFlip').onclick = () => { S.face = -S.face; S.first = null; ui(); try { draw2D(); } catch (_) {} };
+  $w('wkFlip').onclick = () => { S.face = -S.face; S.first = null; S.m = null; ui(); try { draw2D(); } catch (_) {} };
   $w('wkFit').onclick = () => { fitView(); render(); };
   $w('wkPrev').onclick = () => { const n = neighbour(-1); if (!n) return toast('Nessun muro collegato a sinistra'); goTo(n); };
   $w('wkNext').onclick = () => { const n = neighbour(1); if (!n) return toast('Nessun muro collegato a destra'); goTo(n); };
@@ -15777,6 +15795,13 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     { const pb = $w('wkPhoto'), n = window.SCph ? SCph.wallPhotos(w).length : 0, bg = n && SCph.bgOf(w); pb.style.display = n ? '' : 'none'; pb.classList.toggle('on', !!(bg && S.photo !== false && (bg.face == null ? defaultFace(w) : bg.face) === S.face)); pb.title = bg ? 'Foto come sfondo: mostra / nascondi' : 'Foto del muro: tocca per segnare gli angoli e usarla come sfondo'; } $w('wkFull').style.display = small() ? 'none' : '';
     const foot = $w('wkFoot'), locked = isEntityLocked(w); let h = '';
     if (S.tool !== 'sel') {
+      if (S.tool === 'mis') {
+        const m = S.m, A = m && m.a, B = m && m.b;
+        h += '<div class="wk-hint"><b>Misura</b> sul lato che guardi: ' + (!A ? 'tocca il primo punto.' : !B ? 'tocca il secondo punto.' : 'tocca un punto per ricominciare.') + ' Si aggancia a spigoli, aperture, lavorazioni e contorni. Col dito: tocca e trascina, il cursore si stacca; al rilascio il punto è confermato.</div>';
+        if (A && B) { const du = Math.abs(B.u - A.u), dv = Math.abs(B.v - A.v); h += '<div class="wk-row"><b style="color:#22d3ee">Orizzontale ' + f2(du) + ' m · Verticale ' + f2(dv) + ' m · Distanza ' + f2(Math.hypot(du, dv)) + ' m</b></div>'; }
+        h += '<div class="wk-row">' + (A ? '<button class="wk-b" data-a="mnew">↩ Nuova misura</button>' : '') + '<button class="wk-b sc-fine" data-a="done" title="Interrompe il comando e torna a Seleziona">✔ Fine</button></div>';
+        foot.innerHTML = h; render(); return;
+      }
       if (S.tool === 'pit') {
         const n = (S.pp || []).length, poly = S.pitMode === 'poly', fin = window.SCpit ? SCpit.last() : null;
         h += '<div class="wk-hint"><b>Pittura</b> sul lato che guardi' + (fin ? ' · «' + esc(fin.name) + '»' : '') + ': ' + (poly ? (n ? 'tocca il punto successivo; tocca il primo punto o «Chiudi contorno» per finire.' : 'tocca il primo punto del contorno.') : 'tocca il primo angolo, poi l\'angolo opposto.' + (S.first ? ' <b>Ora il secondo angolo.</b>' : '')) + '</div>';
@@ -15840,7 +15865,8 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     if (ab) {
       const a = ab.dataset.a, k = selWork(w);
       if (a === 'sum') { S.sumOpen = !S.sumOpen; ui(); return; }
-      if (a === 'done') { S.moveOn = null; S.selId = null; S.oSel = null; S.field = null; S.buf = ''; S.tool = 'sel'; S.first = null; S.cur = null; S.pp = []; if (window.SCpit) SCpit.setCur(null); ui(); render(); return; }
+      if (a === 'mnew') { S.m = null; S.cur = null; ui(); render(); return; }
+      if (a === 'done') { S.moveOn = null; S.selId = null; S.oSel = null; S.field = null; S.buf = ''; S.tool = 'sel'; S.first = null; S.cur = null; S.m = null; S.pp = []; if (window.SCpit) SCpit.setCur(null); ui(); render(); return; }
       if (a === 'mv') { S.moveOn = isMove() ? null : selKey(); ui(); render(); return; }
       if (a === 'pmode') { S.pitMode = ab.dataset.m; S.pp = []; S.first = null; ui(); return; }
       if (a === 'pundo') { (S.pp || []).pop(); ui(); render(); return; }
@@ -15969,7 +15995,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     if (S.open && (state.mode !== '2d' || document.body.classList.contains('sv-on') || !wById(S.wallId))) close();
   }, 400);
 
-  window.SCwk = {open, close, active: () => S.open, wall: () => S.wallId, sel: () => S.oSel || (S.selId ? {kind: 'work', id: S.selId} : null), face: () => S.face,
+  window.SCwk = {meas: () => S.m, open, close, active: () => S.open, wall: () => S.wallId, sel: () => S.oSel || (S.selId ? {kind: 'work', id: S.selId} : null), face: () => S.face,
     toClient: (u, v) => { const r = cv.getBoundingClientRect(); return [r.left + sx(u), r.top + sy(v)]; }, mesh3D, voce, qty, commit, ui,
     items: walls => walls.map(voce).filter(Boolean),
     priceOf: key => { const w = state.walls.find(x => 'mur_' + x.id === key); return w && w.wkPrice != null ? +w.wkPrice : null; },
@@ -16504,7 +16530,9 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   /* ---------------------------------------------------------------- pianta */
   const showOn = () => { const e = document.getElementById('showCs'); return !e || e.checked; };
   const kindOf = el => state.ceils.includes(el) ? 'c' : 'b';
+  const lblCsOn = () => { const e = document.getElementById('lblCs'); return !e || e.checked; };
   function labelBox(txt1, txt2, at, col, el) {
+    if (!lblCsOn() && el !== active) { boxes.push({el, hid: true}); return; }   /* v24.2: etichetta nascosta, si sceglie toccando la forma */
     const s = worldToScreen(at.x, at.y), K = lblK(); ctx.font = 'bold ' + Math.round(11.5 * K) + 'px sans-serif';
     const w = Math.max(ctx.measureText(txt1).width, ctx.measureText(txt2).width) + 14 * K, h = 32 * K, x = s.x - w / 2, y = s.y - h / 2;
     ctx.fillStyle = 'rgba(255,255,255,0.92)'; ctx.strokeStyle = col; ctx.lineWidth = el === active ? 2.5 : 1.5; ctx.setLineDash([]);
@@ -16585,7 +16613,15 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
 
   /* ---------------------------------------------------------------- selezione e modifica (riquadro, punti, curve) */
   const ws = document.querySelector('.workspace');
-  const pick = (x, y) => [...boxes].reverse().find(q => x >= q.x && x <= q.x + q.w && y >= q.y && y <= q.y + q.h);
+  const pick = (x, y) => {
+    const v = [...boxes].reverse().find(q => !q.hid && x >= q.x && x <= q.x + q.w && y >= q.y && y <= q.y + q.h); if (v) return v;
+    /* etichette nascoste: vale la falsa trave vicina, poi il controsoffitto più piccolo che contiene il punto */
+    const w = screenToWorld(x, y), tol = 12 / viewScale; let best = null, bA = Infinity;
+    boxes.forEach(q => { if (!q.hid) return; const el = q.el;
+      if (kindOf(el) === 'b') { const D = dense(el, false); for (let i = 0; i + 1 < D.length; i++) if (segD(w, D[i], D[i + 1]) <= Math.max(tol, el.w / 2)) { best = q; bA = -1; return; } return; }
+      if (bA < 0) return; const D = dense(el, true); if (!inPoly(w, D)) return; const A = Math.abs(polyArea(D)); if (A < bA) { bA = A; best = q; } });
+    return best;
+  };
   ws.addEventListener('pointerdown', e => {
     if (e.target !== c2d || state.mode !== '2d' || !(state.tool === 'select' || state.tool === 'box') || !showOn()) return;
     if (e.pointerType === 'mouse' && e.button !== 0) return;
@@ -16742,6 +16778,13 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
         box.position.set((v.a.x + v.b.x) / 2, (f.elev || 0) + v.z0 + v.h / 2, -(v.a.y + v.b.y) / 2); box.rotation.y = Math.atan2(v.b.y - v.a.y, v.b.x - v.a.x); box.castShadow = true; scene.add(box);
       });
     }));
+    /* v24.2: soffitto di ogni locale all'altezza dei muri, solo da sotto (tour); i controsoffitti, più bassi, gli stanno davanti */
+    const sc3 = document.getElementById('showCeil3d');
+    if (!sc3 || sc3.checked) (state.rooms || []).forEach(r => {
+      if (!r.polygon || r.polygon.length < 3) return; const L = getLayer(r.layerId); if (L && L.visible === false) return; const f = okF(r); if (!f) return;
+      const sh = new THREE.Shape(); r.polygon.forEach((p, i) => i ? sh.lineTo(p.x, p.y) : sh.moveTo(p.x, p.y)); sh.closePath();
+      const m = new THREE.Mesh(new THREE.ShapeGeometry(sh), finMat(null, THREE.BackSide, 1, 1)); m.rotation.x = -Math.PI / 2; m.position.y = (f.elev || 0) + topOf(floorOf(r)) - 0.001; m.receiveShadow = true; m.userData.roomCeil = r.id; scene.add(m);
+    });
     for (const b of state.beams) {
       const L = getLayer(b.layerId); if ((L && L.visible === false) || b.pts.length < 2) continue; const f = okF(b); if (!f) continue;
       const D = dense(b, false), top = topOf(floorOf(b));
@@ -16757,12 +16800,13 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   build3D = function () { const r = _b3.apply(this, arguments); try { add3D(); } catch (e) { console.warn('controsoffitti 3D', e); } return r; };
 
   /* ---------------------------------------------------------------- interruttore in Vista */
-  const sc = document.getElementById('showCeiling');
+  const sc = document.getElementById('showWallNames');
   if (sc && !document.getElementById('showCs')) {
     const lb = document.createElement('label'); lb.innerHTML = '<input type="checkbox" id="showCs" checked> Controsoffitti e false travi';
     sc.closest('label').after(lb);
     document.getElementById('showCs').addEventListener('change', () => { if (!showOn()) { active = null; closePal(); } draw2D(); if (state.mode === '3d') build3D(); });
   }
+  { const e = document.getElementById('showCeil3d'); if (e) e.addEventListener('change', () => { try { if (state.mode === '3d') build3D(); } catch (_) {} }); }
 
   window.SCcs = {
     items: () => state.ceils.filter(isEntityVisible).map(voceC).concat(state.beams.filter(isEntityVisible).map(voceB)).filter(Boolean),
@@ -20502,8 +20546,11 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
    SC_REL.v è l'unica versione: titolo, Guida, file salvato, avvisi e riga messaggi la leggono da qui.
    ======================================================================== */
 window.SC_REL = {
-  v: '24.0', d: '27/10/2026',
+  v: '24.3', d: '27/10/2026',
   news: [
+    ['24.3', 'Sezione: i punti della traccia si mettono col cursore sfalsato (come il Muro), il primo resta segnato con «Inizio A–A» e il secondo mostra l\'anteprima della linea. La traccia si trascina in pianta: dalla lettera o dall\'estremo la stiri, dal tratto (sezione aperta) la sposti tutta, e la sezione cambia in tempo reale. Misura nel prospetto e nella sezione: due punti, distanza orizzontale, verticale e inclinata, con aggancio a spigoli, aperture, solai e controsoffitti.'],
+    ['24.2', 'Vista: «Solo nel 3D» con Pavimenti e Soffitto dei locali. Il soffitto ora è vero (uno per locale, all\'altezza dei muri, visibile da sotto nel tour, con i controsoffitti davanti) e il 3D si aggiorna subito; prima era un foglio trasparente e non reagiva. Spento «Pavimenti» tolgono anche le Aree. Etichette: nuova voce «Controsoffitti e false travi», compresa in «Nascondi tutte»; con le etichette nascoste si tocca la forma per aprire il riquadro.'],
+    ['24.1', '3D: i soffitti e i controsoffitti visti da sotto risultavano grigi (arrivava solo la luce diretta dall\'alto) e la fascia lungo i muri sembrava uno spessore. Aggiunta la luce riflessa dal pavimento: il bianco ora è bianco. Vale anche per la copia cliente.'],
     ['24.0', 'Progetto soffitto: controsoffitti a livelli. Una forma disegnata dentro un\'altra diventa un\'isola (più alta o più bassa) e quella che la contiene lì è bucata; quota = soffitto vuol dire «solo pittura». Velette automatiche ai salti di quota (sempre del controsoffitto più basso), escludibili lato per lato; veletta a mano con Falsa trave → sezione «Veletta». Finitura della libreria pittura su ogni livello e sulle velette, nel 3D visibile da sotto. «📐 Vedi in sezione»: nella sezione trascini un controsoffitto su/giù per la quota, dal bordo giallo per allargarlo, in orizzontale per spostarlo (con le sue isole). Computo: cartongesso al netto delle isole, pittura soffitti per finitura. Corretto: nel 3D le texture di pittura e rivestimenti risultavano più scure del colore scelto.'],
     ['23.9', 'Incolla: la spunta verde della barra di selezione chiude anche Incolla (e Parallela), senza dover premere «Fine» nel riquadro in alto.'],
     ['23.8', 'Porte coperte nel 3D: un rivestimento senza skin (tinta unita) copriva anche i vani di porte e finestre e la porta spariva da quel lato; ora i vani restano aperti.'],
@@ -22185,13 +22232,13 @@ window.SC_REL = {
   const f2 = v => (Math.round(v * 100) / 100).toFixed(2).replace('.', ',');
   const lvl = v => (v > 0.0005 ? '+' : v < -0.0005 ? '−' : '±') + f2(Math.abs(v));
   const SEC = () => (Array.isArray(state.sections) ? state.sections : (state.sections = []));
-  const S = {open: false, id: null, view: null, ratio: 0.5, full: false};
+  const S = {open: false, id: null, view: null, ratio: 0.5, full: false, coarse: false, meas: null};
   let T = null;   /* traccia in corso: {p1, cur} */
   const vis = e => { const l = getLayer(e.layerId); return !(l && l.visible === false); };
   const nextName = () => { const used = new Set(SEC().map(s => s.name)); for (let i = 0; i < 26; i++) { const c = String.fromCharCode(65 + i); if (!used.has(c)) return c; } return 'S' + (SEC().length + 1); };
 
   /* ---------------------------------------------------------------- geometria della sezione */
-  function geom(sec) {
+  function geom(sec, coarse) {
     const p1 = sec.p1, p2 = sec.p2, L = Math.hypot(p2.x - p1.x, p2.y - p1.y); if (L < 0.05) return null;
     const ux = (p2.x - p1.x) / L, uy = (p2.y - p1.y) / L, side = sec.side || 1;
     const H = s => side > 0 ? s : L - s;   /* ascissa nella vista (a destra di chi guarda) */
@@ -22243,7 +22290,7 @@ window.SC_REL = {
     const quadOf = w => { const Lw = Math.hypot(w.p2.x - w.p1.x, w.p2.y - w.p1.y), wx = (w.p2.x - w.p1.x) / Lw, wy = (w.p2.y - w.p1.y) / Lw, t = getWallThickness(w), nx = -wy * t / 2, ny = wx * t / 2; return [{x: w.p1.x + nx, y: w.p1.y + ny}, {x: w.p2.x + nx, y: w.p2.y + ny}, {x: w.p2.x - nx, y: w.p2.y - ny}, {x: w.p1.x - nx, y: w.p1.y - ny}]; };
     const ray = (qx, qy, Q) => { let best = Infinity; for (let i = 0; i < 4; i++) { const a = Q[i], b = Q[(i + 1) % 4], ex = b.x - a.x, ey = b.y - a.y, den = dx * ey - dy * ex; if (Math.abs(den) < 1e-12) continue; const wx = a.x - qx, wy = a.y - qy, t = (wx * ey - wy * ex) / den, v = (wx * dy - wy * dx) / den; if (t > 1e-4 && v >= -1e-9 && v <= 1 + 1e-9 && t < best) best = t; } return best; };
     const inside = (qx, qy, Q) => { let c = false; for (let i = 0, j = 3; i < 4; j = i++) { const a = Q[i], b = Q[j]; if (((a.y > qy) !== (b.y > qy)) && (qx < (b.x - a.x) * (qy - a.y) / (b.y - a.y) + a.x)) c = !c; } return c; };
-    const ds = Math.max(0.03, Math.min(0.1, L / 400)), n = Math.ceil(L / ds);
+    const ds = Math.max(0.03, Math.min(0.1, L / 400)) * (coarse ? 2.5 : 1), n = Math.ceil(L / ds);
     fl.forEach(f => {
       const WF = state.walls.filter(w => vis(w) && floorOf(w) === f.id && Math.hypot(w.p2.x - w.p1.x, w.p2.y - w.p1.y) > 0.01).map(w => ({w, Q: quadOf(w)})); if (!WF.length) return;
       let run = null; const close = () => { if (run && run.w) views.push(run); run = null; };
@@ -22306,12 +22353,12 @@ window.SC_REL = {
   }
   /* la geometria si ricalcola solo se cambia la traccia o il disegno (punto di annullamento) */
   const GC = {key: '', ref: null, G: null};
-  const geomC = sec => { const key = [sec.p1.x, sec.p1.y, sec.p2.x, sec.p2.y, sec.side].join(',') + '|' + state.walls.length + '|' + (state.roofs || []).length + '|' + JSON.stringify((state.ceils || []).map(c => [c.h, c.pts, c.vOff, c.fin && c.fin.c1])) + JSON.stringify((state.beams || []).map(b => [b.pts, b.w, b.hh])), ref = typeof last === 'string' ? last : null; if (ref && GC.ref === ref && GC.key === key && GC.G) return GC.G; const G = geom(sec); GC.key = key; GC.ref = ref; GC.G = G; return G; };
+  const geomC = sec => { const key = [sec.p1.x, sec.p1.y, sec.p2.x, sec.p2.y, sec.side].join(',') + '|' + state.walls.length + '|' + (state.roofs || []).length + '|' + JSON.stringify((state.ceils || []).map(c => [c.h, c.pts, c.vOff, c.fin && c.fin.c1])) + JSON.stringify((state.beams || []).map(b => [b.pts, b.w, b.hh])) + (S.coarse ? '|c' : ''), ref = typeof last === 'string' ? last : null; if (ref && GC.ref === ref && GC.key === key && GC.G) return GC.G; const G = geom(sec, S.coarse); GC.key = key; GC.ref = ref; GC.G = G; return G; };
 
   /* ---------------------------------------------------------------- pannello */
   const P = document.createElement('div'); P.id = 'szPanel'; P.hidden = true; P.setAttribute('role', 'dialog'); P.setAttribute('aria-label', 'Sezione');
   P.innerHTML = `<div class="wk-head"><span class="wk-title" id="szTitle"></span><select id="szSel" class="wk-b" style="flex:0 0 auto;width:auto;min-width:70px;max-width:110px;padding:0 6px"></select>
-    <button class="wk-b" id="szFlip" title="Guarda dall'altra parte">⇄ Gira</button><button class="wk-b" id="szFit" title="Adatta la vista">⊡</button>
+    <button class="wk-b" id="szMeas" title="Misura: tocca due punti, leggi distanza orizzontale, verticale e inclinata">📏 Misura</button><button class="wk-b" id="szFlip" title="Guarda dall'altra parte">⇄ Gira</button><button class="wk-b" id="szFit" title="Adatta la vista">⊡</button>
     <button class="wk-b" id="szDel" title="Elimina questa sezione">🗑</button><button class="wk-b" id="szFull" title="Tutto schermo / affiancata">⤢</button><button class="wk-b" id="szClose" title="Chiudi la sezione">✕</button></div>
     <div class="wk-cv"><canvas class="wk-main" id="szCv"></canvas></div><div class="wk-foot" id="szFoot"></div>`;
   document.body.appendChild(P);
@@ -22339,6 +22386,7 @@ window.SC_REL = {
     const s = cur(); if (!s) return;
     P.querySelector('#szTitle').innerHTML = 'Sezione ' + esc(s.name) + '–' + esc(s.name) + ' <small>' + f2(Math.hypot(s.p2.x - s.p1.x, s.p2.y - s.p1.y)) + ' m di traccia</small>';
     P.querySelector('#szSel').innerHTML = SEC().map(x => `<option value="${x.id}"${x.id === s.id ? ' selected' : ''}>${esc(x.name)}–${esc(x.name)}</option>`).join('');
+    if (S.meas) { measFoot(); return; }
     P.querySelector('#szFoot').innerHTML = '<div class="wk-hint">Trascina per spostare · due dita o rotella per lo zoom · ⇄ per guardare dall\'altra parte. In pianta tocca la lettera della traccia per riaprirla.</div>';
   }
   const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
@@ -22346,9 +22394,9 @@ window.SC_REL = {
     const s = SEC().find(x => x.id === id); if (!s) return;
     if (state.mode !== '2d') { toast('La sezione si usa nella vista 2D'); return; }
     try { if (window.SCwk && SCwk.active()) SCwk.close(); } catch (_) {}
-    S.open = true; S.id = id; S.view = null; S.cs = null; ui(); layout();
+    S.open = true; S.id = id; S.view = null; S.cs = null; S.meas = null; ui(); layout();
   }
-  function close() { S.open = false; S.id = null; S.cs = null; layout(); }
+  function close() { S.open = false; S.id = null; S.cs = null; S.meas = null; layout(); }
 
   /* ---------------------------------------------------------------- disegno della sezione */
   function fit(G) {
@@ -22447,9 +22495,62 @@ window.SC_REL = {
     cx.setTransform(d, 0, 0, d, 0, 0); cx.fillStyle = '#151826'; cx.fillRect(0, 0, W, Hh);
     if (!G || (!G.walls.length && !G.rooms.length && !(G.ceils || []).length)) { cx.fillStyle = '#9ca3b8'; cx.font = '13px "Segoe UI",sans-serif'; cx.textAlign = 'center'; cx.fillText('La traccia non attraversa nessun muro', W / 2, Hh / 2); return; }
     if (!S.view) fit(G);
-    drawSection(cx, G, SCREEN);
+    drawSection(cx, G, SCREEN); drawMeas(cx);
     cx.fillStyle = '#f472b6'; cx.font = '700 14px "Segoe UI",sans-serif'; cx.textAlign = 'left'; cx.textBaseline = 'top'; cx.fillText('Sezione ' + s.name + '–' + s.name, 10, 8);
   }
+
+  /* ---------------------------------------------------------------- v24.3 · misura nella sezione */
+  const R2m = v => Math.round(v * 100) / 100;
+  function snapLists(G) {
+    const us = [], zs = [0]; if (!G) return {us, zs};
+    G.walls.forEach(w => { us.push(w.h0, w.h1); zs.push(w.z0, w.z1); if (w.op) zs.push(w.op.b, w.op.t); });
+    G.slabs.forEach(q => { us.push(q.a, q.b); zs.push(q.z0, q.z1); });
+    (G.steps || []).forEach(q => { us.push(q.a, q.b); zs.push(q.z0, q.z1); });
+    (G.ceils || []).forEach(q => { us.push(q.a, q.b); zs.push(q.z, q.z - (q.t || 0)); });
+    (G.cvel || []).forEach(q => { us.push(q.u); zs.push(q.z0, q.z1); });
+    (G.cbeams || []).forEach(q => { us.push(q.a, q.b); zs.push(q.z0, q.z1); });
+    (G.rooms || []).forEach(q => { us.push(q.h0, q.h1); zs.push(q.f.elev); });
+    (G.roofs || []).forEach(r => r.forEach(q => { us.push(q.h); zs.push(q.zt, q.zb); }));
+    (G.fl || []).forEach(f => zs.push(f.elev));
+    (G.views || []).forEach(v => { us.push(v.a, v.b); (v.ops || []).forEach(o => { us.push(o.a, o.b); zs.push(o.zb, o.zt); }); });
+    return {us, zs};
+  }
+  function snapM(px, py) {   /* px, py: pixel nel riquadro; aggancia ogni asse alla quota/ascissa più vicina */
+    const G = geomC(cur()), L = snapLists(G), tol = 12 / S.view.s, u = (px - S.view.ox) / S.view.s, z = (S.view.oy - py) / S.view.s;
+    let bu = null, bz = null;
+    L.us.forEach(q => { if (Math.abs(q - u) < tol && (bu === null || Math.abs(q - u) < Math.abs(bu - u))) bu = q; });
+    L.zs.forEach(q => { if (Math.abs(q - z) < tol && (bz === null || Math.abs(q - z) < Math.abs(bz - z))) bz = q; });
+    return {u: bu !== null ? bu : R2m(u), z: bz !== null ? bz : R2m(z)};
+  }
+  function drawMeas(c) {
+    const m = S.meas; if (!m || !S.view) return; const A = m.a, B = m.b || m.cur; c.save(); c.lineWidth = 2; c.strokeStyle = '#22d3ee'; c.fillStyle = '#22d3ee';
+    const dot = q => { c.beginPath(); c.arc(X(q.u), Y(q.z), 5, 0, 7); c.fill(); c.strokeStyle = '#0b1220'; c.lineWidth = 1.5; c.stroke(); c.strokeStyle = '#22d3ee'; c.lineWidth = 2; };
+    if (A && B) {
+      const ax = X(A.u), ay = Y(A.z), bx = X(B.u), by = Y(B.z), du = B.u - A.u, dz = B.z - A.z;
+      c.setLineDash([5, 4]); c.lineWidth = 1.2; c.beginPath(); c.moveTo(ax, ay); c.lineTo(bx, ay); c.lineTo(bx, by); c.stroke(); c.setLineDash([]); c.lineWidth = 2; c.beginPath(); c.moveTo(ax, ay); c.lineTo(bx, by); c.stroke();
+      c.font = '700 12px "Segoe UI",sans-serif'; c.textBaseline = 'bottom';
+      const lab = (t, x, y, al) => { c.textAlign = al; const w = c.measureText(t).width; c.fillStyle = 'rgba(11,18,32,.85)'; c.fillRect(al === 'center' ? x - w / 2 - 3 : al === 'left' ? x - 3 : x - w - 3, y - 15, w + 6, 17); c.fillStyle = '#22d3ee'; c.fillText(t, x, y); };
+      if (Math.abs(du) > 0.004) lab(f2(Math.abs(du)), (ax + bx) / 2, ay + (dz > 0 ? 18 : -2), 'center');
+      if (Math.abs(dz) > 0.004) lab(f2(Math.abs(dz)), bx + (du >= 0 ? 8 : -8), (ay + by) / 2 + 6, du >= 0 ? 'left' : 'right');
+      if (m.b && Math.abs(du) > 0.004 && Math.abs(dz) > 0.004) lab('d ' + f2(Math.hypot(du, dz)), (ax + bx) / 2, (ay + by) / 2 - 6, 'center');
+    }
+    if (A) dot(A); if (m.b) dot(m.b); else if (m.cur) { c.beginPath(); c.arc(X(m.cur.u), Y(m.cur.z), 7, 0, 7); c.stroke(); }
+    c.restore();
+  }
+  function measFoot() {
+    const F = P.querySelector('#szFoot'), m = S.meas; if (!m) return; const A = m.a, B = m.b; let rd = '';
+    if (A && B) { const du = Math.abs(B.u - A.u), dz = Math.abs(B.z - A.z); rd = '<div class="wk-row"><b style="color:#22d3ee">Orizzontale ' + f2(du) + ' m · Verticale ' + f2(dz) + ' m · Distanza ' + f2(Math.hypot(du, dz)) + ' m</b></div>'; }
+    F.innerHTML = '<div class="wk-hint"><b>Misura</b>: ' + (!A ? 'tocca il primo punto.' : !B ? 'tocca il secondo punto.' : 'tocca un punto per ricominciare.') + ' Si aggancia a spigoli, aperture, solai, controsoffitti e livelli. Col dito: tocca e trascina, il cursore si stacca; al rilascio il punto è confermato. Si sposta e si ingrandisce con la misura spenta o con due dita.</div>' + rd +
+      '<div class="wk-row">' + (A ? '<button class="wk-b" id="szMNew">↩ Nuova misura</button>' : '') + '<button class="wk-b sc-fine" id="szMOk">✔ Fine</button></div>';
+    const n = F.querySelector('#szMNew'); if (n) n.onclick = () => { S.meas.a = null; S.meas.b = null; S.meas.cur = null; measFoot(); render(); };
+    F.querySelector('#szMOk').onclick = () => { S.meas = null; P.querySelector('#szMeas').classList.remove('on'); ui(); render(); };
+  }
+  P.querySelector('#szMeas').onclick = () => { if (S.meas) { S.meas = null; P.querySelector('#szMeas').classList.remove('on'); ui(); render(); return; } S.meas = {a: null, b: null, cur: null}; S.cs = null; P.querySelector('#szMeas').classList.add('on'); measFoot(); render(); };
+  let MP = null;
+  const offPx = (fx, fy, run) => { const r = cv.getBoundingClientRect(), m = Math.min(72, run * 0.6), side = appSettings.finger === 'right' ? 1 : -1; let x = fx + side * m * (44 / 72), y = fy - m; if (y < r.top + 6) y = fy + m; return {x: Math.max(r.left + 2, Math.min(r.right - 2, x)) - r.left, y: Math.max(r.top + 2, Math.min(r.bottom - 2, y)) - r.top}; };
+  const loc = e => { const r = cv.getBoundingClientRect(); return {x: e.clientX - r.left, y: e.clientY - r.top}; };
+  cv.addEventListener('pointermove', e => { if (S.meas && e.pointerType === 'mouse' && !ptr.has(e.pointerId) && S.view) { const q = loc(e); S.meas.cur = snapM(q.x, q.y); render(); } });
+  cv.addEventListener('pointerleave', e => { if (S.meas && e.pointerType === 'mouse' && S.meas.cur) { S.meas.cur = null; render(); } });
 
   /* ---------------------------------------------------------------- spostamento e zoom nella sezione */
   const ptr = new Map(); let pz = null, cd = null;
@@ -22464,6 +22565,7 @@ window.SC_REL = {
     return {q, end, G};
   }
   function csFoot() {
+    if (S.meas) { measFoot(); return; }
     const F = P.querySelector('#szFoot'), c = S.cs; if (!c) { ui(); return; }
     const top = SCcs.topOf(floorOf(c));
     F.innerHTML = '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><b style="color:#c4b5fd">' + esc(c.name || (SCcs.isPaint(c) ? 'Soffitto dipinto' : 'Controsoffitto')) + '</b>' +
@@ -22478,6 +22580,11 @@ window.SC_REL = {
   const descOf = c => { const out = []; const fl = floorOf(c), T = SCcs.tree(fl), walk = N => N.kids.forEach(k => { out.push(k.o); walk(k); }); const N = T.find(k => k.o === c); if (N) walk(N); return out; };
   cv.addEventListener('pointerdown', e => {
     ptr.set(e.pointerId, {x: e.clientX, y: e.clientY}); try { cv.setPointerCapture(e.pointerId); } catch (_) {} pz = null; cd = null;
+    if (S.meas) {
+      if (ptr.size !== 1 || !S.view) { MP = null; return; }
+      const q = loc(e); MP = {id: e.pointerId, fx: e.clientX, fy: e.clientY, x0: e.clientX, y0: e.clientY, run: 0, mouse: e.pointerType === 'mouse', moved: false, finger: e.pointerType !== 'mouse' && appSettings.finger !== 'off'};
+      S.meas.cur = snapM(q.x, q.y); render(); return;
+    }
     if (ptr.size !== 1 || !S.view || !window.SCcs || !SCcs.tree) return;
     const r = cv.getBoundingClientRect(), hit = csHit(e.clientX - r.left, e.clientY - r.top); if (!hit) return;
     const c = hit.q.c, G = hit.G; if (S.cs !== c) { S.cs = c; csFoot(); render(); try { SCcs.select(c); } catch (_) {} cd = {c, sel: true}; return; }
@@ -22485,6 +22592,14 @@ window.SC_REL = {
   });
   cv.addEventListener('pointermove', e => {
     const p = ptr.get(e.pointerId); if (!p || !S.view) return;
+    if (S.meas && MP && MP.id === e.pointerId && ptr.size === 1) {
+      MP.run += Math.hypot(e.clientX - MP.fx, e.clientY - MP.fy); MP.fx = e.clientX; MP.fy = e.clientY;
+      if (MP.mouse) {   /* col mouse: un clic mette il punto, trascinando si sposta il disegno */
+        if (!MP.moved && Math.hypot(e.clientX - MP.x0, e.clientY - MP.y0) < 5) return; MP.moved = true;
+        S.view.ox += e.clientX - p.x; S.view.oy += e.clientY - p.y; ptr.set(e.pointerId, {x: e.clientX, y: e.clientY}); render(); return;
+      }
+      const q = MP.finger ? offPx(e.clientX, e.clientY, MP.run) : loc(e); MP.moved = MP.run > 4; S.meas.cur = snapM(q.x, q.y); render(); return;
+    }
     if (ptr.size === 1 && cd && !cd.sel) {
       const dx = e.clientX - cd.x0, dy = e.clientY - cd.y0; if (!cd.ax) { if (Math.hypot(dx, dy) < 6) return; cd.ax = cd.end ? 'e' : Math.abs(dy) >= Math.abs(dx) ? 'v' : 'h'; }
       const c = cd.c, G = cd.G, dU = dx / S.view.s, dS = dU * (G.side > 0 ? 1 : -1);
@@ -22506,7 +22621,13 @@ window.SC_REL = {
     ptr.set(e.pointerId, {x: e.clientX, y: e.clientY}); const [a, b] = [...ptr.values()], dd = Math.hypot(a.x - b.x, a.y - b.y), r = cv.getBoundingClientRect(), mx = (a.x + b.x) / 2 - r.left, my = (a.y + b.y) / 2 - r.top;
     if (pz) { const k = dd / pz.d; zoomAt(mx, my, k); S.view.ox += mx - pz.mx; S.view.oy += my - pz.my; } pz = {d: dd, mx, my}; render();
   });
-  const up = e => { ptr.delete(e.pointerId); pz = null; if (cd && cd.ax) { try { checkpoint(); } catch (_) {} GC.G = null; csFoot(); try { draw2D(); } catch (_) {} if (state.mode === '3d') build3D(); } cd = null; }; cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+  const up = e => {
+    if (S.meas && MP && MP.id === e.pointerId) {
+      const m = S.meas, mp = MP; MP = null; ptr.delete(e.pointerId); pz = null;
+      if (!(mp.mouse && mp.moved) && e.type === 'pointerup' && m.cur) { if (!m.a || m.b) { m.a = m.cur; m.b = null; } else m.b = m.cur; if (mp.mouse) { /* resta l'anteprima */ } else m.cur = null; measFoot(); }
+      render(); return;
+    }
+    ptr.delete(e.pointerId); pz = null; if (cd && cd.ax) { try { checkpoint(); } catch (_) {} GC.G = null; csFoot(); try { draw2D(); } catch (_) {} if (state.mode === '3d') build3D(); } cd = null; }; cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
   cv.addEventListener('wheel', e => { e.preventDefault(); if (!S.view) return; const r = cv.getBoundingClientRect(); zoomAt(e.clientX - r.left, e.clientY - r.top, e.deltaY < 0 ? 1.15 : 1 / 1.15); render(); }, {passive: false});
   function zoomAt(mx, my, k) { const s = Math.max(3, Math.min(2000, S.view.s * k)); k = s / S.view.s; S.view.ox = mx - (mx - S.view.ox) * k; S.view.oy = my - (my - S.view.oy) * k; S.view.s = s; }
 
@@ -22526,7 +22647,7 @@ window.SC_REL = {
   const snapP = raw => { const sp = document.getElementById('snapPts'), old = sp ? sp.checked : null; try { if (sp) sp.checked = true; return snapToVertex(raw, null) || raw; } catch (_) { return raw; } finally { if (sp) sp.checked = old; } };
   c2d.addEventListener('pointermove', e => { if (!T || !T.p1) return; const r = c2d.getBoundingClientRect(); T.cur = screenToWorld(e.clientX - r.left, e.clientY - r.top); draw2D(); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && T) { T = null; draw2D(); } });
-  if (window.SCban) SCban.add({spec: () => T ? {c: '#f472b6', t: T.p1 ? 'Sezione · 2/2 tocca il secondo punto della traccia' : 'Sezione · 1/2 tocca il primo punto della traccia', b: (T.p1 ? [['no', '↩ Togli punto']] : []).concat([['done', '✔ Fine']])} : null,
+  if (window.SCban) SCban.add({spec: () => T ? {c: '#f472b6', t: T.p1 ? 'Sezione · 2/2 secondo punto della traccia · col dito trascina il cursore e rilascia' : 'Sezione · 1/2 primo punto della traccia · col dito trascina il cursore e rilascia', b: (T.p1 ? [['no', '↩ Togli punto']] : []).concat([['done', '✔ Fine']])} : null,
     click: a => { if (a === 'no' && T) { T.p1 = null; T.cur = null; } else T = null; draw2D(); }});
   function labelsOf(s) {   /* posizioni (mondo) delle lettere: oltre le estremità, dal lato in cui si guarda */
     const L = Math.hypot(s.p2.x - s.p1.x, s.p2.y - s.p1.y) || 1, ux = (s.p2.x - s.p1.x) / L, uy = (s.p2.y - s.p1.y) / L, sd = s.side || 1, nx = -uy * sd, ny = ux * sd;
@@ -22563,9 +22684,60 @@ window.SC_REL = {
         ctx.fillStyle = col; ctx.font = 'bold 12px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(s.name, p.x, p.y + 0.5);
       });
     });
-    if (T && T.p1 && T.cur && !pr) { const a = worldToScreen(T.p1.x, T.p1.y), b = worldToScreen(T.cur.x, T.cur.y); ctx.strokeStyle = '#f472b6'; ctx.lineWidth = 2; ctx.setLineDash([16, 4, 3, 4]); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); }
+    if (T && !pr) {   /* v24.3: primo punto ben visibile; il secondo segue il cursore (col dito è quello sfalsato) */
+      const fg = window.SCfinger && SCfinger.active && SCfinger.active(), raw = fg ? (hover || T.cur) : T.cur, cp = raw ? snapP(raw) : null;
+      if (T.p1) {
+        const a = worldToScreen(T.p1.x, T.p1.y);
+        if (cp) { const b = worldToScreen(cp.x, cp.y); ctx.strokeStyle = '#f472b6'; ctx.lineWidth = 2; ctx.setLineDash([16, 4, 3, 4]); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); ctx.setLineDash([]); }
+        ctx.strokeStyle = '#f472b6'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(a.x, a.y, 11, 0, 7); ctx.stroke(); ctx.fillStyle = '#f472b6'; ctx.beginPath(); ctx.arc(a.x, a.y, 4.5, 0, 7); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(a.x - 18, a.y); ctx.lineTo(a.x - 13, a.y); ctx.moveTo(a.x + 13, a.y); ctx.lineTo(a.x + 18, a.y); ctx.moveTo(a.x, a.y - 18); ctx.lineTo(a.x, a.y - 13); ctx.moveTo(a.x, a.y + 13); ctx.lineTo(a.x, a.y + 18); ctx.stroke();
+        ctx.font = 'bold 12px Arial'; ctx.textAlign = 'left'; ctx.textBaseline = 'bottom'; { const tx = 'Inizio ' + nextName() + '–' + nextName(), tw = ctx.measureText(tx).width; ctx.fillStyle = '#1e1e2e'; ctx.fillRect(a.x + 12, a.y - 26, tw + 8, 18); ctx.fillStyle = '#f472b6'; ctx.fillText(tx, a.x + 16, a.y - 10); }
+      }
+      if (cp && !fg) { const b = worldToScreen(cp.x, cp.y); ctx.strokeStyle = '#f9a8d4'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.arc(b.x, b.y, 7, 0, 7); ctx.stroke(); }
+    }
     ctx.restore();
   }
+  /* v24.3 · la traccia si sposta e si stira in pianta; la sezione si aggiorna mentre trascini */
+  let TD = null;
+  const uOf = (sec, R) => { const L = Math.hypot(sec.p2.x - sec.p1.x, sec.p2.y - sec.p1.y) || 1, sv = ((R.x - sec.p1.x) * (sec.p2.x - sec.p1.x) + (R.y - sec.p1.y) * (sec.p2.y - sec.p1.y)) / L; return (sec.side || 1) > 0 ? sv : L - sv; };
+  window.__traceHit = e => {   /* chiamata dal gestore generale, prima di etichette e Aree */
+    if (T || e.target !== c2d || state.mode !== '2d' || state.tool !== 'select' || appSettings.secShow === false || (e.pointerType === 'mouse' && e.button !== 0)) return false;
+    const r = c2d.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top, HIT = e.pointerType === 'mouse' ? 10 : 18; let best = null;
+    const sc = q => worldToScreen(q.x, q.y), dd = q => { const a = sc(q); return Math.hypot(a.x - x, a.y - y); };
+    SEC().forEach(sec => {
+      const Lb = labelsOf(sec), open = S.open && S.id === sec.id;
+      [['p1', Lb.a], ['p2', Lb.b]].forEach(([k, q]) => { const d = dd(q); if (d < 20 && (!best || d - 6 < best.d)) best = {sec, kind: k, d: d - 6}; });   /* lettera: sempre */
+      if (open) {
+        [['p1', sec.p1], ['p2', sec.p2]].forEach(([k, q]) => { const d = dd(q); if (d <= HIT && (!best || d - 4 < best.d)) best = {sec, kind: k, d: d - 4}; });
+        const A = sc(sec.p1), B = sc(sec.p2), ex = B.x - A.x, ey = B.y - A.y, l2 = ex * ex + ey * ey || 1, t = Math.max(0, Math.min(1, ((x - A.x) * ex + (y - A.y) * ey) / l2)), d = Math.hypot(A.x + ex * t - x, A.y + ey * t - y);
+        if (d <= HIT && (!best || d < best.d)) best = {sec, kind: 'move', d};
+      }
+    });
+    if (!best) return false;
+    e.preventDefault();
+    TD = {sec: best.sec, kind: best.kind, id: e.pointerId, x0: e.clientX, y0: e.clientY, run: 0, moved: false, touch: e.pointerType !== 'mouse', w0: screenToWorld(x, y), p10: {...best.sec.p1}, p20: {...best.sec.p2}, raf: 0};
+    try { c2d.setPointerCapture(e.pointerId); } catch (_) {}
+    return true;
+  };
+  document.addEventListener('pointermove', e => {
+    if (!TD || e.pointerId !== TD.id) return; e.stopPropagation();
+    if (!TD.moved && Math.hypot(e.clientX - TD.x0, e.clientY - TD.y0) < 5) return;
+    const sec = TD.sec; if (!TD.moved) { TD.moved = true; if (!(S.open && S.id === sec.id)) open(sec.id); S.coarse = true; }
+    const r = c2d.getBoundingClientRect(), F = window.SCfinger; let w = screenToWorld(e.clientX - r.left, e.clientY - r.top);
+    if (TD.kind !== 'move' && TD.touch && F && F.on()) { TD.run += Math.hypot(e.clientX - (TD.lx ?? TD.x0), e.clientY - (TD.ly ?? TD.y0)); TD.lx = e.clientX; TD.ly = e.clientY; const c = F.pos(e.clientX, e.clientY, TD.run); F.show(c); w = F.world(c); }
+    const mid = {x: (sec.p1.x + sec.p2.x) / 2, y: (sec.p1.y + sec.p2.y) / 2}, u0 = S.view ? uOf(sec, mid) : 0;
+    if (TD.kind === 'move') { const dx = R2m(w.x - TD.w0.x), dy = R2m(w.y - TD.w0.y); sec.p1 = {x: r6(TD.p10.x + dx), y: r6(TD.p10.y + dy)}; sec.p2 = {x: r6(TD.p20.x + dx), y: r6(TD.p20.y + dy)}; }
+    else { const q = snapP(w), o = TD.kind === 'p1' ? sec.p2 : sec.p1; if (Math.hypot(q.x - o.x, q.y - o.y) < 0.1) return; sec[TD.kind] = {x: r6(q.x), y: r6(q.y)};
+      if (S.view) { const u1 = uOf(sec, mid); S.view.ox += (u0 - u1) * S.view.s; } }   /* il disegno non salta: resta fermo ciò che stava al centro della traccia */
+    if (!TD.raf) TD.raf = requestAnimationFrame(() => { if (!TD) return; TD.raf = 0; render(); try { draw2D(); } catch (_) {} });
+  }, true);
+  const tdUp = e => {
+    if (!TD || e.pointerId !== TD.id) return; e.stopPropagation(); const d = TD; TD = null; try { c2d.releasePointerCapture(e.pointerId); } catch (_) {}
+    if (window.SCfinger) SCfinger.hide();
+    if (!d.moved) { open(d.sec.id); return; }
+    S.coarse = false; GC.G = null; try { checkpoint(); } catch (_) {} ui(); render(); try { draw2D(); } catch (_) {}
+  };
+  document.addEventListener('pointerup', tdUp, true); document.addEventListener('pointercancel', tdUp, true);
   (window.SCdraw && SCdraw.post || []).push(() => { drawTraces(); if (S.open) render(); });
 
   /* menu Disegna */
@@ -22586,7 +22758,7 @@ window.SC_REL = {
   /* v22.4: disegno su un altro contesto (stampa) con vista e colori dati */
   const PAPER = {paper: true, cs: '#000000', view: '#000000', ink: '#000000', cut: '#ffffff', cutP: '#ffffff', slab: '#ffffff', hatch: '#000000', glass: '#000000', dim: '#000000', room: '#000000', ground: 'rgba(0,0,0,0.10)'};
   function paint(c, sec, view) { const G = geomC(sec); if (!G) return null; const keep = S.view; S.view = view; try { drawSection(c, G, PAPER); } finally { S.view = keep; } return G; }
-  window.SCsez = {start: startTrace, open, close, geom, drawSection, paint, drawTraces, active: () => S.open, list: SEC, layout, selCs: () => S.cs || null, toClient: (u, z) => { const r = cv.getBoundingClientRect(); return [r.left + X(u), r.top + Y(z)]; }};
+  window.SCsez = {td: () => TD && {kind: TD.kind, moved: TD.moved}, meas: () => S.meas, tracing: () => !!T, start: startTrace, open, close, geom, drawSection, paint, drawTraces, active: () => S.open, list: SEC, layout, selCs: () => S.cs || null, toClient: (u, z) => { const r = cv.getBoundingClientRect(); return [r.left + X(u), r.top + Y(z)]; }};
 })();
 </script>
 <style>
@@ -22660,12 +22832,12 @@ window.SC_REL = {
   const _d = draw2D;
   draw2D = function () { if (window.SCocc) SCocc.reset(); if (window.SChq) SChq.reset(); window.__in2d = true; let r; try { r = _d.apply(this, arguments); } finally { window.__in2d = false; } if (!window.__holdHq && window.SChq) SChq.flush(); return r; };
   const on = (id, v) => { const e = document.getElementById(id); if (e && e.checked !== v) { e.checked = v; e.dispatchEvent(new Event('change', {bubbles: true})); } };
-  const ALL = ['lblZoneName', 'lblZoneSup', 'lblZonePer', 'lblH', 'showRoomNames', 'showWallNames', 'showLabels'];
+  const ALL = ['lblZoneName', 'lblZoneSup', 'lblZonePer', 'lblCs', 'lblH', 'showRoomNames', 'showWallNames', 'showLabels'];
   const set = v => { ALL.forEach(id => on(id, v)); appSettings.fzLbl = v; try { persistSettings(); } catch (_) {} draw2D(); toast(v ? 'Etichette visibili' : 'Etichette nascoste'); };
   const b0 = document.getElementById('lblAllOff'), b1 = document.getElementById('lblAllOn');
   if (b0) b0.onclick = e => { e.stopPropagation(); set(false); };
   if (b1) b1.onclick = e => { e.stopPropagation(); set(true); };
-  ['lblZoneName', 'lblZoneSup', 'lblZonePer', 'lblH'].forEach(id => { const e = document.getElementById(id); if (e) e.addEventListener('change', () => { if (id === 'lblH') appSettings.fzLbl = e.checked; try { draw2D(); } catch (_) {} }); });
+  ['lblZoneName', 'lblZoneSup', 'lblZonePer', 'lblCs', 'lblH'].forEach(id => { const e = document.getElementById(id); if (e) e.addEventListener('change', () => { if (id === 'lblH') appSettings.fzLbl = e.checked; try { draw2D(); } catch (_) {} }); });
 })();
 </script>
 <script>
