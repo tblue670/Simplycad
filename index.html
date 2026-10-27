@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v23.9</title>
+<title>SimplyCAD Pro · v24.0</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -11290,6 +11290,7 @@ updateRoomList();
     if (window.SCwk) SCwk.items(walls).forEach(v => add('Opere murarie su pareti esistenti', v.key, v.desc, 'a corpo', 1, v.det));
     if (window.SCriv) SCriv.items().forEach(v => add('Sottofondi e pavimenti', v.key, v.desc, v.um, v.q, v.det));   /* v19.0: rivestimenti disegnati sul prospetto */
     if (window.SCpit) SCpit.items().forEach(v => add('Pitture e finiture', v.key, v.desc, v.um, v.q, v.det));   /* v22.9: pittura disegnata sul prospetto */
+    if (window.SCcs && SCcs.paintItems) SCcs.paintItems().forEach(v => add('Pitture e finiture', v.key, v.desc, v.um, v.q, v.det));   /* v24.0: soffitti e controsoffitti */
     // finiture (v12.1: se ci sono Aree con lavorazioni a pavimento, massetto e pavimento vengono solo da quelle, a corpo)
     const zoneFloor = window.SCzoneWk && SCzoneWk.anyFloor();
     if (window.SCzoneWk) SCzoneWk.items().forEach(v => add('Sottofondi e pavimenti', v.key, v.desc, 'a corpo', 1, v.det));
@@ -11359,7 +11360,7 @@ updateRoomList();
 
   /* ---------- pannello ---------- */
   let panel = null, tab = 'voci', R = null, sig = '';
-  const corpoOf = k => { k = String(k); if (k.startsWith('pit_') && window.SCpit) return SCpit.priceOf(k); if (k.startsWith('mur_') && window.SCwk) return SCwk.priceOf(k); if (k.startsWith('cg_') && window.SCcg) return SCcg.priceOf(k); if (k.startsWith('cs_') && window.SCcs) return SCcs.priceOf(k); if (k.startsWith('area_')) { const z = state.zones.find(x => 'area_' + x.id === k); return z && z.wkPrice != null ? +z.wkPrice : null; } return null; };
+  const corpoOf = k => { k = String(k); if (k.startsWith('pcs_') && window.SCcs) return SCcs.paintPrice(k); if (k.startsWith('pit_') && window.SCpit) return SCpit.priceOf(k); if (k.startsWith('mur_') && window.SCwk) return SCwk.priceOf(k); if (k.startsWith('cg_') && window.SCcg) return SCcg.priceOf(k); if (k.startsWith('cs_') && window.SCcs) return SCcs.priceOf(k); if (k.startsWith('area_')) { const z = state.zones.find(x => 'area_' + x.id === k); return z && z.wkPrice != null ? +z.wkPrice : null; } return null; };
   const pkey = k => { k = String(k); const m = k.match(/^(tin_par|tin_sof)_/); return m ? m[1] : k; };   /* v13.0: stesso prezzo al m² per tutte le stanze */
   const price = k => { const v = corpoOf(k); if (v != null) return v; if (String(k).startsWith('cus_')) { const c = (state.cmpCustom || []).find(x => 'cus_' + x.id === k); return c && +c.p || 0; } k = pkey(k); return prices[k] != null ? prices[k] : (k === 'tin_par' || k === 'tin_sof') && prices.tin_int != null ? prices.tin_int : 0; };
   /* v12.5: voci escluse dal computo (restano in grigio, fuori da totali, stampa e CSV); la scelta si salva nel progetto */
@@ -14802,14 +14803,14 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
 'D.m.forEach(function(g){var geo=new THREE.BufferGeometry();var p=new Float32Array(g.p.length);',
 ' for(var i=0;i<p.length;i++)p[i]=g.p[i]/1000;',
 ' geo.setAttribute("position",new THREE.BufferAttribute(p,3));geo.setIndex(g.i);geo.computeVertexNormals();',
-' var mat=new THREE.MeshStandardMaterial({color:g.c,roughness:0.85,side:THREE.DoubleSide,transparent:g.o<1,opacity:g.o});',
+' var mat=new THREE.MeshStandardMaterial({color:g.c,roughness:0.85,side:g.s?THREE.BackSide:THREE.DoubleSide,transparent:g.o<1,opacity:g.o});',
 ' group.add(new THREE.Mesh(geo,mat));});',
 'var TXS=(D.ti||[]).map(function(u){var im=new Image();im.src=u;return im;});',
 '(D.tm||[]).forEach(function(g){var geo=new THREE.BufferGeometry(),p=new Float32Array(g.p.length),u=new Float32Array(g.u.length),i;',
 ' for(i=0;i<p.length;i++)p[i]=g.p[i]/1000;for(i=0;i<u.length;i++)u[i]=g.u[i]/10000;',
 ' geo.setAttribute("position",new THREE.BufferAttribute(p,3));geo.setAttribute("uv",new THREE.BufferAttribute(u,2));geo.setIndex(g.i);geo.computeVertexNormals();',
 ' var im=TXS[g.t],t=new THREE.Texture(im);t.anisotropy=4;if(im.complete&&im.naturalWidth)t.needsUpdate=true;else im.addEventListener("load",function(){t.needsUpdate=true;});t.encoding=g.e||3000;if(g.w){t.wrapS=t.wrapT=THREE.RepeatWrapping;}t.repeat.set(g.rp[0],g.rp[1]);t.offset.set(g.of[0],g.of[1]);t.rotation=g.ro;t.center.set(g.ce[0],g.ce[1]);',
-' var mat=new THREE.MeshStandardMaterial({color:g.c,map:t,roughness:g.r,side:THREE.DoubleSide,alphaTest:g.a||0,transparent:!!g.a,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2});',
+' var mat=new THREE.MeshStandardMaterial({color:g.c,map:t,roughness:g.r,side:g.s?THREE.BackSide:THREE.DoubleSide,alphaTest:g.a||0,transparent:!!g.a,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2});',
 ' group.add(new THREE.Mesh(geo,mat));});',
 'var box=new THREE.Box3().setFromObject(group);',
 'if(box.isEmpty())box.set(new THREE.Vector3(-3,0,-3),new THREE.Vector3(3,2.7,3));',
@@ -14862,13 +14863,13 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
           for (let k = 0; k < pos.count; k++) { v.fromBufferAttribute(pos, k).applyMatrix4(o.matrixWorld); P.push(Math.round(v.x * 1000), Math.round(v.y * 1000), Math.round(v.z * 1000)); U.push(Math.round(uv.getX(k) * 10000), Math.round(uv.getY(k) * 10000)); }
           if (g.index) { const ix = g.index.array; for (let k = 0; k < ix.length; k++) I.push(ix[k]); } else for (let k = 0; k < pos.count; k++) I.push(k);
           TX.list.push({t: ti, c: m.color ? m.color.getHex() : 0xffffff, p: P, u: U, i: I, a: m.alphaTest > 0 ? m.alphaTest : 0, r: m.roughness != null ? m.roughness : 0.85,
-            e: t.encoding || 0, w: t.wrapS === THREE.RepeatWrapping ? 1 : 0, rp: [t.repeat.x, t.repeat.y], of: [t.offset.x, t.offset.y], ro: t.rotation || 0, ce: [t.center.x, t.center.y]});
+            s: m.side === THREE.BackSide ? 1 : 0, e: t.encoding || 0, w: t.wrapS === THREE.RepeatWrapping ? 1 : 0, rp: [t.repeat.x, t.repeat.y], of: [t.offset.x, t.offset.y], ro: t.rotation || 0, ce: [t.center.x, t.center.y]});
           return;
         }
       }
-      const col = m && m.color ? m.color.getHex() : 0xcccccc, op = m && m.transparent ? m.opacity : 1;
-      const key = col + '|' + op;
-      const G = groups[key] || (groups[key] = {c: col, o: op, p: [], i: []});
+      const col = m && m.color ? m.color.getHex() : 0xcccccc, op = m && m.transparent ? m.opacity : 1, sd = m && m.side === THREE.BackSide ? 1 : 0;
+      const key = col + '|' + op + '|' + sd;
+      const G = groups[key] || (groups[key] = {c: col, o: op, s: sd, p: [], i: []});
       const pos = g.attributes.position, base = G.p.length / 3;
       for (let k = 0; k < pos.count; k++) {
         v.fromBufferAttribute(pos, k).applyMatrix4(o.matrixWorld);
@@ -16296,8 +16297,8 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     return out;
   }
   function dense(el, closed) {
-    const P = el.pts, out = [{x: P[0].x, y: P[0].y}], n = closed ? P.length : P.length - 1;
-    for (let i = 0; i < n; i++) { const a = P[i], c = P[(i + 1) % P.length]; out.push(...arcPts(a, c, a.b || 0)); }
+    const P = el.pts, out = [{x: P[0].x, y: P[0].y, e: closed ? P.length - 1 : undefined}], n = closed ? P.length : P.length - 1;
+    for (let i = 0; i < n; i++) { const a = P[i], c = P[(i + 1) % P.length]; arcPts(a, c, a.b || 0).forEach(q => { q.e = i; out.push(q); }); }
     if (closed) out.pop();
     return out;
   }
@@ -16355,8 +16356,37 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     return h || getDefaultWallHeight();
   }
   const plateT = cg => (27 + (cg.strati || 1) * (cg.sp || 12.5)) / 1000;
-  /* velette: lati del controsoffitto liberi (non contro un muro); altezza fino al soffitto o al controsoffitto più alto accanto */
+  /* v24.0 · LIVELLI: una forma tutta dentro un'altra è un'isola (più alta o più bassa); il controsoffitto che la contiene lì è bucato.
+     Quota uguale al soffitto = «solo pittura» (niente lastra). La veletta appartiene sempre al controsoffitto più basso dei due. */
+  const isPaint = c => c.h >= topOf(floorOf(c)) - 0.001;
+  function treeOf(fl) {
+    const L = state.ceils.filter(o => floorOf(o) === fl && isEntityVisible(o) && o.pts.length >= 3).map(o => { const D = dense(o, true); return {o, D, A: polyArea(D)}; });
+    L.forEach(a => {
+      const c0 = centroid(a.D), T = a.D.map(p => { const d = Math.hypot(c0.x - p.x, c0.y - p.y) || 1, k = Math.min(1, 0.002 / d); return {x: p.x + (c0.x - p.x) * k, y: p.y + (c0.y - p.y) * k}; });
+      let best = null; L.forEach(b => { if (b === a || b.A <= a.A + 1e-6) return; if (T.every(q => inPoly(q, b.D))) { if (!best || b.A < best.A) best = b; } }); a.par = best;
+    });
+    L.forEach(a => { a.kids = L.filter(k => k.par === a); a.vis = Math.max(0, a.A - a.kids.reduce((s2, k) => s2 + k.A, 0)); });
+    return L;
+  }
   function velette(c) {
+    const fl = floorOf(c), TR = treeOf(fl), N = TR.find(k => k.o === c); if (!N) return [];
+    const D = N.D, top = topOf(fl), ccw = (() => { let s2 = 0; D.forEach((p, i) => { const q = D[(i + 1) % D.length]; s2 += p.x * q.y - q.x * p.y; }); return s2 > 0; })();
+    const walls = state.walls.filter(w => floorOf(w) === fl && isEntityVisible(w)), sibs = TR.filter(k => k !== N && k.par === N.par), out = [];
+    for (let i = 0; i < D.length; i++) {
+      const a = D[i], b = D[(i + 1) % D.length], L = Math.hypot(b.x - a.x, b.y - a.y); if (L < 1e-4) continue;
+      const ei = b.e; if (Array.isArray(c.vOff) && c.vOff.includes(ei)) continue;
+      const m = {x: (a.x + b.x) / 2, y: (a.y + b.y) / 2}, nx = (ccw ? 1 : -1) * (b.y - a.y) / L, ny = (ccw ? 1 : -1) * -(b.x - a.x) / L;   // normale verso l'esterno
+      if (walls.some(w => segD(m, w.p1, w.p2) <= getWallThickness(w) / 2 + 0.06)) continue;
+      const q = {x: m.x + nx * 0.05, y: m.y + ny * 0.05};
+      let ho = N.par ? Math.min(top, N.par.o.h) : top, own = N.par ? N.par.o : null, sib = false;
+      for (const k of sibs) if (inPoly(q, k.D)) { ho = Math.min(top, k.o.h); own = k.o; sib = true; break; }
+      const ch = Math.min(top, c.h);
+      if (ho > ch + 0.005) out.push({a, b, L, h: ho - ch, z0: ch, own: c, e: ei});
+      else if (!sib && own && ho < ch - 0.005) out.push({a, b, L, h: ch - ho, z0: ho, own, e: ei});
+    }
+    return out;
+  }
+  function veletteOld(c) {
     const D = dense(c, true), top = topOf(floorOf(c)), ccw = (() => { let s = 0; D.forEach((p, i) => { const q = D[(i + 1) % D.length]; s += p.x * q.y - q.x * p.y; }); return s > 0; })();
     const walls = state.walls.filter(w => floorOf(w) === floorOf(c) && isEntityVisible(w));
     const others = state.ceils.filter(o => o !== c && floorOf(o) === floorOf(c) && isEntityVisible(o) && o.pts.length >= 3).map(o => ({o, D: dense(o, true)}));
@@ -16375,18 +16405,19 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     return (cg.strati === 2 ? 'doppia lastra ' : 'lastra ') + (LASTRE[cg.lastra] || LASTRE.std) + ' da ' + mm(cg.sp) + ' mm su orditura metallica' + (what === 'c' ? ' pendinata' : '') + (cg.iso ? ', isolante in lana minerale' : '');
   }
   function voceC(c) {
-    if (!c.pts || c.pts.length < 3) return null;
-    const D = dense(c, true), A = polyArea(D), P = polyLen(D, true), V = velette(c), vl = V.reduce((s, v) => s + v.L, 0), va = V.reduce((s, v) => s + v.L * v.h, 0);
+    if (!c.pts || c.pts.length < 3 || isPaint(c)) return null;
+    const N = treeOf(floorOf(c)).find(k => k.o === c), D = dense(c, true), A = N ? N.vis : polyArea(D), P = polyLen(D, true), V = velette(c), vl = V.reduce((s, v) => s + v.L, 0), va = V.reduce((s, v) => s + v.L * v.h, 0);
     const curvi = c.pts.some(p => Math.abs(p.b || 0) > 1e-4);
     const fl = state.floors.length > 1 && window.floorById ? ' (' + ((floorById(floorOf(c)) || {}).name || '') + ')' : '';
     const desc = (c.name || 'Controsoffitto') + fl + ': controsoffitto in cartongesso a quota ' + f2(c.h) + ' m, ' + stratTxt(c.cg, 'c') + (curvi ? ', con lati curvi' : '') + (V.length ? ', velette di raccordo' : '') + '; compresi stuccatura e rasatura dei giunti.';
-    return {key: 'cs_' + c.id, desc, det: 'Superficie ' + f2(A) + ' m² · perimetro ' + f2(P) + ' m' + (V.length ? ' · velette ' + f2(vl) + ' ml, ' + f2(va) + ' m²' : '')};
+    return {key: 'cs_' + c.id, desc, det: 'Superficie ' + f2(A) + ' m²' + (N && N.kids.length ? ' (al netto delle isole)' : '') + ' · perimetro ' + f2(P) + ' m' + (V.length ? ' · velette ' + f2(vl) + ' ml, ' + f2(va) + ' m²' : '')};
   }
+  const bSv = b => b.sez === 'L' ? b.w + b.hh : b.sez === 'V' ? 2 * b.hh + b.w : b.w + 2 * b.hh;   /* sviluppo della sezione */
   function voceB(b) {
     if (!b.pts || b.pts.length < 2) return null;
-    const D = dense(b, false), L = polyLen(D, false), sv = b.sez === 'L' ? b.w + b.hh : b.w + 2 * b.hh;
+    const D = dense(b, false), L = polyLen(D, false), sv = bSv(b);
     const fl = state.floors.length > 1 && window.floorById ? ' (' + ((floorById(floorOf(b)) || {}).name || '') + ')' : '';
-    const desc = (b.name || 'Falsa trave') + fl + ': falsa trave / cassonetto in cartongesso ' + Math.round(b.w * 100) + '×' + Math.round(b.hh * 100) + ' cm, sezione ' + (b.sez === 'L' ? 'a L (addossata a muro)' : 'a U') + ', ' + stratTxt(b.cg, 'b') + '; compresi paraspigoli e stuccatura.';
+    const desc = (b.name || 'Falsa trave') + fl + ': falsa trave / cassonetto in cartongesso ' + Math.round(b.w * 100) + '×' + Math.round(b.hh * 100) + ' cm, sezione ' + (b.sez === 'L' ? 'a L (addossata a muro)' : b.sez === 'V' ? 'a veletta (lastra verticale, due facce)' : 'a U') + ', ' + stratTxt(b.cg, 'b') + '; compresi paraspigoli e stuccatura.';
     return {key: 'cs_' + b.id, desc, det: 'Lunghezza ' + f2(L) + ' ml · sviluppo ' + f2(sv) + ' m · superficie ' + f2(L * sv) + ' m²'};
   }
 
@@ -16488,17 +16519,28 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     for (let i = 0; i < n; i++) { const a = P[i], c = P[(i + 1) % P.length], L = Math.hypot(c.x - a.x, c.y - a.y) || 1, s = a.b || 0; H.push({k: 'm', i, x: (a.x + c.x) / 2 - (c.y - a.y) / L * s, y: (a.y + c.y) / 2 + (c.x - a.x) / L * s}); }
     return H;
   }
+  let TRc = null, LBc = null;
+  /* v24.0: etichetta nella parte in vista (fuori dalle isole), il più lontano possibile dai bordi */
+  function lblAt(N) {
+    if (!N.kids.length) return centroid(N.D);
+    const xs = N.D.map(p => p.x), ys = N.D.map(p => p.y), x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys), polys = [N.D].concat(N.kids.map(k => k.D));
+    const dB = q => { let m = Infinity; polys.forEach(P => P.forEach((a, i) => { const d = segD(q, a, P[(i + 1) % P.length]); if (d < m) m = d; })); return m; };
+    let best = centroid(N.D), bd = -1;
+    for (let i = 1; i < 16; i++) for (let j = 1; j < 16; j++) { const q = {x: x0 + (x1 - x0) * i / 16, y: y0 + (y1 - y0) * j / 16}; if (!inPoly(q, N.D) || N.kids.some(k => inPoly(q, k.D))) continue; const d = dB(q); if (d > bd) { bd = d; best = q; } }
+    return best;
+  }
   function drawAll() {
     boxes = [];
     if (state.mode !== '2d' || !showOn()) return;
+    TRc = new Map(); try { [...new Set(state.ceils.map(c => floorOf(c)))].forEach(fl => treeOf(fl).forEach(N => TRc.set(N.o.id, N.vis))); } catch (_) {} LBc = new Map(); try { [...new Set(state.ceils.map(c => floorOf(c)))].forEach(fl => treeOf(fl).forEach(N => LBc.set(N.o.id, lblAt(N)))); } catch (_) {}
     ctx.save();
     for (const c of state.ceils) {
       if (!isEntityVisible(c) || c.pts.length < 3) continue;
       const D = dense(c, true), S = D.map(p => worldToScreen(p.x, p.y));
       ctx.beginPath(); S.forEach((s, i) => i ? ctx.lineTo(s.x, s.y) : ctx.moveTo(s.x, s.y)); ctx.closePath();
-      ctx.fillStyle = 'rgba(167,139,250,0.10)'; ctx.fill(); ctx.setLineDash([8, 5]); ctx.strokeStyle = COL_C; ctx.lineWidth = c === active ? 2.5 : 1.6; ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = c.fin && c.fin.c1 ? c.fin.c1 + '40' : 'rgba(167,139,250,0.10)'; ctx.fill(); ctx.setLineDash([8, 5]); ctx.strokeStyle = COL_C; ctx.lineWidth = c === active ? 2.5 : 1.6; ctx.stroke(); ctx.setLineDash([]);
       velette(c).forEach(v => { const A = worldToScreen(v.a.x, v.a.y), B = worldToScreen(v.b.x, v.b.y); ctx.strokeStyle = COL_C; ctx.lineWidth = 3.5; ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.lineTo(B.x, B.y); ctx.stroke(); });
-      labelBox((c.name ? c.name + ' · ' : '') + 'Controsoffitto h ' + f2(c.h), f2(polyArea(D)) + ' m²', centroid(D), COL_C, c);
+      labelBox((c.name ? c.name + ' · ' : '') + (isPaint(c) ? 'Soffitto dipinto' : 'Controsoffitto h ' + f2(c.h)), f2(((TRc || (TRc = new Map())).get(c.id) || polyArea(D))) + ' m²' + (c.fin ? ' · ' + c.fin.name : ''), (LBc && LBc.get(c.id)) || centroid(D), COL_C, c);
     }
     for (const b of state.beams) {
       if (!isEntityVisible(b) || b.pts.length < 2) continue;
@@ -16603,14 +16645,19 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     pal.style.cssText = 'position:fixed;z-index:9500;background:#1e1e2e;border:1px solid ' + (isC ? COL_C : COL_B) + ';border-radius:10px;padding:8px;box-shadow:0 6px 22px rgba(0,0,0,.55);font:13px sans-serif;color:#e5e7eb;display:flex;flex-direction:column;gap:6px;width:min(290px,calc(100vw - 12px));max-height:calc(100vh - 12px);overflow:auto';
     pal.innerHTML = '<div style="display:flex;align-items:center;gap:6px"><b style="flex:1;color:' + (isC ? COL_C : COL_B) + '">' + (isC ? 'Controsoffitto' : 'Falsa trave') + '</b><button id="csDel" class="sc-del" style="padding:5px 9px;border-radius:7px;border:1px solid #475569;background:#1e293b;color:#f1f5f9;font:600 13px system-ui,sans-serif;cursor:pointer">🗑 Elimina</button><button id="csOk" class="sc-fine" style="padding:5px 9px;border-radius:7px;border:1px solid #475569;background:#1e293b;color:#f1f5f9;font:600 13px system-ui,sans-serif;cursor:pointer">✔ Fine</button></div>' +
       inp('csName', 'Nome (es. ' + (isC ? 'Corridoio' : 'Passaggio impianti') + ')', el.name || '') +
-      (isC ? inp('csH', 'Quota da pavimento (m)', f2(el.h), 1)
-           : '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">' + inp('csW', 'Larghezza (m)', f2(el.w), 1) + inp('csHh', 'Altezza (m)', f2(el.hh), 1) + '</div>' + '<label style="font-size:12px">Sezione' + sel('csSez', [['U', 'A U (libera sui due lati)'], ['L', 'A L (addossata a muro)']], el.sez) + '</label>') +
+      (isC ? inp('csH', 'Quota da pavimento (m) · ' + f2(topOf(floorOf(el))) + ' = soffitto, solo pittura', f2(el.h), 1) +
+        '<div style="display:flex;gap:6px;flex-wrap:wrap"><button id="csFin" style="flex:1;padding:7px;border-radius:6px;border:1px solid #e879f9;background:#2a1f33;color:#f5d0fe;cursor:pointer">🎨 ' + esc(el.fin ? el.fin.name : 'Finitura') + '</button>' +
+        '<button id="csVFin" style="flex:1;padding:7px;border-radius:6px;border:1px solid #475569;background:#1e293b;color:#e5e7eb;cursor:pointer" title="Finitura delle velette che scendono da questo controsoffitto">Velette: ' + esc(el.vfin ? el.vfin.name : 'come il piano') + '</button>' +
+        '<button id="csSezV" style="flex:1;padding:7px;border-radius:6px;border:1px solid #475569;background:#1e293b;color:#e5e7eb;cursor:pointer">📐 Vedi in sezione</button></div>'
+           : '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">' + inp('csW', 'Larghezza (m)', f2(el.w), 1) + inp('csHh', 'Altezza (m)', f2(el.hh), 1) + '</div>' + '<label style="font-size:12px">Sezione' + sel('csSez', [['U', 'A U (libera sui due lati)'], ['L', 'A L (addossata a muro)'], ['V', 'Veletta (lastra verticale dal soffitto)']], el.sez) + '</label>' +
+        '<button id="csFin" style="padding:7px;border-radius:6px;border:1px solid #e879f9;background:#2a1f33;color:#f5d0fe;cursor:pointer">🎨 ' + esc(el.fin ? el.fin.name : 'Finitura') + '</button>') +
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">' + '<label style="font-size:12px">Lastra' + sel('csLastra', Object.entries(LASTRE).map(([k, n]) => [k, n[0].toUpperCase() + n.slice(1)]), cg.lastra) + '</label>' + '<label style="font-size:12px">Spessore lastra' + sel('csSp', SPS.map(s => [s, mm(s) + ' mm']), cg.sp) + '</label>' + '</div>' +
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">' + '<label style="font-size:12px">Lastre' + sel('csStrati', [[1, 'Singola'], [2, 'Doppia']], cg.strati) + '</label>' + '<label style="font-size:12px">Isolante' + sel('csIso', [['0', 'Nessuno'], ['1', 'Lana minerale']], cg.iso ? '1' : '0') + '</label>' + '</div>' +
       (() => {   /* lato scelto toccando il suo pallino */
         const n = el.pts.length, ns = isC ? n : n - 1; if (side == null || side >= ns) return '';
         const o = oppSide(el, side), a = el.pts[side], c = el.pts[(side + 1) % n];
         return '<div style="border:1px solid #2f3550;border-radius:6px;padding:5px 7px;display:flex;flex-direction:column;gap:5px"><div style="font-size:12px;color:' + (isC ? COL_C : COL_B) + '">Lato selezionato · ' + f2(Math.hypot(c.x - a.x, c.y - a.y)) + ' m</div>' +
+          (isC ? '<label style="font-size:12px;display:flex;gap:7px;align-items:center"><input type="checkbox" id="csVOn" style="width:20px;height:20px"' + (Array.isArray(el.vOff) && el.vOff.includes(side) ? '' : ' checked') + '> Veletta su questo lato (se c\'è un salto di quota)</label>' : '') +
           (o ? inp('csSide', 'Distanza dal lato opposto (m)', f2(o.dist), 1) : inp('csSide', 'Sposta il lato (m, + verso l\'esterno)', '0,00', 1)) + '</div>';
       })() +
       '<label style="font-size:12px">Pallini a metà lato' + sel('csMid', [['move', 'Spostano il lato'], ['curve', 'Curvano il lato']], appSettings.csMid === 'curve' ? 'curve' : 'move') + '</label>' +
@@ -16625,11 +16672,12 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     const saveDef = (k, v) => { const d = Object.assign({}, appSettings.cgDef || {}); d[k] = v; appSettings.cgDef = d; try { persistSettings(); } catch (_) {} };
     const ch = () => { sum(); draw2D(); if (state.mode === '3d') build3D(); };
     $p('csName').oninput = e => { el.name = e.target.value; ch(); };
-    if (isC) $p('csH').onchange = e => { const v = num(e.target.value), top = topOf(floorOf(el)); if (!(v >= 1.5 && v < top)) { toast('Quota da 1,50 a ' + f2(top - 0.01) + ' m (soffitto a ' + f2(top) + ')'); e.target.value = f2(el.h); return; } el.h = v; appSettings.csH = v; try { persistSettings(); } catch (_) {} ch(); try { checkpoint(); } catch (_) {} };
+    if (isC) $p('csH').onchange = e => { const v = num(e.target.value), top = topOf(floorOf(el)); if (!(v >= 1.5 && v <= top + 0.0005)) { toast('Quota da 1,50 a ' + f2(top) + ' m (' + f2(top) + ' = soffitto: solo pittura)'); e.target.value = f2(el.h); return; } el.h = v; appSettings.csH = v; try { persistSettings(); } catch (_) {} ch(); try { checkpoint(); } catch (_) {} };
     else {
       $p('csW').onchange = e => { const v = num(e.target.value); if (!(v >= 0.05 && v <= 3)) { toast('Larghezza da 0,05 a 3 m'); e.target.value = f2(el.w); return; } el.w = v; appSettings.csBw = v; try { persistSettings(); } catch (_) {} ch(); try { checkpoint(); } catch (_) {} };
       $p('csHh').onchange = e => { const v = num(e.target.value); if (!(v >= 0.03 && v <= 2)) { toast('Altezza da 0,03 a 2 m'); e.target.value = f2(el.hh); return; } el.hh = v; appSettings.csBh = v; try { persistSettings(); } catch (_) {} ch(); try { checkpoint(); } catch (_) {} };
-      $p('csSez').onchange = e => { el.sez = e.target.value; ch(); try { checkpoint(); } catch (_) {} };
+      $p('csSez').onchange = e => { el.sez = e.target.value; if (el.sez === 'V' && el.w > 0.1) { el.w = 0.06; } ch(); try { checkpoint(); } catch (_) {} openPal(el); };
+      if (window.SCpit) $p('csFin').onclick = () => SCpit.openLib(el.fin || SCpit.last(), fin => { el.fin = fin; ch(); try { checkpoint(); } catch (_) {} openPal(el); });
     }
     $p('csLastra').onchange = e => { cg.lastra = e.target.value; saveDef('lastra', cg.lastra); ch(); try { checkpoint(); } catch (_) {} };
     $p('csSp').onchange = e => { cg.sp = parseFloat(e.target.value); saveDef('sp', cg.sp); ch(); try { checkpoint(); } catch (_) {} };
@@ -16638,6 +16686,12 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     $p('csPr').oninput = e => { const v = num(e.target.value); el.price = isFinite(v) ? Math.max(0, v) : 0; };
     $p('csPr').onchange = () => { try { checkpoint(); } catch (_) {} };
     $p('csStraight').onclick = () => { el.pts.forEach(p => { delete p.b; }); ch(); try { checkpoint(); } catch (_) {} };
+    if (isC && window.SCpit) {
+      $p('csFin').onclick = () => SCpit.openLib(el.fin || SCpit.last(), fin => { el.fin = fin; ch(); try { checkpoint(); } catch (_) {} openPal(el); });
+      $p('csVFin').onclick = () => SCpit.openLib(el.vfin || el.fin || SCpit.last(), fin => { el.vfin = fin; ch(); try { checkpoint(); } catch (_) {} openPal(el); });
+    }
+    if (isC) $p('csSezV').onclick = () => sezOf(el);
+    if ($p('csVOn')) $p('csVOn').onchange = e => { const a = new Set(el.vOff || []); if (e.target.checked) a.delete(side); else a.add(side); el.vOff = [...a]; ch(); try { checkpoint(); } catch (_) {} };
     $p('csDel').onclick = () => { state.ceils = state.ceils.filter(x => x !== el); state.beams = state.beams.filter(x => x !== el); active = null; closePal(); draw2D(); if (state.mode === '3d') build3D(); try { checkpoint(); } catch (_) {} toast('Eliminato'); };
     $p('csOk').onclick = () => closePal();
     $p('csMid').onchange = e => { appSettings.csMid = e.target.value; try { persistSettings(); } catch (_) {} };
@@ -16654,28 +16708,47 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   }
 
   /* ---------------------------------------------------------------- 3D */
+  const FM = new Map();
+  function finMat(fin, side, rx, ry) {   /* v24.0: finitura della libreria pittura (tinta = colore, effetti = texture ripetuta al metro) */
+    const gl = fin ? Math.max(0, Math.min(1, +fin.gl || 0)) : 0;
+    if (!fin || !window.SCpit) { const k = 'w' + side; if (!FM.has(k)) FM.set(k, new THREE.MeshStandardMaterial({color: 0xf3f2ee, roughness: 0.85, side})); return FM.get(k); }
+    if (fin.type === 'tinta') { const k = 't' + fin.c1 + side + gl; if (!FM.has(k)) FM.set(k, new THREE.MeshStandardMaterial({color: new THREE.Color(fin.c1), roughness: Math.max(0.6, 0.9 - 0.6 * gl), side})); return FM.get(k); }
+    const t = new THREE.CanvasTexture(SCpit.tile(fin)); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rx, ry); t.anisotropy = 4;
+    return new THREE.MeshStandardMaterial({map: t, roughness: Math.max(0.6, 1 - 0.75 * gl), side});   /* sotto i soffitti arriva poca luce diretta: lucido = nero senza riflessi ambientali */
+  }
+  /* «Vedi in sezione»: traccia nel mezzo del controsoffitto, lungo il lato più lungo */
+  function sezOf(c) {
+    if (!window.SCsez) return; let N = treeOf(floorOf(c)).find(k => k.o === c); while (N && N.par) N = N.par;   /* traccia lungo tutto il controsoffitto più esterno: si vedono muri e salti di quota */
+    const D = dense(N ? N.o : c, true), xs = D.map(p => p.x), ys = D.map(p => p.y), x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys), cx2 = (x0 + x1) / 2, cy2 = (y0 + y1) / 2;
+    const SEC = Array.isArray(state.sections) ? state.sections : (state.sections = []), used = new Set(SEC.map(q => q.name)); let nm = 'S'; for (let i = 0; i < 26; i++) { const ch = String.fromCharCode(65 + i); if (!used.has(ch)) { nm = ch; break; } }
+    const s2 = x1 - x0 >= y1 - y0 ? {p1: {x: r6(x0 - 0.8), y: r6(cy2)}, p2: {x: r6(x1 + 0.8), y: r6(cy2)}} : {p1: {x: r6(cx2), y: r6(y0 - 0.8)}, p2: {x: r6(cx2), y: r6(y1 + 0.8)}};
+    const sec = Object.assign({id: 'sz' + newId(), name: nm, side: 1, floorId: floorOf(c)}, s2); SEC.push(sec); closePal(); try { checkpoint(); } catch (_) {} draw2D(); SCsez.open(sec.id); toast('Sezione ' + nm + '–' + nm + ': trascina un controsoffitto in su o in giù, o il suo bordo di lato');
+  }
   function add3D() {
     if (state.mode !== '3d' || typeof scene === 'undefined' || !scene || !showOn()) return;
     const cf = (window.SCfl && SCfl.cfg) || {}, cur = state.floors.find(f => f.id === state.currentFloorId);
     const okF = el => { const f = state.floors.find(x => x.id === floorOf(el)) || {elev: 0}; if (f.hide3d) return null; if (cf.view3d === 'only' && cur && f.id !== cur.id) return null; if (cf.view3d === 'upto' && cur && f.elev > cur.elev + 1e-6) return null; return f; };
     const mat = new THREE.MeshStandardMaterial({color: 0xf3f2ee, roughness: 0.85, side: THREE.DoubleSide});
-    for (const c of state.ceils) {
-      const L = getLayer(c.layerId); if ((L && L.visible === false) || c.pts.length < 3) continue; const f = okF(c); if (!f) continue;
-      const D = dense(c, true), sh = new THREE.Shape(); D.forEach((p, i) => i ? sh.lineTo(p.x, p.y) : sh.moveTo(p.x, p.y)); sh.closePath();
-      const t = plateT(c.cg), g = new THREE.ExtrudeGeometry(sh, {depth: t, bevelEnabled: false}), m = new THREE.Mesh(g, mat);
-      m.rotation.x = -Math.PI / 2; m.position.y = (f.elev || 0) + c.h; m.castShadow = true; m.receiveShadow = true; scene.add(m);
+    const fls = [...new Set(state.ceils.map(c => floorOf(c)))];
+    fls.forEach(fl => treeOf(fl).forEach(N => {
+      const c = N.o, f = okF(c); if (!f) return; const top = topOf(fl), paint = isPaint(c);
+      const sh = new THREE.Shape(); N.D.forEach((p, i) => i ? sh.lineTo(p.x, p.y) : sh.moveTo(p.x, p.y)); sh.closePath();
+      N.kids.forEach(k => { const hp = new THREE.Path(); k.D.forEach((p, i) => i ? hp.lineTo(p.x, p.y) : hp.moveTo(p.x, p.y)); hp.closePath(); sh.holes.push(hp); });
+      const sc = c.fin ? (+c.fin.sc || 1) : 1, m = new THREE.Mesh(new THREE.ShapeGeometry(sh), finMat(c.fin, THREE.BackSide, 1 / sc, 1 / sc));   /* si vede da sotto (tour); dall'alto resta trasparente */
+      m.rotation.x = -Math.PI / 2; m.position.y = (f.elev || 0) + (paint ? top - 0.004 : c.h); m.castShadow = !paint; m.receiveShadow = true; m.userData.ceilId = c.id; scene.add(m);
       velette(c).forEach(v => {
-        const box = new THREE.Mesh(new THREE.BoxGeometry(v.L, v.h, 0.05), mat);
-        box.position.set((v.a.x + v.b.x) / 2, (f.elev || 0) + c.h + v.h / 2, -(v.a.y + v.b.y) / 2); box.rotation.y = Math.atan2(v.b.y - v.a.y, v.b.x - v.a.x); box.castShadow = true; scene.add(box);
+        const fin = v.own.vfin || v.own.fin, s2 = fin ? (+fin.sc || 1) : 1;
+        const box = new THREE.Mesh(new THREE.BoxGeometry(v.L, v.h, 0.05), finMat(fin, THREE.DoubleSide, v.L / s2, v.h / s2));
+        box.position.set((v.a.x + v.b.x) / 2, (f.elev || 0) + v.z0 + v.h / 2, -(v.a.y + v.b.y) / 2); box.rotation.y = Math.atan2(v.b.y - v.a.y, v.b.x - v.a.x); box.castShadow = true; scene.add(box);
       });
-    }
+    }));
     for (const b of state.beams) {
       const L = getLayer(b.layerId); if ((L && L.visible === false) || b.pts.length < 2) continue; const f = okF(b); if (!f) continue;
       const D = dense(b, false), top = topOf(floorOf(b));
       for (let i = 0; i < D.length - 1; i++) {
         const a = D[i], c = D[i + 1], Ls = Math.hypot(c.x - a.x, c.y - a.y); if (Ls < 1e-4) continue;
         const ext = (i > 0 ? b.w / 2 : 0) + (i < D.length - 2 ? b.w / 2 : 0), off = ((i < D.length - 2 ? b.w / 2 : 0) - (i > 0 ? b.w / 2 : 0)) / 2;
-        const ux = (c.x - a.x) / Ls, uy = (c.y - a.y) / Ls, box = new THREE.Mesh(new THREE.BoxGeometry(Ls + ext, b.hh, b.w), mat);
+        const s3 = b.fin ? (+b.fin.sc || 1) : 1, ux = (c.x - a.x) / Ls, uy = (c.y - a.y) / Ls, box = new THREE.Mesh(new THREE.BoxGeometry(Ls + ext, b.hh, b.w), b.fin ? finMat(b.fin, THREE.DoubleSide, (Ls + ext) / s3, b.hh / s3) : mat);
         box.position.set((a.x + c.x) / 2 + ux * off, (f.elev || 0) + top - b.hh / 2, -((a.y + c.y) / 2 + uy * off)); box.rotation.y = Math.atan2(c.y - a.y, c.x - a.x); box.castShadow = true; box.receiveShadow = true; scene.add(box);
       }
     }
@@ -16696,7 +16769,19 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     priceOf: k => { const e = state.ceils.concat(state.beams).find(x => 'cs_' + x.id === k); return e && e.price != null ? +e.price : null; },
     setPrice: (k, v) => { const e = state.ceils.concat(state.beams).find(x => 'cs_' + x.id === k); if (e) e.price = v; },
     busy: () => isMine(state.tool) && tmp.length > 0, finish, undoPt: () => { tmp.pop(); draw2D(); }, cancel: () => { tmp = []; draw2D(); },
-    count: () => tmp.length, mode, cycleMode, modeName: () => MNAME[mode()], moveSide, innerOf, velette, dense, voceC, voceB, snap: snapCs
+    count: () => tmp.length, mode, cycleMode, modeName: () => MNAME[mode()], moveSide, innerOf, velette, dense, voceC, voceB, snap: snapCs,
+    tree: treeOf, lblAt, topOf, plateT, isPaint, select: c => { active = c; draw2D(); },
+    /* v24.0: pittura di soffitti e controsoffitti: parte in vista (al netto delle isole) + velette, per finitura */
+    paintItems() {
+      const g = {}, add = (fin, a, what) => { if (!fin || !(a > 0)) return; const k = 'pcs_' + fin.type + '_' + (fin.id || fin.name); const o = g[k] || (g[k] = {key: k, fin, q: 0, L: []}); o.q += a; o.L.push(what); };
+      [...new Set(state.ceils.map(c => floorOf(c)))].forEach(fl => treeOf(fl).forEach(N => {
+        const c = N.o, nm = c.name || (isPaint(c) ? 'soffitto' : 'controsoffitto h ' + f2(c.h)); add(c.fin, N.vis, nm + ' ' + f2(N.vis) + ' m²');
+        velette(c).forEach(v => add(v.own.vfin || v.own.fin, v.L * v.h, 'veletta ' + f2(v.L) + '×' + f2(v.h)));
+      }));
+      state.beams.filter(b => isEntityVisible(b) && b.fin && b.pts.length > 1).forEach(b => { const L = polyLen(dense(b, false), false); add(b.fin, L * bSv(b), (b.name || (b.sez === 'V' ? 'veletta' : 'falsa trave')) + ' ' + f2(L) + ' ml'); });
+      return Object.values(g).map(o => ({key: o.key, um: 'm²', q: o.q, desc: (window.SCpit ? SCpit.voce(o.fin.type) : 'Tinteggiatura') + ' «' + o.fin.name + '»' + (o.fin.code ? ' (' + o.fin.code + ')' : '') + ', su soffitti e controsoffitti: ' + o.L.join('; ') + '.', det: f2(o.q) + ' m²' + (o.fin.pr != null ? ' · € ' + f2(o.fin.pr) + '/m² dalla finitura' : ''), pr: o.fin.pr}));
+    },
+    paintPrice(k) { const it = this.paintItems().find(v => v.key === k); return it && it.pr != null ? it.pr : null; }
   };
 })();
 </script>
@@ -20417,8 +20502,9 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
    SC_REL.v è l'unica versione: titolo, Guida, file salvato, avvisi e riga messaggi la leggono da qui.
    ======================================================================== */
 window.SC_REL = {
-  v: '23.9', d: '27/10/2026',
+  v: '24.0', d: '27/10/2026',
   news: [
+    ['24.0', 'Progetto soffitto: controsoffitti a livelli. Una forma disegnata dentro un\'altra diventa un\'isola (più alta o più bassa) e quella che la contiene lì è bucata; quota = soffitto vuol dire «solo pittura». Velette automatiche ai salti di quota (sempre del controsoffitto più basso), escludibili lato per lato; veletta a mano con Falsa trave → sezione «Veletta». Finitura della libreria pittura su ogni livello e sulle velette, nel 3D visibile da sotto. «📐 Vedi in sezione»: nella sezione trascini un controsoffitto su/giù per la quota, dal bordo giallo per allargarlo, in orizzontale per spostarlo (con le sue isole). Computo: cartongesso al netto delle isole, pittura soffitti per finitura. Corretto: nel 3D le texture di pittura e rivestimenti risultavano più scure del colore scelto.'],
     ['23.9', 'Incolla: la spunta verde della barra di selezione chiude anche Incolla (e Parallela), senza dover premere «Fine» nel riquadro in alto.'],
     ['23.8', 'Porte coperte nel 3D: un rivestimento senza skin (tinta unita) copriva anche i vani di porte e finestre e la porta spariva da quel lato; ora i vani restano aperti.'],
     ['23.7', 'Zoccolini nel 3D: i pavimenti nel 3D erano 3–5 cm sopra lo zero e coprivano la parte bassa di zoccolini e rivestimenti; ora sono a quota zero, come nel prospetto.'],
@@ -21272,7 +21358,7 @@ window.SC_REL = {
       const bb = {u0: Math.min(...uv.map(p => p.u)), u1: Math.max(...uv.map(p => p.u)), v0: Math.min(...uv.map(p => p.v)), v1: Math.max(...uv.map(p => p.v))};
       const ppm = Math.max(60, Math.min(320, 2048 / Math.max(bb.u1 - bb.u0, bb.v1 - bb.v0, 0.5)));
       const cv = SCskin.raster(c.res, c.e.sk, bb, ppm), tex = new THREE.CanvasTexture(cv);
-      if (THREE.sRGBEncoding) tex.encoding = THREE.sRGBEncoding; tex.anisotropy = 4;
+      tex.anisotropy = 4;
       const pos = mesh.geometry.attributes.position, att = new Float32Array(pos.count * 2);
       for (let i = 0; i < pos.count; i++) { const x = pos.getX(i), y = pos.getY(i), u = (x - T.ox) * T.ca + (y - T.oy) * T.sa, v = -(x - T.ox) * T.sa + (y - T.oy) * T.ca; att[2 * i] = (u - bb.u0) / (bb.u1 - bb.u0); att[2 * i + 1] = (v - bb.v0) / (bb.v1 - bb.v0); }
       mesh.geometry.setAttribute('uv', new THREE.BufferAttribute(att, 2));
@@ -21561,7 +21647,7 @@ window.SC_REL = {
           const x0 = cv0.getContext('2d'), kx0 = cv0.width / Wd0, ky0 = cv0.height / Hh0; x0.fillStyle = (sk0 && sk0.col) || '#e7e2d8'; x0.fillRect(0, 0, cv0.width, cv0.height);
           x0.globalCompositeOperation = 'destination-out'; x0.fillStyle = '#000';
           it0.holes.concat(it0.niches).forEach(P => { x0.beginPath(); P.forEach((q, i) => { const X = (q.x - V0.u0) * kx0, Y = (V0.z1 - q.y) * ky0; i ? x0.lineTo(X, Y) : x0.moveTo(X, Y); }); x0.closePath(); x0.fill(); });
-          const tx0 = new THREE.CanvasTexture(cv0); if (THREE.sRGBEncoding) tx0.encoding = THREE.sRGBEncoding;
+          const tx0 = new THREE.CanvasTexture(cv0);
           const m0 = new THREE.Mesh(new THREE.PlaneGeometry(Wd0, Hh0), new THREE.MeshStandardMaterial({map: tx0, transparent: true, alphaTest: 0.5, roughness: 0.5, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2}));
           const a0 = Math.atan2(w.p2.y - w.p1.y, w.p2.x - w.p1.x), g0 = new THREE.Group(); g0.position.set((w.p1.x + w.p2.x) / 2, 0, -(w.p1.y + w.p2.y) / 2); g0.rotation.y = a0;
           m0.position.set((r.x0 + r.x1) / 2 - L0 / 2, (V0.z0 + V0.z1) / 2, (r.f > 0 ? -1 : 1) * (t0 / 2 + 0.003)); if (r.f > 0) m0.rotation.y = Math.PI; m0.receiveShadow = true; m0.userData.rivId = r.id; g0.add(m0); scene.add(g0); return;
@@ -21572,14 +21658,14 @@ window.SC_REL = {
         const cvN = document.createElement('canvas'); cvN.width = cv.width; cvN.height = cv.height; cvN.getContext('2d').drawImage(cv, 0, 0);   /* copia piena per le pareti interne delle nicchie */
         x.globalCompositeOperation = 'destination-out'; x.fillStyle = '#000';
         it.holes.concat(it.niches).forEach(P => { x.beginPath(); P.forEach((p, i) => { const X = (p.x - V.u0) * kx, Y = (V.z1 - p.y) * ky; i ? x.lineTo(X, Y) : x.moveTo(X, Y); }); x.closePath(); x.fill(); });
-        const tex = new THREE.CanvasTexture(cv); if (THREE.sRGBEncoding) tex.encoding = THREE.sRGBEncoding; tex.anisotropy = 4;
+        const tex = new THREE.CanvasTexture(cv); tex.anisotropy = 4;
         const m = new THREE.Mesh(new THREE.PlaneGeometry(Wd, Hh), new THREE.MeshStandardMaterial({map: tex, transparent: true, alphaTest: 0.5, roughness: 0.55, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2}));
         const ang = Math.atan2(w.p2.y - w.p1.y, w.p2.x - w.p1.x), g = new THREE.Group();
         g.position.set((w.p1.x + w.p2.x) / 2, 0, -(w.p1.y + w.p2.y) / 2); g.rotation.y = ang;
         m.position.set((r.x0 + r.x1) / 2 - L / 2, (V.z0 + V.z1) / 2, (r.f > 0 ? -1 : 1) * (t / 2 + 0.003)); if (r.f > 0) m.rotation.y = Math.PI;
         m.receiveShadow = true; m.userData.rivId = r.id; g.add(m); scene.add(g);
         /* v19.0: nicchie dentro il rivestimento: fondo, lati, sopra e sotto rivestiti con la stessa posa */
-        const sg = r.f > 0 ? -1 : 1, texN = new THREE.CanvasTexture(cvN); if (THREE.sRGBEncoding) texN.encoding = THREE.sRGBEncoding; texN.anisotropy = 4;
+        const sg = r.f > 0 ? -1 : 1, texN = new THREE.CanvasTexture(cvN); texN.anisotropy = 4;
         (w.works || []).filter(k => k.k === 'niche' && k.f === r.f).forEach(k0 => {
           const k = SCwk.clamp(w, {...k0}), xa = k.cx - k.w / 2, xb = k.cx + k.w / 2, y0 = k.y, y1 = k.y + k.h;
           if (!(xa >= r.x0 - 1e-3 && xb <= r.x1 + 1e-3 && y0 >= r.z0 - 1e-3 && y1 <= r.z1 + 1e-3)) return;
@@ -21898,7 +21984,7 @@ window.SC_REL = {
         g.beginPath(); r.pts.forEach((p, i) => i ? g.lineTo(X(p.x), Y(p.z)) : g.moveTo(X(p.x), Y(p.z))); g.closePath(); g.fillStyle = pattern(g, f, ppm, X(0), Y(0)); g.fill();
         g.globalCompositeOperation = 'destination-out'; g.fillStyle = '#000'; cutsOf(w, r).forEach(q => g.fillRect(X(q.x0), Y(q.z1), (q.x1 - q.x0) * ppm, (q.z1 - q.z0) * ppm));
         (w.works || []).forEach(k0 => { if (k0.k !== 'niche' || k0.f !== r.f) return; const k = SCwk.clamp(w, {...k0}); g.fillRect(X(k.cx - k.w / 2), Y(k.y + k.h), k.w * ppm, k.h * ppm); });
-        const tex = new THREE.CanvasTexture(cv); if (THREE.sRGBEncoding) tex.encoding = THREE.sRGBEncoding; tex.anisotropy = 4;
+        const tex = new THREE.CanvasTexture(cv); tex.anisotropy = 4;
         const C = r.pts.map(p => new THREE.Vector2(p.x, p.z)), tri = THREE.ShapeUtils.triangulateShape(C, []), sg = r.f > 0 ? -1 : 1, z = sg * (t / 2 + 0.0015);   /* v23.6: sotto il rivestimento (che sta a 3 mm) */
         const pos = [], uv = [], idx = []; r.pts.forEach(p => { pos.push(p.x - L / 2, p.z, z); uv.push((p.x - b.x0) / Wd, (p.z - b.z0) / Hh); }); tri.forEach(T => idx.push(T[0], T[1], T[2]));
         const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); geo.setIndex(idx); geo.computeVertexNormals();
@@ -21922,7 +22008,7 @@ window.SC_REL = {
   /* le finiture trovate nei progetti aperti entrano nella libreria */
   setInterval(() => { try { state.walls.forEach(w => (w.pit || []).forEach(r => learn(r.fin))); } catch (_) {} }, 4000);
 
-  window.SCpit = {add, remove, dup, find, hostOf, bbox, fitBox, draw, drawTmp, hit, hitVertex, moveVertex, insertVertex, delVertex, setCur, panelHTML, bind, openLib, closeLib, add3D, items, priceOf, net, tile, pattern, TYPES, presets: PRESETS, last: () => LAST};
+  window.SCpit = {voce: t => VOCE[t] || VOCE.tinta, add, remove, dup, find, hostOf, bbox, fitBox, draw, drawTmp, hit, hitVertex, moveVertex, insertVertex, delVertex, setCur, panelHTML, bind, openLib, closeLib, add3D, items, priceOf, net, tile, pattern, TYPES, presets: PRESETS, last: () => LAST};
   if (window.SCwk && SCwk.commit) bind(document.getElementById('wkFoot'), {commit: SCwk.commit, sel: SCwk.sel});
 })();
 </script>
@@ -22198,13 +22284,29 @@ window.SC_REL = {
       });
     } catch (e) { console.warn('tetto in sezione', e); }
     roofsC.forEach(r => r.sort((a, b) => a.h - b.h));
-    const xs = walls.flatMap(c => [c.h0, c.h1]).concat(rooms.flatMap(c => [c.h0, c.h1]), roofsC.flatMap(r => [r[0].h, r[r.length - 1].h]));
+    /* v24.0 · controsoffitti tagliati (per livelli, isole escluse), velette e false travi */
+    const ceils = [], cvel = [], cbeams = [];
+    if (window.SCcs && SCcs.tree && !(document.getElementById('showCs') && !document.getElementById('showCs').checked)) {
+      const hitsE = D => { const out = []; for (let i = 0; i < D.length; i++) { const a = D[i], b = D[(i + 1) % D.length], ex = b.x - a.x, ey = b.y - a.y, den = ux * ey - uy * ex; if (Math.abs(den) < 1e-12) continue; const wx = a.x - p1.x, wy = a.y - p1.y, sv = (wx * ey - wy * ex) / den, t = (wx * uy - wy * ux) / den; if (t >= -1e-9 && t < 1 - 1e-9) out.push({s: sv, e: b.e}); } return out.sort((a, b) => a.s - b.s); };
+      fl.forEach(f => SCcs.tree(f.id).forEach(N => {
+        const c = N.o, top = SCcs.topOf(f.id), paint = SCcs.isPaint(c), z = f.elev + (paint ? top : c.h), hs = hitsE(N.D), kc = [];
+        N.kids.forEach(k => { const kh = hitsE(k.D).map(q => q.s); for (let j = 0; j + 1 < kh.length; j += 2) kc.push([kh[j], kh[j + 1]]); });
+        for (let j = 0; j + 1 < hs.length; j += 2) {
+          const A = hs[j], B = hs[j + 1]; if (B - A < 0.01) continue;
+          minus(Math.max(0, A.s), Math.min(L, B.s), kc).forEach(([x, y]) => { if (y - x < 0.01) return; ceils.push({a: Math.min(H(x), H(y)), b: Math.max(H(x), H(y)), z, t: paint ? 0 : SCcs.plateT(c.cg), c, f, paint, ea: Math.abs(x - A.s) < 1e-6 ? A : null, eb: Math.abs(y - B.s) < 1e-6 ? B : null}); });
+        }
+        SCcs.velette(c).forEach(v => { const ex = v.b.x - v.a.x, ey = v.b.y - v.a.y, den = ux * ey - uy * ex; if (Math.abs(den) < 1e-12) return; const wx = v.a.x - p1.x, wy = v.a.y - p1.y, sv = (wx * ey - wy * ex) / den, t = (wx * uy - wy * ux) / den; if (t < 0 || t >= 1 || sv < 0 || sv > L) return; cvel.push({u: H(sv), z0: f.elev + v.z0, z1: f.elev + v.z0 + v.h, c: v.own}); });
+      }));
+      (state.beams || []).forEach(b => { if (!vis(b) || b.pts.length < 2) return; const f = floorById(floorOf(b)), top = SCcs.topOf(f.id), D = SCcs.dense(b, false);
+        for (let i = 0; i + 1 < D.length; i++) { const a = D[i], q = D[i + 1], ex = q.x - a.x, ey = q.y - a.y, Ls = Math.hypot(ex, ey), den = ux * ey - uy * ex; if (Ls < 1e-4 || Math.abs(den) < 1e-9) continue; const wx = a.x - p1.x, wy = a.y - p1.y, sv = (wx * ey - wy * ex) / den, t = (wx * uy - wy * ux) / den; if (t < 0 || t > 1 || sv < 0 || sv > L) continue; const half = b.w / 2 / Math.max(0.15, Math.abs(den / Ls)), u = H(sv); cbeams.push({a: u - half, b: u + half, z0: f.elev + top - b.hh, z1: f.elev + top, o: b}); } });
+    }
+    const xs = walls.flatMap(c => [c.h0, c.h1]).concat(rooms.flatMap(c => [c.h0, c.h1]), ceils.flatMap(c => [c.a, c.b]), roofsC.flatMap(r => [r[0].h, r[r.length - 1].h]));
     const zs = walls.map(c => c.z1).concat(slabs.map(c => c.z1), roofsC.flatMap(r => r.map(q => q.zt)));
-    return {L, H, walls, rooms, slabs, views: vrun, steps, roofs: roofsC, fl, x0: xs.length ? Math.min(...xs) : 0, x1: xs.length ? Math.max(...xs) : L, z0: Math.min(0, fl[0].elev), z1: zs.length ? Math.max(...zs) : 3};
+    return {L, H, ux, uy, side, walls, rooms, slabs, views: vrun, steps, roofs: roofsC, ceils, cvel, cbeams, fl, x0: xs.length ? Math.min(...xs) : 0, x1: xs.length ? Math.max(...xs) : L, z0: Math.min(0, fl[0].elev), z1: zs.length ? Math.max(...zs) : 3};
   }
   /* la geometria si ricalcola solo se cambia la traccia o il disegno (punto di annullamento) */
   const GC = {key: '', ref: null, G: null};
-  const geomC = sec => { const key = [sec.p1.x, sec.p1.y, sec.p2.x, sec.p2.y, sec.side].join(',') + '|' + state.walls.length + '|' + (state.roofs || []).length, ref = typeof last === 'string' ? last : null; if (ref && GC.ref === ref && GC.key === key && GC.G) return GC.G; const G = geom(sec); GC.key = key; GC.ref = ref; GC.G = G; return G; };
+  const geomC = sec => { const key = [sec.p1.x, sec.p1.y, sec.p2.x, sec.p2.y, sec.side].join(',') + '|' + state.walls.length + '|' + (state.roofs || []).length + '|' + JSON.stringify((state.ceils || []).map(c => [c.h, c.pts, c.vOff, c.fin && c.fin.c1])) + JSON.stringify((state.beams || []).map(b => [b.pts, b.w, b.hh])), ref = typeof last === 'string' ? last : null; if (ref && GC.ref === ref && GC.key === key && GC.G) return GC.G; const G = geom(sec); GC.key = key; GC.ref = ref; GC.G = G; return G; };
 
   /* ---------------------------------------------------------------- pannello */
   const P = document.createElement('div'); P.id = 'szPanel'; P.hidden = true; P.setAttribute('role', 'dialog'); P.setAttribute('aria-label', 'Sezione');
@@ -22231,7 +22333,7 @@ window.SC_REL = {
     try { resize(); } catch (_) {} sizeCanvas(); render(); try { draw2D(); } catch (_) {}
   }
   addEventListener('resize', () => { if (S.open) setTimeout(layout, 0); });
-  function sizeCanvas() { const r = cv.getBoundingClientRect(), d = Math.max(1, devicePixelRatio || 1); const w = Math.max(1, Math.round(r.width * d)), h = Math.max(1, Math.round(r.height * d)); if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; S.view = null; } }
+  function sizeCanvas() { const r = cv.getBoundingClientRect(), d = Math.max(1, devicePixelRatio || 1); const w = Math.max(1, Math.round(r.width * d)), h = Math.max(1, Math.round(r.height * d)); if (cv.width !== w || cv.height !== h) { const dw = Math.abs(w - cv.width) / d; cv.width = w; cv.height = h; if (dw > 2) S.view = null; } }   /* v24.0: se cambia solo l'altezza (riquadro sotto) il disegno resta fermo sotto il dito */
   const cur = () => SEC().find(s => s.id === S.id) || null;
   function ui() {
     const s = cur(); if (!s) return;
@@ -22244,9 +22346,9 @@ window.SC_REL = {
     const s = SEC().find(x => x.id === id); if (!s) return;
     if (state.mode !== '2d') { toast('La sezione si usa nella vista 2D'); return; }
     try { if (window.SCwk && SCwk.active()) SCwk.close(); } catch (_) {}
-    S.open = true; S.id = id; S.view = null; ui(); layout();
+    S.open = true; S.id = id; S.view = null; S.cs = null; ui(); layout();
   }
-  function close() { S.open = false; S.id = null; layout(); }
+  function close() { S.open = false; S.id = null; S.cs = null; layout(); }
 
   /* ---------------------------------------------------------------- disegno della sezione */
   function fit(G) {
@@ -22299,6 +22401,17 @@ window.SC_REL = {
       c.fillStyle = o.slab; c.fill(); c.save(); c.clip(); const xs = r.map(q => X(q.h)), ys = r.map(q => Y(q.zt)), x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys); hatch(c, x0, y0, x1 - x0, Math.max(...r.map(q => Y(q.zb))) - y0, o.hatch, 6); c.restore();
       c.strokeStyle = o.ink; c.lineWidth = 1.4; c.stroke();
     });
+    /* v24.0: controsoffitti (lastra al livello), velette, false travi; quota di ciascun piano */
+    const csC = o.cs || '#c4b5fd';
+    (G.cbeams || []).forEach(b => { const x = X(b.a), y = Y(b.z1), w = Math.max(2, (b.b - b.a) * S.view.s), h = (b.z1 - b.z0) * S.view.s; c.fillStyle = o.paper ? '#ffffff' : 'rgba(196,181,253,.25)'; c.fillRect(x, y, w, h); c.strokeStyle = csC; c.lineWidth = 1.4; c.strokeRect(x, y, w, h); });
+    (G.cvel || []).forEach(v => { const x = X(v.u), w = Math.max(3, 0.05 * S.view.s); c.fillStyle = csC; c.fillRect(x - w / 2, Y(v.z1), w, (v.z1 - v.z0) * S.view.s); });
+    (G.ceils || []).forEach(q => {
+      const sel = S.cs && S.cs === q.c, x = X(q.a), w = (q.b - q.a) * S.view.s, y = Y(q.z), th = Math.max(sel ? 5 : 3, q.t * S.view.s);
+      c.fillStyle = q.c.fin && q.c.fin.c1 && !o.paper ? q.c.fin.c1 : csC; if (q.paint) { c.fillRect(x, y, w, Math.max(2, th * 0.6)); } else { c.fillRect(x, y, w, th); c.strokeStyle = o.paper ? '#000' : sel ? '#fde047' : '#7c3aed'; c.lineWidth = sel ? 2 : 1; c.strokeRect(x, y, w, th); }
+      if (sel && !o.paper) { c.strokeStyle = '#fde047'; c.lineWidth = 2; c.beginPath(); [q.ea && q.a, q.eb && q.b].forEach(u => { if (u === null || u === undefined || u === false) return; const xx = X(u); c.moveTo(xx, y - 10); c.lineTo(xx, y + th + 10); }); c.stroke(); }
+    });
+    { const seen = new Set(); (G.ceils || []).forEach(q => { if (seen.has(q.c)) return; seen.add(q.c); const all = G.ceils.filter(k => k.c === q.c), big = all.reduce((m, k) => k.b - k.a > m.b - m.a ? k : m, all[0]); if ((big.b - big.a) * S.view.s < 50) return;
+      c.fillStyle = o.paper ? '#000' : csC; c.font = (o.paper ? '600 8.5px' : '600 11px') + ' "Segoe UI",sans-serif'; c.textAlign = 'center'; c.textBaseline = 'top'; c.fillText((q.paint ? 'soffitto dipinto' : 'h ' + f2(q.c.h)) + (q.c.fin ? ' · ' + q.c.fin.name : ''), X((big.a + big.b) / 2), Y(big.z) + Math.max(3, big.t * S.view.s) + 3); }); }
     /* locali: nome e altezza netta */
     G.rooms.forEach(rc => {
       const i = G.fl.indexOf(rc.f), up = G.fl[i + 1], topW = Math.max(...G.walls.filter(w => w.f === rc.f).map(w => w.z1), rc.f.elev + 2.7), ceil = up ? up.elev - (up.slabT || 0.3) : topW, hn = ceil - rc.f.elev;
@@ -22327,28 +22440,73 @@ window.SC_REL = {
     /* porte e finestre tagliate: davanzale e altezza */
     G.walls.forEach(wc => { if (!wc.op) return; const u = wc.h1 + 0.12; if (wc.op.b - wc.z0 > 0.01) dimV(c, wc.z0, wc.op.b, u, 10, o.glass); dimV(c, wc.op.b, wc.op.t, u, 10, o.glass); });
   }
-  const SCREEN = {view: '#94a3b8', ink: '#e5e7eb', cut: '#cbd5e1', cutP: '#d6c7a6', slab: '#9aa3b5', hatch: 'rgba(30,41,59,.55)', glass: '#7dd3fc', dim: '#fbbf24', room: '#e5e7eb', ground: 'rgba(100,116,139,.35)'};
+  const SCREEN = {cs: '#c4b5fd', view: '#94a3b8', ink: '#e5e7eb', cut: '#cbd5e1', cutP: '#d6c7a6', slab: '#9aa3b5', hatch: 'rgba(30,41,59,.55)', glass: '#7dd3fc', dim: '#fbbf24', room: '#e5e7eb', ground: 'rgba(100,116,139,.35)'};
   function render() {
     if (!S.open) return; const s = cur(); if (!s) { close(); return; }
     sizeCanvas(); const G = geomC(s), d = Math.max(1, devicePixelRatio || 1), W = cv.width / d, Hh = cv.height / d;
     cx.setTransform(d, 0, 0, d, 0, 0); cx.fillStyle = '#151826'; cx.fillRect(0, 0, W, Hh);
-    if (!G || (!G.walls.length && !G.rooms.length)) { cx.fillStyle = '#9ca3b8'; cx.font = '13px "Segoe UI",sans-serif'; cx.textAlign = 'center'; cx.fillText('La traccia non attraversa nessun muro', W / 2, Hh / 2); return; }
+    if (!G || (!G.walls.length && !G.rooms.length && !(G.ceils || []).length)) { cx.fillStyle = '#9ca3b8'; cx.font = '13px "Segoe UI",sans-serif'; cx.textAlign = 'center'; cx.fillText('La traccia non attraversa nessun muro', W / 2, Hh / 2); return; }
     if (!S.view) fit(G);
     drawSection(cx, G, SCREEN);
     cx.fillStyle = '#f472b6'; cx.font = '700 14px "Segoe UI",sans-serif'; cx.textAlign = 'left'; cx.textBaseline = 'top'; cx.fillText('Sezione ' + s.name + '–' + s.name, 10, 8);
   }
 
   /* ---------------------------------------------------------------- spostamento e zoom nella sezione */
-  const ptr = new Map(); let pz = null;
+  const ptr = new Map(); let pz = null, cd = null;
   cv.style.touchAction = 'none';
-  cv.addEventListener('pointerdown', e => { ptr.set(e.pointerId, {x: e.clientX, y: e.clientY}); try { cv.setPointerCapture(e.pointerId); } catch (_) {} pz = null; });
+  /* v24.0: tocca un controsoffitto per sceglierlo; trascinato in su/giù cambia quota, dal bordo (giallo) sposta il lato, dal centro in orizzontale lo sposta tutto */
+  const R2 = v => Math.round(v * 100) / 100;
+  function csHit(mx, my) {
+    const G = geomC(cur()); if (!G || !G.ceils) return null; let best = null, bd = 16;
+    G.ceils.forEach(q => { const x0 = X(q.a), x1 = X(q.b), y = Y(q.z), th = Math.max(3, q.t * S.view.s); if (mx < x0 - 14 || mx > x1 + 14) return; const d = my < y ? y - my : my > y + th ? my - y - th : 0; if (d < bd || (d === bd && best && q.c === S.cs)) { bd = d; best = q; } });
+    if (!best) return null; const q = best, x0 = X(q.a), x1 = X(q.b);
+    const end = S.cs === q.c ? (q.ea && Math.abs(mx - x0) < 16 ? 'a' : q.eb && Math.abs(mx - x1) < 16 ? 'b' : null) : null;
+    return {q, end, G};
+  }
+  function csFoot() {
+    const F = P.querySelector('#szFoot'), c = S.cs; if (!c) { ui(); return; }
+    const top = SCcs.topOf(floorOf(c));
+    F.innerHTML = '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><b style="color:#c4b5fd">' + esc(c.name || (SCcs.isPaint(c) ? 'Soffitto dipinto' : 'Controsoffitto')) + '</b>' +
+      '<label style="display:flex;gap:4px;align-items:center">h <input id="szCsH" inputmode="decimal" value="' + f2(c.h) + '" style="width:64px;padding:5px;border-radius:6px;border:1px solid #475569;background:#0f172a;color:#fff"> m</label>' +
+      '<button class="wk-b" id="szCsFin" style="flex:0 0 auto;width:auto;padding:0 8px">🎨 ' + esc(c.fin ? c.fin.name : 'Finitura') + '</button>' +
+      '<button class="wk-b sc-fine" id="szCsOk" style="flex:0 0 auto;width:auto;padding:0 10px">✔ Fine</button></div>' +
+      '<div class="wk-hint">Trascina su/giù per la quota (da 1,50 a ' + f2(top) + ' m) · dal bordo giallo per allargare o stringere · in orizzontale per spostarlo. In pianta si aggiorna subito.</div>';
+    const hI = F.querySelector('#szCsH'); hI.onchange = () => { const v = parseFloat(String(hI.value).replace(',', '.')); if (!(v >= 1.5 && v <= top + 0.0005)) { toast('Quota da 1,50 a ' + f2(top) + ' m'); hI.value = f2(c.h); return; } c.h = R2(v); try { checkpoint(); } catch (_) {} draw2D(); };
+    F.querySelector('#szCsFin').onclick = () => { if (window.SCpit) SCpit.openLib(c.fin || SCpit.last(), fin => { c.fin = fin; try { checkpoint(); } catch (_) {} draw2D(); csFoot(); }); };
+    F.querySelector('#szCsOk').onclick = () => { S.cs = null; ui(); render(); };
+  }
+  const descOf = c => { const out = []; const fl = floorOf(c), T = SCcs.tree(fl), walk = N => N.kids.forEach(k => { out.push(k.o); walk(k); }); const N = T.find(k => k.o === c); if (N) walk(N); return out; };
+  cv.addEventListener('pointerdown', e => {
+    ptr.set(e.pointerId, {x: e.clientX, y: e.clientY}); try { cv.setPointerCapture(e.pointerId); } catch (_) {} pz = null; cd = null;
+    if (ptr.size !== 1 || !S.view || !window.SCcs || !SCcs.tree) return;
+    const r = cv.getBoundingClientRect(), hit = csHit(e.clientX - r.left, e.clientY - r.top); if (!hit) return;
+    const c = hit.q.c, G = hit.G; if (S.cs !== c) { S.cs = c; csFoot(); render(); try { SCcs.select(c); } catch (_) {} cd = {c, sel: true}; return; }
+    cd = {c, x0: e.clientX, y0: e.clientY, h0: c.h, pts0: c.pts.map(p => ({...p})), sub: descOf(c).map(o => ({o, pts: o.pts.map(p => ({...p}))})), end: hit.end, q: hit.q, G, ax: null};
+  });
   cv.addEventListener('pointermove', e => {
     const p = ptr.get(e.pointerId); if (!p || !S.view) return;
+    if (ptr.size === 1 && cd && !cd.sel) {
+      const dx = e.clientX - cd.x0, dy = e.clientY - cd.y0; if (!cd.ax) { if (Math.hypot(dx, dy) < 6) return; cd.ax = cd.end ? 'e' : Math.abs(dy) >= Math.abs(dx) ? 'v' : 'h'; }
+      const c = cd.c, G = cd.G, dU = dx / S.view.s, dS = dU * (G.side > 0 ? 1 : -1);
+      if (cd.ax === 'v') { const top = SCcs.topOf(floorOf(c)); c.h = R2(Math.max(1.5, Math.min(top, cd.h0 - dy / S.view.s))); }
+      else if (cd.ax === 'h') { const mx = R2(G.ux * dS), my = R2(G.uy * dS); c.pts = cd.pts0.map(q => ({...q, x: r6(q.x + mx), y: r6(q.y + my)})); cd.sub.forEach(k => { k.o.pts = k.pts.map(q => ({...q, x: r6(q.x + mx), y: r6(q.y + my)})); }); }
+      else {
+        const E = cd.end === 'a' ? (G.side > 0 ? cd.q.ea : cd.q.eb) : (G.side > 0 ? cd.q.eb : cd.q.ea), O = E === cd.q.ea ? cd.q.eb : cd.q.ea; if (!E) return;
+        const P0 = cd.pts0, n = P0.length, i = E.e, a = P0[i], b = P0[(i + 1) % n], Ls = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+        let A = 0; P0.forEach((q, k) => { const w = P0[(k + 1) % n]; A += q.x * w.y - w.x * q.y; }); const sg = A > 0 ? -1 : 1, nn = {x: -(b.y - a.y) / Ls * sg, y: (b.x - a.x) / Ls * sg}, dot = nn.x * G.ux + nn.y * G.uy;
+        const curved = P0.some(q => Math.abs(q.b || 0) > 1e-4);
+        if (curved || n > 8 || Math.abs(dot) < 0.2) {   /* lati curvi: stira la forma lungo la traccia tenendo fermo l'altro bordo */
+          const s0 = O ? O.s : null, sE = E.s; if (s0 === null) return; const k = (sE + dS - s0) / ((sE - s0) || 1); if (!(k > 0.05)) return;
+          c.pts = P0.map(q => { const t = (q.x - G.ux * 0 - cur().p1.x) * G.ux + (q.y - cur().p1.y) * G.uy, d = (t - s0) * (k - 1); return {...q, x: r6(q.x + G.ux * d), y: r6(q.y + G.uy * d)}; });
+        } else { c.pts = P0.map(q => ({...q})); SCcs.moveSide(c, i, R2(dS * dot), P0); }
+      }
+      GC.G = null; render(); try { draw2D(); } catch (_) {} ptr.set(e.pointerId, {x: e.clientX, y: e.clientY}); return;
+    }
     if (ptr.size === 1) { S.view.ox += e.clientX - p.x; S.view.oy += e.clientY - p.y; ptr.set(e.pointerId, {x: e.clientX, y: e.clientY}); render(); return; }
     ptr.set(e.pointerId, {x: e.clientX, y: e.clientY}); const [a, b] = [...ptr.values()], dd = Math.hypot(a.x - b.x, a.y - b.y), r = cv.getBoundingClientRect(), mx = (a.x + b.x) / 2 - r.left, my = (a.y + b.y) / 2 - r.top;
     if (pz) { const k = dd / pz.d; zoomAt(mx, my, k); S.view.ox += mx - pz.mx; S.view.oy += my - pz.my; } pz = {d: dd, mx, my}; render();
   });
-  const up = e => { ptr.delete(e.pointerId); pz = null; }; cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+  const up = e => { ptr.delete(e.pointerId); pz = null; if (cd && cd.ax) { try { checkpoint(); } catch (_) {} GC.G = null; csFoot(); try { draw2D(); } catch (_) {} if (state.mode === '3d') build3D(); } cd = null; }; cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
   cv.addEventListener('wheel', e => { e.preventDefault(); if (!S.view) return; const r = cv.getBoundingClientRect(); zoomAt(e.clientX - r.left, e.clientY - r.top, e.deltaY < 0 ? 1.15 : 1 / 1.15); render(); }, {passive: false});
   function zoomAt(mx, my, k) { const s = Math.max(3, Math.min(2000, S.view.s * k)); k = s / S.view.s; S.view.ox = mx - (mx - S.view.ox) * k; S.view.oy = my - (my - S.view.oy) * k; S.view.s = s; }
 
@@ -22426,9 +22584,9 @@ window.SC_REL = {
     dm.append(sp, b, b2, b3);
   }
   /* v22.4: disegno su un altro contesto (stampa) con vista e colori dati */
-  const PAPER = {paper: true, view: '#000000', ink: '#000000', cut: '#ffffff', cutP: '#ffffff', slab: '#ffffff', hatch: '#000000', glass: '#000000', dim: '#000000', room: '#000000', ground: 'rgba(0,0,0,0.10)'};
+  const PAPER = {paper: true, cs: '#000000', view: '#000000', ink: '#000000', cut: '#ffffff', cutP: '#ffffff', slab: '#ffffff', hatch: '#000000', glass: '#000000', dim: '#000000', room: '#000000', ground: 'rgba(0,0,0,0.10)'};
   function paint(c, sec, view) { const G = geomC(sec); if (!G) return null; const keep = S.view; S.view = view; try { drawSection(c, G, PAPER); } finally { S.view = keep; } return G; }
-  window.SCsez = {start: startTrace, open, close, geom, drawSection, paint, drawTraces, active: () => S.open, list: SEC, layout};
+  window.SCsez = {start: startTrace, open, close, geom, drawSection, paint, drawTraces, active: () => S.open, list: SEC, layout, selCs: () => S.cs || null, toClient: (u, z) => { const r = cv.getBoundingClientRect(); return [r.left + X(u), r.top + Y(z)]; }};
 })();
 </script>
 <style>

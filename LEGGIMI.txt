@@ -1,4 +1,4 @@
-SimplyCAD Pro - pubblicazione su GitHub Pages (v23.9)
+SimplyCAD Pro - pubblicazione su GitHub Pages (v24.0)
 
 Contenuto (vanno caricati tutti, senza rinominarli e SENZA cartelle intorno):
   index.html  sw.js  manifest.webmanifest  icon-192.png  icon-512.png  icon-maskable.png  README.md
@@ -93,6 +93,21 @@ NOVITÀ v18.9
 
 NOVITÀ v18.9.1
  - 🧲 Aggancia anche nella barra interattiva (senza selezione) e nel suo menu ⋯.
+
+NOVITÀ v24.0 · PROGETTO SOFFITTO
+ - Controsoffitti a livelli: disegna in pianta un controsoffitto (anche ovale o a forma libera) dentro un altro e
+   dagli una quota: diventa un'isola, più alta o più bassa. Quello che lo contiene lì è bucato (computo al netto).
+   Quota uguale al soffitto = «Soffitto dipinto»: niente lastra, solo pittura.
+ - Velette automatiche dove due livelli hanno quote diverse; appartengono sempre al controsoffitto più basso.
+   Tocca un lato e togli la spunta «Veletta su questo lato» per escluderla. Veletta a mano: Falsa trave →
+   sezione «Veletta».
+ - Pittura su tutti i livelli: nel riquadro «🎨 Finitura» (libreria della pittura) per il piano in vista e
+   «Velette:» per le velette. Nel 3D i controsoffitti si vedono da sotto (tour) e dall'alto restano trasparenti.
+ - «📐 Vedi in sezione» apre una sezione attraverso il controsoffitto: tocca un piano per sceglierlo, trascinalo
+   su/giù per la quota, dal bordo giallo per allargarlo o stringerlo, in orizzontale per spostarlo con le sue
+   isole. La pianta si aggiorna subito; ↶ annulla.
+ - Computo: pittura di soffitti e controsoffitti raggruppata per finitura (parte in vista + velette).
+ - Corretto: nel 3D le texture di pittura e rivestimenti venivano più scure del colore scelto.
 
 NOVITÀ v23.9
  - Incolla: la spunta verde ✔ della barra di selezione chiude anche Incolla (e Parallela), senza dover premere
