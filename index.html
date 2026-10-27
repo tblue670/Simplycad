@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v23.2</title>
+<title>SimplyCAD Pro · v23.4</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -4747,7 +4747,7 @@ function init3D() {
   scene.fog = new THREE.Fog(0x1e1e2e, 30, 80);
   camera = new THREE.PerspectiveCamera(60, canvas.clientWidth/canvas.clientHeight, 0.25, 600);   /* v12.9.5: più precisione di profondità sui tablet */
   camera.position.set(12, 12, 12);
-  renderer = new THREE.WebGLRenderer({canvas, antialias: true, preserveDrawingBuffer: true, logarithmicDepthBuffer: (() => { try { return !!document.createElement('canvas').getContext('webgl2'); } catch (_) { return false; } })()});   /* v11.33: profondità precisa anche da lontano (niente sfarfallio tra superfici vicine) */
+  renderer = new THREE.WebGLRenderer({canvas, antialias: true, preserveDrawingBuffer: true, logarithmicDepthBuffer: (() => { try { if (appSettings.logDepth === 'on') return true; if (appSettings.logDepth === 'off') return false; if (window.matchMedia && matchMedia('(pointer: coarse)').matches) return false; return !!document.createElement('canvas').getContext('webgl2'); } catch (_) { return false; } })()});   /* v23.3: su tablet e telefoni no (righe scure sulle GPU mobili) */   /* v11.33: profondità precisa anche da lontano (niente sfarfallio tra superfici vicine) */
   renderer.setSize(canvas.clientWidth, canvas.clientHeight);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -14736,18 +14736,20 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     state.sel = []; state.selected = null; try { updateSelectionPanel(); } catch (_) {}
     W.setData(walkData()); W.setLights(lightList());
     savedEdit = window.SCcfg ? SCcfg.edit3d : undefined; if (window.SCcfg) SCcfg.edit3d = false;
-    controls.enabled = false; walking = true; W.start(); if (btn) btn.classList.add('active');
+    controls.enabled = false; walking = true; W.start(); if (btn) btn.classList.add('active'); grid(false);
   }
   function stop() {
     if (!walking) return;
-    walking = false; W.stop(); controls.enabled = true;
+    walking = false; W.stop(); controls.enabled = true; grid(true);
     if (window.SCcfg) SCcfg.edit3d = savedEdit === undefined ? true : savedEdit;
     if (btn) btn.classList.remove('active');
     try { setView('iso'); } catch (_) {}
   }
+  function grid(on) { try { scene.traverse(function (o) { if (o.isGridHelper || o.type === 'GridHelper') o.visible = on; }); } catch (_) {} }   /* v23.3: nel tour la griglia del terreno non serve e sui tablet attraversava i muri */
   var _b = build3D;
   build3D = function () {
     var r = _b.apply(this, arguments);
+    if (walking) grid(false);
     try { if (state.mode === '3d' && scene && ensure()) { W.setLights(lightList()); if (walking) W.setData(walkData()); } } catch (e) { console.warn('tour', e); }
     return r;
   };
@@ -14788,7 +14790,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
 '__WALKLIB__',
 'var D=JSON.parse(document.getElementById("d").textContent);',
 'document.getElementById("sub").textContent=D.s||"";',
-'var renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true,logarithmicDepthBuffer:true});',
+'var renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true,logarithmicDepthBuffer:!(window.matchMedia&&matchMedia("(pointer: coarse)").matches)});',
 'renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));',
 'document.getElementById("v").appendChild(renderer.domElement);',
 'var scene=new THREE.Scene();scene.background=new THREE.Color(0xdfe6ee);',
@@ -15251,9 +15253,9 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   .wk-f small{font-size:10.5px;color:#9ca3b8}
   .wk-f b{font:600 15px ui-monospace,Consolas,monospace}
   .wk-f b i{color:#64748b;font-style:normal}
-  .wk-kp{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px;max-width:360px}
+  .wk-kp{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:5px;max-width:420px}
   .wk-kp button{height:40px;border-radius:8px;border:1px solid #475175;background:#2f3550;color:#e5e7eb;font:600 16px 'Segoe UI',system-ui,sans-serif;cursor:pointer;touch-action:manipulation}
-  .wk-kp .ok{grid-column:span 5;background:#0369a1;border-color:#38bdf8}
+  .wk-kp .ok{grid-column:6;grid-row:2 / span 2;height:auto;background:#15803d;border-color:#22c55e;font-size:15px}
   .wk-sum{font-size:12px;line-height:1.45;color:#cbd5e1;background:#151826;border:1px solid #2f3550;border-radius:8px;padding:6px 8px}
   .wk-sum b{color:#e5e7eb}
   .wk-warn{color:#fbbf24}
@@ -15409,6 +15411,9 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     c.save(); c.translate(x + (off < 0 ? -3 : 3), (a + b) / 2); c.rotate(-Math.PI / 2); c.font = '600 11.5px "Segoe UI",sans-serif'; c.textAlign = 'center'; c.textBaseline = off < 0 ? 'bottom' : 'top'; c.fillText(f2(v1 - v0), 0, 0); c.restore();
   }
   const selWork = w => works(w).find(k => k.id === S.selId) || null;
+  /* v23.4: un tocco seleziona; trascinare sposta la vista. L'oggetto si sposta o si sagoma col dito solo con «✥ Sposta» acceso */
+  const selKey = () => S.oSel ? S.oSel.kind + ':' + S.oSel.id : S.selId ? 'w:' + S.selId : '';
+  const isMove = () => !!S.moveOn && S.moveOn === selKey();
   function handles(w, k) {
     const u = toU(w, k.cx), x0 = u - k.w / 2, x1 = u + k.w / 2, y0 = k.y, y1 = k.y + k.h;
     const H = [[x0, y0, 'bl'], [x1, y0, 'br'], [x0, y1, 'tl'], [x1, y1, 'tr']];
@@ -15432,7 +15437,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     S.phOn = false;
     if (window.SCph && S.photo !== false) { const bg = SCph.bgOf(w); if (bg && (bg.face == null ? defaultFace(w) : bg.face) === S.face) { const pc = SCph.rectified(bg, L, Hw); if (pc) { cx.drawImage(pc, sx(0), sy(Hw), L * S.view.s, Hw * S.view.s); S.phOn = true; } } }
     if (window.SCriv) { try { SCriv.draw(cx, w, S.face, sx, sy, S.view.s, S.oSel); } catch (e) { console.warn('rivestimento', e); } }   /* v19.0 */
-    if (window.SCpit) { try { SCpit.draw(cx, w, S.face, sx, sy, S.view.s, S.oSel); } catch (e) { console.warn('pittura', e); } }   /* v22.9 */
+    if (window.SCpit) { try { SCpit.draw(cx, w, S.face, sx, sy, S.view.s, S.oSel, isMove()); } catch (e) { console.warn('pittura', e); } }   /* v22.9 */
     /* v12.9.4: muri che si innestano (fascia tratteggiata dal lato che guardi, contorno sottile dall'altro) e stanze */
     const J = junctions(w);
     J.forEach(j => {
@@ -15495,7 +15500,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       const k = selR, u = toU(w, k.cx), u0 = u - k.w / 2, u1 = u + k.w / 2;
       dimH(cx, 0, u0, 0, 18, qc); dimH(cx, u0, u1, 0, 18, '#22d3ee'); dimH(cx, u1, L, 0, 18, qc);
       dimV(cx, 0, k.y, 0, -18, qc); dimV(cx, k.y, k.y + k.h, 0, -18, '#22d3ee'); dimV(cx, k.y + k.h, Hw, 0, -18, qc);
-      cx.fillStyle = '#22d3ee'; handles(w, k).forEach(([hu, hv]) => cx.fillRect(sx(hu) - 5, sy(hv) - 5, 10, 10));
+      if (isMove()) { cx.fillStyle = '#22d3ee'; handles(w, k).forEach(([hu, hv]) => cx.fillRect(sx(hu) - 5, sy(hv) - 5, 10, 10)); }
     } else { dimH(cx, 0, L, 0, 18, qc); dimV(cx, 0, Hw, 0, -18, qc); }
     if (S.bays && S.bays.length > 1) S.bays.forEach(bb => { const a = toU(w, bb.a), b = toU(w, bb.b); dimH(cx, Math.min(a, b), Math.max(a, b), 0, 40, '#7dd3fc'); });   /* larghezze libere delle stanze */
     /* nomi agli estremi (da dove giri) */
@@ -15659,16 +15664,15 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     const p = local(e), uv = toUV(p.x, p.y);
     S.pick = {id: e.pointerId, fx: e.clientX, fy: e.clientY, run: 0, finger: useFinger(e), mouse: e.pointerType === 'mouse', moved: false};
     if (S.tool === 'sel') {
-      const k = selRect(w), h = k && hitHandle(w, k, p.x, p.y), lk = S.oSel ? lockedO(S.oSel) : isEntityLocked(w);
-      const pr = S.oSel && S.oSel.kind === 'pit' && !lk && window.SCpit ? SCpit.find(S.oSel.id) : null, hv = pr && SCpit.hitVertex(w, pr, S.face, sx, sy, p.x, p.y);
+      if (S.field && S.buf) applyField(w);   /* v23.4: toccando il disegno, il valore scritto si applica */
+      const lk = S.oSel ? lockedO(S.oSel) : isEntityLocked(w), mv = isMove() && !lk, k = selRect(w), h = mv && k && hitHandle(w, k, p.x, p.y);
+      const pr = mv && S.oSel && S.oSel.kind === 'pit' && window.SCpit ? SCpit.find(S.oSel.id) : null, hv = pr && SCpit.hitVertex(w, pr, S.face, sx, sy, p.x, p.y);
+      const hk = hitWork(w, uv.u, uv.v), ho = hk ? null : hitObj(w, uv.u, uv.v), same = (hk && hk.id === S.selId && !S.oSel) || (ho && S.oSel && ho.kind === S.oSel.kind && ho.id === S.oSel.id);
+      S.tapHit = {hk, ho};
       if (hv) { const i = hv.ins ? SCpit.insertVertex(pr, hv.i) : hv.i; SCpit.setCur(pr, i); S.drag = {kind: 'pv', i, r: pr}; ui(); }
-      else if (h && !lk) { startDrag(w, k, h, uv); }
-      else {
-        const hk = hitWork(w, uv.u, uv.v), ho = hk ? null : hitObj(w, uv.u, uv.v);
-        if (hk) { S.selId = hk.id; S.oSel = null; S.field = null; S.buf = ''; if (!isEntityLocked(w)) startDrag(w, hk, 'move', uv); ui(); }
-        else if (ho) { S.oSel = ho; S.selId = null; S.field = null; S.buf = ''; if (!lockedO(ho)) startDrag(w, proxy(w, ho), 'move', uv); ui(); }
-        else { S.drag = {kind: 'pan', x: e.clientX, y: e.clientY}; }
-      }
+      else if (h) { startDrag(w, k, h, uv); }
+      else if (mv && same) { startDrag(w, S.oSel ? proxy(w, S.oSel) : hk, 'move', uv); }
+      else { S.drag = {kind: 'pan', x: e.clientX, y: e.clientY}; }
       S.cur = uv;
     } else { S.cur = snapUV(w, uv.u, uv.v); }
     render();
@@ -15700,7 +15704,12 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     const w = wById(S.wallId), pk = S.pick; if (!w || !pk || pk.id !== e.pointerId) return;
     S.pick = null;
     if (S.drag && S.drag.kind === 'pv') { S.drag = null; S.cur = null; commit(); return; }
-    if (S.drag) { const was = S.drag.kind; S.drag = null; if (was !== 'pan' && pk.moved) commit(); else { if (was === 'pan' && !pk.moved && S.tool === 'sel' && (S.selId || S.oSel)) { S.selId = null; S.oSel = null; S.field = null; S.buf = ''; }   /* v22.7: tocco nel vuoto = torna allo stato iniziale */
+    if (S.drag) { const was = S.drag.kind; S.drag = null; if (was !== 'pan' && pk.moved) commit(); else { if (was === 'pan' && !pk.moved && S.tool === 'sel') {   /* v23.4: un tocco senza trascinare seleziona l'oggetto toccato; nel vuoto deseleziona */
+        const t = S.tapHit || {}; S.field = null; S.buf = '';
+        if (t.hk) { if (S.selId !== t.hk.id || S.oSel) { S.selId = t.hk.id; S.oSel = null; S.moveOn = null; } }
+        else if (t.ho) { if (!S.oSel || S.oSel.kind !== t.ho.kind || S.oSel.id !== t.ho.id) { S.oSel = t.ho; S.selId = null; S.moveOn = null; } }
+        else { S.selId = null; S.oSel = null; S.moveOn = null; }
+      }
       S.cur = null; render(); ui(); } return; }
     if (S.tool === 'pit' && S.pitMode === 'poly' && S.cur && e.type === 'pointerup') { pitPoint(w, S.cur); S.cur = null; return; }
     if (S.tool !== 'sel' && S.cur && e.type === 'pointerup') {
@@ -15780,7 +15789,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     } else if (S.oSel && objOf(S.oSel)) {
       const o = S.oSel, e = objOf(o), r = proxy(w, o), F = fields(w, r), lk = lockedO(o);
       const extra = o.kind === 'cp' ? '<span class="wk-hint">' + esc((e.name || '') + ' · sp. ' + cm(wt(e)) + ' cm') + '</span>' : (o.kind === 'window' && e.kind === 'slide' ? '<span class="wk-hint">scorrevole</span>' : '');
-      h += '<div class="wk-row"><b style="color:#22d3ee">' + ON[o.kind] + '</b>' + extra + '<button class="wk-b" data-a="odel" style="margin-left:auto;color:#fca5a5">🗑 Elimina</button><button class="wk-b sc-fine" data-a="done" title="Fine: deseleziona e torna allo stato iniziale">✔ Fine</button></div>';
+      h += '<div class="wk-row"><b style="color:#22d3ee">' + ON[o.kind] + '</b>' + extra + '<button class="wk-b' + (isMove() ? ' on' : '') + '" data-a="mv" style="margin-left:auto" title="Acceso: trascini l\'oggetto e le maniglie col dito">✥ Sposta</button><button class="wk-b" data-a="odel" style="color:#fca5a5">🗑 Elimina</button><button class="wk-b sc-fine" data-a="done" title="Fine: deseleziona e torna allo stato iniziale">✔ Fine</button></div>';
       if (lk) h += '<div class="wk-hint wk-warn">Su un livello bloccato: puoi solo guardare.</div>';
       h += '<div class="wk-row">' + F.map(([key, lab, v]) => '<button class="wk-f' + (S.field === key ? ' on' : '') + '" data-f="' + key + '"><small>' + lab + ' (m)</small><b>' + (S.field === key ? (S.buf ? esc(S.buf) : '<i>' + f2(v) + '</i>') : f2(v)) + '</b></button>').join('') + '</div>';
       if (S.field) h += keypadHTML();
@@ -15791,7 +15800,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       if (o.kind === 'door') h += '<div class="wk-hint">La porta parte sempre da terra.</div>';
     } else if (k) {
       const F = fields(w, k);
-      h += '<div class="wk-row"><b style="color:#22d3ee">' + KN[k.k] + (k.sh !== 'rect' ? ' ' + SN[k.sh] : '') + '</b>' + (k.k === 'niche' ? '<span class="wk-hint">sul ' + (k.f === S.face ? 'lato che guardi' : 'lato opposto') + '</span>' : '') + '<button class="wk-b" data-a="del" style="margin-left:auto;color:#fca5a5">🗑 Elimina</button><button class="wk-b sc-fine" data-a="done" title="Fine: deseleziona e torna allo stato iniziale">✔ Fine</button></div>';
+      h += '<div class="wk-row"><b style="color:#22d3ee">' + KN[k.k] + (k.sh !== 'rect' ? ' ' + SN[k.sh] : '') + '</b>' + (k.k === 'niche' ? '<span class="wk-hint">sul ' + (k.f === S.face ? 'lato che guardi' : 'lato opposto') + '</span>' : '') + '<button class="wk-b' + (isMove() ? ' on' : '') + '" data-a="mv" style="margin-left:auto" title="Acceso: trascini l\'oggetto e le maniglie col dito">✥ Sposta</button><button class="wk-b" data-a="del" style="color:#fca5a5">🗑 Elimina</button><button class="wk-b sc-fine" data-a="done" title="Fine: deseleziona e torna allo stato iniziale">✔ Fine</button></div>';
       h += '<div class="wk-row">' + F.map(([key, lab, v]) => '<button class="wk-f' + (S.field === key ? ' on' : '') + '" data-f="' + key + '"><small>' + lab + ' (m)</small><b>' + (S.field === key ? (S.buf ? esc(S.buf) : '<i>' + f2(v) + '</i>') : f2(v)) + '</b></button>').join('') + '</div>';
       if (S.field) h += keypadHTML();
       h += '<div class="wk-row">' + (k.k === 'niche' ? '<button class="wk-b" data-a="face">Sposta sull\'altro lato</button>' : '') + '<button class="wk-b" data-a="dup">Duplica</button></div>';
@@ -15804,18 +15813,19 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       else h += '<div class="wk-sum"' + (v ? ' data-a="sum" style="cursor:pointer"' : '') + '>' + (v ? '<b>Voce di computo (a corpo) ▾</b><br>' + esc(v.desc) + '<br><span style="color:#9ca3b8">' + esc(v.det) + '</span>' +
         (w.portante && q.cerch ? '<br><span class="wk-warn">⚠ Muro portante: le aperture richiedono progetto strutturale e pratica edilizia. La cerchiatura è in computo come voce da dimensionare.</span>' : '') :
         'Nessuna lavorazione su questo muro. Scegli <b>Foro</b>, <b>Nicchia</b> o <b>Taglio</b> e tocca due angoli sul prospetto.') + '</div>';
-      h += '<div class="wk-hint">Tocca un elemento per modificarlo · due dita: ingrandisci o sposta la vista.</div>';
+      h += '<div class="wk-hint">Tocca un elemento per selezionarlo · trascina per spostare la vista · due dita: ingrandisci. Per spostarlo col dito: «✥ Sposta».</div>';
     }
     if (locked) h = '<div class="wk-hint wk-warn">Muro su un livello bloccato: puoi solo guardare.</div>' + h;
     foot.innerHTML = h;
+    if (S.field) { const kp = foot.querySelector('.wk-kp'); if (kp) try { kp.scrollIntoView({block: 'nearest'}); } catch (_) {} }
     render();
   }
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, m => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[m]));
-  const keypadHTML = () => '<div class="wk-kp">' + ['7', '8', '9', '⌫', 'C', '4', '5', '6', ',', '⇥', '1', '2', '3', '0', '±'].map(c => '<button data-k="' + c + '">' + c + '</button>').join('') + '<button class="ok" data-k="ok">Inserisci ✓</button></div>';
+  const keypadHTML = () => '<div class="wk-kp">' + ['7', '8', '9', '⌫', 'C', '⇥', '4', '5', '6', ',', '±', '1', '2', '3', '0'].map(c => '<button data-k="' + c + '">' + c + '</button>').join('') + '<button class="ok" data-k="ok">✓ OK</button></div>';   /* v23.4: «OK» dentro la griglia, non finisce più sotto il bordo */
   $w('wkFoot').addEventListener('click', e => {
     const w = wById(S.wallId); if (!w) return;
     const fb = e.target.closest('[data-f]'), kb = e.target.closest('[data-k]'), ab = e.target.closest('[data-a]');
-    if (fb) { if (S.oSel ? lockedO(S.oSel) : isEntityLocked(w)) return toast('Livello bloccato'); S.field = S.field === fb.dataset.f ? null : fb.dataset.f; S.buf = ''; ui(); return; }
+    if (fb) { if (S.oSel ? lockedO(S.oSel) : isEntityLocked(w)) return toast('Livello bloccato'); if (S.field && S.buf && S.field !== fb.dataset.f) applyField(w, true); S.field = S.field === fb.dataset.f ? null : fb.dataset.f; S.buf = ''; ui(); return; }   /* v23.4: cambiando campo, il valore scritto si applica */
     if (kb) {
       const c = kb.dataset.k;
       if (c === 'ok') return applyField(w);
@@ -15828,7 +15838,8 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     if (ab) {
       const a = ab.dataset.a, k = selWork(w);
       if (a === 'sum') { S.sumOpen = !S.sumOpen; ui(); return; }
-      if (a === 'done') { S.selId = null; S.oSel = null; S.field = null; S.buf = ''; S.tool = 'sel'; S.first = null; S.cur = null; S.pp = []; if (window.SCpit) SCpit.setCur(null); ui(); render(); return; }
+      if (a === 'done') { S.moveOn = null; S.selId = null; S.oSel = null; S.field = null; S.buf = ''; S.tool = 'sel'; S.first = null; S.cur = null; S.pp = []; if (window.SCpit) SCpit.setCur(null); ui(); render(); return; }
+      if (a === 'mv') { S.moveOn = isMove() ? null : selKey(); ui(); render(); return; }
       if (a === 'pmode') { S.pitMode = ab.dataset.m; S.pp = []; S.first = null; ui(); return; }
       if (a === 'pundo') { (S.pp || []).pop(); ui(); render(); return; }
       if (a === 'pclose') { pitClose(w); return; }
@@ -19674,6 +19685,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     if (host) {
       const lb = document.createElement('label'); lb.style.marginTop = '8px';
       lb.innerHTML = '<input type="checkbox" id="fzLblOn"> Quota da terra degli oggetti in pianta (h+1,10)';
+      try { const ld = document.createElement('label'); ld.style.marginTop = '8px'; ld.innerHTML = '3D · profondità <select id="logDepthSel" style="margin-left:4px"><option value="">automatica</option><option value="off">normale</option><option value="on">logaritmica</option></select><div style="font-size:10px;color:#777;line-height:1.3">Se nel 3D vedi righe scure che si spostano, prova l\'altra e riapri l\'app.</div>'; host.appendChild(ld); const sl = ld.querySelector('select'); sl.value = appSettings.logDepth || ''; sl.onchange = () => { appSettings.logDepth = sl.value || undefined; persistSettings(); toast('Vale dalla prossima apertura dell\'app'); }; } catch (_) {}
       host.appendChild(lb); const cb = lb.querySelector('input'); cb.checked = appSettings.fzLbl !== false;
       cb.onchange = () => { appSettings.fzLbl = cb.checked; persistSettings(); const v = document.getElementById('lblH'); if (v) v.checked = cb.checked; draw2D(); };
     }
@@ -20404,8 +20416,10 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
    SC_REL.v è l'unica versione: titolo, Guida, file salvato, avvisi e riga messaggi la leggono da qui.
    ======================================================================== */
 window.SC_REL = {
-  v: '23.2', d: '27/10/2026',
+  v: '23.4', d: '27/10/2026',
   news: [
+    ['23.4', 'Prospetto: un tocco seleziona e basta, trascinare sposta la vista; per spostare o sagomare un oggetto col dito si accende «✥ Sposta» (accanto a Elimina e Fine). Tastierino: «✓ OK» dentro la griglia (in verticale finiva sotto il bordo e il valore non si confermava); cambiando campo o toccando il disegno il valore scritto si applica.'],
+    ['23.3', 'Righe scure nel 3D su tablet: su tablet e telefoni il 3D usa ora la profondità normale invece di quella logaritmica, che su alcune schede grafiche mobili disegnava righe attraverso i muri; nel tour la griglia del terreno è nascosta. In ⚙ si può scegliere a mano «3D · profondità» per provare (vale dalla riapertura).'],
     ['23.2', 'Illuminazione del 3D: entrando nel 3D parte la notte con i punti luce messi in pianta; se non ci sono luci, il giorno. Il pulsante Notte/Giorno resta e la scelta si salva nel progetto. Nuova barra «☀ Luce» nel 3D (e nella copia per il cliente) per la luminosità. Di notte vista da fuori si accendono lampade sparse in tutta la casa, con una luce di base calda.'],
     ['23.1', 'Presentazione per il cliente (file 3D e tour): ora si vedono il lavoro finito, cioè pavimenti delle Aree con la skin, rivestimenti con la skin, pittura e finiture dei muri, con le stesse immagini del 3D dell\'app.'],
     ['23.0', 'Etichette: Vista → Etichette per nascondere o mostrare nome, superficie e perimetro delle Aree e le altezze h+ dei punti impianti, oppure tutte insieme; vale anche in stampa e si salva nel progetto. Stampa: le scritte delle Aree non escono più bianche, la tabella «Superfici nette» usa le Aree, superfici con la virgola, altezze h+ e sigle P/F non si sovrappongono più alle altre scritte. 3D: chiuse le fessure tra i pezzi dei muri e le teste dei muri sovrapposte (righe scure che comparivano muovendo la vista). Tour: Vista → Partenza del tour 3D (tocchi dove stare e dove guardare) oppure «📍 Parti da qui» durante il tour; vale anche nel file per il cliente.'],
@@ -21737,14 +21751,14 @@ window.SC_REL = {
 
   /* ---------------------------------------------------------------- prospetto 2D */
   const toU = (w, f, x) => f > 0 ? Lw(w) - x : x;
-  function draw(cx, w, face, sx, sy, s, oSel) {
+  function draw(cx, w, face, sx, sy, s, oSel, edit) {
     pits(w).forEach(r => {
       if (r.f !== face || r.pts.length < 3) return;
       const sel = oSel && oSel.kind === 'pit' && oSel.id === r.id;
       cx.save(); cx.beginPath(); r.pts.forEach((p, i) => { const X = sx(toU(w, face, p.x)), Y = sy(p.z); i ? cx.lineTo(X, Y) : cx.moveTo(X, Y); }); cx.closePath();
       cx.fillStyle = pattern(cx, r.fin, s, sx(0), sy(0)); cx.fill();
       cx.setLineDash(sel ? [] : [6, 4]); cx.strokeStyle = sel ? '#22d3ee' : 'rgba(217,70,239,.85)'; cx.lineWidth = sel ? 2.2 : 1.3; cx.stroke(); cx.restore();
-      if (sel) {   /* vertici e punti a metà lato */
+      if (sel && edit) {   /* vertici e punti a metà lato (solo con «✥ Sposta») */
         cx.save(); const S2 = r.pts.map(p => ({X: sx(toU(w, face, p.x)), Y: sy(p.z)}));
         S2.forEach((a, i) => { const b = S2[(i + 1) % S2.length]; cx.beginPath(); cx.arc((a.X + b.X) / 2, (a.Y + b.Y) / 2, 4.5, 0, 7); cx.fillStyle = 'rgba(255,255,255,.6)'; cx.fill(); cx.strokeStyle = '#22d3ee'; cx.lineWidth = 1.5; cx.stroke(); });
         S2.forEach(a => { cx.fillStyle = '#fff'; cx.strokeStyle = '#0891b2'; cx.lineWidth = 2; cx.fillRect(a.X - 6, a.Y - 6, 12, 12); cx.strokeRect(a.X - 6, a.Y - 6, 12, 12); });
@@ -21778,7 +21792,7 @@ window.SC_REL = {
       '<div style="flex:1;min-width:0"><b>' + esc(f.name) + '</b>' + (f.code ? ' <span style="color:#9ca3b8">' + esc(f.code) + '</span>' : '') + '<br><span style="color:#cbd5e1;font-size:12px">' + TYPES[f.type] + ' · ' + f2(a) + ' m² netti' + (f.pr != null ? ' · € ' + f2(f.pr) + '/m²' : '') + '</span></div>' +
       '<button class="wk-b" data-pt="lib">🎨 Cambia finitura…</button></div>' +
       (CV && CV.id === r.id && r.pts[CV.i] && r.pts.length > 3 ? '<div class="wk-row"><button class="wk-b" data-pt="vdel">✖ Togli il vertice ' + (CV.i + 1) + '</button></div>' : '') +
-      '<div class="wk-hint">Trascina i quadratini per sagomare · trascina il pallino a metà di un lato per aggiungere un vertice.</div>';
+      '<div class="wk-hint">Con «✥ Sposta» acceso: trascini la superficie, i quadratini per sagomarla, il pallino a metà di un lato per aggiungere un vertice.</div>';
   }
   function bind(foot, ctl) {
     foot.addEventListener('click', ev => {
