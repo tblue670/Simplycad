@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v23.6</title>
+<title>SimplyCAD Pro · v23.7</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -4954,7 +4954,7 @@ function addOpenFloor3D() {
   _floorTexs.push(tex); while (_floorTexs.length > 12) _floorTexs.shift().dispose();
   const m = new THREE.Mesh(new THREE.PlaneGeometry(gw * cell, gh * cell),
     new THREE.MeshStandardMaterial({color: 0xcfcac0, roughness: 0.75, side: THREE.DoubleSide, alphaMap: tex, alphaTest: 0.5, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1}));
-  m.rotation.x = -Math.PI / 2; m.position.set(x0 + gw * cell / 2, 0.012, -(y1 - gh * cell / 2)); m.receiveShadow = true; scene.add(m);
+  m.rotation.x = -Math.PI / 2; m.position.set(x0 + gw * cell / 2, 0.001, -(y1 - gh * cell / 2)); m.receiveShadow = true; scene.add(m);
 }
 
 /* v22.1 · angoli dei muri nel 3D: i muri sono blocchi che finiscono sull'asse, quindi allo spigolo esterno
@@ -5029,7 +5029,7 @@ function build3D() {
     const color = lc ? new THREE.Color(lc) : new THREE.Color((appSettings.roomAuto === false ? null : r.color) || '#cfcac0');
     const m = new THREE.Mesh(new THREE.ShapeGeometry(shape),
       new THREE.MeshStandardMaterial({color, roughness: 0.75, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1}));
-    m.rotation.x = -Math.PI/2; m.position.y = 0.03; m.receiveShadow = true; scene.add(m);
+    m.rotation.x = -Math.PI/2; m.position.y = 0.004; m.receiveShadow = true; scene.add(m);   /* v23.7: pavimento a quota zero (prima 3 cm: copriva zoccolini e rivestimenti) */
   }
   if (window.SCriv) { try { SCriv.add3D(scene); } catch (err) { console.warn('rivestimenti 3D', err); } }
   if (window.SCpit) { try { SCpit.add3D(scene); } catch (err) { console.warn('pittura 3D', err); } }
@@ -10591,7 +10591,7 @@ updateRoomList();
       if (cf.view3d === 'upto' && cur && f.elev > cur.elev + 1e-6) return;
       const shape = new THREE.Shape(); z.pts.forEach((p, i) => i ? shape.lineTo(p.x, p.y) : shape.moveTo(p.x, p.y)); shape.closePath();
       const m = new THREE.Mesh(new THREE.ShapeGeometry(shape), new THREE.MeshStandardMaterial({color: new THREE.Color(z.color), roughness: 0.8, transparent: true, opacity: 0.8, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2}));
-      m.rotation.x = -Math.PI / 2; m.position.y = (f.elev || 0) + 0.05; m.receiveShadow = true; m.userData.zoneId = z.id; if (z.sk && window.SCfloor) SCfloor.tex3D(m, z); scene.add(m);
+      m.rotation.x = -Math.PI / 2; m.position.y = (f.elev || 0) + 0.007; m.receiveShadow = true; m.userData.zoneId = z.id;   /* v23.7: prima 5 cm sopra lo zero: lo zoccolino spariva sotto il pavimento */ if (z.sk && window.SCfloor) SCfloor.tex3D(m, z); scene.add(m);
     });
   }
   const _b3z = build3D;
@@ -20416,8 +20416,9 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
    SC_REL.v è l'unica versione: titolo, Guida, file salvato, avvisi e riga messaggi la leggono da qui.
    ======================================================================== */
 window.SC_REL = {
-  v: '23.6', d: '27/10/2026',
+  v: '23.7', d: '27/10/2026',
   news: [
+    ['23.7', 'Zoccolini nel 3D: i pavimenti nel 3D erano 3–5 cm sopra lo zero e coprivano la parte bassa di zoccolini e rivestimenti; ora sono a quota zero, come nel prospetto.'],
     ['23.6', 'Rivestimenti e zoccolini: la pittura sta sempre sotto il rivestimento (prospetto, 3D e tocco); un rivestimento senza skin si vede comunque in 3D, in tinta unita. Ombre del 3D più nitide (niente righe seghettate sotto i davanzali e lungo i muri).'],
     ['23.5', 'Prospetto: il primo tocco seleziona l\'oggetto senza muoverlo; trascinando l\'oggetto già selezionato lo sposti e lo sagomi col dito, come prima. Misure minime scrivibili: 1 cm (zoccoli, fasce).'],
     ['23.4', 'Prospetto: un tocco seleziona e basta, trascinare sposta la vista; per spostare o sagomare un oggetto col dito si accende «✥ Sposta» (accanto a Elimina e Fine). Tastierino: «✓ OK» dentro la griglia (in verticale finiva sotto il bordo e il valore non si confermava); cambiando campo o toccando il disegno il valore scritto si applica.'],
