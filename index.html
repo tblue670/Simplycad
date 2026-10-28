@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v26.1</title>
+<title>SimplyCAD Pro · v26.3</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -1987,7 +1987,12 @@ const FURNITURE = {
   pt_scarico:{name:'Punto di scarico',w:0.1,d:0.06,h:0.1,z:0.3,color:'#374151',icon:'⊗'},
   collettore:{name:'Collettore idrico',w:0.4,d:0.12,h:0.4,z:1.0,color:'#93c5fd',icon:'C'},
   split:{name:'Condizionatore (unità interna)',w:0.9,d:0.2,h:0.3,z:2.1,color:'#f1f5f9',icon:'❄'},
-  unita_est:{name:'Condizionatore (unità esterna)',w:0.8,d:0.35,h:0.6,z:0,color:'#cbd5e1',icon:'❄'}
+  unita_est:{name:'Condizionatore (unità esterna)',w:0.8,d:0.35,h:0.6,z:0,color:'#cbd5e1',icon:'❄'},
+  col_scarico:{name:'Colonna di scarico',w:0.12,d:0.12,h:2.7,z:0,color:'#4b5563',icon:'⊙',shape:'round'},
+  pt_tv:{name:'Presa TV/SAT',w:0.08,d:0.06,h:0.08,z:0.3,color:'#16a34a',icon:'📺'},
+  pt_dati:{name:'Presa dati (rete)',w:0.08,d:0.06,h:0.08,z:0.3,color:'#db2777',icon:'🖧'},
+  antenna:{name:'Centralino TV / antenna',w:0.3,d:0.1,h:0.3,z:1.8,color:'#16a34a',icon:'📡'},
+  router:{name:'Centralino dati / router',w:0.4,d:0.12,h:0.4,z:1.6,color:'#db2777',icon:'🛜'}
 };
 (function(){
   const sel = document.getElementById('furnitureType');
@@ -1998,7 +2003,7 @@ const FURNITURE = {
     'Bagno':['toilet','bidet','washbasin','bathtub','shower','towel_rad','washer','dryer'],
     'Varie':['plant','plant_small','rug','door_arc'],
     'Struttura':['pilastro','colonna','trave'],
-    'Impianti':['radiatore','quadro','presa','interruttore','punto_luce','pt_acqua','pt_scarico','collettore','split','unita_est']
+    'Impianti':['radiatore','quadro','presa','interruttore','punto_luce','pt_acqua','pt_scarico','collettore','col_scarico','split','unita_est','pt_tv','pt_dati','antenna','router']
   };
   for (const [g, items] of Object.entries(groups)) {
     const og = document.createElement('optgroup'); og.label = g;
@@ -3528,9 +3533,10 @@ function openFurniturePicker(cx, cy, world) {
   let html = `<div class="fp-head"><span>Scegli l'arredo da inserire</span><button type="button" data-close="1">✕</button></div><button type="button" class="fp-new" data-new="1">➕ Crea un nuovo arredo (linea, arco, cerchio, rettangolo, poligono)</button>`;
   const mine = window.SCcf ? SCcf.list() : [];
   if (mine.length) html += `<h4>I miei arredi</h4><div class="fp-grid">${mine.map(btn).join('')}</div>`;
-  if (_furRecent.length) html += `<h4>Ultimi usati</h4><div class="fp-grid">${_furRecent.map(btn).join('')}</div>`;
+  { const IMPG = new Set((window.FURN_GROUPS && FURN_GROUPS.Impianti) || []), rec = _furRecent.filter(k => !IMPG.has(k)); if (rec.length) html += `<h4>Ultimi usati</h4><div class="fp-grid">${rec.map(btn).join('')}</div>`; }
   const seen = new Set();
   for (const [g, items] of Object.entries(window.FURN_GROUPS || {})) {
+    if (g === 'Impianti') continue;   /* v26.3: gli impianti hanno la loro libreria (menu Impianti › Inserisci punti) */
     const list = items.filter(k => FURNITURE[k] && !seen.has(k)); list.forEach(k => seen.add(k));
     if (list.length) html += `<h4>${g}</h4><div class="fp-grid">${list.map(btn).join('')}</div>`;
   }
@@ -11377,6 +11383,11 @@ updateRoomList();
       add('Impianti', 'pt_acq_f', 'Punto acqua fredda: adduzione in multistrato con raccordi e rubinetto d\'arresto', 'n.', nf);
       add('Impianti', 'pt_scar', 'Punto di scarico: tubazione in PP/PVC con pezzi speciali e collegamento alla colonna', 'n.', cnt('pt_scarico'));
       add('Impianti', 'collettore', 'Collettore di distribuzione idrico con valvole di intercettazione', 'n.', cnt('collettore'));
+      add('Impianti', 'pt_tv', 'Presa TV/SAT con cavo coassiale e quota parte del centralino', 'n.', cnt('pt_tv'));
+      add('Impianti', 'pt_dati', 'Presa dati RJ45 cat. 6 con cavo UTP', 'n.', cnt('pt_dati'));
+      add('Impianti', 'antenna', 'Centralino TV: amplificatore e partitore, collegamento all\'antenna', 'n.', cnt('antenna'));
+      add('Impianti', 'router', 'Centralino dati: quadretto di rete con patch panel', 'n.', cnt('router'));
+      add('Impianti', 'col_scarico', 'Colonna di scarico in PP/PVC Ø100–125 mm con braghe e ispezione (per piano)', 'n.', cnt('col_scarico'));
       add('Impianti', 'split', 'Climatizzatore a parete: unità interna ed esterna, linee frigorifere, scarico condensa e collegamento elettrico', 'n.', cnt('split')); }
     { const PP = F.filter(f => f.type === 'presa'), nc = PP.filter(f => f.seq === 'sc').length, na = PP.filter(f => f.seq === 'sa').length;
       add('Impianti', 'el_presa', 'Punto presa 10/16 A', 'n.', PP.length - nc - na);
@@ -13816,7 +13827,7 @@ updateRoomList();
     door: {c: '#fb923c'}, window: {c: '#2dd4bf'}, offset: {c: '#e879f9'}, rescale: {c: '#facc15'},
     line: {c: '#38bdf8'}, circle: {c: '#38bdf8'}, arc: {c: '#38bdf8'}, measure: {c: '#f472b6'}, dim: {c: '#f472b6'}, room: {c: '#a3e635'}, furniture: {c: '#c084fc'}, stairs: {c: '#c084fc'},
     text: {c: '#fde047'}, zone: {c: '#34d399'}, pillar: {c: '#94a3b8'}, hole: {c: '#fb7185'}, moveBg: {c: '#94a3b8'}, box: {c: '#22d3ee'},
-    cgcp: {c: '#e2e8f0'}, cgceil: {c: '#a78bfa'}, cgbeam: {c: '#f472b6'}, cgled: {c: '#eab308'}, cgimp: {c: '#22d3ee'}, cgcol: {c: '#22d3ee'}
+    cgcp: {c: '#e2e8f0'}, cgceil: {c: '#a78bfa'}, cgbeam: {c: '#f472b6'}, cgled: {c: '#eab308'}, cgimp: {c: '#22d3ee'}, cgcol: {c: '#22d3ee'}, cgpt: {c: '#22d3ee'}
   };
   const touch = () => !!(window.SClastPT && SClastPT() !== 'mouse');
   const guideOn = () => appSettings.guide !== false;
@@ -13945,6 +13956,7 @@ updateRoomList();
     if (t === 'zone') { const bz = !!(window.SCzone && SCzone.busy()); return mk(bz ? 'Area · tocca il vertice successivo, poi «Chiudi area»' : 'Area · tocca il primo vertice', bz ? [['zclose', '✔ Chiudi area'], ['undo', '↩ Togli punto'], ['done', '✔ Fine']] : T2); }
     if (t === 'offset') return mk('Parallela · tocca il muro o la forma da cui partire');
     if (t === 'cgcp') return mk('Controparete · tocca il muro dal lato dove va');
+    if (t === 'cgpt') return mk('Punto impianto · ' + (window.SCcs && SCcs.ptType() && FURNITURE[SCcs.ptType()] ? FURNITURE[SCcs.ptType()].name + ': tocca dove metterlo' : 'scegli dalla libreria'), [['ptlib', '☰ Libreria'], ['done', '✔ Fine']]);
     if (t === 'cgcol') return mk(window.SCcs && SCcs.colSrc() ? 'Collega · tocca i punti da collegare alla partenza' : 'Collega · tocca il punto di partenza (di solito il quadro)', [['done', '✔ Fine']]);
     if (t === 'cgceil' || t === 'cgbeam' || t === 'cgled' || t === 'cgimp') { const n = window.SCcs ? SCcs.count() : 0, nm = t === 'cgceil' ? 'Controsoffitto' : t === 'cgled' ? 'Profilo LED' : t === 'cgimp' ? 'Impianto' : 'Falsa trave', M = t === 'cgceil' && window.SCcs ? SCcs.mode() : 'pts';
       const MB = t === 'cgceil' && !n ? [['csmode', SCcs.modeName() + ' ›']] : [];
@@ -13992,6 +14004,7 @@ updateRoomList();
     else if (a === 'zclose') { try { SCzone.finish(); } catch (_) {} }
     else if (a === 'csfin') { try { SCcs.finish(); } catch (_) {} }
     else if (a === 'ledfollow') { try { SCcs.follow(); } catch (_) {} }
+    else if (a === 'ptlib') { try { SCcs.openLib(); } catch (_) {} }
     else if (a === 'csundo') { try { SCcs.undoPt(); } catch (_) {} }
     else if (a === 'csmode') { try { SCcs.cycleMode(); } catch (_) {} }
     else if (a === 'undo') { if (window.SCzone && SCzone.busy()) { document.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', bubbles: true})); toast('Operazione annullata'); } else if (pv || tmp || (shapeTmp && shapeTmp.length) || measureStart) { pv = null; tmp = null; shapeTmp = []; measureStart = null; toast('Operazione annullata'); } else undo(); }
@@ -15938,7 +15951,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       }
       if (S.tool === 'lux') {
         h += '<div class="wk-hint"><b>Luci e punti a parete</b> sul lato che guardi: scegli cosa mettere, poi tocca il punto sul muro (la quota è dove tocchi). Poi cambi tipo, potenza e colore.</div>';
-        h += '<div class="wk-row" style="flex-wrap:wrap">' + [['applique', 'Applique'], ['faretto_p', 'Faretto a parete'], ['presa', 'Presa'], ['interruttore', 'Interruttore'], ['quadro', 'Quadro'], ['pt_acqua', 'Punto acqua'], ['pt_scarico', 'Scarico'], ['collettore', 'Collettore'], ['split', 'Condizionatore']].map(([k, n]) => '<button class="wk-b' + ((S.luxT || 'applique') === k ? ' on' : '') + '" data-a="luxt" data-m="' + k + '">' + n + '</button>').join('') + '<button class="wk-b sc-fine" data-a="done" style="margin-left:auto">✔ Fine</button></div>';
+        h += '<div class="wk-row" style="flex-wrap:wrap">' + [['applique', 'Applique'], ['faretto_p', 'Faretto a parete'], ['presa', 'Presa'], ['interruttore', 'Interruttore'], ['quadro', 'Quadro'], ['pt_acqua', 'Punto acqua'], ['pt_scarico', 'Scarico'], ['collettore', 'Collettore'], ['split', 'Condizionatore'], ['pt_tv', 'Presa TV'], ['pt_dati', 'Presa dati']].map(([k, n]) => '<button class="wk-b' + ((S.luxT || 'applique') === k ? ' on' : '') + '" data-a="luxt" data-m="' + k + '">' + n + '</button>').join('') + '<button class="wk-b sc-fine" data-a="done" style="margin-left:auto">✔ Fine</button></div>';
         foot.innerHTML = h; render(); return;
       }
       if (S.tool === 'led') {
@@ -16616,6 +16629,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   const _ht = handleTap;
   handleTap = function (cx, cy) {
     if (state.tool === 'cgcol') return colTap(cx, cy);
+    if (state.tool === 'cgpt') return ptTap(cx, cy);
     if (!isMine(state.tool)) return _ht.apply(this, arguments);
     if (isCurrentLayerLocked()) { toast('Livello corrente bloccato'); return; }
     const r = c2d.getBoundingClientRect(), w = screenToWorld(cx - r.left, cy - r.top), M = mode();
@@ -16925,11 +16939,11 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     pal.style.left = Math.max(6, Math.min(innerWidth - W - 6, x)) + 'px'; pal.style.top = Math.max(Math.min(r.top + 4, innerHeight - H - 6), Math.min(innerHeight - H - 6, y)) + 'px';
   }
   /* v25.5 · COLLEGA PUNTI: tocca la partenza (quadro) e poi i punti: ognuno viene collegato con un percorso ad angolo retto */
-  const PTS = {presa: 1, interruttore: 1, punto_luce: 1, quadro: 1, pt_acqua: 1, pt_scarico: 1, collettore: 1, split: 1, radiatore: 1};
-  const TYP = {pt_acqua: 'acf', pt_scarico: 'scn', radiatore: 'acc', split: 'can', punto_luce: 'lux', interruttore: 'lux', presa: 'pre'};   /* v26.0: luci arancio, prese viola */
+  const PTS = {presa: 1, interruttore: 1, punto_luce: 1, quadro: 1, pt_acqua: 1, pt_scarico: 1, collettore: 1, col_scarico: 1, split: 1, radiatore: 1, pt_tv: 1, pt_dati: 1, antenna: 1, router: 1};
+  const TYP = {pt_acqua: 'acf', pt_scarico: 'scn', col_scarico: 'scn', radiatore: 'acc', split: 'can', punto_luce: 'lux', interruttore: 'lux', presa: 'pre', pt_tv: 'tv', antenna: 'tv', pt_dati: 'dat', router: 'dat'};   /* v26.0: luci arancio, prese viola */
   let COLSRC = null;
   const r3q = v => Math.round(v * 1000) / 1000;
-  const EK = () => ['fas', 'neu', 'ter', 'can', 'lux', 'pre'].includes(appSettings.impT) ? appSettings.impT : 'fas';   /* i punti collegati sono elettrici */
+  const EK = () => ['fas', 'neu', 'ter', 'can', 'lux', 'pre', 'tv', 'dat'].includes(appSettings.impT) ? appSettings.impT : 'fas';   /* i punti collegati sono elettrici */
   const segX = (a, b, c, d) => { const o = (p, q, r) => (q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x); return o(a, b, c) * o(a, b, d) < 0 && o(c, d, a) * o(c, d, b) < 0; };
   const wallCross = (p, q) => state.walls.filter(w => isEntityVisible(w) && floorOf(w) === state.currentFloorId).reduce((n, w) => n + (segX(p, q, w.p1, w.p2) ? 1 : 0), 0);
   function orth(a, b) {
@@ -16959,7 +16973,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     if (isCurrentLayerLocked()) { toast('Livello corrente bloccato'); return; }
     const fl = state.currentFloorId, F = state.furniture.filter(f => isEntityVisible(f) && floorOf(f) === fl), by = t => F.filter(f => f.type === t);
     const Lx = by('punto_luce'), Ix = by('interruttore'), Qx = by('quadro'), Px = by('presa');
-    if (!Qx.length && !Ix.length) { toast('Servono almeno un quadro o degli interruttori sul piano'); return; }
+    if (!Qx.length && !Ix.length && !by('antenna').length && !by('router').length) { toast('Servono un quadro (o interruttori), un centralino TV o un centralino dati sul piano'); return; }
     const pathCost = pts => { let c = 0; for (let i = 0; i + 1 < pts.length; i++) c += Math.hypot(pts[i + 1].x - pts[i].x, pts[i + 1].y - pts[i].y) + 6 * wallCross(pts[i], pts[i + 1]); return c; };
     const near = (f, list) => { let b = null, bc = 1e9; list.forEach(g => { if (g === f) return; const c = pathCost(orth({x: f.x, y: f.y}, {x: g.x, y: g.y})); if (c < bc) { bc = c; b = g; } }); return b; };
     state.beams = state.beams.filter(b => !(b.auto === 'elec' && floorOf(b) === fl));
@@ -16967,8 +16981,76 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     Lx.forEach(f => { const g = near(f, Ix.length ? Ix : Qx); if (g) { connect(f, g, {auto: 'elec'}); nl++; } });
     Ix.forEach(f => { const g = near(f, Qx); if (g) { connect(f, g, {auto: 'elec'}); ni++; } });
     Px.forEach(f => { const g = near(f, Qx); if (g) { connect(f, g, {auto: 'elec'}); np++; } });
+    const Ax = by('antenna'), Rx = by('router'); let nt = 0, nd = 0;
+    by('pt_tv').forEach(f => { const g = near(f, Ax); if (g) { connect(f, g, {auto: 'elec'}); nt++; } });
+    by('pt_dati').forEach(f => { const g = near(f, Rx); if (g) { connect(f, g, {auto: 'elec'}); nd++; } });
     showImpOn(); draw2D(); if (state.mode === '3d') build3D(); try { checkpoint(); } catch (_) {}
-    toast('Collegati: ' + nl + ' luci, ' + ni + ' interruttori, ' + np + ' prese. Rifai il comando per rigenerare i collegamenti automatici');
+    toast('Collegati: ' + nl + ' luci, ' + ni + ' interruttori, ' + np + ' prese' + (nt ? ', ' + nt + ' prese TV' : '') + (nd ? ', ' + nd + ' prese dati' : '') + '. Rifai il comando per rigenerare i collegamenti automatici');
+  }
+  /* v26.2 · IMPIANTO IDRAULICO AUTOMATICO: punti acqua e scarico dai sanitari, poi collegamenti al collettore (calda rossa, fredda blu) e alla colonna di scarico (nero) */
+  const SAN = {washbasin: {a: 'cf', za: 0.55, zs: 0.5}, bidet: {a: 'cf', za: 0.25, zs: 0.2}, toilet: {a: 'f', za: 0.25, zs: 0.15, wc: 1}, bathtub: {a: 'cf', za: 0.6, zs: 0.1}, shower: {a: 'cf', za: 1.1, zs: 0.05}, sink: {a: 'cf', za: 0.5, zs: 0.45}, washer: {a: 'f', za: 0.9, zs: 0.6}, dishwasher: {a: 'f', za: 0.5, zs: 0.45}};
+  const pCost = pts => { let c = 0; for (let i = 0; i + 1 < pts.length; i++) c += Math.hypot(pts[i + 1].x - pts[i].x, pts[i + 1].y - pts[i].y) + 6 * wallCross(pts[i], pts[i + 1]); return c; };
+  const nearest = (f, list) => { let b = null, bc = 1e9; list.forEach(g => { if (g === f) return; const c = pCost(orth({x: f.x, y: f.y}, {x: g.x, y: g.y})); if (c < bc) { bc = c; b = g; } }); return b; };
+  function autoIdro() {
+    if (isCurrentLayerLocked()) { toast('Livello corrente bloccato'); return; }
+    if (!window.SClux) return;
+    const fl = state.currentFloorId, W = state.walls.filter(w => isEntityVisible(w) && floorOf(w) === fl);
+    state.furniture = state.furniture.filter(f => !(f.auto === 'idro' && floorOf(f) === fl));
+    state.beams = state.beams.filter(b => !(b.auto === 'idro' && floorOf(b) === fl));
+    let np = 0;
+    state.furniture.filter(f => SAN[f.type] && isEntityVisible(f) && floorOf(f) === fl).forEach(f => {
+      let best = null, bd = 1e9; W.forEach(w => { const d = distancePointToSegment({x: f.x, y: f.y}, w.p1, w.p2); if (d < bd) { bd = d; best = w; } });
+      if (!best || bd > 1.5) return;
+      const w = best, L = Math.hypot(w.p2.x - w.p1.x, w.p2.y - w.p1.y), ux = (w.p2.x - w.p1.x) / L, uy = (w.p2.y - w.p1.y) / L, n = -(f.x - w.p1.x) * uy + (f.y - w.p1.y) * ux, side = n > 0 ? 1 : -1, t = (f.x - w.p1.x) * ux + (f.y - w.p1.y) * uy, S0 = SAN[f.type];
+      const a = SClux.add(w, side, t - 0.08, S0.za, 'pt_acqua'); a.auto = 'idro'; if (S0.a === 'f') a.acq = 'f';
+      const sc = SClux.add(w, side, t + 0.1, S0.zs, 'pt_scarico'); sc.auto = 'idro'; if (S0.wc) sc.wc = 1;
+      np++;
+    });
+    const F = state.furniture.filter(f => isEntityVisible(f) && floorOf(f) === fl), by = t => F.filter(f => f.type === t);
+    const PA = by('pt_acqua'), PS = by('pt_scarico'), CO = by('collettore'), CS = by('col_scarico');
+    let na = 0, ns = 0;
+    if (CO.length) PA.forEach(f => {
+      const g = nearest(f, CO); if (!g) return;
+      connect(f, g, {auto: 'idro', imp: 'acf', zm: 'pav'}).d = 20; na++;
+      if (f.acq !== 'f') { const sh = 0.05, f2_ = Object.assign({}, f, {x: f.x + sh, y: f.y + sh}), g2 = Object.assign({}, g, {x: g.x + sh, y: g.y + sh}); connect(f2_, g2, {auto: 'idro', imp: 'acc', zm: 'pav'}).d = 20; }
+    });
+    const WC = PS.filter(f => f.wc), TS = CS.length ? CS : WC;
+    PS.forEach(f => { if (TS.includes(f)) return; const g = nearest(f, TS); if (!g) return; const el = connect(f, g, {auto: 'idro', imp: 'scn', zm: 'pav'}); el.d = f.wc ? 100 : 50; ns++; });
+    WC.forEach(f => { if (!CS.length) return; });
+    showImpOn(); draw2D(); if (state.mode === '3d') build3D(); try { checkpoint(); } catch (_) {}
+    const miss = [!CO.length && PA.length ? 'manca il collettore: inseriscilo (Impianti › Inserisci punti) e rifai il comando' : '', !CS.length && !WC.length && PS.length ? 'manca la colonna di scarico (o un WC)' : ''].filter(Boolean);
+    toast('Idraulico: ' + np + ' sanitari con punti, ' + na + ' punti acqua collegati, ' + ns + ' scarichi collegati' + (miss.length ? ' · ' + miss.join(' · ') : ''));
+  }
+  /* v26.3 · LIBRERIA IMPIANTI: si sceglie il punto e poi si tocca dove metterlo (anche più volte); vicino a un muro si aggancia */
+  const LIB = [
+    ['Elettrico', 'linea luci arancione, linea prese viola', ['quadro', 'interruttore', 'presa', 'punto_luce']],
+    ['Idraulico', 'acqua calda rossa, fredda blu, scarichi neri', ['collettore', 'pt_acqua', 'pt_scarico', 'col_scarico']],
+    ['Riscaldamento e clima', 'termosifoni in acqua calda, condizionatori in canalina', ['radiatore', 'split', 'unita_est']],
+    ['TV e dati', 'linea TV verde, linea dati rosa', ['antenna', 'pt_tv', 'router', 'pt_dati']]];
+  let PT = null;
+  function closeLib() { const e = document.getElementById('impLib'); if (e) e.remove(); }
+  function openLib() {
+    closeLib(); const el = document.createElement('div'); el.id = 'impLib'; el.className = 'fp';
+    const esc2 = t => String(t).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+    let h = '<div class="fp-head"><span>Libreria impianti · scegli il punto, poi tocca dove metterlo</span><button type="button" data-close="1">✕</button></div>';
+    LIB.forEach(([g, leg, ks]) => { h += '<h4>' + g + ' <small style="font-weight:400;color:#9ca3b8">· ' + leg + '</small></h4><div class="fp-grid">' + ks.filter(k => FURNITURE[k]).map(k => '<button class="fp-it" data-k="' + k + '"><span>' + FURNITURE[k].icon + '</span>' + esc2(FURNITURE[k].name) + '</button>').join('') + '</div>'; });
+    el.innerHTML = h; ['pointerdown', 'pointerup', 'click', 'touchstart', 'wheel'].forEach(ev => el.addEventListener(ev, e => e.stopPropagation()));
+    document.body.appendChild(el); el.style.left = Math.max(8, (innerWidth - el.offsetWidth) / 2) + 'px'; el.style.top = Math.max(8, (innerHeight - el.offsetHeight) / 2) + 'px';
+    el.addEventListener('click', e => {
+      if (e.target.closest('[data-close]')) { closeLib(); return; }
+      const b = e.target.closest('.fp-it'); if (!b) return; PT = b.dataset.k; closeLib();
+      document.querySelectorAll('.tool').forEach(x => x.classList.remove('active')); state.tool = 'cgpt'; state.pendingPoint = null; showImpOn(); draw2D();
+      toast(FURNITURE[PT].name + ': tocca dove metterlo (vicino a un muro si aggancia). Puoi metterne più di uno');
+    });
+  }
+  function ptTap(cx, cy) {
+    if (isCurrentLayerLocked()) { toast('Livello corrente bloccato'); return; }
+    if (!PT || !FURNITURE[PT]) { openLib(); return; }
+    const r = c2d.getBoundingClientRect(), w = screenToWorld(cx - r.left, cy - r.top), n0 = state.furniture.length;
+    placeFurniture(PT, w); const f = state.furniture.length > n0 ? state.furniture[state.furniture.length - 1] : null; if (!f) return;
+    let ok = false; try { if (window.SClux && SClux.isWallT(f)) ok = SClux.attach(f, 0.6); } catch (_) {}
+    try { refresh(); } catch (_) { draw2D(); } try { checkpoint(); } catch (_) {}
+    toast(FURNITURE[PT].name + (ok ? ' agganciato al muro (si sposta anche dal prospetto)' : ' inserito'));
   }
   function colTap(cx, cy) {
     if (isCurrentLayerLocked()) { toast('Livello corrente bloccato'); return; }
@@ -17319,7 +17401,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     return out;
   }
   window.SCcs = {
-    zAt, showImpOn, colArm, connect, autoElec, colSrc: () => COLSRC, ledItems, lightPts, ledSegs, lineSegs, follow, pickObj, mkLedLine, followArmed: () => LFM,
+    zAt, showImpOn, colArm, connect, autoElec, autoIdro, openLib, ptType: () => PT, colSrc: () => COLSRC, ledItems, lightPts, ledSegs, lineSegs, follow, pickObj, mkLedLine, followArmed: () => LFM,
     items: () => state.ceils.filter(isEntityVisible).map(voceC).concat(state.beams.filter(b => isEntityVisible(b) && !b.led).map(voceB)).filter(Boolean),
     priceOf: k => { const e = state.ceils.concat(state.beams).find(x => 'cs_' + x.id === k); return e && e.price != null ? +e.price : null; },
     setPrice: (k, v) => { const e = state.ceils.concat(state.beams).find(x => 'cs_' + x.id === k); if (e) e.price = v; },
@@ -17384,8 +17466,9 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       const row = (id, ic, lb, kb, fn) => { const b = document.createElement('button'); b.className = 'menu-row'; b.id = id; b.innerHTML = '<span class="mi-icon">' + ic + '</span><span class="mi-label">' + lb + '</span>' + (kb ? '<span class="mi-kbd">' + kb + '</span>' : ''); b.onclick = () => { closeMenus(); fn(); }; return b; };
       const lab = t => { const d = document.createElement('div'); d.className = 'menu-label'; d.textContent = t; return d; }, sep = () => { const d = document.createElement('div'); d.className = 'menu-sep'; return d; };
       const items = [lab('Punti e collegamenti'),
-        row('impPtsBtn', '⏚', 'Inserisci punti…', 'prese, luci, acqua', () => { const b = document.querySelector('.tool[data-tool="furniture"]'); if (b) b.click(); else pickTool('furniture'); toast('Tocca dove va il punto, poi scegli nel gruppo «Impianti» (presa, luce, punto acqua, scarico, condizionatore…)'); }),
+        row('impPtsBtn', '⏚', 'Inserisci punti…', 'libreria impianti', () => SCcs.openLib()),
         row('impAutoColBtn', '⚡', 'Collega impianto elettrico', 'automatico', () => SCcs.autoElec()),
+        row('impIdroBtn', '💧', 'Impianto idraulico', 'acqua e scarichi', () => SCcs.autoIdro()),
         row('impColBtn', '🔗', 'Collega punti', 'tocca e collega', () => { pickTool('cgcol'); SCcs.colArm(); }),
         row('impLineBtn', '✎', 'Linea libera', 'tubo o cavo', () => { SCcs.showImpOn(); pickTool('cgimp', 'Impianto: tocca i punti del percorso, poi «Fine linea»'); }),
         row('impShowBtn', '👁', 'Mostra / nascondi impianti', 'tubi e cavi', () => { const c = document.getElementById('showImp'); if (c) { c.checked = !c.checked; c.dispatchEvent(new Event('change')); toast(c.checked ? 'Impianti visibili' : 'Impianti nascosti'); } }),
@@ -21079,8 +21162,10 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
    SC_REL.v è l'unica versione: titolo, Guida, file salvato, avvisi e riga messaggi la leggono da qui.
    ======================================================================== */
 window.SC_REL = {
-  v: '26.1', d: '28/10/2026',
+  v: '26.3', d: '28/10/2026',
   news: [
+    ['26.3', 'Libreria impianti (Impianti › Inserisci punti): elettrico, idraulico, riscaldamento e clima, TV e dati, ognuno con il colore delle sue linee; scegli il punto e tocca dove metterlo, anche più volte; vicino a un muro si aggancia. Nuovi: presa TV/SAT, presa dati, centralino TV, centralino dati, con linea TV verde e linea dati rosa (anche nel collegamento automatico). Gli impianti non sono più nel catalogo Arredi.'],
+    ['26.2', 'Impianto idraulico automatico (Impianti › Impianto idraulico): per ogni sanitario (lavabo, bidet, WC, vasca, doccia, lavello, lavatrice, lavastoviglie) mette il punto acqua e lo scarico sul muro più vicino, alle quote tipiche; poi collega i punti acqua al collettore (fredda blu, calda rossa) e gli scarichi alla colonna di scarico (o al WC), tutto a pavimento con le discese. Nuovo oggetto «Colonna di scarico». Rifacendo il comando i punti e i collegamenti automatici si rigenerano.'],
     ['26.1', 'Tutti gli impianti nel menu «Impianti»: inserisci punti, collega impianto elettrico, collega punti, linea libera, mostra/nascondi; sotto restano caloriferi, impianto elettrico automatico e allinea luci. Tolti da Disegna.'],
     ['26.0', 'Linee elettriche per circuito: «Linea luci» arancione e «Linea prese» viola (un tubo corrugato con fase, neutro e terra). «Collega punti» e «Collega impianto elettrico» le usano da sole: luci e interruttori arancione, prese viola. Fase, neutro e terra singoli restano disponibili per i casi particolari.'],
     ['25.9', 'Corretto: con le etichette dei controsoffitti nascoste, toccando una plafoniera (o un arredo, un muro, una quota) dentro un controsoffitto si selezionava il controsoffitto. Ora si seleziona l\'oggetto toccato; il controsoffitto si prende toccando una zona libera o la sua etichetta.'],
@@ -23529,10 +23614,10 @@ window.SC_REL = {
   const KS = [[2700, 'Calda 2700 K'], [3000, 'Calda 3000 K'], [4000, 'Naturale 4000 K']], WS = [4, 6, 8, 10, 14];
   const leds = w => Array.isArray(w.leds) ? w.leds : (w.leds = []);
   /* v25.3 · IMPIANTI: stesse linee libere del profilo LED, con r.imp = tipo; colori: acqua calda rosso, fredda blu, scarichi nero, fase marrone, neutro grigio, terra giallo */
-  const IMPT = {acc: ['Acqua calda', '#dc2626', 20], acf: ['Acqua fredda', '#2563eb', 20], scn: ['Scarico / acque nere', '#111827', 50], fas: ['Elettrico · fase', '#92400e', 16], neu: ['Elettrico · neutro', '#9ca3af', 16], ter: ['Elettrico · terra', '#eab308', 16], can: ['Canalina', '#e5e7eb', 30], lux: ['Linea luci', '#f97316', 20], pre: ['Linea prese', '#a855f7', 20]};
-  const DIAMS = {acc: [16, 20, 25, 32], acf: [16, 20, 25, 32], scn: [40, 50, 63, 100, 125], fas: [16, 20, 25, 32], neu: [16, 20, 25, 32], ter: [16, 20, 25, 32], can: [20, 30, 50, 100], lux: [16, 20, 25, 32], pre: [16, 20, 25, 32]};
+  const IMPT = {acc: ['Acqua calda', '#dc2626', 20], acf: ['Acqua fredda', '#2563eb', 20], scn: ['Scarico / acque nere', '#111827', 50], fas: ['Elettrico · fase', '#92400e', 16], neu: ['Elettrico · neutro', '#9ca3af', 16], ter: ['Elettrico · terra', '#eab308', 16], can: ['Canalina', '#e5e7eb', 30], lux: ['Linea luci', '#f97316', 20], pre: ['Linea prese', '#a855f7', 20], tv: ['Linea TV', '#16a34a', 20], dat: ['Linea dati', '#db2777', 20]};
+  const DIAMS = {acc: [16, 20, 25, 32], acf: [16, 20, 25, 32], scn: [40, 50, 63, 100, 125], fas: [16, 20, 25, 32], neu: [16, 20, 25, 32], ter: [16, 20, 25, 32], can: [20, 30, 50, 100], lux: [16, 20, 25, 32], pre: [16, 20, 25, 32], tv: [16, 20, 25], dat: [16, 20, 25, 32]};
   const IMPD = {acc: d => 'Tubazione multistrato Ø' + d + ' mm per acqua calda sanitaria, in traccia, compresi isolante e raccordi', acf: d => 'Tubazione multistrato Ø' + d + ' mm per acqua fredda, in traccia, compresi raccordi', scn: d => 'Tubazione di scarico in PP/PVC Ø' + d + ' mm per acque nere e reflue, compresi pezzi speciali e staffaggi',
-    fas: d => 'Conduttore di fase in tubo corrugato Ø' + d + ' mm, in traccia', neu: d => 'Conduttore di neutro in tubo corrugato Ø' + d + ' mm, in traccia', ter: d => 'Conduttore di terra in tubo corrugato Ø' + d + ' mm, in traccia', can: d => 'Canalina portacavi ' + d + ' mm, compreso fissaggio', lux: d => 'Linea luci in tubo corrugato Ø' + d + ' mm con conduttori fase, neutro e terra, in traccia', pre: d => 'Linea prese in tubo corrugato Ø' + d + ' mm con conduttori fase, neutro e terra, in traccia'};
+    fas: d => 'Conduttore di fase in tubo corrugato Ø' + d + ' mm, in traccia', neu: d => 'Conduttore di neutro in tubo corrugato Ø' + d + ' mm, in traccia', ter: d => 'Conduttore di terra in tubo corrugato Ø' + d + ' mm, in traccia', can: d => 'Canalina portacavi ' + d + ' mm, compreso fissaggio', lux: d => 'Linea luci in tubo corrugato Ø' + d + ' mm con conduttori fase, neutro e terra, in traccia', pre: d => 'Linea prese in tubo corrugato Ø' + d + ' mm con conduttori fase, neutro e terra, in traccia', tv: d => 'Linea TV/SAT in tubo corrugato Ø' + d + ' mm con cavo coassiale, in traccia', dat: d => 'Linea dati in tubo corrugato Ø' + d + ' mm con cavo UTP cat. 6, in traccia'};
   const impOn = () => !!appSettings.showImp;
   const find = id => { for (const w of state.walls) { const r = (w.leds || []).find(x => x.id === id); if (r) return r; } return null; };
   const hostOf = id => state.walls.find(w => (w.leds || []).some(x => x.id === id));
@@ -23728,8 +23813,8 @@ window.SC_REL = {
 (function () {
   const Lw = w => Math.hypot(w.p2.x - w.p1.x, w.p2.y - w.p1.y), r3 = v => Math.round(v * 1000) / 1000;
   const f2 = v => (Math.round(v * 100) / 100).toFixed(2).replace('.', ',');
-  const WALLT = {applique: 1, faretto_p: 1}, WALLP = {presa: 1, interruttore: 1, quadro: 1, pt_acqua: 1, pt_scarico: 1, collettore: 1, split: 1};   /* luci e punti a parete */
-  const NAMES = {presa: 'Presa', interruttore: 'Interruttore', quadro: 'Quadro elettrico', pt_acqua: 'Punto acqua', pt_scarico: 'Punto di scarico', collettore: 'Collettore idrico', split: 'Condizionatore', plafoniera: 'Plafoniera', faretto: 'Faretto a incasso', sospensione: 'Sospensione', applique: 'Applique a parete', faretto_p: 'Faretto a parete', striscia: 'Striscia LED'};
+  const WALLT = {applique: 1, faretto_p: 1}, WALLP = {presa: 1, interruttore: 1, quadro: 1, pt_acqua: 1, pt_scarico: 1, collettore: 1, split: 1, pt_tv: 1, pt_dati: 1, antenna: 1, router: 1};   /* luci e punti a parete */
+  const NAMES = {presa: 'Presa', interruttore: 'Interruttore', quadro: 'Quadro elettrico', pt_acqua: 'Punto acqua', pt_scarico: 'Punto di scarico', collettore: 'Collettore idrico', split: 'Condizionatore', pt_tv: 'Presa TV', pt_dati: 'Presa dati', antenna: 'Centralino TV', router: 'Centralino dati', plafoniera: 'Plafoniera', faretto: 'Faretto a incasso', sospensione: 'Sospensione', applique: 'Applique a parete', faretto_p: 'Faretto a parete', striscia: 'Striscia LED'};
   /* misure e quota tipiche: w, d (profondità), h, z (da terra) */
   const DEF = {plafoniera: {w: .25, d: .25, h: .06, z: 2.62}, faretto: {w: .09, d: .09, h: .03, z: 2.67}, sospensione: {w: .2, d: .2, h: .2, z: 2.2}, applique: {w: .12, d: .1, h: .16, z: 1.6}, faretto_p: {w: .08, d: .08, h: .08, z: 2.0}};
   const tipoOf = f => (f.lt && f.lt.tipo) || 'plafoniera';
@@ -23899,6 +23984,12 @@ window.SC_REL = {
       } else if (t === 'split') {
         const ws = Math.max(30, (f.w || 0.9) * s), hs = Math.max(13, (f.h || 0.3) * s); cx.fillStyle = '#f1f5f9'; cx.beginPath(); cx.rect(X - ws / 2, Y - hs / 2, ws, hs); cx.fill(); cx.stroke();
         cx.fillStyle = '#0369a1'; cx.font = '700 10px sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.fillText('❄', X, Y);
+      } else if (t === 'pt_tv' || t === 'pt_dati') {
+        cx.fillStyle = t === 'pt_tv' ? '#16a34a' : '#db2777'; cx.beginPath(); cx.rect(X - 9, Y - 8, 18, 16); cx.fill(); cx.stroke();
+        cx.fillStyle = '#fff'; cx.font = '700 8px sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.fillText(t === 'pt_tv' ? 'TV' : 'RJ', X, Y);
+      } else if (t === 'antenna' || t === 'router') {
+        const wq = Math.max(14, (f.w || 0.3) * s), hq = Math.max(14, (f.h || 0.3) * s); cx.fillStyle = t === 'antenna' ? '#bbf7d0' : '#fbcfe8'; cx.beginPath(); cx.rect(X - wq / 2, Y - hq / 2, wq, hq); cx.fill(); cx.stroke();
+        cx.fillStyle = '#1f2937'; cx.font = '700 9px sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.fillText(t === 'antenna' ? 'TV' : 'DATI', X, Y);
       } else if (t === 'quadro' || t === 'collettore') {
         const wq = Math.max(14, (f.w || 0.4) * s), hq = Math.max(14, (f.h || 0.5) * s); cx.fillStyle = t === 'collettore' ? '#93c5fd' : '#cbd5e1'; cx.beginPath(); cx.rect(X - wq / 2, Y - hq / 2, wq, hq); cx.fill(); cx.stroke();
         cx.fillStyle = '#1f2937'; cx.font = '700 10px sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.fillText(t === 'collettore' ? 'C' : '⚡', X, Y);
@@ -23909,7 +24000,7 @@ window.SC_REL = {
         cx.strokeStyle = sel ? '#22d3ee' : '#fbbf24'; cx.setLineDash([3, 3]); cx.beginPath(); cx.moveTo(X, Y + 6); cx.lineTo(X - 14, Y + 30); cx.moveTo(X, Y + 6); cx.lineTo(X + 14, Y + 30); cx.stroke();
       }
       cx.restore();
-      if (sel || s > 70) { cx.fillStyle = '#fde68a'; cx.font = '600 10.5px "Segoe UI",sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'top'; cx.fillText(NAMES[t] + (f.type === 'punto_luce' ? ' · ' + (+(f.lt && f.lt.lm) || 800) + ' lm' : ''), X, Y + (t === 'presa' || t === 'interruttore' || t === 'pt_acqua' || t === 'pt_scarico' ? 14 : 34)); }
+      if (sel || s > 70) { cx.fillStyle = '#fde68a'; cx.font = '600 10.5px "Segoe UI",sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'top'; cx.fillText(NAMES[t] + (f.type === 'punto_luce' ? ' · ' + (+(f.lt && f.lt.lm) || 800) + ' lm' : ''), X, Y + (t === 'presa' || t === 'interruttore' || t === 'pt_acqua' || t === 'pt_scarico' || t === 'pt_tv' || t === 'pt_dati' ? 14 : 34)); }
     });
   }
   function hit(w, face, x, v, pxPerM) {
@@ -23970,7 +24061,7 @@ window.SC_REL = {
   const f2 = v => (Math.round(v * 100) / 100).toFixed(2).replace('.', ',');
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, m => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[m]));
   const pNum = s => { s = String(s).trim(); if (s.includes(',')) s = s.replace(/\./g, '').replace(',', '.'); const v = parseFloat(s); return isFinite(v) && v >= 0 ? v : 0; };
-  const FUR = {punto_luce: 'el_luce', interruttore: 'el_int', presa: 'el_presa', quadro: 'el_quadro', radiatore: 'rad_el', pt_acqua: 'pt_acq_cf', pt_scarico: 'pt_scar', split: 'split', collettore: 'collettore'};
+  const FUR = {punto_luce: 'el_luce', interruttore: 'el_int', presa: 'el_presa', quadro: 'el_quadro', radiatore: 'rad_el', pt_acqua: 'pt_acq_cf', pt_scarico: 'pt_scar', split: 'split', collettore: 'collettore', col_scarico: 'col_scarico', pt_tv: 'pt_tv', pt_dati: 'pt_dati', antenna: 'antenna', router: 'router'};
   const furKey = e => e.type === 'punto_luce' ? 'el_luce' + (e.cmd === 'dev' ? '_dev' : e.cmd === 'inv' ? '_inv' : '') : e.type === 'presa' ? 'el_presa' + (e.seq === 'sc' ? '_sc' : e.seq === 'sa' ? '_sa' : '') : e.type === 'pt_acqua' && e.acq === 'f' ? 'pt_acq_f' : FUR[e.type];
   const DOORK = ['single', 'double', 'slide', 'pocket', 'bifold', 'armored'];
   const isCg = w => window.SCcg && ((SCcg.isCg && SCcg.isCg(w)) || (SCcg.isCp && SCcg.isCp(w)));

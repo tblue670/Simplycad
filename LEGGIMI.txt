@@ -1,4 +1,4 @@
-SimplyCAD Pro - pubblicazione su GitHub Pages (v26.1)
+SimplyCAD Pro - pubblicazione su GitHub Pages (v26.3)
 
 Contenuto (vanno caricati tutti, senza rinominarli e SENZA cartelle intorno):
   index.html  sw.js  manifest.webmanifest  icon-192.png  icon-512.png  icon-maskable.png  README.md
@@ -390,3 +390,11 @@ NOVITÀ v26.0
 
 NOVITÀ v26.1
 - Tutti gli impianti nel menu «Impianti»: Inserisci punti, Collega impianto elettrico, Collega punti, Linea libera, Mostra/nascondi impianti. Sotto restano caloriferi, impianto elettrico automatico e allinea luci. Tolti da Disegna.
+
+NOVITÀ v26.2
+- Impianto idraulico automatico (Impianti > Impianto idraulico): per ogni sanitario (lavabo, bidet, WC, vasca, doccia, lavello, lavatrice, lavastoviglie) mette punto acqua e scarico sul muro più vicino alle quote tipiche, poi collega i punti acqua al collettore (fredda blu, calda rossa) e gli scarichi alla colonna di scarico o al WC, a pavimento con le discese. Nuovo oggetto «Colonna di scarico». Rifacendo il comando punti e collegamenti automatici si rigenerano.
+
+NOVITÀ v26.3
+- Libreria impianti (Impianti > Inserisci punti): elettrico, idraulico, riscaldamento e clima, TV e dati, ognuno con il colore delle sue linee. Scegli il punto e tocca dove metterlo, anche più volte; vicino a un muro si aggancia.
+- Nuovi: presa TV/SAT, presa dati, centralino TV, centralino dati; linea TV verde e linea dati rosa, anche nel collegamento automatico.
+- Gli impianti non sono più nel catalogo Arredi.
