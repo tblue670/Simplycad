@@ -1,4 +1,4 @@
-SimplyCAD Pro - pubblicazione su GitHub Pages (v25.5)
+SimplyCAD Pro - pubblicazione su GitHub Pages (v25.7)
 
 Contenuto (vanno caricati tutti, senza rinominarli e SENZA cartelle intorno):
   index.html  sw.js  manifest.webmanifest  icon-192.png  icon-512.png  icon-maskable.png  README.md
@@ -365,3 +365,13 @@ NOVITÀ v25.5
 - Punto luce: interrotto, deviato, invertito. Presa: singola, in sequenza nello stesso cassetto, in sequenza in altro cassetto. Si sceglie nel pannello dell'oggetto e il computo ha voci separate.
 - I metri di tubi e cavi disegnati non entrano più nel computo (sono già compresi nel prezzo dei punti). Si possono includere da Computo > Opzioni; le canaline si contano sempre.
 - «Impianto a linea» ora si chiama «Linea libera».
+
+NOVITÀ v25.6
+- Nuovi punti impianto (Arredi > Impianti, e dal prospetto con «Luci e punti»): punto acqua (calda e fredda, o solo fredda), punto di scarico, collettore idrico, condizionatore (unità interna a parete) e unità esterna.
+- Sul muro si agganciano come prese e luci; si vedono in pianta, prospetto e 3D.
+- Computo: una voce per tipo di punto.
+- Collega punti li collega con la linea del tipo giusto: acqua fredda, scarico nero, termosifone acqua calda, condizionatore in canalina.
+
+NOVITÀ v25.7
+- Impianti visibili sul prospetto: i tubi e i cavi disegnati in pianta (anche con «Collega punti») si vedono sul prospetto del muro lungo cui passano (entro lo spessore del muro + 20 cm). Tratteggiati se stanno sull'altro lato.
+- Collega punti ora fa anche la discesa verticale dal percorso (a pavimento o nel soffitto) fino a ogni punto: prese, interruttori, luci. Le discese si vedono in prospetto, 3D e sezione.
