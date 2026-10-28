@@ -1,4 +1,4 @@
-SimplyCAD Pro - pubblicazione su GitHub Pages (v25.8)
+SimplyCAD Pro - pubblicazione su GitHub Pages (v26.1)
 
 Contenuto (vanno caricati tutti, senza rinominarli e SENZA cartelle intorno):
   index.html  sw.js  manifest.webmanifest  icon-192.png  icon-512.png  icon-maskable.png  README.md
@@ -379,3 +379,14 @@ NOVITÀ v25.7
 NOVITÀ v25.8
 - Collega impianto elettrico (Strumenti > Impianti): collega da solo le luci all'interruttore più comodo, gli interruttori e le prese al quadro, con percorsi ad angolo retto che evitano i muri dove possono, e con le discese. Con una luce il percorso passa sopra il controsoffitto. Rifacendo il comando i collegamenti automatici vengono rigenerati.
 - Dal prospetto: strumento «Collega»: tocchi la partenza e poi i punti sul muro.
+
+NOVITÀ v25.9
+- Corretto: con le etichette dei controsoffitti nascoste, toccando una plafoniera (o un arredo, un muro, una quota) dentro un controsoffitto si selezionava il controsoffitto. Ora si seleziona l'oggetto toccato; il controsoffitto si prende toccando una zona libera o la sua etichetta.
+
+NOVITÀ v26.0
+- Linee elettriche per circuito: «Linea luci» arancione e «Linea prese» viola (un tubo corrugato con fase, neutro e terra).
+- Collega punti e Collega impianto elettrico le usano da sole: luci e interruttori in arancione, prese in viola.
+- Fase, neutro e terra singoli restano disponibili per i casi particolari.
+
+NOVITÀ v26.1
+- Tutti gli impianti nel menu «Impianti»: Inserisci punti, Collega impianto elettrico, Collega punti, Linea libera, Mostra/nascondi impianti. Sotto restano caloriferi, impianto elettrico automatico e allinea luci. Tolti da Disegna.

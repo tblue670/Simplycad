@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v25.8</title>
+<title>SimplyCAD Pro · v26.1</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -16803,6 +16803,8 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     const v = [...boxes].reverse().find(q => !q.hid && x >= q.x && x <= q.x + q.w && y >= q.y && y <= q.y + q.h); if (v) return v;
     /* etichette nascoste: vale la falsa trave vicina, poi il controsoffitto più piccolo che contiene il punto */
     const w = screenToWorld(x, y), tol = 12 / viewScale; let best = null, bA = Infinity;
+    /* v25.9: toccando la forma (etichetta nascosta) vince quello che ci sta sopra: luci, arredi, muri, porte, quote… (non il locale né l'immagine) */
+    try { const o = window.SCsel && SCsel.pick ? SCsel.pick(w) : null; if (o && o.type !== 'room' && o.type !== 'image') return null; } catch (_) {}
     boxes.forEach(q => { if (!q.hid) return; const el = q.el;
       if (kindOf(el) === 'b') { const D = dense(el, false); for (let i = 0; i + 1 < D.length; i++) if (segD(w, D[i], D[i + 1]) <= Math.max(tol, el.w / 2)) { best = q; bA = -1; return; } return; }
       if (bA < 0) return; const D = dense(el, true); if (!inPoly(w, D)) return; const A = Math.abs(polyArea(D)); if (A < bA) { bA = A; best = q; } });
@@ -16924,10 +16926,10 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   }
   /* v25.5 · COLLEGA PUNTI: tocca la partenza (quadro) e poi i punti: ognuno viene collegato con un percorso ad angolo retto */
   const PTS = {presa: 1, interruttore: 1, punto_luce: 1, quadro: 1, pt_acqua: 1, pt_scarico: 1, collettore: 1, split: 1, radiatore: 1};
-  const TYP = {pt_acqua: 'acf', pt_scarico: 'scn', radiatore: 'acc', split: 'can'};
+  const TYP = {pt_acqua: 'acf', pt_scarico: 'scn', radiatore: 'acc', split: 'can', punto_luce: 'lux', interruttore: 'lux', presa: 'pre'};   /* v26.0: luci arancio, prese viola */
   let COLSRC = null;
   const r3q = v => Math.round(v * 1000) / 1000;
-  const EK = () => ['fas', 'neu', 'ter', 'can'].includes(appSettings.impT) ? appSettings.impT : 'fas';   /* i punti collegati sono elettrici */
+  const EK = () => ['fas', 'neu', 'ter', 'can', 'lux', 'pre'].includes(appSettings.impT) ? appSettings.impT : 'fas';   /* i punti collegati sono elettrici */
   const segX = (a, b, c, d) => { const o = (p, q, r) => (q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x); return o(a, b, c) * o(a, b, d) < 0 && o(c, d, a) * o(c, d, b) < 0; };
   const wallCross = (p, q) => state.walls.filter(w => isEntityVisible(w) && floorOf(w) === state.currentFloorId).reduce((n, w) => n + (segX(p, q, w.p1, w.p2) ? 1 : 0), 0);
   function orth(a, b) {
@@ -17376,11 +17378,24 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   const autoe = mkTool(null, 'Collega impianto elettrico', 'Collega da solo luci agli interruttori e interruttori e prese al quadro (percorsi ad angolo retto, con le discese). Rifacendo il comando i collegamenti automatici vengono rigenerati', 'cgcol', () => { closeMenus(); SCcs.autoElec(); });
   const ledf = mkTool(null, 'Segui profilo', 'Segui profilo: la striscia LED copia il contorno dell\'oggetto selezionato (muro, controparete, controsoffitto, disegno)', 'cgled', () => { closeMenus(); SCcs.follow(); });
   if (oldCgw) oldCgw.hidden = true; if (oldCp) oldCp.hidden = true;
+  /* v26.1: gli impianti stanno nel menu Impianti (non più in Disegna) */
+  { const md = document.querySelector('[data-menu="impianti"] .menu-dropdown');
+    if (md) {
+      const row = (id, ic, lb, kb, fn) => { const b = document.createElement('button'); b.className = 'menu-row'; b.id = id; b.innerHTML = '<span class="mi-icon">' + ic + '</span><span class="mi-label">' + lb + '</span>' + (kb ? '<span class="mi-kbd">' + kb + '</span>' : ''); b.onclick = () => { closeMenus(); fn(); }; return b; };
+      const lab = t => { const d = document.createElement('div'); d.className = 'menu-label'; d.textContent = t; return d; }, sep = () => { const d = document.createElement('div'); d.className = 'menu-sep'; return d; };
+      const items = [lab('Punti e collegamenti'),
+        row('impPtsBtn', '⏚', 'Inserisci punti…', 'prese, luci, acqua', () => { const b = document.querySelector('.tool[data-tool="furniture"]'); if (b) b.click(); else pickTool('furniture'); toast('Tocca dove va il punto, poi scegli nel gruppo «Impianti» (presa, luce, punto acqua, scarico, condizionatore…)'); }),
+        row('impAutoColBtn', '⚡', 'Collega impianto elettrico', 'automatico', () => SCcs.autoElec()),
+        row('impColBtn', '🔗', 'Collega punti', 'tocca e collega', () => { pickTool('cgcol'); SCcs.colArm(); }),
+        row('impLineBtn', '✎', 'Linea libera', 'tubo o cavo', () => { SCcs.showImpOn(); pickTool('cgimp', 'Impianto: tocca i punti del percorso, poi «Fine linea»'); }),
+        row('impShowBtn', '👁', 'Mostra / nascondi impianti', 'tubi e cavi', () => { const c = document.getElementById('showImp'); if (c) { c.checked = !c.checked; c.dispatchEvent(new Event('change')); toast(c.checked ? 'Impianti visibili' : 'Impianti nascosti'); } }),
+        sep()];
+      items.reverse().forEach(n => md.insertBefore(n, md.firstChild));
+    } }
   const keep = document.createElement('div'); keep.hidden = true; if (oldCgw) keep.appendChild(oldCgw); if (oldCp) keep.appendChild(oldCp);
   const groups = [
     ['Muri e aperture', ['wall', 'door', 'window', 'pillar', 'stairs', 'hole']],
     ['Cartongesso', [cgw, cgcp, ceil, beam, led, ledf]],
-    ['Impianti', [autoe, colb, imp]],
     ['Locali e superfici', ['room', 'zone']],
     ['Quote e annotazioni', ['dim', 'measure', 'text', 'line', 'circle', 'arc']],
     ['Arredi', ['furniture']]
@@ -21064,8 +21079,11 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
    SC_REL.v è l'unica versione: titolo, Guida, file salvato, avvisi e riga messaggi la leggono da qui.
    ======================================================================== */
 window.SC_REL = {
-  v: '25.8', d: '28/10/2026',
+  v: '26.1', d: '28/10/2026',
   news: [
+    ['26.1', 'Tutti gli impianti nel menu «Impianti»: inserisci punti, collega impianto elettrico, collega punti, linea libera, mostra/nascondi; sotto restano caloriferi, impianto elettrico automatico e allinea luci. Tolti da Disegna.'],
+    ['26.0', 'Linee elettriche per circuito: «Linea luci» arancione e «Linea prese» viola (un tubo corrugato con fase, neutro e terra). «Collega punti» e «Collega impianto elettrico» le usano da sole: luci e interruttori arancione, prese viola. Fase, neutro e terra singoli restano disponibili per i casi particolari.'],
+    ['25.9', 'Corretto: con le etichette dei controsoffitti nascoste, toccando una plafoniera (o un arredo, un muro, una quota) dentro un controsoffitto si selezionava il controsoffitto. Ora si seleziona l\'oggetto toccato; il controsoffitto si prende toccando una zona libera o la sua etichetta.'],
     ['25.8', 'Collegamenti più rapidi: «Collega impianto elettrico» (Strumenti › Impianti) collega da solo le luci all\'interruttore più comodo, gli interruttori e le prese al quadro, con percorsi ad angolo retto che evitano i muri dove possono e con le discese; con una luce il percorso passa sopra il controsoffitto. Rifacendo il comando i collegamenti automatici si rigenerano. Dal prospetto: strumento «🔗 Collega», tocchi la partenza e poi i punti sul muro.'],
     ['25.7', 'Impianti visibili sul prospetto: i tubi e i cavi disegnati in pianta (anche con «Collega punti») si vedono sul prospetto del muro lungo cui passano (entro lo spessore + 20 cm; tratteggiati se sono sull\'altro lato). «Collega punti» ora fa anche la discesa verticale dal percorso (a pavimento o nel soffitto) fino a ogni punto: prese, interruttori, luci. Le discese si vedono in prospetto, 3D e sezione.'],
     ['25.6', 'Nuovi punti impianto (Arredi › Impianti, e dal prospetto): punto acqua (calda e fredda o solo fredda), punto di scarico, collettore idrico, condizionatore (unità interna a parete e unità esterna). Sul muro si agganciano come prese e luci e si vedono in pianta, prospetto e 3D. Computo: una voce per tipo di punto. «Collega punti» li collega con la linea del tipo giusto (acqua fredda, scarico nero, termosifone acqua calda, condizionatore in canalina).'],
@@ -23511,10 +23529,10 @@ window.SC_REL = {
   const KS = [[2700, 'Calda 2700 K'], [3000, 'Calda 3000 K'], [4000, 'Naturale 4000 K']], WS = [4, 6, 8, 10, 14];
   const leds = w => Array.isArray(w.leds) ? w.leds : (w.leds = []);
   /* v25.3 · IMPIANTI: stesse linee libere del profilo LED, con r.imp = tipo; colori: acqua calda rosso, fredda blu, scarichi nero, fase marrone, neutro grigio, terra giallo */
-  const IMPT = {acc: ['Acqua calda', '#dc2626', 20], acf: ['Acqua fredda', '#2563eb', 20], scn: ['Scarico / acque nere', '#111827', 50], fas: ['Elettrico · fase', '#92400e', 16], neu: ['Elettrico · neutro', '#9ca3af', 16], ter: ['Elettrico · terra', '#eab308', 16], can: ['Canalina', '#e5e7eb', 30]};
-  const DIAMS = {acc: [16, 20, 25, 32], acf: [16, 20, 25, 32], scn: [40, 50, 63, 100, 125], fas: [16, 20, 25, 32], neu: [16, 20, 25, 32], ter: [16, 20, 25, 32], can: [20, 30, 50, 100]};
+  const IMPT = {acc: ['Acqua calda', '#dc2626', 20], acf: ['Acqua fredda', '#2563eb', 20], scn: ['Scarico / acque nere', '#111827', 50], fas: ['Elettrico · fase', '#92400e', 16], neu: ['Elettrico · neutro', '#9ca3af', 16], ter: ['Elettrico · terra', '#eab308', 16], can: ['Canalina', '#e5e7eb', 30], lux: ['Linea luci', '#f97316', 20], pre: ['Linea prese', '#a855f7', 20]};
+  const DIAMS = {acc: [16, 20, 25, 32], acf: [16, 20, 25, 32], scn: [40, 50, 63, 100, 125], fas: [16, 20, 25, 32], neu: [16, 20, 25, 32], ter: [16, 20, 25, 32], can: [20, 30, 50, 100], lux: [16, 20, 25, 32], pre: [16, 20, 25, 32]};
   const IMPD = {acc: d => 'Tubazione multistrato Ø' + d + ' mm per acqua calda sanitaria, in traccia, compresi isolante e raccordi', acf: d => 'Tubazione multistrato Ø' + d + ' mm per acqua fredda, in traccia, compresi raccordi', scn: d => 'Tubazione di scarico in PP/PVC Ø' + d + ' mm per acque nere e reflue, compresi pezzi speciali e staffaggi',
-    fas: d => 'Conduttore di fase in tubo corrugato Ø' + d + ' mm, in traccia', neu: d => 'Conduttore di neutro in tubo corrugato Ø' + d + ' mm, in traccia', ter: d => 'Conduttore di terra in tubo corrugato Ø' + d + ' mm, in traccia', can: d => 'Canalina portacavi ' + d + ' mm, compreso fissaggio'};
+    fas: d => 'Conduttore di fase in tubo corrugato Ø' + d + ' mm, in traccia', neu: d => 'Conduttore di neutro in tubo corrugato Ø' + d + ' mm, in traccia', ter: d => 'Conduttore di terra in tubo corrugato Ø' + d + ' mm, in traccia', can: d => 'Canalina portacavi ' + d + ' mm, compreso fissaggio', lux: d => 'Linea luci in tubo corrugato Ø' + d + ' mm con conduttori fase, neutro e terra, in traccia', pre: d => 'Linea prese in tubo corrugato Ø' + d + ' mm con conduttori fase, neutro e terra, in traccia'};
   const impOn = () => !!appSettings.showImp;
   const find = id => { for (const w of state.walls) { const r = (w.leds || []).find(x => x.id === id); if (r) return r; } return null; };
   const hostOf = id => state.walls.find(w => (w.leds || []).some(x => x.id === id));
