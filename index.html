@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v24.3</title>
+<title>SimplyCAD Pro · v24.7</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -952,6 +952,8 @@ body.mode-3d #infoStrip .scale-badge{display:none}
         <label><input type="checkbox" id="showRoomColors" checked> Stanze colorate</label>
         <label><input type="checkbox" id="showRoomNames" checked> Nomi stanze</label>
         <label><input type="checkbox" id="showWallNames" checked> Nomi muri</label>
+        <label><input type="checkbox" id="showSkFloor" checked> Skin dei pavimenti (Aree)</label>
+        <label><input type="checkbox" id="showSkRiv" checked> Skin dei rivestimenti</label>
       </div>
       <div class="menu-sep"></div>
       <div class="menu-label">Solo nel 3D</div>
@@ -2447,6 +2449,8 @@ document.getElementById('wallAngle').addEventListener('input', e => {
    7) CANVAS
    ======================================================================== */
 const c2d = document.getElementById('canvas2d');
+/* v24.4: skin visibili? (k = 'f' pavimenti, 'r' rivestimenti); la copia cliente le forza sempre accese */
+window.skinOn = k => { if (window.__skForce) return true; const e = document.getElementById(k === 'f' ? 'showSkFloor' : 'showSkRiv'); return !e || e.checked; };
 window.addEventListener('pointerdown', e => { if (window.__traceHit && window.__traceHit(e)) { e.stopImmediatePropagation(); return; } }, true);   /* v24.3: la traccia di sezione ha la precedenza su etichette e Aree */
 window.addEventListener('pointerdown', e => { if (window.__zoneHit && window.__zoneHit(e)) { e.stopImmediatePropagation(); e.preventDefault(); } }, true);   /* v10.0: clic sul riquadro di un'area, prima di ogni altro gestore */
 const ctx = c2d.getContext('2d');
@@ -9110,7 +9114,7 @@ $('impAnyInput').onchange = async e => {
      - storico: ultimi salvataggi, uno per sessione (anche di versioni precedenti dell'app), prima di Nuovo / Apri / Ripristina,
        prima di un calo improvviso del lavoro e la versione piu' completa mai vista
      ===================================================================== */
-  const APPV = '8.0', IDBN = 'simplycad_auto', TOGIDS = ['showFloor', 'showCeil3d', 'showDimensions', 'lblCs', 'showFurniture', 'showLabels', 'showWallNames', 'showRoomNames', 'lblZoneName', 'lblZoneSup', 'lblZonePer', 'lblH', 'snapAngles', 'snapGrid', 'snapPts'];
+  const APPV = '8.0', IDBN = 'simplycad_auto', TOGIDS = ['showFloor', 'showSkFloor', 'showSkRiv', 'showCeil3d', 'showDimensions', 'lblCs', 'showFurniture', 'showLabels', 'showWallNames', 'showRoomNames', 'lblZoneName', 'lblZoneSup', 'lblZonePer', 'lblH', 'snapAngles', 'snapGrid', 'snapPts'];
   let idbP = null, lastSaved = 0, allowEmpty = false, saveT = 0, busy = false, again = false, lastJ = '', lastHist = 0, lastPeakAt = 0, failWarned = false, ready = false;
   const idb = () => idbP || (idbP = new Promise((res, rej) => {
     try {
@@ -10202,7 +10206,7 @@ updateRoomList();
    (anche se il browser ricarica la pagina, ad esempio dopo il selettore file)
    ======================================================================== */
 (function () {
-  const KEY = 'simplycad_toggles_v1', IDS = ['showFloor', 'showCeil3d', 'showDimensions', 'lblCs', 'showFurniture', 'showLabels', 'showWallNames', 'showRoomNames', 'lblZoneName', 'lblZoneSup', 'lblZonePer', 'lblH', 'snapAngles', 'snapGrid', 'snapPts'];
+  const KEY = 'simplycad_toggles_v1', IDS = ['showFloor', 'showSkFloor', 'showSkRiv', 'showCeil3d', 'showDimensions', 'lblCs', 'showFurniture', 'showLabels', 'showWallNames', 'showRoomNames', 'lblZoneName', 'lblZoneSup', 'lblZonePer', 'lblH', 'snapAngles', 'snapGrid', 'snapPts'];
   let saved = {}; try { saved = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (_) {}
   const save = () => { const o = {}; IDS.forEach(id => { const e = document.getElementById(id); if (e) o[id] = !!e.checked; });
     try { if (window.SCsv && SCsv.active() && SCsv.state() && SCsv.state().prevDim !== undefined) o.showDimensions = !!SCsv.state().prevDim; } catch (_) {}   /* in Rilievo le quote sono nascoste solo temporaneamente */
@@ -11292,6 +11296,7 @@ updateRoomList();
     if (window.SCwk) SCwk.items(walls).forEach(v => add('Opere murarie su pareti esistenti', v.key, v.desc, 'a corpo', 1, v.det));
     if (window.SCriv) SCriv.items().forEach(v => add('Sottofondi e pavimenti', v.key, v.desc, v.um, v.q, v.det));   /* v19.0: rivestimenti disegnati sul prospetto */
     if (window.SCpit) SCpit.items().forEach(v => add('Pitture e finiture', v.key, v.desc, v.um, v.q, v.det));   /* v22.9: pittura disegnata sul prospetto */
+    if (window.SCcs && SCcs.ledItems) SCcs.ledItems().forEach(v => add('Opere in cartongesso', v.key, v.desc, v.um, v.q, v.det));   /* v24.5: LED e botole */
     if (window.SCcs && SCcs.paintItems) SCcs.paintItems().forEach(v => add('Pitture e finiture', v.key, v.desc, v.um, v.q, v.det));   /* v24.0: soffitti e controsoffitti */
     // finiture (v12.1: se ci sono Aree con lavorazioni a pavimento, massetto e pavimento vengono solo da quelle, a corpo)
     const zoneFloor = window.SCzoneWk && SCzoneWk.anyFloor();
@@ -13784,7 +13789,7 @@ updateRoomList();
     door: {c: '#fb923c'}, window: {c: '#2dd4bf'}, offset: {c: '#e879f9'}, rescale: {c: '#facc15'},
     line: {c: '#38bdf8'}, circle: {c: '#38bdf8'}, arc: {c: '#38bdf8'}, measure: {c: '#f472b6'}, dim: {c: '#f472b6'}, room: {c: '#a3e635'}, furniture: {c: '#c084fc'}, stairs: {c: '#c084fc'},
     text: {c: '#fde047'}, zone: {c: '#34d399'}, pillar: {c: '#94a3b8'}, hole: {c: '#fb7185'}, moveBg: {c: '#94a3b8'}, box: {c: '#22d3ee'},
-    cgcp: {c: '#e2e8f0'}, cgceil: {c: '#a78bfa'}, cgbeam: {c: '#f472b6'}
+    cgcp: {c: '#e2e8f0'}, cgceil: {c: '#a78bfa'}, cgbeam: {c: '#f472b6'}, cgled: {c: '#eab308'}
   };
   const touch = () => !!(window.SClastPT && SClastPT() !== 'mouse');
   const guideOn = () => appSettings.guide !== false;
@@ -13913,11 +13918,12 @@ updateRoomList();
     if (t === 'zone') { const bz = !!(window.SCzone && SCzone.busy()); return mk(bz ? 'Area · tocca il vertice successivo, poi «Chiudi area»' : 'Area · tocca il primo vertice', bz ? [['zclose', '✔ Chiudi area'], ['undo', '↩ Togli punto'], ['done', '✔ Fine']] : T2); }
     if (t === 'offset') return mk('Parallela · tocca il muro o la forma da cui partire');
     if (t === 'cgcp') return mk('Controparete · tocca il muro dal lato dove va');
-    if (t === 'cgceil' || t === 'cgbeam') { const n = window.SCcs ? SCcs.count() : 0, nm = t === 'cgceil' ? 'Controsoffitto' : 'Falsa trave', M = t === 'cgceil' && window.SCcs ? SCcs.mode() : 'pts';
+    if (t === 'cgceil' || t === 'cgbeam' || t === 'cgled') { const n = window.SCcs ? SCcs.count() : 0, nm = t === 'cgceil' ? 'Controsoffitto' : t === 'cgled' ? 'Profilo LED' : 'Falsa trave', M = t === 'cgceil' && window.SCcs ? SCcs.mode() : 'pts';
       const MB = t === 'cgceil' && !n ? [['csmode', SCcs.modeName() + ' ›']] : [];
       if (M === 'room') return mk(nm + ' · tocca dentro un locale o un\'Area: la copre tutta', MB.concat([['done', '✔ Fine']]));
       if (M === 'rect') return mk(n ? nm + ' · tocca l\'angolo opposto' : nm + ' · tocca il primo angolo', n ? [['csundo', '↩ Togli punto'], ['done', '✔ Fine']] : MB.concat([['done', '✔ Fine']]));
-      return mk(n === 0 ? nm + ' · tocca il primo punto' : nm + ' · tocca il punto successivo, poi «Chiudi contorno»', n >= (t === 'cgceil' ? 3 : 2) ? [['csfin', '✔ Chiudi contorno'], ['csundo', '↩ Togli punto'], ['done', '✔ Fine']] : n ? [['csundo', '↩ Togli punto'], ['done', '✔ Fine']] : MB.concat([['done', '✔ Fine']])); }
+      if (t === 'cgled' && n === 0) return mk(window.SCcs && SCcs.followArmed() ? 'Profilo LED · tocca l\'oggetto da seguire' : 'Profilo LED · tocca il primo punto, oppure «Segui profilo»', [['ledfollow', '⤷ Segui profilo'], ['done', '✔ Fine']]);
+      return mk(n === 0 ? nm + ' · tocca il primo punto' : nm + ' · tocca il punto successivo, poi ' + (t === 'cgceil' ? '«Chiudi contorno»' : '«Fine linea»'), n >= (t === 'cgceil' ? 3 : 2) ? [['csfin', t === 'cgceil' ? '✔ Chiudi contorno' : '✔ Fine linea'], ['csundo', '↩ Togli punto'], ['done', '✔ Fine']] : n ? [['csundo', '↩ Togli punto'], ['done', '✔ Fine']] : MB.concat([['done', '✔ Fine']])); }
     if (t === 'box') return {c: I.c, t: 'Riquadro · trascina per selezionare più elementi', b: [['done', '✔ Fine']]};
     if (t === 'moveBg') return {c: I.c, t: 'Sposta sfondo · trascina l\'immagine', b: [['done', '✔ Fine']]};
     return null;
@@ -13957,6 +13963,7 @@ updateRoomList();
     else if (a === 'ok') confirmPv();
     else if (a === 'zclose') { try { SCzone.finish(); } catch (_) {} }
     else if (a === 'csfin') { try { SCcs.finish(); } catch (_) {} }
+    else if (a === 'ledfollow') { try { SCcs.follow(); } catch (_) {} }
     else if (a === 'csundo') { try { SCcs.undoPt(); } catch (_) {} }
     else if (a === 'csmode') { try { SCcs.cycleMode(); } catch (_) {} }
     else if (a === 'undo') { if (window.SCzone && SCzone.busy()) { document.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', bubbles: true})); toast('Operazione annullata'); } else if (pv || tmp || (shapeTmp && shapeTmp.length) || measureStart) { pv = null; tmp = null; shapeTmp = []; measureStart = null; toast('Operazione annullata'); } else undo(); }
@@ -14694,6 +14701,7 @@ function lightList() {
       out.push([c.x, c.y, floorElevOf(r) + getDefaultWallHeight() - 0.08, 0, 800, 3000, 'plafoniera']);
     });
   });
+  try { if (window.SCcs && SCcs.lightPts) SCcs.lightPts().forEach(function (q) { out.push(q); }); } catch (e) { }   /* v24.5: LED dei controsoffitti */
   return out;
 }
 /* parte del tour dentro il file cliente (ES5, il file è autonomo) */
@@ -14848,9 +14856,9 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   }
   function collectGroups(opts) {
     const withTex = !!(opts && opts.tex); TX = {img: [], idx: new Map(), list: []};
-    const prev = state.mode;
+    const prev = state.mode; window.__skForce = true;   /* v24.4: il file per il cliente mostra sempre il lavoro finito, anche con le skin nascoste a video */
     if (typeof setSel === 'function') setSel([]);
-    if (prev !== '3d') document.querySelector('.tab[data-mode="3d"]').click(); else build3D();
+    try { if (prev !== '3d') document.querySelector('.tab[data-mode="3d"]').click(); else build3D(); } finally { window.__skForce = false; }
     scene.updateMatrixWorld(true);
     const groups = {}, v = new THREE.Vector3();
     scene.traverse(o => {
@@ -14880,7 +14888,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       if (g.index) { const ix = g.index.array; for (let k = 0; k < ix.length; k++) G.i.push(ix[k] + base); }
       else { for (let k = 0; k < pos.count; k++) G.i.push(base + k); }
     });
-    if (prev !== '3d') document.querySelector('.tab[data-mode="2d"]').click();
+    if (prev !== '3d') document.querySelector('.tab[data-mode="2d"]').click(); else if (!skinOn('f') || !skinOn('r')) { try { build3D(); } catch (_) {} }   /* torna la vista scelta */
     return Object.keys(groups).map(k => groups[k]);
   }
 
@@ -16449,17 +16457,18 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
 
   /* ---------------------------------------------------------------- disegno con lo strumento (punti col cursore sfalsato) */
   let tmp = [], boxes = [], active = null, pal = null, drag = null;
-  const isMine = t => t === 'cgceil' || t === 'cgbeam';
+  const isMine = t => t === 'cgceil' || t === 'cgbeam' || t === 'cgled';
   const MODES = ['room', 'rect', 'pts'], MNAME = {room: '▦ Locale', rect: '▭ Rettangolo', pts: '✎ Punti'};
   const mode = () => MODES.includes(appSettings.csMode) ? appSettings.csMode : 'room';
   function cycleMode() { appSettings.csMode = MODES[(MODES.indexOf(mode()) + 1) % MODES.length]; try { persistSettings(); } catch (_) {} tmp = []; draw2D(); toast('Controsoffitto: ' + MNAME[mode()].slice(2)); }
   let hv = null, side = null;   // ultimo punto del puntatore (anteprima rettangolo) · lato scelto nel riquadro
-  document.querySelector('.workspace').addEventListener('pointermove', e => { if (state.tool !== 'cgceil' || !tmp.length) return; const r = c2d.getBoundingClientRect(); hv = screenToWorld(e.clientX - r.left, e.clientY - r.top); if (mode() === 'rect') draw2D(); }, true);
+  document.querySelector('.workspace').addEventListener('pointermove', e => { if (!isMine(state.tool) || !tmp.length) return; const r = c2d.getBoundingClientRect(); hv = screenToWorld(e.clientX - r.left, e.clientY - r.top); if (state.tool !== 'cgceil' || mode() === 'rect') draw2D(); }, true);
   const _ht = handleTap;
   handleTap = function (cx, cy) {
     if (!isMine(state.tool)) return _ht.apply(this, arguments);
     if (isCurrentLayerLocked()) { toast('Livello corrente bloccato'); return; }
     const r = c2d.getBoundingClientRect(), w = screenToWorld(cx - r.left, cy - r.top), M = mode();
+    if (LFM && state.tool === 'cgled') { const o = pickObj(w); if (o) mkLedLine(o); else toast('Nessun oggetto qui: tocca un muro, un controsoffitto, un disegno…'); return; }
     if (state.tool === 'cgceil' && M === 'room') {   /* un tocco: Area esistente (se il punto è dentro) o locale intero al filo dei muri */
       const z = (state.zones || []).filter(z => isEntityVisible(z) && floorOf(z) === state.currentFloorId && z.pts && z.pts.length >= 3 && inPolyG(w, z.pts)).pop();
       let pts = z ? z.pts.map(p => ({x: p.x, y: p.y})) : null, src = z ? 'Area' + (z.name ? ' «' + z.name + '»' : '') : '';
@@ -16508,11 +16517,11 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   function finish() {
     const t = state.tool;
     if (t === 'cgceil' && tmp.length < 3) { if (tmp.length) toast('Controsoffitto: servono almeno 3 punti'); tmp = []; draw2D(); return; }
-    if (t === 'cgbeam' && tmp.length < 2) { if (tmp.length) toast('Falsa trave: servono almeno 2 punti'); tmp = []; draw2D(); return; }
+    if ((t === 'cgbeam' || t === 'cgled') && tmp.length < 2) { if (tmp.length) toast((t === 'cgled' ? 'Profilo LED' : 'Falsa trave') + ': servono almeno 2 punti'); tmp = []; draw2D(); return; }
     const d = DEF(), cg = {lastra: d.lastra, sp: d.sp, strati: d.strati, iso: !!d.isoCs};
     let el;
     if (t === 'cgceil') { const top = topOf(state.currentFloorId); el = assignLayer({id: newId(), pts: tmp.map(p => ({x: p.x, y: p.y})), h: Math.round(Math.max(1.8, Math.min(top - 0.05, +appSettings.csH || top - 0.3)) * 100) / 100, cg}); state.ceils.push(el); }
-    else { el = assignLayer({id: newId(), pts: tmp.map(p => ({x: p.x, y: p.y})), w: +appSettings.csBw || 0.3, hh: +appSettings.csBh || 0.25, sez: 'U', cg}); state.beams.push(el); }
+    else { el = assignLayer({id: newId(), pts: tmp.map(p => ({x: p.x, y: p.y})), w: +appSettings.csBw || 0.3, hh: +appSettings.csBh || 0.25, sez: 'U', cg}); if (t === 'cgled') { el.w = 0.02; el.hh = 0.02; el.led = {k: +appSettings.ledK || 3000, w: +appSettings.ledW || 8}; } state.beams.push(el); }
     tmp = []; active = el; draw2D(); try { checkpoint(); } catch (_) {}
     openPal(el);
   }
@@ -16520,11 +16529,11 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     if (!isMine(state.tool) || !tmp.length) return;
     const a = document.activeElement; if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) return;
     if (e.key === 'Enter') { e.preventDefault(); e.stopImmediatePropagation(); finish(); }
-    else if (e.key === 'Escape') { e.stopImmediatePropagation(); tmp = []; draw2D(); }
+    else if (e.key === 'Escape') { e.stopImmediatePropagation(); tmp = []; LFM = false; draw2D(); }
     else if (e.key === 'Backspace') { e.preventDefault(); e.stopImmediatePropagation(); tmp.pop(); draw2D(); }
   }, true);
   c2d.addEventListener('dblclick', () => { if (isMine(state.tool) && tmp.length >= 2) finish(); });
-  document.addEventListener('click', e => { const t = e.target.closest && e.target.closest('.tool'); if (t) { tmp = []; closePal(); } }, true);
+  document.addEventListener('click', e => { const t = e.target.closest && e.target.closest('.tool'); if (t) { tmp = []; LFM = false; closePal(); } }, true);
   window.addEventListener('keydown', e => { if (e.key === 'Escape' && pal) { const a = document.activeElement; if (!(a && pal.contains(a))) closePal(); } });
 
   /* ---------------------------------------------------------------- pianta */
@@ -16570,8 +16579,24 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       velette(c).forEach(v => { const A = worldToScreen(v.a.x, v.a.y), B = worldToScreen(v.b.x, v.b.y); ctx.strokeStyle = COL_C; ctx.lineWidth = 3.5; ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.lineTo(B.x, B.y); ctx.stroke(); });
       labelBox((c.name ? c.name + ' · ' : '') + (isPaint(c) ? 'Soffitto dipinto' : 'Controsoffitto h ' + f2(c.h)), f2(((TRc || (TRc = new Map())).get(c.id) || polyArea(D))) + ' m²' + (c.fin ? ' · ' + c.fin.name : ''), (LBc && LBc.get(c.id)) || centroid(D), COL_C, c);
     }
+    try {   /* v24.5: LED, profili a filo, botole */
+      for (const c of state.ceils) {
+        if (!isEntityVisible(c) || c.pts.length < 3 || isPaint(c)) continue;
+        ctx.setLineDash([]); ctx.lineCap = 'round';
+        ledSegs(c).forEach(q => { const A = worldToScreen(q.a.x, q.a.y), B = worldToScreen(q.b.x, q.b.y); ctx.strokeStyle = '#facc15'; ctx.lineWidth = 2.2; ctx.setLineDash([2, 4]); ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.lineTo(B.x, B.y); ctx.stroke(); });
+        ctx.setLineDash([]);
+        botole(c).forEach(t => { const A = worldToScreen(t.x - t.w / 2, t.y - t.h / 2), B = worldToScreen(t.x + t.w / 2, t.y + t.h / 2), x0 = Math.min(A.x, B.x), y0 = Math.min(A.y, B.y), w = Math.abs(B.x - A.x), h = Math.abs(B.y - A.y); ctx.fillStyle = 'rgba(255,255,255,0.75)'; ctx.fillRect(x0, y0, w, h); ctx.strokeStyle = '#475569'; ctx.lineWidth = 1.4; ctx.strokeRect(x0, y0, w, h); ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x0 + w, y0 + h); ctx.moveTo(x0 + w, y0); ctx.lineTo(x0, y0 + h); ctx.stroke(); });
+      }
+    } catch (e) { console.warn('led 2D', e); }
     for (const b of state.beams) {
       if (!isEntityVisible(b) || b.pts.length < 2) continue;
+      if (b.led) {   /* v24.6: profilo LED libero */
+        const D = dense(b, false), S5 = D.map(q => worldToScreen(q.x, q.y));
+        ctx.setLineDash([]); ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = b === active ? '#fde047' : '#eab308'; ctx.lineWidth = b === active ? 4.5 : 3.2; ctx.beginPath(); S5.forEach((q, i) => i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y)); ctx.stroke();
+        ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = 1; ctx.beginPath(); S5.forEach((q, i) => i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y)); ctx.stroke();
+        labelBox((b.name ? b.name + ' · ' : '') + 'Profilo LED', f2(polyLen(D, false)) + ' ml · ' + ((b.led && b.led.w) || 8) + ' W/m', D[Math.floor(D.length / 2)], '#eab308', b);
+        continue;
+      }
       const D = dense(b, false), hw = b.w / 2;
       ctx.setLineDash([8, 5]); ctx.strokeStyle = COL_B; ctx.lineWidth = b === active ? 2.5 : 1.6;
       for (const sd of [-1, 1]) {
@@ -16594,9 +16619,9 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       const S4 = rectPts(tmp[0], snapCs(hv, null)).map(p => worldToScreen(p.x, p.y)); ctx.strokeStyle = COL_C; ctx.lineWidth = 2; ctx.setLineDash([6, 4]); ctx.beginPath(); S4.forEach((s, i) => i ? ctx.lineTo(s.x, s.y) : ctx.moveTo(s.x, s.y)); ctx.closePath(); ctx.stroke(); ctx.setLineDash([]);
     }
     if (isMine(state.tool) && tmp.length) {
-      const col = state.tool === 'cgceil' ? COL_C : COL_B, S = tmp.map(p => worldToScreen(p.x, p.y));
+      const col = state.tool === 'cgceil' ? COL_C : state.tool === 'cgled' ? '#eab308' : COL_B, S = tmp.map(p => worldToScreen(p.x, p.y));
       ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.setLineDash([6, 4]); ctx.beginPath(); S.forEach((s, i) => i ? ctx.lineTo(s.x, s.y) : ctx.moveTo(s.x, s.y));
-      if (hv && mode() !== 'rect') { const h = worldToScreen(hv.x, hv.y); ctx.lineTo(h.x, h.y); }
+      const hh = (window.SCfinger && SCfinger.active && SCfinger.active() && hover) ? hover : hv; if (hh && (state.tool !== 'cgceil' || mode() !== 'rect')) { const h = worldToScreen(hh.x, hh.y); ctx.lineTo(h.x, h.y); }
       ctx.stroke(); ctx.setLineDash([]);
       S.forEach((s, i) => { ctx.beginPath(); ctx.arc(s.x, s.y, i === 0 ? 6 : 3.5, 0, 7); ctx.fillStyle = i === 0 ? '#fff' : col; ctx.fill(); ctx.stroke(); });
     }
@@ -16628,6 +16653,11 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     const r = c2d.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top, HIT = e.pointerType === 'mouse' ? 10 : 18;
     let h = null;
     if (active && !isEntityLocked(active)) h = handlesOf(active).map(q => ({...q, d: (() => { const s = worldToScreen(q.x, q.y); return Math.hypot(s.x - x, s.y - y); })()})).filter(q => q.d <= HIT).sort((a, b) => a.d - b.d)[0] || null;
+    if (!h && active && !isEntityLocked(active) && kindOf(active) === 'c' && botole(active).length) {   /* v24.5: botola */
+      const w0 = screenToWorld(x, y), tol = (e.pointerType === 'mouse' ? 6 : 14) / viewScale; let bi = -1;
+      botole(active).forEach((t, i) => { if (Math.abs(w0.x - t.x) <= t.w / 2 + tol && Math.abs(w0.y - t.y) <= t.h / 2 + tol) bi = i; });
+      if (bi >= 0) { e.stopPropagation(); e.preventDefault(); const t = active.bot[bi]; drag = {el: active, bot: bi, o: {x: t.x, y: t.y}, id: e.pointerId, x0: e.clientX, y0: e.clientY, moved: false, touch: e.pointerType !== 'mouse', w0}; try { c2d.setPointerCapture(e.pointerId); } catch (_) {} return; }
+    }
     const bx = h ? null : pick(x, y);
     if (!h && !bx) { if (active) { active = null; closePal(); draw2D(); } return; }
     e.stopPropagation(); e.preventDefault();
@@ -16643,6 +16673,11 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     if (!drag.moved && Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) < 5) return;
     if (isEntityLocked(drag.el)) return;
     if (!drag.moved) { drag.moved = true; closePal(); }
+    if (drag.bot != null) {
+      const r0 = c2d.getBoundingClientRect(), w1 = screenToWorld(e.clientX - r0.left, e.clientY - r0.top), t = drag.el.bot[drag.bot], q = {x: r6(drag.o.x + w1.x - drag.w0.x), y: r6(drag.o.y + w1.y - drag.w0.y)};
+      if (t && inPoly(q, dense(drag.el, true))) { t.x = q.x; t.y = q.y; draw2D(); if (state.mode === '3d') build3D(); }
+      return;
+    }
     const r = c2d.getBoundingClientRect(), F = window.SCfinger;
     let w = screenToWorld(e.clientX - r.left, e.clientY - r.top);
     if (drag.touch && drag.h && F && F.on()) { drag.run += Math.hypot(e.clientX - (drag.lx ?? drag.x0), e.clientY - (drag.ly ?? drag.y0)); drag.lx = e.clientX; drag.ly = e.clientY; const c = F.pos(e.clientX, e.clientY, drag.run); F.show(c); w = F.world(c); }
@@ -16663,6 +16698,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     e.stopPropagation();
     const d = drag; drag = null; try { c2d.releasePointerCapture(e.pointerId); } catch (_) {}
     if (window.SCfinger) SCfinger.hide();
+    if (d.bot != null) { if (d.moved) { try { checkpoint(); } catch (_) {} } draw2D(); openPal(d.el); return; }
     if (d.h && d.h.k === 'm') side = d.h.i; else if (!d.h) side = null;
     if (d.moved) { try { checkpoint(); } catch (_) {} draw2D(); if (d.h && d.h.k === 'm') openPal(d.el); }
     else if (!d.h || d.h.k === 'm') openPal(d.el);
@@ -16672,7 +16708,49 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   /* ---------------------------------------------------------------- pannello */
   function closePal() { if (pal) { pal.remove(); pal = null; } }
   window.addEventListener('pointerdown', e => { if (pal && !pal.contains(e.target) && !(e.target === c2d && drag)) { const r = c2d.getBoundingClientRect(); if (e.target === c2d && pick(e.clientX - r.left, e.clientY - r.top)) return; closePal(); } }, true);
+  function ledHTML(el) {
+    const cf = ledCfg(el), ist = 'width:100%;box-sizing:border-box;padding:7px 8px;border-radius:6px;border:1px solid #475569;background:#12151f;color:#e5e7eb;font:14px sans-serif';
+    const sl = (id, opts, v) => '<select id="' + id + '" style="' + ist + '">' + opts.map(([k, n]) => '<option value="' + k + '"' + (+v === +k ? ' selected' : '') + '>' + n + '</option>').join('') + '</select>';
+    return '<div style="border:1px solid #6b5b12;border-radius:6px;padding:5px 7px;display:flex;flex-direction:column;gap:5px"><div style="font-size:12px;color:#facc15">💡 Luci e botole</div>' +
+      '<label style="font-size:12px;display:flex;gap:7px;align-items:center"><input type="checkbox" id="csLed" style="width:20px;height:20px"' + (cf.on ? ' checked' : '') + '> LED nelle velette (gola luminosa)</label>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px"><label style="font-size:12px">Colore luce' + sl('csLedK', LEDKS, cf.k) + '</label><label style="font-size:12px">Potenza' + sl('csLedW', LEDWS.map(w => [w, w + ' W/m']), cf.w) + '</label></div>' +
+      '<div style="font-size:11px;color:#9ca3b8;line-height:1.3">I profili LED si disegnano con lo strumento «Profilo LED» (Disegna › Cartongesso), dove e quanto servono. Luce di notte nel 3D e nel tour.</div>' +
+      '<button id="csBotAdd" style="padding:7px;border-radius:6px;border:1px solid #475569;background:#334155;color:#e5e7eb;cursor:pointer">➕ Botola d\'ispezione</button>' +
+      botole(el).map((t, i) => '<div style="display:flex;gap:5px;align-items:center;font-size:12px">Botola ' + (i + 1) + '<input data-bw="' + i + '" inputmode="decimal" value="' + Math.round(t.w * 100) + '" style="width:52px;padding:5px;border-radius:6px;border:1px solid #475569;background:#12151f;color:#e5e7eb"> × <input data-bh="' + i + '" inputmode="decimal" value="' + Math.round(t.h * 100) + '" style="width:52px;padding:5px;border-radius:6px;border:1px solid #475569;background:#12151f;color:#e5e7eb"> cm <button data-bd="' + i + '" style="margin-left:auto;padding:4px 9px;border-radius:6px;border:1px solid #475569;background:#1e293b;color:#e5e7eb;cursor:pointer">🗑</button></div>').join('') +
+      (botole(el).length ? '<div style="font-size:11px;color:#9ca3b8">Trascina la botola nel disegno per spostarla.</div>' : '') + '</div>';
+  }
+  function openLedPal(el) {
+    closePal(); active = el;
+    const ist = 'width:100%;box-sizing:border-box;padding:7px 8px;border-radius:6px;border:1px solid #475569;background:#12151f;color:#e5e7eb;font:14px sans-serif', cf = Object.assign({k: 3000, w: 8}, el.led);
+    const sl = (id, opts, v) => '<select id="' + id + '" style="' + ist + '">' + opts.map(([k, n]) => '<option value="' + k + '"' + (+v === +k ? ' selected' : '') + '>' + n + '</option>').join('') + '</select>';
+    pal = document.createElement('div'); pal.className = 'sc-pal';
+    pal.style.cssText = 'position:fixed;z-index:9500;background:#1e1e2e;border:1px solid #eab308;border-radius:10px;padding:8px;box-shadow:0 6px 22px rgba(0,0,0,.55);font:13px sans-serif;color:#e5e7eb;display:flex;flex-direction:column;gap:6px;width:min(270px,calc(100vw - 12px))';
+    pal.innerHTML = '<div style="display:flex;align-items:center;gap:6px"><b style="flex:1;color:#eab308">Profilo LED</b><button id="ldDel" class="sc-del" style="padding:5px 9px;border-radius:7px;border:1px solid #475569;background:#1e293b;color:#fca5a5;cursor:pointer">🗑</button><button id="ldOk" style="padding:5px 11px;border-radius:7px;border:1px solid #475569;background:#1e293b;color:#e5e7eb;cursor:pointer">✔</button></div>' +
+      '<label style="font-size:12px">Nome<input id="ldName" style="' + ist + '" value="' + esc(el.name || '') + '"></label>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px"><label style="font-size:12px">Colore luce' + sl('ldK', LEDKS, cf.k) + '</label><label style="font-size:12px">Potenza' + sl('ldW', LEDWS.map(w => [w, w + ' W/m']), cf.w) + '</label></div>' +
+      '<label style="font-size:12px">Quota da pavimento (m) · vuoto = a soffitto<input id="ldZ" inputmode="decimal" style="' + ist + '" value="' + (el.z != null && isFinite(el.z) ? f2(el.z) : '') + '" placeholder="a soffitto"></label>' +
+      '<label style="font-size:12px">Pallini a metà tratto<select id="ldMid" style="' + ist + '"><option value="move"' + (appSettings.csMid === 'curve' ? '' : ' selected') + '>Spostano il tratto</option><option value="curve"' + (appSettings.csMid === 'curve' ? ' selected' : '') + '>Curvano il tratto</option></select></label>' +
+      '<div id="ldSum" style="font-size:11.5px;color:#cbd5e1;background:#151826;border:1px solid #2f3550;border-radius:6px;padding:5px 7px"></div>' +
+      '<div style="font-size:11px;color:#9ca3b8;line-height:1.35">Quadratini: sposta i punti · pallini a metà tratto: spostano o curvano il tratto (scegli sopra), anche per dare forme tonde.</div>';
+    document.body.appendChild(pal);
+    const $p = id => pal.querySelector('#' + id), sum = () => { const L = polyLen(dense(el, false), false); $p('ldSum').innerHTML = '<b>' + f2(L) + ' ml</b> · computo: voce «profilo LED» al metro (prezzo nel computo)'; };
+    const ch = () => { sum(); draw2D(); if (state.mode === '3d') build3D(); };
+    $p('ldName').oninput = e => { el.name = e.target.value; ch(); };
+    $p('ldName').onchange = () => { try { checkpoint(); } catch (_) {} };
+    const set = () => { el.led = {k: +$p('ldK').value || 3000, w: +$p('ldW').value || 8}; appSettings.ledK = el.led.k; appSettings.ledW = el.led.w; try { persistSettings(); } catch (_) {} ch(); try { checkpoint(); } catch (_) {} };
+    $p('ldK').onchange = set; $p('ldW').onchange = set;
+    $p('ldZ').onchange = e => { const t = String(e.target.value).trim(); if (!t) delete el.z; else { const v = num(t); if (!(v >= 0 && v <= 10)) { toast('Quota da 0 a 10 m'); e.target.value = el.z != null ? f2(el.z) : ''; return; } el.z = v; } ch(); try { checkpoint(); } catch (_) {} };
+    $p('ldMid').onchange = e => { appSettings.csMid = e.target.value; try { persistSettings(); } catch (_) {} };
+    $p('ldDel').onclick = () => { state.beams = state.beams.filter(x => x !== el); active = null; closePal(); draw2D(); if (state.mode === '3d') build3D(); try { checkpoint(); } catch (_) {} toast('Eliminato'); };
+    $p('ldOk').onclick = () => closePal();
+    sum();
+    const b = boxes.find(q => q.el === el), r = c2d.getBoundingClientRect(), W = pal.offsetWidth, H = pal.offsetHeight;
+    let x = b ? r.left + b.x + b.w + 8 : r.left + 80, y = b ? r.top + b.y : r.top + 80;
+    if (x + W > innerWidth - 6) x = b ? r.left + b.x - W - 8 : innerWidth - W - 6;
+    pal.style.left = Math.max(6, Math.min(innerWidth - W - 6, x)) + 'px'; pal.style.top = Math.max(Math.min(r.top + 4, innerHeight - H - 6), Math.min(innerHeight - H - 6, y)) + 'px';
+  }
   function openPal(el) {
+    if (el.led && state.beams.includes(el)) return openLedPal(el);
     closePal(); active = el;
     const isC = kindOf(el) === 'c', cg = el.cg, ist = 'width:100%;box-sizing:border-box;padding:7px 8px;border-radius:6px;border:1px solid #475569;background:#12151f;color:#e5e7eb;font:14px sans-serif';
     const sel = (id, opts, v) => '<select id="' + id + '" style="' + ist + '">' + opts.map(([k, n]) => '<option value="' + k + '"' + (String(v) === String(k) ? ' selected' : '') + '>' + n + '</option>').join('') + '</select>';
@@ -16697,6 +16775,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
           (o ? inp('csSide', 'Distanza dal lato opposto (m)', f2(o.dist), 1) : inp('csSide', 'Sposta il lato (m, + verso l\'esterno)', '0,00', 1)) + '</div>';
       })() +
       '<label style="font-size:12px">Pallini a metà lato' + sel('csMid', [['move', 'Spostano il lato'], ['curve', 'Curvano il lato']], appSettings.csMid === 'curve' ? 'curve' : 'move') + '</label>' +
+      (isC && !isPaint(el) ? ledHTML(el) : '') +
       inp('csPr', 'Prezzo a corpo (€)', +el.price ? String(el.price).replace('.', ',') : '', 1) +
       '<div id="csSum" style="font-size:11.5px;line-height:1.4;color:#cbd5e1;background:#151826;border:1px solid #2f3550;border-radius:6px;padding:5px 7px"></div>' +
       '<div style="font-size:11px;color:#9ca3b8;line-height:1.35">Riquadro: sposta tutto · quadratini: punti · pallini: lati</div>' +
@@ -16704,7 +16783,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       '</div>';
     document.body.appendChild(pal);
     const $p = id => pal.querySelector('#' + id);
-    const sum = () => { const v = isC ? voceC(el) : voceB(el); $p('csSum').innerHTML = v ? '<b>Voce di computo (a corpo)</b><br>' + esc(v.desc) + '<br><span style="color:#9ca3b8">' + esc(v.det) + '</span>' : ''; };
+    const sum = () => { const v = isC ? voceC(el) : voceB(el); const ex = isC && !isPaint(el) ? [['LED nelle velette', sumL(ledSegs(el)), 'ml'], ['Botole', botole(el).length, 'n.']].filter(q => q[1] > 0).map(q => q[0] + ': ' + (q[2] === 'ml' ? f2(q[1]) : q[1]) + ' ' + q[2]).join(' · ') : ''; $p('csSum').innerHTML = v ? '<b>Voce di computo (a corpo)</b><br>' + esc(v.desc) + '<br><span style="color:#9ca3b8">' + esc(v.det) + '</span>' + (ex ? '<br><span style="color:#facc15">' + esc(ex) + ' (voci a parte)</span>' : '') : ''; };
     const saveDef = (k, v) => { const d = Object.assign({}, appSettings.cgDef || {}); d[k] = v; appSettings.cgDef = d; try { persistSettings(); } catch (_) {} };
     const ch = () => { sum(); draw2D(); if (state.mode === '3d') build3D(); };
     $p('csName').oninput = e => { el.name = e.target.value; ch(); };
@@ -16736,6 +16815,21 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       if (o) { if (!(v >= 0.05)) { toast('Almeno 0,05 m'); return; } moveSide(el, side, v - o.dist); } else moveSide(el, side, v);
       ch(); try { checkpoint(); } catch (_) {} openPal(el);
     };
+    if (isC && !isPaint(el)) {
+      const setLed = () => { el.led = {on: $p('csLed').checked, k: +$p('csLedK').value || 3000, w: +$p('csLedW').value || 8}; ch(); try { checkpoint(); } catch (_) {} };
+      ['csLed', 'csLedK', 'csLedW'].forEach(id => { $p(id).onchange = setLed; });
+      $p('csBotAdd').onclick = () => {
+        const N = treeOf(floorOf(el)).find(k => k.o === el), c0 = N ? lblAt(N) : centroid(dense(el, true)), n0 = botole(el).length;
+        if (!Array.isArray(el.bot)) el.bot = [];
+        el.bot.push({x: r6(c0.x + 0.7 * n0), y: r6(c0.y), w: 0.6, h: 0.6}); ch(); try { checkpoint(); } catch (_) {} openPal(el); toast('Botola 60×60 aggiunta: trascinala dove serve');
+      };
+      pal.querySelectorAll('[data-bw],[data-bh]').forEach(inpt => inpt.onchange = () => {
+        const i = +(inpt.dataset.bw != null ? inpt.dataset.bw : inpt.dataset.bh), v = num(inpt.value) / 100, t = el.bot[i]; if (!t) return;
+        if (!(v >= 0.2 && v <= 1.5)) { toast('Da 20 a 150 cm'); inpt.value = Math.round((inpt.dataset.bw != null ? t.w : t.h) * 100); return; }
+        if (inpt.dataset.bw != null) t.w = v; else t.h = v; ch(); try { checkpoint(); } catch (_) {}
+      });
+      pal.querySelectorAll('[data-bd]').forEach(bt => bt.onclick = () => { el.bot.splice(+bt.dataset.bd, 1); ch(); try { checkpoint(); } catch (_) {} openPal(el); });
+    }
     sum();
     const b = boxes.find(q => q.el === el), r = c2d.getBoundingClientRect(), W = pal.offsetWidth, H = pal.offsetHeight;
     let x = b ? r.left + b.x + b.w + 8 : r.left + 80, y = b ? r.top + b.y : r.top + 80;
@@ -16777,6 +16871,17 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
         const box = new THREE.Mesh(new THREE.BoxGeometry(v.L, v.h, 0.05), finMat(fin, THREE.DoubleSide, v.L / s2, v.h / s2));
         box.position.set((v.a.x + v.b.x) / 2, (f.elev || 0) + v.z0 + v.h / 2, -(v.a.y + v.b.y) / 2); box.rotation.y = Math.atan2(v.b.y - v.a.y, v.b.x - v.a.x); box.castShadow = true; scene.add(box);
       });
+      if (!paint) {   /* v24.5: strisce LED (gola e profilo a filo) e botole */
+        const cf = ledCfg(c), lm = new THREE.MeshBasicMaterial({color: ledCol(cf.k)}); lm.toneMapped = false;
+        ledSegs(c).forEach(q => {
+          const b2 = new THREE.Mesh(new THREE.BoxGeometry(q.L, 0.02, 0.025), lm);
+          b2.position.set((q.a.x + q.b.x) / 2, (f.elev || 0) + q.z, -(q.a.y + q.b.y) / 2); b2.rotation.y = Math.atan2(q.b.y - q.a.y, q.b.x - q.a.x); b2.userData.led = 1; scene.add(b2);
+        });
+        botole(c).forEach(t => {
+          const fr = new THREE.Mesh(new THREE.PlaneGeometry(t.w + 0.04, t.h + 0.04), new THREE.MeshStandardMaterial({color: 0x94a3b8, roughness: 0.6, side: THREE.DoubleSide})), dr = new THREE.Mesh(new THREE.PlaneGeometry(t.w, t.h), new THREE.MeshStandardMaterial({color: 0xe5e7eb, roughness: 0.85, side: THREE.DoubleSide}));
+          [fr, dr].forEach((m2, i) => { m2.rotation.x = -Math.PI / 2; m2.position.set(t.x, (f.elev || 0) + c.h - 0.003 - i * 0.002, -t.y); m2.userData.botola = 1; scene.add(m2); });
+        });
+      }
     }));
     /* v24.2: soffitto di ogni locale all'altezza dei muri, solo da sotto (tour); i controsoffitti, più bassi, gli stanno davanti */
     const sc3 = document.getElementById('showCeil3d');
@@ -16785,8 +16890,12 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       const sh = new THREE.Shape(); r.polygon.forEach((p, i) => i ? sh.lineTo(p.x, p.y) : sh.moveTo(p.x, p.y)); sh.closePath();
       const m = new THREE.Mesh(new THREE.ShapeGeometry(sh), finMat(null, THREE.BackSide, 1, 1)); m.rotation.x = -Math.PI / 2; m.position.y = (f.elev || 0) + topOf(floorOf(r)) - 0.001; m.receiveShadow = true; m.userData.roomCeil = r.id; scene.add(m);
     });
+    lineSegs().forEach(q => {   /* v24.6: profili LED liberi */
+      const f = okF(q.el); if (!f) return; const lm = new THREE.MeshBasicMaterial({color: ledCol(q.k)}); lm.toneMapped = false;
+      const b2 = new THREE.Mesh(new THREE.BoxGeometry(q.L, 0.02, 0.025), lm); b2.position.set((q.a.x + q.b.x) / 2, (f.elev || 0) + q.z, -(q.a.y + q.b.y) / 2); b2.rotation.y = Math.atan2(q.b.y - q.a.y, q.b.x - q.a.x); b2.userData.led = 1; scene.add(b2);
+    });
     for (const b of state.beams) {
-      const L = getLayer(b.layerId); if ((L && L.visible === false) || b.pts.length < 2) continue; const f = okF(b); if (!f) continue;
+      const L = getLayer(b.layerId); if ((L && L.visible === false) || b.pts.length < 2 || b.led) continue; const f = okF(b); if (!f) continue;
       const D = dense(b, false), top = topOf(floorOf(b));
       for (let i = 0; i < D.length - 1; i++) {
         const a = D[i], c = D[i + 1], Ls = Math.hypot(c.x - a.x, c.y - a.y); if (Ls < 1e-4) continue;
@@ -16806,10 +16915,145 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     sc.closest('label').after(lb);
     document.getElementById('showCs').addEventListener('change', () => { if (!showOn()) { active = null; closePal(); } draw2D(); if (state.mode === '3d') build3D(); });
   }
+  ['showSkFloor', 'showSkRiv'].forEach(id => { const e = document.getElementById(id); if (e) e.addEventListener('change', () => { try { draw2D(); } catch (_) {} try { if (window.SCwk && SCwk.active()) SCwk.ui(); } catch (_) {} try { if (state.mode === '3d') build3D(); } catch (_) {} }); });
   { const e = document.getElementById('showCeil3d'); if (e) e.addEventListener('change', () => { try { if (state.mode === '3d') build3D(); } catch (_) {} }); }
 
+  /* v24.5 · LED nelle velette, profili LED a filo, botole d'ispezione */
+  const LEDKS = [[2700, 'Calda 2700 K'], [3000, 'Calda 3000 K'], [4000, 'Naturale 4000 K']], LEDWS = [4, 6, 8, 10, 14];
+  const ledCfg = c => Object.assign({on: false, k: 3000, w: 8}, c.led || {});
+  const ledCol = k => k <= 2700 ? 0xffc98a : k <= 3000 ? 0xffd9a8 : 0xfff0d8;
+  function offSeg(a, b, d, c, inside) {   /* segmento spostato di d verso l'interno (o l'esterno) del controsoffitto c */
+    const L = Math.hypot(b.x - a.x, b.y - a.y) || 1, nx = -(b.y - a.y) / L, ny = (b.x - a.x) / L, m = {x: (a.x + b.x) / 2 + nx * 0.05, y: (a.y + b.y) / 2 + ny * 0.05};
+    const s0 = (inPoly(m, dense(c, true)) === inside) ? 1 : -1, o = d * s0;
+    return {a: {x: a.x + nx * o, y: a.y + ny * o}, b: {x: b.x + nx * o, y: b.y + ny * o}, L};
+  }
+  function ledSegs(own) {   /* LED in gola: in cima alla veletta, dal lato del controsoffitto più basso */
+    if (!ledCfg(own).on || isPaint(own) || !own.pts || own.pts.length < 3) return [];
+    const out = [];
+    state.ceils.filter(d => floorOf(d) === floorOf(own) && isEntityVisible(d) && d.pts.length >= 3).forEach(d => {
+      velette(d).forEach(v => { if (v.own !== own) return; const q = offSeg(v.a, v.b, 0.06, d, own === d); out.push({a: q.a, b: q.b, L: v.L, z: v.z0 + v.h - 0.04}); });
+    });
+    return out;
+  }
+  const zAt = (x, y, fl) => { let z = topOf(fl); state.ceils.forEach(c => { if (floorOf(c) === fl && isEntityVisible(c) && !isPaint(c) && c.pts.length >= 3 && c.h < z && inPoly({x, y}, dense(c, true))) z = c.h; }); return z - 0.004; };
+  function lineSegs() {   /* v24.6: profili LED liberi (linee disegnate dove serve), a filo del controsoffitto sotto cui passano o del soffitto */
+    const out = [];
+    state.beams.filter(b => b.led && isEntityVisible(b) && b.pts.length >= 2).forEach(b => {
+      const fl = floorOf(b), D = dense(b, false), cf = Object.assign({k: 3000, w: 8}, b.led), zf = b.z != null && isFinite(b.z) ? +b.z : null;
+      for (let i = 0; i + 1 < D.length; i++) { const a = D[i], c = D[i + 1], L = Math.hypot(c.x - a.x, c.y - a.y); if (L < 1e-4) continue; out.push({a: {x: a.x, y: a.y}, b: {x: c.x, y: c.y}, L, z: zf != null ? zf : zAt((a.x + c.x) / 2, (a.y + c.y) / 2, fl), fl, k: +cf.k || 3000, w: +cf.w || 8, el: b}); }
+    });
+    return out;
+  }
+  /* v24.7 · SEGUI PROFILO: la striscia LED copia il contorno di un oggetto (muro, controparete, controsoffitto, falsa trave, Area, locale, disegno) */
+  let LFM = false;
+  const cpy = P => P.map(q => { const o = {x: r6(q.x), y: r6(q.y)}; if (q.b) o.b = q.b; return o; });
+  const closeP = P => { const L = cpy(P); L.push({x: L[0].x, y: L[0].y}); return L; };
+  const shSegs = m => {   /* disegno (linea, arco, cerchio) in tratti {a, c, b}; b = freccia dell'arco (negativa = senso antiorario) */
+    if (m.kind === 'line') return [{a: {x: m.p1.x, y: m.p1.y}, c: {x: m.p2.x, y: m.p2.y}, b: 0}];
+    const r = Math.hypot(m.p2.x - m.p1.x, m.p2.y - m.p1.y), a0 = Math.atan2(m.p2.y - m.p1.y, m.p2.x - m.p1.x), sw = m.kind === 'circle' ? 2 * Math.PI : m.sweep, n = Math.max(1, Math.ceil(sw / (Math.PI / 2) - 1e-9)), th = sw / n, out = [];
+    const at = t => ({x: m.p1.x + r * Math.cos(t), y: m.p1.y + r * Math.sin(t)});
+    for (let i = 0; i < n; i++) out.push({a: at(a0 + i * th), c: at(a0 + (i + 1) * th), b: -r * (1 - Math.cos(th / 2))});
+    return out;
+  };
+  const revSeg = g => ({a: g.c, c: g.a, b: -g.b});
+  function chainOf(m0) {   /* il disegno toccato più i tratti collegati alle sue estremità (polilinee importate a pezzi) */
+    const pool = (state.measurements || []).filter(m => m.kind && m.kind !== 'circle' && isEntityVisible(m) && floorOf(m) === floorOf(m0)), used = new Set([m0]);
+    let segs = shSegs(m0); if (m0.kind === 'circle') return segs;
+    const near = (p, q) => Math.hypot(p.x - q.x, p.y - q.y) < 0.02;
+    for (let guard = 0; guard < 2000; guard++) {
+      let grown = false;
+      for (const m of pool) {
+        if (used.has(m)) continue; const ms = shSegs(m), f = ms[0], l = ms[ms.length - 1], H = segs[0], T = segs[segs.length - 1];
+        if (near(T.c, f.a)) segs = segs.concat(ms);
+        else if (near(T.c, l.c)) segs = segs.concat(ms.map(revSeg).reverse());
+        else if (near(H.a, l.c)) segs = ms.concat(segs);
+        else if (near(H.a, f.a)) segs = ms.map(revSeg).reverse().concat(segs);
+        else continue;
+        used.add(m); grown = true; break;
+      }
+      if (!grown) break;
+    }
+    return segs;
+  }
+  const segsToPts = G => { const P = G.map(g => { const o = {x: r6(g.a.x), y: r6(g.a.y)}; if (Math.abs(g.b) > 1e-4) o.b = Math.round(g.b * 10000) / 10000; return o; }); const l = G[G.length - 1].c; P.push({x: r6(l.x), y: r6(l.y)}); return P; };
+  function pickObj(w) {
+    const tol = Math.max(0.15, 18 / viewScale), fl = state.currentFloorId;
+    let wl = null; try { wl = findWallAt(w, tol); } catch (_) {}
+    let shN = null; try { shN = findShapeNear(w); } catch (_) {}
+    if (wl && wl.p1 && shN && shapeDist(shN, w) < Math.max(0, segD(w, wl.p1, wl.p2) - getWallThickness(wl) / 2)) wl = null;   /* il disegno più vicino batte il muro più lontano */
+    if (wl && wl.p1) {
+      const dx = wl.p2.x - wl.p1.x, dy = wl.p2.y - wl.p1.y, L = Math.hypot(dx, dy) || 1, ux = dx / L, uy = dy / L, nx = -uy, ny = ux, t = getWallThickness(wl) / 2 + 0.01, sd = ((w.x - wl.p1.x) * nx + (w.y - wl.p1.y) * ny) >= 0 ? 1 : -1;
+      const cgp = wl.cg && wl.material === 'cartongesso' && wl.cg.tipo === 'controparete';
+      return {pts: [{x: r6(wl.p1.x + nx * t * sd), y: r6(wl.p1.y + ny * t * sd)}, {x: r6(wl.p2.x + nx * t * sd), y: r6(wl.p2.y + ny * t * sd)}], name: cgp ? 'Controparete' : 'Muro', what: cgp ? 'controparete' : 'muro'};
+    }
+    let sh = null; try { sh = findShapeNear(w); } catch (_) {}
+    if (sh) { const G = chainOf(sh); return {pts: segsToPts(G), name: 'Disegno', what: 'disegno' + (G.length > 1 ? ' (' + G.length + ' tratti)' : '')}; }
+    for (const b of state.beams) { if (b.led || !isEntityVisible(b) || floorOf(b) !== fl || b.pts.length < 2) continue; const D = dense(b, false); for (let i = 0; i + 1 < D.length; i++) if (segD(w, D[i], D[i + 1]) <= Math.max(tol, b.w / 2)) return {pts: cpy(b.pts), name: b.name || 'Falsa trave', what: 'falsa trave'}; }
+    let best = null, bA = Infinity;
+    state.ceils.forEach(c => { if (!isEntityVisible(c) || floorOf(c) !== fl || c.pts.length < 3) return; const D = dense(c, true); if (!inPoly(w, D)) return; const A = polyArea(D); if (A < bA) { bA = A; best = {pts: closeP(c.pts), name: c.name || 'Controsoffitto', what: 'controsoffitto'}; } });
+    (state.zones || []).forEach(z => { if (!isEntityVisible(z) || floorOf(z) !== fl || !z.pts || z.pts.length < 3 || !inPolyG(w, z.pts)) return; const A = polyArea(z.pts); if (A < bA) { bA = A; best = {pts: closeP(z.pts), name: z.name || 'Area', what: 'Area'}; } });   /* vince l'oggetto più piccolo sotto il tocco */
+    if (best) return best;
+    const rm = (state.rooms || []).find(q => isEntityVisible(q) && floorOf(q) === fl && q.polygon && inPolyG(w, q.polygon));
+    if (rm) return {pts: closeP(rm.polygon), name: rm.name || 'Locale', what: 'locale'};
+    return null;
+  }
+  function selObj() {   /* oggetto già selezionato */
+    if (active && (state.ceils.includes(active) || state.beams.includes(active)) && !(active.led && state.beams.includes(active))) { const c = state.ceils.includes(active); return c ? {pts: closeP(active.pts), name: active.name || 'Controsoffitto', what: 'controsoffitto'} : {pts: cpy(active.pts), name: active.name || 'Falsa trave', what: 'falsa trave'}; }
+    const sl = state.selected;
+    if (sl && sl.type === 'wall') { const wl = state.walls.find(x => x.id === sl.id); if (wl) { const mw = (typeof lastMouseWorld !== 'undefined' && lastMouseWorld) || {x: (wl.p1.x + wl.p2.x) / 2, y: (wl.p1.y + wl.p2.y) / 2 + 1}; const mid = {x: (wl.p1.x + wl.p2.x) / 2, y: (wl.p1.y + wl.p2.y) / 2}; const dx = wl.p2.x - wl.p1.x, dy = wl.p2.y - wl.p1.y, L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L, t = getWallThickness(wl) / 2 + 0.01, sd = ((mw.x - mid.x) * nx + (mw.y - mid.y) * ny) >= 0 ? 1 : -1; const cgp = wl.cg && wl.material === 'cartongesso' && wl.cg.tipo === 'controparete'; return {pts: [{x: r6(wl.p1.x + nx * t * sd), y: r6(wl.p1.y + ny * t * sd)}, {x: r6(wl.p2.x + nx * t * sd), y: r6(wl.p2.y + ny * t * sd)}], name: cgp ? 'Controparete' : 'Muro', what: cgp ? 'controparete' : 'muro'}; } }
+    if (sl && sl.type === 'room') { const rm = state.rooms.find(x => x.id === sl.id); if (rm && rm.polygon) return {pts: closeP(rm.polygon), name: rm.name || 'Locale', what: 'locale'}; }
+    return null;
+  }
+  function mkLedLine(o) {
+    const el = assignLayer({id: newId(), pts: o.pts, w: 0.02, hh: 0.02, sez: 'U', cg: {}, led: {k: +appSettings.ledK || 3000, w: +appSettings.ledW || 8}, name: ''});
+    state.beams.push(el); LFM = false; tmp = []; active = el; draw2D(); if (state.mode === '3d') build3D(); try { checkpoint(); } catch (_) {}
+    openPal(el); toast('Profilo LED sul ' + o.what + ': ' + f2(polyLen(dense(el, false), false)) + ' ml');
+    return el;
+  }
+  function follow() {   /* comando «Segui profilo»: usa l'oggetto selezionato, altrimenti aspetta un tocco sull'oggetto */
+    if (isCurrentLayerLocked()) { toast('Livello corrente bloccato'); return; }
+    const o = selObj(); if (o) { mkLedLine(o); return; }
+    LFM = true; tmp = [];
+    document.querySelectorAll('.tool').forEach(x => x.classList.toggle('active', x.dataset.tool === 'cgled')); state.tool = 'cgled'; state.pendingPoint = null;
+    toast('Segui profilo: tocca l\'oggetto da seguire (muro, controparete, controsoffitto, disegno…)'); draw2D();
+  }
+  const botole = c => (Array.isArray(c.bot) ? c.bot : []).filter(b => b && isFinite(b.x) && isFinite(b.y));
+  const sumL = A => A.reduce((s2, q) => s2 + q.L, 0);
+  function ledItems() {
+    const out = [], cs = state.ceils.filter(c => isEntityVisible(c) && !isPaint(c) && c.pts.length >= 3);
+    const vel = [], pro = [], bot = []; let kv = new Set(), wv = new Set(), kp = new Set(), wp = new Set();
+    cs.forEach(c => {
+      const nm = c.name || ('controsoffitto h ' + f2(c.h)), cf = ledCfg(c), a = sumL(ledSegs(c));
+      if (a > 0.001) { vel.push(nm + ' ' + f2(a) + ' ml'); kv.add(cf.k); wv.add(cf.w); }
+      botole(c).forEach(t => bot.push(Math.round(t.w * 100) + '×' + Math.round(t.h * 100) + ' cm (' + nm + ')'));
+    });
+    const tot = (fn) => cs.reduce((s2, c) => s2 + sumL(fn(c)), 0);
+    const qv = tot(ledSegs), LS = lineSegs(), qp = sumL(LS);
+    const byEl = new Map(); LS.forEach(q => { byEl.set(q.el, (byEl.get(q.el) || 0) + q.L); kp.add(q.k); wp.add(q.w); });
+    [...byEl].forEach(([el, L]) => pro.push((el.name || 'profilo LED') + ' ' + f2(L) + ' ml'));
+    if (qv > 0.001) out.push({key: 'csled_vel', um: 'm', q: qv, desc: 'Fornitura e posa di strip LED ' + [...kv].join('/') + ' K, ' + [...wv].join('/') + ' W/m, in gola luminosa nelle velette dei controsoffitti, con profilo in alluminio, alimentatore e collegamenti.', det: vel.join('; ') + ' = ' + f2(qv) + ' ml'});
+    if (qp > 0.001) out.push({key: 'csled_pro', um: 'm', q: qp, desc: 'Fornitura e posa di profilo in alluminio con strip LED ' + [...kp].join('/') + ' K, ' + [...wp].join('/') + ' W/m, a filo soffitto o controsoffitto, compresi stuccatura del bordo, alimentatore e collegamenti.', det: pro.join('; ') + ' = ' + f2(qp) + ' ml'});
+    if (bot.length) out.push({key: 'csbot', um: 'n.', q: bot.length, desc: 'Fornitura e posa di botola d\'ispezione in cartongesso a filo, con telaio in alluminio e apertura a scatto.', det: bot.join('; ')});
+    return out;
+  }
+  function lightPts() {   /* punti luce per il tour di notte: uno ogni 1,5 m circa lungo le strisce */
+    const out = [];
+    state.ceils.filter(c => isEntityVisible(c) && !isPaint(c)).forEach(c => {
+      const f = state.floors.find(x => x.id === floorOf(c)) || {elev: 0}, cf = ledCfg(c);
+      ledSegs(c).forEach(q => {
+        const n = Math.max(1, Math.ceil(q.L / 1.5)), lm = cf.w * 90 * q.L / n;
+        for (let i = 0; i < n; i++) { const t = (i + 0.5) / n; out.push([q.a.x + (q.b.x - q.a.x) * t, q.a.y + (q.b.y - q.a.y) * t, (f.elev || 0) + q.z, 0, lm, cf.k, 'striscia']); }
+      });
+    });
+    lineSegs().forEach(q => {
+      const f = state.floors.find(x => x.id === q.fl) || {elev: 0}, n = Math.max(1, Math.ceil(q.L / 1.5)), lm = q.w * 90 * q.L / n;
+      for (let i = 0; i < n; i++) { const t = (i + 0.5) / n; out.push([q.a.x + (q.b.x - q.a.x) * t, q.a.y + (q.b.y - q.a.y) * t, (f.elev || 0) + q.z, 0, lm, q.k, 'striscia']); }
+    });
+    return out;
+  }
   window.SCcs = {
-    items: () => state.ceils.filter(isEntityVisible).map(voceC).concat(state.beams.filter(isEntityVisible).map(voceB)).filter(Boolean),
+    ledItems, lightPts, ledSegs, lineSegs, follow, pickObj, mkLedLine, followArmed: () => LFM,
+    items: () => state.ceils.filter(isEntityVisible).map(voceC).concat(state.beams.filter(b => isEntityVisible(b) && !b.led).map(voceB)).filter(Boolean),
     priceOf: k => { const e = state.ceils.concat(state.beams).find(x => 'cs_' + x.id === k); return e && e.price != null ? +e.price : null; },
     setPrice: (k, v) => { const e = state.ceils.concat(state.beams).find(x => 'cs_' + x.id === k); if (e) e.price = v; },
     busy: () => isMine(state.tool) && tmp.length > 0, finish, undoPt: () => { tmp.pop(); draw2D(); }, cancel: () => { tmp = []; draw2D(); },
@@ -16842,7 +17086,8 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     cgw: 'M5 20V4h14v16M9 4v16M15 4v16M5 20h14',
     cgcp: 'M4 4v16M8 4v16M8 8h3M8 12h3M8 16h3',
     cgceil: 'M3 6h18M5 6v3h14V6M8 13h8M10 17h4',
-    cgbeam: 'M3 5h18M7 5v6h10V5M3 15h4M10 15h4M17 15h4'
+    cgbeam: 'M3 5h18M7 5v6h10V5M3 15h4M10 15h4M17 15h4',
+    cgled: 'M3 12h18M6 8v8M18 8v8M10 5l1 2M14 5l-1 2'
   };
   const closeMenus = () => document.querySelectorAll('.menu-dropdown').forEach(m => m.classList.remove('open'));
   const pickTool = (t, msg) => { document.querySelectorAll('.tool').forEach(x => x.classList.toggle('active', x.dataset.tool === t)); state.tool = t; state.pendingPoint = null; try { measureStart = null; } catch (_) {} closeMenus(); if (msg) toast(msg); draw2D(); };
@@ -16858,11 +17103,13 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   const cgcp = mkTool('cgcp', 'Controparete', 'Controparete in cartongesso: tocca il muro dal lato dove va', 'cgcp', () => { if (oldCp) oldCp.click(); else pickTool('cgcp'); });
   const ceil = mkTool('cgceil', 'Controsoffitto', 'Controsoffitto: un locale o un\'Area con un tocco, un rettangolo o per punti. Quota, lastra e prezzo nel riquadro', 'cgceil', () => pickTool('cgceil'));
   const beam = mkTool('cgbeam', 'Falsa trave', 'Falsa trave / cassonetto: tocca i punti del percorso, poi «Fine»', 'cgbeam', () => pickTool('cgbeam', 'Falsa trave: tocca i punti del percorso, poi «Fine»'));
+  const led = mkTool('cgled', 'Profilo LED', 'Profilo LED: tocca i punti della linea dove vuoi, di qualsiasi lunghezza, poi «Fine linea»', 'cgled', () => pickTool('cgled', 'Profilo LED: tocca i punti della linea, poi «Fine linea»'));
+  const ledf = mkTool(null, 'Segui profilo', 'Segui profilo: la striscia LED copia il contorno dell\'oggetto selezionato (muro, controparete, controsoffitto, disegno)', 'cgled', () => { closeMenus(); SCcs.follow(); });
   if (oldCgw) oldCgw.hidden = true; if (oldCp) oldCp.hidden = true;
   const keep = document.createElement('div'); keep.hidden = true; if (oldCgw) keep.appendChild(oldCgw); if (oldCp) keep.appendChild(oldCp);
   const groups = [
     ['Muri e aperture', ['wall', 'door', 'window', 'pillar', 'stairs', 'hole']],
-    ['Cartongesso', [cgw, cgcp, ceil, beam]],
+    ['Cartongesso', [cgw, cgcp, ceil, beam, led, ledf]],
     ['Locali e superfici', ['room', 'zone']],
     ['Quote e annotazioni', ['dim', 'measure', 'text', 'line', 'circle', 'arc']],
     ['Arredi', ['furniture']]
@@ -16880,7 +17127,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   dd.insertBefore(frag, first); dd.appendChild(keep);
   oldGrids.forEach(g => { if (!g.querySelector('.tool:not([hidden])')) g.remove(); }); oldLabels.forEach(l => l.remove());
   /* evidenziazione dello strumento attivo anche per i nuovi pulsanti */
-  setInterval(() => { [cgcp, ceil, beam].forEach(b => b.classList.toggle('active', state.tool === b.dataset.tool)); cgw.classList.toggle('active', !!(window.SCcg && SCcg.drawing && SCcg.drawing())); }, 400);
+  setInterval(() => { [cgcp, ceil, beam, led].forEach(b => b.classList.toggle('active', state.tool === b.dataset.tool)); cgw.classList.toggle('active', !!(window.SCcg && SCcg.drawing && SCcg.drawing())); }, 400);
 
   /* Geometria → Prospetto muro */
   const gm = document.querySelector('[data-menu="geometry"] .menu-dropdown') || [...document.querySelectorAll('.menu-item')].find(m => /Geometria/.test(m.querySelector('.menu-trigger')?.textContent || ''))?.querySelector('.menu-dropdown');
@@ -20546,8 +20793,12 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
    SC_REL.v è l'unica versione: titolo, Guida, file salvato, avvisi e riga messaggi la leggono da qui.
    ======================================================================== */
 window.SC_REL = {
-  v: '24.3', d: '27/10/2026',
+  v: '24.7', d: '28/10/2026',
   news: [
+    ['24.7', 'Profilo LED: comando «Segui profilo» (Disegna › Cartongesso, o nella barra dello strumento). Con un muro, una controparete, un controsoffitto, una falsa trave, un\'Area, un locale o un disegno già selezionato, la striscia ne copia il contorno; altrimenti tocchi l\'oggetto. Nei disegni segue anche i tratti collegati e gli archi. Nel riquadro: quota da pavimento (vuoto = a soffitto) e pallini che curvano il tratto per forme tonde.'],
+        ['24.6', 'Nuovo strumento «Profilo LED» (Disegna › Cartongesso): linea libera disegnata come un muro, col cursore sfalsato, punto per punto, ovunque e di qualsiasi lunghezza. Sostituisce l\'opzione per lato. Si trascinano punti e tratti, nome, colore e W/m nel riquadro; il computo ha la voce al metro. Le linee in costruzione di controsoffitti e false travi ora seguono il cursore.'],
+        ['24.5', 'Controsoffitti: «LED nelle velette» (gola luminosa, colore e W/m), «Profilo LED a filo» attivabile per lato (tocca il pallino del lato), «Botola d\'ispezione» con misure in cm, da trascinare nel disegno. Si vedono in 2D e 3D; di notte nel 3D e nel tour le strisce illuminano. Il computo ha tre voci a parte: ml LED nelle velette, ml profili a filo, n. botole.'],
+    ['24.4', 'Vista: due nuovi interruttori, «Skin dei pavimenti (Aree)» e «Skin dei rivestimenti». Spenti, pavimenti e rivestimenti si vedono in tinta unita nel 2D, nel 3D, nel prospetto e in stampa; computo e dati non cambiano. Il file per il cliente mostra sempre le finiture complete.'],
     ['24.3', 'Sezione: i punti della traccia si mettono col cursore sfalsato (come il Muro), il primo resta segnato con «Inizio A–A» e il secondo mostra l\'anteprima della linea. La traccia si trascina in pianta: dalla lettera o dall\'estremo la stiri, dal tratto (sezione aperta) la sposti tutta, e la sezione cambia in tempo reale. Misura nel prospetto e nella sezione: due punti, distanza orizzontale, verticale e inclinata, con aggancio a spigoli, aperture, solai e controsoffitti.'],
     ['24.2', 'Vista: «Solo nel 3D» con Pavimenti e Soffitto dei locali. Il soffitto ora è vero (uno per locale, all\'altezza dei muri, visibile da sotto nel tour, con i controsoffitti davanti) e il 3D si aggiorna subito; prima era un foglio trasparente e non reagiva. Spento «Pavimenti» tolgono anche le Aree. Etichette: nuova voce «Controsoffitti e false travi», compresa in «Nascondi tutte»; con le etichette nascoste si tocca la forma per aprire il riquadro.'],
     ['24.1', '3D: i soffitti e i controsoffitti visti da sotto risultavano grigi (arrivava solo la luce diretta dall\'alto) e la fascia lungo i muri sembrava uno spessore. Aggiunta la luce riflessa dal pavimento: il bianco ora è bianco. Vale anche per la copia cliente.'],
@@ -21393,7 +21644,7 @@ window.SC_REL = {
   function paint2D(ctx, z, S) {
     const c = resolve(z); if (!c) return;
     ctx.save(); ctx.beginPath(); S.forEach((s, i) => i ? ctx.lineTo(s.x, s.y) : ctx.moveTo(s.x, s.y)); ctx.closePath(); ctx.clip();
-    if (c.res.pl * viewScale < 3 || !c.res.pieces.length) { ctx.fillStyle = c.e.sk.col || '#cbd5e1'; ctx.fill(); }
+    if (!skinOn('f') || c.res.pl * viewScale < 3 || !c.res.pieces.length) { ctx.fillStyle = c.e.sk.col || '#cbd5e1'; ctx.fill(); }   /* skin spenta: tinta unita della skin */
     else { ctx.fillStyle = c.e.sk.gcol || '#9ca3af'; ctx.fill(); SCskin.paint(ctx, c.res, c.e.sk, SCskin.mat(c.res.T, p => worldToScreen(p.x, p.y))); }
     ctx.restore();
   }
@@ -21401,6 +21652,7 @@ window.SC_REL = {
   function tex3D(mesh, z) {
     try {
       const c = resolve(z); if (!c || !c.res.pieces.length || !window.THREE || !THREE.CanvasTexture) return;
+      if (!skinOn('f')) { mesh.material.map = null; mesh.material.color.set(c.e.sk.col || '#cbd5e1'); mesh.material.opacity = 1; mesh.material.transparent = false; mesh.material.needsUpdate = true; return; }
       const T = c.res.T, uv = z.pts.map(p => ({u: (p.x - T.ox) * T.ca + (p.y - T.oy) * T.sa, v: -(p.x - T.ox) * T.sa + (p.y - T.oy) * T.ca}));
       const bb = {u0: Math.min(...uv.map(p => p.u)), u1: Math.max(...uv.map(p => p.u)), v0: Math.min(...uv.map(p => p.v)), v1: Math.max(...uv.map(p => p.v))};
       const ppm = Math.max(60, Math.min(320, 2048 / Math.max(bb.u1 - bb.u0, bb.v1 - bb.v0, 0.5)));
@@ -21609,7 +21861,7 @@ window.SC_REL = {
   /* ---------------------------------------------------------------- prospetto 2D */
   function paintPieces(cx, c, sx, sy, s) {
     const sk = c.e.sk, res = c.res;
-    if (res.pl * s < 3 || !res.pieces.length) { cx.fillStyle = sk.col || '#cbd5e1'; cx.fill(); }
+    if (!skinOn('r') || res.pl * s < 3 || !res.pieces.length) { cx.fillStyle = sk.col || '#cbd5e1'; cx.fill(); }
     else { cx.fillStyle = sk.gcol || '#9ca3af'; cx.fill(); SCskin.paint(cx, res, sk, {a: s, b: 0, c: 0, d: -s, e: sx(0), f: sy(0), flip: true}); }
   }
   function draw(cx, w, face, sx, sy, s, oSel) {
@@ -21688,7 +21940,7 @@ window.SC_REL = {
     all().forEach(({w, r}) => {
       try {
         const c = resolve(w, r);
-        if (!c || !c.res.pieces.length) {   /* v23.6 · v23.8: senza skin si vede in tinta unita, con i vani di porte, finestre e nicchie */
+        if (!c || !c.res.pieces.length || !skinOn('r')) {   /* v23.6 · v23.8 · v24.4 (skin spenta): senza skin si vede in tinta unita, con i vani di porte, finestre e nicchie */
           const L0 = Lw(w), t0 = getWallThickness(w), V0 = view(w, r), sk0 = r.sk && SCskin.get(r.sk.id), Wd0 = V0.u1 - V0.u0, Hh0 = V0.z1 - V0.z0; if (Wd0 < 0.005 || Hh0 < 0.005) return;
           const it0 = items(w, r, true), ppm0 = Math.max(60, Math.min(320, 2048 / Math.max(Wd0, Hh0, 0.5))), cv0 = document.createElement('canvas'); cv0.width = Math.max(4, Math.round(Wd0 * ppm0)); cv0.height = Math.max(4, Math.round(Hh0 * ppm0));
           const x0 = cv0.getContext('2d'), kx0 = cv0.width / Wd0, ky0 = cv0.height / Hh0; x0.fillStyle = (sk0 && sk0.col) || '#e7e2d8'; x0.fillRect(0, 0, cv0.width, cv0.height);
@@ -22344,7 +22596,7 @@ window.SC_REL = {
         }
         SCcs.velette(c).forEach(v => { const ex = v.b.x - v.a.x, ey = v.b.y - v.a.y, den = ux * ey - uy * ex; if (Math.abs(den) < 1e-12) return; const wx = v.a.x - p1.x, wy = v.a.y - p1.y, sv = (wx * ey - wy * ex) / den, t = (wx * uy - wy * ux) / den; if (t < 0 || t >= 1 || sv < 0 || sv > L) return; cvel.push({u: H(sv), z0: f.elev + v.z0, z1: f.elev + v.z0 + v.h, c: v.own}); });
       }));
-      (state.beams || []).forEach(b => { if (!vis(b) || b.pts.length < 2) return; const f = floorById(floorOf(b)), top = SCcs.topOf(f.id), D = SCcs.dense(b, false);
+      (state.beams || []).forEach(b => { if (b.led || !vis(b) || b.pts.length < 2) return; const f = floorById(floorOf(b)), top = SCcs.topOf(f.id), D = SCcs.dense(b, false);
         for (let i = 0; i + 1 < D.length; i++) { const a = D[i], q = D[i + 1], ex = q.x - a.x, ey = q.y - a.y, Ls = Math.hypot(ex, ey), den = ux * ey - uy * ex; if (Ls < 1e-4 || Math.abs(den) < 1e-9) continue; const wx = a.x - p1.x, wy = a.y - p1.y, sv = (wx * ey - wy * ex) / den, t = (wx * uy - wy * ux) / den; if (t < 0 || t > 1 || sv < 0 || sv > L) continue; const half = b.w / 2 / Math.max(0.15, Math.abs(den / Ls)), u = H(sv); cbeams.push({a: u - half, b: u + half, z0: f.elev + top - b.hh, z1: f.elev + top, o: b}); } });
     }
     const xs = walls.flatMap(c => [c.h0, c.h1]).concat(rooms.flatMap(c => [c.h0, c.h1]), ceils.flatMap(c => [c.a, c.b]), roofsC.flatMap(r => [r[0].h, r[r.length - 1].h]));

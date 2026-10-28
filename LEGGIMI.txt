@@ -1,4 +1,4 @@
-SimplyCAD Pro - pubblicazione su GitHub Pages (v24.3)
+SimplyCAD Pro - pubblicazione su GitHub Pages (v24.7)
 
 Contenuto (vanno caricati tutti, senza rinominarli e SENZA cartelle intorno):
   index.html  sw.js  manifest.webmanifest  icon-192.png  icon-512.png  icon-maskable.png  README.md
@@ -313,3 +313,19 @@ NOVITÀ v19.0
 NOVITÀ v18.9.2
  - Prospetto del muro: i pulsanti Porta e Finestra disegnano porta o finestra vera sul muro (tocca due angoli; il lato in basso della porta va a terra, quello della finestra è il davanzale).
  - Area: nel pannello dell'area c'è la riga «Livello» per spostarla su un altro livello.
+
+
+NOVITÀ v24.4
+- Vista: interruttori «Skin dei pavimenti (Aree)» e «Skin dei rivestimenti». Spenti: tinta unita in 2D, 3D, prospetto e stampa. Computo invariato. File cliente sempre completo.
+
+
+NOVITÀ v24.5
+- Controsoffitti: LED nelle velette, profilo LED a filo per lato, botole d'ispezione trascinabili. Di notte (3D e tour) le strisce illuminano. Computo: ml LED velette, ml profili, n. botole.
+
+
+NOVITÀ v24.6
+- Profilo LED: nuovo strumento (Disegna › Cartongesso), linea libera come un muro, col cursore sfalsato, di qualsiasi lunghezza. Sostituisce l'opzione per lato.
+
+
+NOVITÀ v24.7
+- Profilo LED: «Segui profilo» (Disegna › Cartongesso): la striscia copia il contorno di muro, controparete, controsoffitto, falsa trave, Area, locale o disegno. Quota libera e pallini che curvano.
