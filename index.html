@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v25.4</title>
+<title>SimplyCAD Pro · v25.5</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -11136,7 +11136,7 @@ updateRoomList();
    ======================================================================== */
 (function () {
   const PK = 'simplycad_computo_prezzi_v1', OK = 'simplycad_computo_opz_v1', METAKEY = 'planimetria_prova_meta_v1';
-  let opt = {dedInt: 4, dedMur: 1, hRiv: 2.2, imprev: 0, iva: 10, rivCucina: false, oneri: 0, tec: 0, ivaTec: 22};
+  let opt = {impMl: false, dedInt: 4, dedMur: 1, hRiv: 2.2, imprev: 0, iva: 10, rivCucina: false, oneri: 0, tec: 0, ivaTec: 22};
   let prices0 = {}; try { prices0 = JSON.parse(localStorage.getItem(PK) || '{}') || {}; } catch (_) {}
   /* v25.1: i prezzi stanno nel progetto; un progetto senza prezzi parte da quelli salvati nel browser */
   const PR = () => state.cmpPrezzi || (state.cmpPrezzi = Object.assign({}, prices0));
@@ -11362,9 +11362,15 @@ updateRoomList();
     const F = state.furniture.filter(isEntityVisible), cnt = t => F.filter(f => f.type === t).length;
     const rad = F.filter(f => f.type === 'radiatore');
     add('Impianti', 'rad_el', 'Radiatori: elementi in alluminio interasse 600 mm, compresi valvole e detentori', 'n. el.', rad.reduce((s, f) => s + Math.max(1, Math.round((f.w || 0.8) / 0.08)), 0), rad.length ? rad.length + ' corpi scaldanti' : '');
-    add('Impianti', 'el_luce', 'Punto luce interrotto', 'n.', cnt('punto_luce'));
+    { const LL = F.filter(f => f.type === 'punto_luce'), nd = LL.filter(f => f.cmd === 'dev').length, ni = LL.filter(f => f.cmd === 'inv').length;
+      add('Impianti', 'el_luce', 'Punto luce interrotto', 'n.', LL.length - nd - ni);
+      add('Impianti', 'el_luce_dev', 'Punto luce deviato', 'n.', nd);
+      add('Impianti', 'el_luce_inv', 'Punto luce invertito', 'n.', ni); }
     add('Impianti', 'el_int', 'Punto di comando (interruttore / deviatore)', 'n.', cnt('interruttore'));
-    add('Impianti', 'el_presa', 'Punto presa 10/16 A', 'n.', cnt('presa'));
+    { const PP = F.filter(f => f.type === 'presa'), nc = PP.filter(f => f.seq === 'sc').length, na = PP.filter(f => f.seq === 'sa').length;
+      add('Impianti', 'el_presa', 'Punto presa 10/16 A', 'n.', PP.length - nc - na);
+      add('Impianti', 'el_presa_sc', 'Presa in sequenza nello stesso cassetto', 'n.', nc);
+      add('Impianti', 'el_presa_sa', 'Presa in sequenza in altro cassetto', 'n.', na); }
     add('Impianti', 'el_quadro', 'Quadro elettrico di appartamento', 'n.', cnt('quadro'));
     add('Opere varie', 'scale', 'Scala interna', 'n.', state.stairs.filter(isEntityVisible).length);
     /* v13.0: voci aggiunte dall'utente, con formula costruita toccando le misure del disegno */
@@ -11459,6 +11465,7 @@ updateRoomList();
         <label>Detrazione vani per murature e demolizioni: vani oltre (m²)<input data-o="dedMur" inputmode="decimal" value="${it(opt.dedMur)}"></label>
         <label>Altezza rivestimento (m)<input data-o="hRiv" inputmode="decimal" value="${it(opt.hRiv)}"></label>
         <label class="cb"><input type="checkbox" data-o="rivCucina"${opt.rivCucina ? ' checked' : ''}> Rivestimento anche nelle cucine</label>
+        <label class="cb"><input type="checkbox" data-o="impMl"${opt.impMl ? ' checked' : ''}> Conta anche i metri di tubi e cavi disegnati (di norma già compresi nel prezzo dei punti; le canaline si contano sempre)</label>
         <label>Oneri della sicurezza (% sui lavori)<input data-o="oneri" inputmode="decimal" value="${it(opt.oneri)}"></label>
         <label>Imprevisti (%)<input data-o="imprev" inputmode="decimal" value="${it(opt.imprev)}"></label>
         <label>IVA sui lavori (%)<input data-o="iva" inputmode="decimal" value="${it(opt.iva)}"></label>
@@ -13798,7 +13805,7 @@ updateRoomList();
     door: {c: '#fb923c'}, window: {c: '#2dd4bf'}, offset: {c: '#e879f9'}, rescale: {c: '#facc15'},
     line: {c: '#38bdf8'}, circle: {c: '#38bdf8'}, arc: {c: '#38bdf8'}, measure: {c: '#f472b6'}, dim: {c: '#f472b6'}, room: {c: '#a3e635'}, furniture: {c: '#c084fc'}, stairs: {c: '#c084fc'},
     text: {c: '#fde047'}, zone: {c: '#34d399'}, pillar: {c: '#94a3b8'}, hole: {c: '#fb7185'}, moveBg: {c: '#94a3b8'}, box: {c: '#22d3ee'},
-    cgcp: {c: '#e2e8f0'}, cgceil: {c: '#a78bfa'}, cgbeam: {c: '#f472b6'}, cgled: {c: '#eab308'}, cgimp: {c: '#22d3ee'}
+    cgcp: {c: '#e2e8f0'}, cgceil: {c: '#a78bfa'}, cgbeam: {c: '#f472b6'}, cgled: {c: '#eab308'}, cgimp: {c: '#22d3ee'}, cgcol: {c: '#22d3ee'}
   };
   const touch = () => !!(window.SClastPT && SClastPT() !== 'mouse');
   const guideOn = () => appSettings.guide !== false;
@@ -13927,6 +13934,7 @@ updateRoomList();
     if (t === 'zone') { const bz = !!(window.SCzone && SCzone.busy()); return mk(bz ? 'Area · tocca il vertice successivo, poi «Chiudi area»' : 'Area · tocca il primo vertice', bz ? [['zclose', '✔ Chiudi area'], ['undo', '↩ Togli punto'], ['done', '✔ Fine']] : T2); }
     if (t === 'offset') return mk('Parallela · tocca il muro o la forma da cui partire');
     if (t === 'cgcp') return mk('Controparete · tocca il muro dal lato dove va');
+    if (t === 'cgcol') return mk(window.SCcs && SCcs.colSrc() ? 'Collega · tocca i punti da collegare alla partenza' : 'Collega · tocca il punto di partenza (di solito il quadro)', [['done', '✔ Fine']]);
     if (t === 'cgceil' || t === 'cgbeam' || t === 'cgled' || t === 'cgimp') { const n = window.SCcs ? SCcs.count() : 0, nm = t === 'cgceil' ? 'Controsoffitto' : t === 'cgled' ? 'Profilo LED' : t === 'cgimp' ? 'Impianto' : 'Falsa trave', M = t === 'cgceil' && window.SCcs ? SCcs.mode() : 'pts';
       const MB = t === 'cgceil' && !n ? [['csmode', SCcs.modeName() + ' ›']] : [];
       if (M === 'room') return mk(nm + ' · tocca dentro un locale o un\'Area: la copre tutta', MB.concat([['done', '✔ Fine']]));
@@ -16581,6 +16589,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   document.querySelector('.workspace').addEventListener('pointermove', e => { if (!isMine(state.tool) || !tmp.length) return; const r = c2d.getBoundingClientRect(); hv = screenToWorld(e.clientX - r.left, e.clientY - r.top); if (state.tool !== 'cgceil' || mode() === 'rect') draw2D(); }, true);
   const _ht = handleTap;
   handleTap = function (cx, cy) {
+    if (state.tool === 'cgcol') return colTap(cx, cy);
     if (!isMine(state.tool)) return _ht.apply(this, arguments);
     if (isCurrentLayerLocked()) { toast('Livello corrente bloccato'); return; }
     const r = c2d.getBoundingClientRect(), w = screenToWorld(cx - r.left, cy - r.top), M = mode();
@@ -16743,6 +16752,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     if (state.tool === 'cgceil' && mode() === 'rect' && tmp.length === 1 && hv) {
       const S4 = rectPts(tmp[0], snapCs(hv, null)).map(p => worldToScreen(p.x, p.y)); ctx.strokeStyle = COL_C; ctx.lineWidth = 2; ctx.setLineDash([6, 4]); ctx.beginPath(); S4.forEach((s, i) => i ? ctx.lineTo(s.x, s.y) : ctx.moveTo(s.x, s.y)); ctx.closePath(); ctx.stroke(); ctx.setLineDash([]);
     }
+    if (state.tool === 'cgcol' && COLSRC) { const q = worldToScreen(COLSRC.x, COLSRC.y); ctx.save(); ctx.setLineDash([]); ctx.strokeStyle = '#22d3ee'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(q.x, q.y, 14, 0, 7); ctx.stroke(); ctx.restore(); }
     if (isMine(state.tool) && tmp.length) {
       const col = state.tool === 'cgceil' ? COL_C : state.tool === 'cgled' ? '#eab308' : state.tool === 'cgimp' ? ((window.SCwl && SCwl.IMPT[IMPK()]) || [0, '#22d3ee'])[1] : COL_B, S = tmp.map(p => worldToScreen(p.x, p.y));
       ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.setLineDash([6, 4]); ctx.beginPath(); S.forEach((s, i) => i ? ctx.lineTo(s.x, s.y) : ctx.moveTo(s.x, s.y));
@@ -16885,6 +16895,39 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     let x = b ? r.left + b.x + b.w + 8 : r.left + 80, y = b ? r.top + b.y : r.top + 80;
     if (x + W > innerWidth - 6) x = b ? r.left + b.x - W - 8 : innerWidth - W - 6;
     pal.style.left = Math.max(6, Math.min(innerWidth - W - 6, x)) + 'px'; pal.style.top = Math.max(Math.min(r.top + 4, innerHeight - H - 6), Math.min(innerHeight - H - 6, y)) + 'px';
+  }
+  /* v25.5 · COLLEGA PUNTI: tocca la partenza (quadro) e poi i punti: ognuno viene collegato con un percorso ad angolo retto */
+  const PTS = {presa: 1, interruttore: 1, punto_luce: 1, quadro: 1};
+  let COLSRC = null;
+  const EK = () => ['fas', 'neu', 'ter', 'can'].includes(appSettings.impT) ? appSettings.impT : 'fas';   /* i punti collegati sono elettrici */
+  const segX = (a, b, c, d) => { const o = (p, q, r) => (q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x); return o(a, b, c) * o(a, b, d) < 0 && o(c, d, a) * o(c, d, b) < 0; };
+  const wallCross = (p, q) => state.walls.filter(w => isEntityVisible(w) && floorOf(w) === state.currentFloorId).reduce((n, w) => n + (segX(p, q, w.p1, w.p2) ? 1 : 0), 0);
+  function orth(a, b) {
+    if (Math.abs(a.x - b.x) < 0.02 || Math.abs(a.y - b.y) < 0.02) return [a, b];
+    const c1 = {x: b.x, y: a.y}, c2 = {x: a.x, y: b.y}, cost = c => wallCross(a, c) + wallCross(c, b);
+    return [a, cost(c1) <= cost(c2) ? c1 : c2, b];
+  }
+  function ptAt(w) {
+    let best = null, bd = 1e9;
+    state.furniture.forEach(f => { if (!PTS[f.type] || !isEntityVisible(f) || floorOf(f) !== state.currentFloorId) return; const d = Math.hypot(f.x - w.x, f.y - w.y), tol = Math.max(0.3, Math.max(f.w || 0, f.d || 0) / 2 + 0.1, 18 / viewScale); if (d < tol && d < bd) { bd = d; best = f; } });
+    return best;
+  }
+  function colArm() {
+    COLSRC = null; const sf = state.sel && state.sel.length === 1 && state.selected && state.selected.type === 'furniture' ? state.furniture.find(x => x.id === state.selected.id) : null;
+    if (sf && PTS[sf.type]) COLSRC = sf; showImpOn();
+    toast(COLSRC ? 'Collega: partenza = punto selezionato. Tocca i punti da collegare' : 'Collega: tocca il punto di partenza (di solito il quadro)'); draw2D();
+  }
+  function colTap(cx, cy) {
+    if (isCurrentLayerLocked()) { toast('Livello corrente bloccato'); return; }
+    const r = c2d.getBoundingClientRect(), w = screenToWorld(cx - r.left, cy - r.top), f = ptAt(w);
+    if (!f) { toast('Tocca un punto (presa, luce, interruttore, quadro)'); return; }
+    if (!COLSRC) { COLSRC = f; toast('Partenza scelta. Tocca i punti da collegare'); draw2D(); return; }
+    if (f === COLSRC) { COLSRC = null; toast('Partenza annullata: scegline un\'altra'); draw2D(); return; }
+    const pts = orth({x: r6(f.x), y: r6(f.y)}, {x: r6(COLSRC.x), y: r6(COLSRC.y)}), zm = appSettings.impZm || 'pav';
+    const el = assignLayer({id: newId(), pts, w: 0.02, hh: 0.02, sez: 'U', cg: {}, led: {k: 3000, w: 8}, imp: EK(), d: IMPDIAM(EK()), zm, name: ''});
+    if (zm === 'lib') el.z = +appSettings.impZ || 0.5;
+    state.beams.push(el); showImpOn(); draw2D(); if (state.mode === '3d') build3D(); try { checkpoint(); } catch (_) {}
+    toast('Collegato: ' + f2(polyLen(dense(el, false), false)) + ' ml (tipo e posizione si cambiano toccando la linea)');
   }
   function openLedPal(el) {
     closePal(); active = el;
@@ -17226,7 +17269,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     return out;
   }
   window.SCcs = {
-    zAt, showImpOn, ledItems, lightPts, ledSegs, lineSegs, follow, pickObj, mkLedLine, followArmed: () => LFM,
+    zAt, showImpOn, colArm, colSrc: () => COLSRC, ledItems, lightPts, ledSegs, lineSegs, follow, pickObj, mkLedLine, followArmed: () => LFM,
     items: () => state.ceils.filter(isEntityVisible).map(voceC).concat(state.beams.filter(b => isEntityVisible(b) && !b.led).map(voceB)).filter(Boolean),
     priceOf: k => { const e = state.ceils.concat(state.beams).find(x => 'cs_' + x.id === k); return e && e.price != null ? +e.price : null; },
     setPrice: (k, v) => { const e = state.ceils.concat(state.beams).find(x => 'cs_' + x.id === k); if (e) e.price = v; },
@@ -17262,7 +17305,8 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     cgceil: 'M3 6h18M5 6v3h14V6M8 13h8M10 17h4',
     cgbeam: 'M3 5h18M7 5v6h10V5M3 15h4M10 15h4M17 15h4',
     cgled: 'M3 12h18M6 8v8M18 8v8M10 5l1 2M14 5l-1 2',
-    cgimp: 'M4 18h7V8h9M4 14h3M16 16h4'
+    cgimp: 'M4 18h7V8h9M4 14h3M16 16h4',
+    cgcol: 'M5 6h6v12h8M5 6a1.5 1.5 0 1 0 0 .01M19 18a1.5 1.5 0 1 0 0 .01'
   };
   const closeMenus = () => document.querySelectorAll('.menu-dropdown').forEach(m => m.classList.remove('open'));
   const pickTool = (t, msg) => { document.querySelectorAll('.tool').forEach(x => x.classList.toggle('active', x.dataset.tool === t)); state.tool = t; state.pendingPoint = null; try { measureStart = null; } catch (_) {} closeMenus(); if (msg) toast(msg); draw2D(); };
@@ -17279,14 +17323,15 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   const ceil = mkTool('cgceil', 'Controsoffitto', 'Controsoffitto: un locale o un\'Area con un tocco, un rettangolo o per punti. Quota, lastra e prezzo nel riquadro', 'cgceil', () => pickTool('cgceil'));
   const beam = mkTool('cgbeam', 'Falsa trave', 'Falsa trave / cassonetto: tocca i punti del percorso, poi «Fine»', 'cgbeam', () => pickTool('cgbeam', 'Falsa trave: tocca i punti del percorso, poi «Fine»'));
   const led = mkTool('cgled', 'Profilo LED', 'Profilo LED: tocca i punti della linea dove vuoi, di qualsiasi lunghezza, poi «Fine linea»', 'cgled', () => pickTool('cgled', 'Profilo LED: tocca i punti della linea, poi «Fine linea»'));
-  const imp = mkTool('cgimp', 'Impianto a linea', 'Impianti: tubi e cavi in pianta, a pavimento, sopra il controsoffitto o a quota libera. Colori: acqua calda rosso, fredda blu, scarichi nero, fase marrone, neutro grigio, terra giallo', 'cgimp', () => { SCcs.showImpOn(); pickTool('cgimp', 'Impianto: tocca i punti del percorso, poi «Fine linea»'); });
+  const imp = mkTool('cgimp', 'Linea libera', 'Impianti: tubi e cavi in pianta, a pavimento, sopra il controsoffitto o a quota libera. Colori: acqua calda rosso, fredda blu, scarichi nero, fase marrone, neutro grigio, terra giallo', 'cgimp', () => { SCcs.showImpOn(); pickTool('cgimp', 'Impianto: tocca i punti del percorso, poi «Fine linea»'); });
+  const colb = mkTool('cgcol', 'Collega punti', 'Collega punti: tocca la partenza (quadro) e poi le prese, le luci e gli interruttori: ognuno viene collegato con un percorso ad angolo retto', 'cgcol', () => { pickTool('cgcol'); SCcs.colArm(); });
   const ledf = mkTool(null, 'Segui profilo', 'Segui profilo: la striscia LED copia il contorno dell\'oggetto selezionato (muro, controparete, controsoffitto, disegno)', 'cgled', () => { closeMenus(); SCcs.follow(); });
   if (oldCgw) oldCgw.hidden = true; if (oldCp) oldCp.hidden = true;
   const keep = document.createElement('div'); keep.hidden = true; if (oldCgw) keep.appendChild(oldCgw); if (oldCp) keep.appendChild(oldCp);
   const groups = [
     ['Muri e aperture', ['wall', 'door', 'window', 'pillar', 'stairs', 'hole']],
     ['Cartongesso', [cgw, cgcp, ceil, beam, led, ledf]],
-    ['Impianti', [imp]],
+    ['Impianti', [colb, imp]],
     ['Locali e superfici', ['room', 'zone']],
     ['Quote e annotazioni', ['dim', 'measure', 'text', 'line', 'circle', 'arc']],
     ['Arredi', ['furniture']]
@@ -20970,8 +21015,9 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
    SC_REL.v è l'unica versione: titolo, Guida, file salvato, avvisi e riga messaggi la leggono da qui.
    ======================================================================== */
 window.SC_REL = {
-  v: '25.4', d: '28/10/2026',
+  v: '25.5', d: '28/10/2026',
   news: [
+    ['25.5', 'Impianti più veloci: «Collega punti» (Strumenti › Impianti): tocchi il quadro e poi le prese, luci e interruttori, ognuno collegato con un percorso ad angolo retto che evita di attraversare i muri dove può. Punti luce (interrotto, deviato, invertito) e prese (singola, in sequenza) con il tipo scelto nel pannello e voci separate nel computo. I metri di tubi e cavi disegnati non entrano più nel computo (sono già nel prezzo dei punti): si possono includere da Computo › Opzioni; le canaline si contano sempre. «Impianto a linea» ora si chiama «Linea libera».'],
     ['25.4', 'Impianti in pianta: nel menu Strumenti › Impianti › «Impianto a linea» disegni tubi e cavi liberi (tipo, diametro, posizione a pavimento / sopra il controsoffitto / quota libera). Colori come sul prospetto. Compaiono in pianta, 3D e computo (al metro) e nella sezione: punti dove il taglio li attraversa, linee quando corrono nel piano di taglio (entro 15 cm). Si mostrano da Vista › Impianti. Corretto «Aggiungi voce» nel computo.'],
     ['25.3', 'Impianti sul prospetto: strumento «🔧 Impianti» con linee libere (anche in verticale) dentro il muro: acqua calda rossa, acqua fredda blu, scarichi neri, elettrico fase marrone, neutro grigio, terra gialla, canaline. Si vedono con «Impianti» nel menu Vista (anche in 3D, attraverso i muri) e vanno nel computo al metro. Prese, interruttori e quadro si inseriscono e si spostano anche sul prospetto («🔆 Luci e punti»).'],
         ['25.2', 'Spessore del rivestimento: campo «Spessore (cm)» nel pannello del rivestimento sul prospetto. Si vede in 3D come volume davanti al muro, con i vani di porte, finestre e nicchie, e compare nella voce di computo.'],
@@ -23564,7 +23610,8 @@ window.SC_REL = {
   }
   function impItems() {
     const g = {};
-    impSegs().forEach(q => { const key = 'imp_' + q.imp + '_' + q.d, o = g[key] || (g[key] = {key, imp: q.imp, d: q.d, q: 0, n: new Set()}); o.q += q.L; o.n.add(q.wall ? (q.wall.name || 'muro') : 'pianta'); });
+    const all = !!(window.SCcomputo && SCcomputo.getOpt().impMl);
+    impSegs().forEach(q => { if (!all && q.imp !== 'can') return; const key = 'imp_' + q.imp + '_' + q.d, o = g[key] || (g[key] = {key, imp: q.imp, d: q.d, q: 0, n: new Set()}); o.q += q.L; o.n.add(q.wall ? (q.wall.name || 'muro') : 'pianta'); });
     return Object.values(g).map(o => ({key: o.key, um: 'ml', q: o.q, desc: IMPD[o.imp](o.d), det: 'Sviluppo reale delle linee disegnate (prospetto e pianta) · ' + [...o.n].join(', ')}));
   }
   function add3DImp(scene) {
@@ -23725,8 +23772,13 @@ window.SC_REL = {
         d.innerHTML = '<div style="font-size:11px;color:#7dd3fc;margin-bottom:4px"><b>⌖ Allineamento</b></div>' +
           '<div style="display:flex;gap:5px"><button class="action" id="luxCenter" style="flex:1;font-size:11px" title="Porta la luce al centro della stanza che la contiene">⌖ Al centro stanza</button><button class="action" id="luxAxis" style="flex:1;font-size:11px" title="Porta la luce sull\'asse centrale della stanza, tenendo la posizione lungo l\'asse (corridoi)">↔ Sull\'asse</button></div>';
       }
+      if (f.type === 'punto_luce' || f.type === 'presa') {   /* v25.5: tipo di punto, per il computo */
+        const isL = f.type === 'punto_luce', O = isL ? [['', 'Interrotto'], ['dev', 'Deviato'], ['inv', 'Invertito']] : [['', 'Singola (cassetto proprio)'], ['sc', 'In sequenza, stesso cassetto'], ['sa', 'In sequenza, altro cassetto']], cur = (isL ? f.cmd : f.seq) || '';
+        d.innerHTML += '<label style="margin-top:6px;display:block">' + (isL ? 'Comando (per il computo)' : 'Posa (per il computo)') + '</label><select id="luxPt">' + O.map(([k, n]) => '<option value="' + k + '"' + (k === cur ? ' selected' : '') + '>' + n + '</option>').join('') + '</select>';
+      }
       info.appendChild(d);
       const g = id => document.getElementById(id);
+      if (g('luxPt')) g('luxPt').onchange = e => { const k = e.target.value, key = f.type === 'punto_luce' ? 'cmd' : 'seq'; if (k) f[key] = k; else delete f[key]; checkpoint(); };
       if (g('luxDist')) g('luxDist').oninput = e => { const v = parseFloat(e.target.value); if (v >= 0 && f.lw) { f.lw.dist = v; sync(f); refresh(); } };
       if (g('luxZ')) g('luxZ').oninput = e => { const v = parseFloat(e.target.value); if (v >= 0) { setZc(f, v); refresh(); } };
       if (g('luxSide')) g('luxSide').onclick = () => { f.lw.side = -f.lw.side; sync(f); refresh(); checkpoint(); };

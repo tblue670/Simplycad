@@ -1,4 +1,4 @@
-SimplyCAD Pro - pubblicazione su GitHub Pages (v25.4)
+SimplyCAD Pro - pubblicazione su GitHub Pages (v25.5)
 
 Contenuto (vanno caricati tutti, senza rinominarli e SENZA cartelle intorno):
   index.html  sw.js  manifest.webmanifest  icon-192.png  icon-512.png  icon-maskable.png  README.md
@@ -359,3 +359,9 @@ NOVITÀ v25.4
 - Impianti in pianta: menu Strumenti > Impianti > «Impianto a linea». Disegni tubi e cavi liberi, scegli tipo, diametro e posizione: a pavimento (nel massetto), sopra il controsoffitto, oppure a quota libera. Stessi colori del prospetto.
 - Compaiono in pianta, in 3D e nel computo (al metro). Si mostrano da Vista > Impianti.
 - Sezione: gli impianti tagliati appaiono come punti colorati; quelli che corrono nel piano di taglio (entro 15 cm) come linee.
+
+NOVITÀ v25.5
+- Collega punti (Strumenti > Impianti): tocchi il quadro e poi le prese, le luci e gli interruttori; ognuno viene collegato con un percorso ad angolo retto, scegliendo la variante che attraversa meno muri.
+- Punto luce: interrotto, deviato, invertito. Presa: singola, in sequenza nello stesso cassetto, in sequenza in altro cassetto. Si sceglie nel pannello dell'oggetto e il computo ha voci separate.
+- I metri di tubi e cavi disegnati non entrano più nel computo (sono già compresi nel prezzo dei punti). Si possono includere da Computo > Opzioni; le canaline si contano sempre.
+- «Impianto a linea» ora si chiama «Linea libera».
