@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v24.7</title>
+<title>SimplyCAD Pro · v24.9</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -4786,9 +4786,9 @@ function setDayNight(night) {
   if (night) {
     scene.background = new THREE.Color(0x0a0a18);
     scene.fog = new THREE.Fog(0x0a0a18, 20, 60);
-    ambientLight.intensity = 0.18 * K; ambientLight.color.set(0x445566);   /* v22.2: notte più buia, contano i punti luce */
+    ambientLight.intensity = 0.22 * K; ambientLight.color.set(0x445566);   /* v22.2: notte più buia, contano i punti luce */
     try { renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.45 * K; } catch (_) {}   /* v22.2: luci forti senza bruciare i colori */
-    dirLight.intensity = 0.12 * K; dirLight.color.set(0xaaccff);
+    dirLight.intensity = 0; dirLight.color.set(0xaaccff);   /* v24.8: niente luna: era una luce fissa che schiariva un solo lato dei muri; di notte contano solo le lampade */
     hemiLight.intensity = 0.1 * K;
   } else {
     scene.background = new THREE.Color(0x1e1e2e);
@@ -5043,6 +5043,7 @@ function build3D() {
   }
   if (window.SCriv) { try { SCriv.add3D(scene); } catch (err) { console.warn('rivestimenti 3D', err); } }
   if (window.SCpit) { try { SCpit.add3D(scene); } catch (err) { console.warn('pittura 3D', err); } }
+  if (window.SCwl) { try { SCwl.add3D(scene); } catch (err) { console.warn('LED prospetto 3D', err); } }   /* v24.9 */
   const WIX = new Map(state.walls.map((w, i) => [w, i])), SEAM = 0.002;
   for (const w of state.walls) {
     if (!isEntityVisible(w)) continue;
@@ -14715,7 +14716,7 @@ document.getElementById("bTop").onclick=function(){leaveWalk();topView();setBtn(
 document.getElementById("bWalk").onclick=function(){if(walkOn){document.getElementById("bOrb").click();return;}walkOn=true;oc.enabled=false;WK.start();setBtn("bWalk");document.getElementById("hint").textContent="";};
 var LG=D.lg||{},LK=+LG.k>0?+LG.k:1;
 function applyN(){var K=LK;scene.background=new THREE.Color(night?0x0a0a18:0xdfe6ee);amb.intensity=(night?0.25:0.7)*K;amb.color.set(night?0x445566:0xffffff);
- sun.intensity=(night?0.15:0.6)*K;hemi.intensity=(night?0.2:0.5)*K;ground.material.color.set(night?0x20222c:0xcfd5db);
+ sun.intensity=(night?0:0.6)*K;hemi.intensity=(night?0.2:0.5)*K;ground.material.color.set(night?0x20222c:0xcfd5db);
  renderer.toneMapping=night?THREE.ACESFilmicToneMapping:THREE.NoToneMapping;renderer.toneMappingExposure=night?1.45*K:1;
  scene.traverse(function(o){if(o.material&&o.material.isMaterial)o.material.needsUpdate=true;});
  document.getElementById("bDn").textContent=night?"Giorno":"Notte";}
@@ -15089,12 +15090,13 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
      Si selezionano e si modificano come le lavorazioni: riquadro {cx, y, w, h} lungo il muro (da p1), poi si riscrive l'oggetto. */
   const isCpW = w => !!(w && window.SCcg && SCcg.isCp && SCcg.isCp(w));
   const cpsOf = w => state.walls.filter(c => isCpW(c) && c.cg.host === w.id && isEntityVisible(c));
-  const ON = {door: 'Porta', window: 'Finestra', cp: 'Controparete', riv: 'Rivestimento', pil: 'Pilastro', pit: 'Pittura'};
+  const ON = {door: 'Porta', window: 'Finestra', cp: 'Controparete', riv: 'Rivestimento', pil: 'Pilastro', pit: 'Pittura', led: 'Profilo LED'};
   /* v21.0: pilastri addossati a questo muro (dalla pianta): si vedono e si spostano anche nel prospetto */
   const pillarsOf = w => state.furniture.filter(f => f.type === 'pilastro' && f.pil && f.pil.wallId === w.id && isEntityVisible(f));
-  function objOf(o) { if (!o) return null; if (o.kind === 'pil') return state.furniture.find(x => x.id === o.id) || null; if (o.kind === 'riv') return window.SCriv ? SCriv.find(o.id) : null; if (o.kind === 'pit') return window.SCpit ? SCpit.find(o.id) : null; return o.kind === 'cp' ? wById(o.id) : (o.kind === 'door' ? state.doors : state.windows).find(x => x.id === o.id) || null; }
+  function objOf(o) { if (!o) return null; if (o.kind === 'led') return window.SCwl ? SCwl.find(o.id) : null; if (o.kind === 'pil') return state.furniture.find(x => x.id === o.id) || null; if (o.kind === 'riv') return window.SCriv ? SCriv.find(o.id) : null; if (o.kind === 'pit') return window.SCpit ? SCpit.find(o.id) : null; return o.kind === 'cp' ? wById(o.id) : (o.kind === 'door' ? state.doors : state.windows).find(x => x.id === o.id) || null; }
   function proxy(w, o) {
     const e = objOf(o); if (!e) return null; const L = Lw(w);
+    if (o.kind === 'led') { const b = SCwl.bbox(e); return {sh: 'rect', cx: (b.x0 + b.x1) / 2, y: b.z0, w: Math.max(0.01, b.x1 - b.x0), h: Math.max(0.01, b.z1 - b.z0)}; }
     if (o.kind === 'pil') { const s = e.pil ? (e.pil.ref === 'b' ? L - (e.pil.dist + e.w / 2) : e.pil.dist + e.w / 2) : L / 2; return {sh: 'rect', cx: s, y: 0, w: e.w, h: Math.min(e.h || wh(w), wh(w))}; }
     if (o.kind === 'riv') return {sh: 'rect', cx: (e.x0 + e.x1) / 2, y: e.z0, w: e.x1 - e.x0, h: e.z1 - e.z0};
     if (o.kind === 'pit') { const b = SCpit.bbox(e); return {sh: 'rect', cx: (b.x0 + b.x1) / 2, y: b.z0, w: b.x1 - b.x0, h: b.z1 - b.z0}; }
@@ -15103,6 +15105,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   }
   function writeProxy(w, o, r) {
     const e = objOf(o); if (!e) return; const L = Lw(w), H = wh(w);
+    if (o.kind === 'led') { SCwl.fitBox(w, e, r); return; }
     if (o.kind === 'pil') {
       e.w = Math.round(Math.max(0.05, Math.min(L, r.w)) * 1000) / 1000; e.h = Math.round(Math.max(0.05, Math.min(H, r.h)) * 1000) / 1000;
       const s = Math.max(e.w / 2, Math.min(L - e.w / 2, r.cx));
@@ -15118,10 +15121,11 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     if (o.kind === 'window') { if (r.y > H - hh + 0.005 && !S.drag) toast('Da terra al massimo ' + f2(H - hh) + ' m: la finestra è alta ' + f2(hh) + ' m e il muro ' + f2(H) + ' m'); e.sillHeight = Math.round(Math.max(0, Math.min(H - hh, r.y)) * 1000) / 1000; }
     if ((r.w > L + 0.005 || r.h > H + 0.005) && !S.drag) toast('Non può superare il muro: ' + f2(L) + ' × ' + f2(H) + ' m');
   }
-  const lockedO = o => { const e = objOf(o); if (e && (o.kind === 'riv' || o.kind === 'pit')) return isEntityLocked(wById(S.wallId)); return !e || isEntityLocked(e); };
+  const lockedO = o => { const e = objOf(o); if (e && (o.kind === 'riv' || o.kind === 'pit' || o.kind === 'led')) return isEntityLocked(wById(S.wallId)); return !e || isEntityLocked(e); };
   function hitObj(w, u, v) {
     const L = Lw(w), x = S.face > 0 ? L - u : u, tol = 6 / S.view.s;
     const inR = r => r && x > r.cx - r.w / 2 - tol && x < r.cx + r.w / 2 + tol && v > r.y - tol && v < r.y + r.h + tol;
+    if (window.SCwl) { const q = SCwl.hit(w, S.face, x, v, 10 / S.view.s); if (q) return {kind: 'led', id: q.id}; }   /* v24.9: i profili LED si toccano per primi */
     for (const f of pillarsOf(w)) if (inR(proxy(w, {kind: 'pil', id: f.id}))) return {kind: 'pil', id: f.id};
     for (const d of state.doors) if (d.wallId === w.id && isEntityVisible(d) && inR(proxy(w, {kind: 'door', id: d.id}))) return {kind: 'door', id: d.id};
     for (const d of state.windows) if (d.wallId === w.id && isEntityVisible(d) && inR(proxy(w, {kind: 'window', id: d.id}))) return {kind: 'window', id: d.id};
@@ -15293,7 +15297,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       <button class="wk-b" data-t="niche">Nicchia</button>
       <button class="wk-b" data-t="cut">Taglio</button>
       <button class="wk-b" data-t="cp" title="Controparete in cartongesso sul lato che guardi: tocca due angoli">Controparete</button>
-      <button class="wk-b" data-t="riv" title="Rivestimento con una skin sul lato che guardi: tocca due angoli">Rivestimento</button><button class="wk-b" data-t="pit" title="Pittura: superficie colorata sul lato che guardi, a rettangolo o punto per punto">🎨 Pittura</button>
+      <button class="wk-b" data-t="riv" title="Rivestimento con una skin sul lato che guardi: tocca due angoli">Rivestimento</button><button class="wk-b" data-t="led" title="Profilo LED: linea libera, anche in verticale, o «Segui profilo» su un oggetto">💡 LED</button><button class="wk-b" data-t="pit" title="Pittura: superficie colorata sul lato che guardi, a rettangolo o punto per punto">🎨 Pittura</button>
       <button class="wk-b" data-t="door" title="Porta: tocca due angoli sul muro (il lato in basso va a terra)">Porta</button>
       <button class="wk-b" data-t="window" title="Finestra: tocca due angoli sul muro (il lato in basso è il davanzale)">Finestra</button>
       <span class="wk-sep"></span>
@@ -15507,6 +15511,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       }
     });
     if (window.SCriv) { try { SCriv.afterWorks(cx, w, S.face, sx, sy, S.view.s, shapePath); } catch (e) { console.warn('rivestimento nicchie', e); } }
+    if (window.SCwl) { try { SCwl.draw(cx, w, S.face, sx, sy, S.view.s, S.oSel); } catch (e) { console.warn('LED prospetto', e); } }   /* v24.9 */
     /* quote */
     const qc = '#fbbf24';
     if (selR) {
@@ -15523,6 +15528,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     cx.textAlign = 'right'; cx.fillText(nr ? (nr.name || '') + ' ▶' : '', sx(L), sy(0) + (S.bays && S.bays.length > 1 ? 58 : 34));
     /* creazione in corso */
     if (S.tool === 'pit' && S.pitMode === 'poly' && window.SCpit) SCpit.drawTmp(cx, w, S.face, sx, sy, S.pp || [], S.cur);
+    if (S.tool === 'led' && window.SCwl && !S.ledArm) SCwl.drawTmp(cx, w, S.face, sx, sy, S.pp || [], S.cur);
     if (S.tool === 'mis' && S.m) {   /* v24.3: misura temporanea (non si stampa) */
       const A = S.m.a, B = S.m.b || S.cur; cx.save(); cx.strokeStyle = '#22d3ee'; cx.fillStyle = '#22d3ee';
       if (A && B) {
@@ -15629,6 +15635,51 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     S.tool = 'sel';   /* v21.6: dopo la lavorazione si torna a Seleziona, restando nel prospetto */
     commit(KN[k.k] + ' ' + cm(k.w) + '×' + cm(k.h) + ' cm aggiunto' + (w.portante && k.k !== 'niche' ? ' · muro portante: cerchiatura in computo' : ''));
   }
+  /* v24.9 · PROFILO LED sul prospetto: punto per punto (anche in verticale) o «Segui profilo» */
+  const ledRect = (x0, z0, x1, z1, openBottom) => openBottom ? [{x: x0, z: z0}, {x: x0, z: z1}, {x: x1, z: z1}, {x: x1, z: z0}] : [{x: x0, z: z0}, {x: x1, z: z0}, {x: x1, z: z1}, {x: x0, z: z1}, {x: x0, z: z0}];
+  function ledOutlineK(k, openBottom) {   /* contorno di un rettangolo, arco o tondo (coordinate del muro) */
+    const x0 = k.cx - k.w / 2, x1 = k.cx + k.w / 2, z0 = k.y, z1 = k.y + k.h;
+    if (k.sh === 'round') { const r = k.w / 2, c = z0 + r, b = -r * (1 - Math.cos(Math.PI / 4)); return [{x: k.cx + r, z: c, b}, {x: k.cx, z: c + r, b}, {x: k.cx - r, z: c, b}, {x: k.cx, z: c - r, b}, {x: k.cx + r, z: c}]; }
+    if (k.sh === 'arch') { const r = k.w / 2, hr = Math.max(0, k.h - r); const P = [{x: x0, z: z0}]; if (hr > 1e-4) { P[0].b = 0; P.push({x: x0, z: z0 + hr, b: r}); } else P[0].b = r; P.push({x: x1, z: z0 + hr}, {x: x1, z: z0}); if (!openBottom) P.push({x: x0, z: z0}); return P; }
+    return ledRect(x0, z0, x1, z1, openBottom);
+  }
+  function ledOutline(w, o) {   /* o = {kind, id} oppure una lavorazione */
+    if (o.kind === 'work' || o.k) { const k = clampWork(w, {...o}); return {pts: ledOutlineK(k, false), name: KN[k.k] || 'lavorazione', what: (KN[k.k] || 'lavorazione').toLowerCase()}; }
+    if (o.kind === 'pit') { const e = SCpit.find(o.id); if (!e) return null; const P = e.pts.map(q => ({x: q.x, z: q.z})); P.push({x: P[0].x, z: P[0].z}); return {pts: P, name: 'Pittura', what: 'pittura'}; }
+    const r = proxy(w, o); if (!r) return null;
+    const open = o.kind === 'door' || o.kind === 'pil' || ((o.kind === 'cp' || o.kind === 'riv') && r.y <= 0.001);
+    return {pts: ledOutlineK({sh: 'rect', cx: r.cx, y: r.y, w: r.w, h: r.h}, open), name: ON[o.kind] || 'oggetto', what: (ON[o.kind] || 'oggetto').toLowerCase()};
+  }
+  function ledMake(w, ol) {
+    if (!window.SCwl || !ol) return false;
+    if (isEntityLocked(w)) { toast('Muro su livello bloccato'); return false; }
+    const r = SCwl.add(w, S.face, ol.pts, ''); if (!r) return false;
+    S.pp = []; S.ledArm = false; S.tool = 'sel'; S.selId = null; S.oSel = {kind: 'led', id: r.id};
+    commit('Profilo LED sul ' + ol.what + ': ' + f2(SCwl.len(r)) + ' ml'); return true;
+  }
+  function ledFollowSel(w) {   /* comando «Segui profilo»: l'oggetto già selezionato, altrimenti il prossimo toccato */
+    let ol = null;
+    if (S.oSel && S.oSel.kind !== 'led') ol = ledOutline(w, S.oSel);
+    else if (S.selId) { const k0 = works(w).find(x => x.id === S.selId); if (k0) ol = ledOutline(w, k0); }
+    if (ol) { ledMake(w, ol); return; }
+    S.tool = 'led'; S.ledArm = true; S.pp = []; S.selId = null; S.oSel = null; ui(); render();
+    toast('Segui profilo: tocca l\'oggetto da seguire (apertura, nicchia, foro, rivestimento, pittura…)');
+  }
+  function ledPoint(w, uv) {
+    if (S.ledArm) {
+      const hk = hitWork(w, uv.u, uv.v), ho = hk ? null : hitObj(w, uv.u, uv.v);
+      if (hk) ledMake(w, ledOutline(w, hk)); else if (ho && ho.kind !== 'led') ledMake(w, ledOutline(w, ho)); else toast('Nessun oggetto qui: tocca un\'apertura, una nicchia, un rivestimento…');
+      return;
+    }
+    const P = S.pp || (S.pp = []);
+    if (P.length >= 2 && Math.hypot(sx(P[P.length - 1].u) - sx(uv.u), sy(P[P.length - 1].v) - sy(uv.v)) < 16) return ledClose(w);   /* tocca di nuovo l'ultimo punto: fine linea */
+    P.push({u: uv.u, v: uv.v}); render(); ui();
+  }
+  function ledClose(w) {
+    const P = S.pp || []; if (P.length < 2) { toast('Servono almeno 2 punti'); return; }
+    if (isEntityLocked(w)) { toast('Muro su livello bloccato'); return; }
+    const L = Lw(w); ledMake(w, {pts: P.map(p => ({x: S.face > 0 ? L - p.u : p.u, z: p.v})), what: 'disegno'});
+  }
   function pitPoint(w, uv) {   /* v22.9: pittura punto per punto; si chiude toccando il primo punto */
     const P = S.pp || (S.pp = []);
     if (P.length >= 3 && Math.hypot(sx(P[0].u) - sx(uv.u), sy(P[0].v) - sy(uv.v)) < 16) return pitClose(w);
@@ -15696,7 +15747,13 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       const pr = mv && S.oSel && S.oSel.kind === 'pit' && window.SCpit ? SCpit.find(S.oSel.id) : null, hv = pr && SCpit.hitVertex(w, pr, S.face, sx, sy, p.x, p.y);
       const hk = hitWork(w, uv.u, uv.v), ho = hk ? null : hitObj(w, uv.u, uv.v), same = (hk && hk.id === S.selId && !S.oSel) || (ho && S.oSel && ho.kind === S.oSel.kind && ho.id === S.oSel.id);
       S.tapHit = {hk, ho};
-      if (hv) { const i = hv.ins ? SCpit.insertVertex(pr, hv.i) : hv.i; SCpit.setCur(pr, i); S.drag = {kind: 'pv', i, r: pr}; ui(); }
+      const lr = mv && S.oSel && S.oSel.kind === 'led' && window.SCwl ? SCwl.find(S.oSel.id) : null, lh = lr && SCwl.hitVertex(w, lr, S.face, sx, sy, p.x, p.y);
+      if (lh) {
+        if (lh.ins && appSettings.csMid === 'curve') { SCwl.setCur(lr, null); S.drag = {kind: 'lc', i: lh.i, r: lr}; }
+        else { const i = lh.ins ? SCwl.insertVertex(lr, lh.i) : lh.i; SCwl.setCur(lr, i); S.drag = {kind: 'lv', i, r: lr}; }
+        ui();
+      }
+      else if (hv) { const i = hv.ins ? SCpit.insertVertex(pr, hv.i) : hv.i; SCpit.setCur(pr, i); S.drag = {kind: 'pv', i, r: pr}; ui(); }
       else if (h) { startDrag(w, k, h, uv); }
       else if (mv && same) { startDrag(w, S.oSel ? proxy(w, S.oSel) : hk, 'move', uv); }
       else { S.drag = {kind: 'pan', x: e.clientX, y: e.clientY}; }
@@ -15721,6 +15778,8 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     pk.run += Math.hypot(e.clientX - pk.fx, e.clientY - pk.fy); pk.fx = e.clientX; pk.fy = e.clientY; if (pk.run > 4) pk.moved = true;
     const p = pk.finger ? offsetPos(e.clientX, e.clientY, pk.run) : local(e), uv = toUV(p.x, p.y);
     if (S.drag && S.drag.kind === 'pan') { S.keepView = true; S.keepFor = S.wallId + ':' + S.face; S.view.ox += e.clientX - S.drag.x; S.view.oy += e.clientY - S.drag.y; S.drag.x = e.clientX; S.drag.y = e.clientY; S.cur = null; render(); return; }
+    if (S.drag && S.drag.kind === 'lv') { const s = snapUV(w, uv.u, uv.v), L = Lw(w); SCwl.moveVertex(w, S.drag.r, S.drag.i, S.face > 0 ? L - s.u : s.u, s.v); S.cur = s; render(); return; }
+    if (S.drag && S.drag.kind === 'lc') { const s = toUV(p.x, p.y), L = Lw(w); SCwl.setBulge(S.drag.r, S.drag.i, S.face > 0 ? L - s.u : s.u, s.v); S.cur = s; render(); return; }
     if (S.drag && S.drag.kind === 'pv') { const s = snapUV(w, uv.u, uv.v), L = Lw(w); SCpit.moveVertex(w, S.drag.r, S.drag.i, S.face > 0 ? L - s.u : s.u, s.v); S.cur = s; render(); return; }
     if (S.drag) { applyDrag(w, uv); S.cur = uv; render(); return; }
     S.cur = snapUV(w, uv.u, uv.v); render();
@@ -15731,6 +15790,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     const w = wById(S.wallId), pk = S.pick; if (!w || !pk || pk.id !== e.pointerId) return;
     S.pick = null;
     if (S.drag && S.drag.kind === 'pv') { S.drag = null; S.cur = null; commit(); return; }
+    if (S.drag && (S.drag.kind === 'lv' || S.drag.kind === 'lc')) { S.drag = null; S.cur = null; commit(); return; }
     if (S.drag) { const was = S.drag.kind; S.drag = null; if (was !== 'pan' && pk.moved) commit(); else { if (was === 'pan' && !pk.moved && S.tool === 'sel') {   /* v23.4: un tocco senza trascinare seleziona l'oggetto toccato; nel vuoto deseleziona */
         const t = S.tapHit || {}; S.field = null; S.buf = '';
         if (t.hk) { if (S.selId !== t.hk.id || S.oSel) { S.selId = t.hk.id; S.oSel = null; S.moveOn = null; } }
@@ -15740,6 +15800,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       S.cur = null; render(); ui(); } return; }
     if (S.tool === 'mis' && S.cur && e.type === 'pointerup') { if (!S.m || S.m.b) S.m = {a: S.cur, b: null}; else S.m.b = S.cur; S.cur = null; render(); ui(); return; }
     if (S.tool === 'pit' && S.pitMode === 'poly' && S.cur && e.type === 'pointerup') { pitPoint(w, S.cur); S.cur = null; return; }
+    if (S.tool === 'led' && S.cur && e.type === 'pointerup') { ledPoint(w, S.cur); S.cur = null; return; }
     if (S.tool !== 'sel' && S.cur && e.type === 'pointerup') {
       if (!S.first) { S.first = S.cur; toast('Ora il secondo angolo'); render(); ui(); return; }
       const a = S.first; S.first = null; createWork(a, S.cur); S.cur = null; render(); return;
@@ -15752,7 +15813,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   cv.addEventListener('contextmenu', e => e.preventDefault());
 
   /* ---------------------------------------------------------------- pulsanti, campi e tastierino */
-  P.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { S.tool = b.dataset.t; S.first = null; S.cur = null; S.pp = []; S.m = null; if (S.tool !== 'sel') { S.selId = null; S.oSel = null; } ui(); render(); });
+  P.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { S.tool = b.dataset.t; S.first = null; S.cur = null; S.pp = []; S.m = null; S.ledArm = false; if (S.tool !== 'sel') { S.selId = null; S.oSel = null; } ui(); render(); });
   P.querySelectorAll('[data-s]').forEach(b => b.onclick = () => {
     S.shape = b.dataset.s; const w = wById(S.wallId), k = w && selWork(w);
     if (k && k.k !== 'cut' && !isEntityLocked(w)) { k.sh = S.shape; if (k.sh === 'round') k.h = k.w; clampWork(w, k); commit(); } else { ui(); render(); }
@@ -15810,6 +15871,12 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
         h += '<div class="wk-row">' + (A ? '<button class="wk-b" data-a="mnew">↩ Nuova misura</button>' : '') + '<button class="wk-b sc-fine" data-a="done" title="Interrompe il comando e torna a Seleziona">✔ Fine</button></div>';
         foot.innerHTML = h; render(); return;
       }
+      if (S.tool === 'led') {
+        const n = (S.pp || []).length;
+        h += '<div class="wk-hint"><b>Profilo LED</b> sul lato che guardi: ' + (S.ledArm ? 'tocca l\'oggetto da seguire.' : n ? 'tocca il punto successivo, anche in verticale; tocca di nuovo l\'ultimo punto o «Fine linea» per finire.' : 'tocca il primo punto, oppure usa «Segui profilo» su un oggetto.') + ' Col dito: tocca e trascina, il cursore si stacca; al rilascio il punto è confermato.</div>';
+        h += '<div class="wk-row"><button class="wk-b' + (S.ledArm ? ' on' : '') + '" data-a="ledarm">⤷ Segui profilo</button>' + (n >= 1 ? '<button class="wk-b" data-a="ledundo">↩ Togli punto</button>' : '') + (n >= 2 ? '<button class="wk-b" data-a="ledclose">✔ Fine linea</button>' : '') + '<button class="wk-b sc-fine" data-a="done" style="margin-left:auto">✔ Fine</button></div>';
+        foot.innerHTML = h; render(); return;
+      }
       if (S.tool === 'pit') {
         const n = (S.pp || []).length, poly = S.pitMode === 'poly', fin = window.SCpit ? SCpit.last() : null;
         h += '<div class="wk-hint"><b>Pittura</b> sul lato che guardi' + (fin ? ' · «' + esc(fin.name) + '»' : '') + ': ' + (poly ? (n ? 'tocca il punto successivo; tocca il primo punto o «Chiudi contorno» per finire.' : 'tocca il primo punto del contorno.') : 'tocca il primo angolo, poi l\'angolo opposto.' + (S.first ? ' <b>Ora il secondo angolo.</b>' : '')) + '</div>';
@@ -15831,7 +15898,8 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       if (o.kind === 'cp') { const v = SCcg.voce(e); if (v) h += S.sumOpen ? '<div class="wk-sum" data-a="sum" style="cursor:pointer"><b>Voce di computo (a corpo) ▾</b><br>' + esc(v.desc) + '<br><span style="color:#9ca3b8">' + esc(v.det) + '</span></div>' : '<button class="wk-b" data-a="sum" style="height:30px;font-weight:400;color:#cbd5e1">Voce di computo ▸ <span style="color:#9ca3b8">' + esc(v.det) + '</span></button>'; }
       if (o.kind === 'riv' && window.SCriv) h += SCriv.panelHTML(w, e);
       if (o.kind === 'pit' && window.SCpit) h += SCpit.panelHTML(w, e);
-      h += '<div class="wk-row"><button class="wk-b" data-a="oprops">' + (o.kind === 'cp' ? 'Stratigrafia e prezzo' : o.kind === 'riv' || o.kind === 'pit' ? 'Duplica' : 'Altre proprietà') + '</button></div>';
+      if (o.kind === 'led' && window.SCwl) h += SCwl.panelHTML(w, e); else h += '<div class="wk-row"><button class="wk-b" data-a="ledfollow" title="Crea un profilo LED che copia il contorno di questo oggetto">⤷ Segui profilo (LED)</button></div>';
+      h += '<div class="wk-row"><button class="wk-b" data-a="oprops">' + (o.kind === 'cp' ? 'Stratigrafia e prezzo' : o.kind === 'riv' || o.kind === 'pit' || o.kind === 'led' ? 'Duplica' : 'Altre proprietà') + '</button></div>';
       if (o.kind === 'door') h += '<div class="wk-hint">La porta parte sempre da terra.</div>';
     } else if (k) {
       const F = fields(w, k);
@@ -15874,8 +15942,12 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       const a = ab.dataset.a, k = selWork(w);
       if (a === 'sum') { S.sumOpen = !S.sumOpen; ui(); return; }
       if (a === 'mnew') { S.m = null; S.cur = null; ui(); render(); return; }
-      if (a === 'done') { S.moveOn = null; S.selId = null; S.oSel = null; S.field = null; S.buf = ''; S.tool = 'sel'; S.first = null; S.cur = null; S.m = null; S.pp = []; if (window.SCpit) SCpit.setCur(null); ui(); render(); return; }
+      if (a === 'done') { S.ledArm = false; S.moveOn = null; S.selId = null; S.oSel = null; S.field = null; S.buf = ''; S.tool = 'sel'; S.first = null; S.cur = null; S.m = null; S.pp = []; if (window.SCpit) SCpit.setCur(null); ui(); render(); return; }
       if (a === 'mv') { S.moveOn = isMove() ? null : selKey(); ui(); render(); return; }
+      if (a === 'ledfollow') { ledFollowSel(w); return; }
+      if (a === 'ledarm') { if (S.ledArm) { S.ledArm = false; ui(); render(); } else ledFollowSel(w); return; }
+      if (a === 'ledundo') { (S.pp || []).pop(); ui(); render(); return; }
+      if (a === 'ledclose') { ledClose(w); return; }
       if (a === 'pmode') { S.pitMode = ab.dataset.m; S.pp = []; S.first = null; ui(); return; }
       if (a === 'pundo') { (S.pp || []).pop(); ui(); render(); return; }
       if (a === 'pclose') { pitClose(w); return; }
@@ -15885,11 +15957,13 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
         if (a === 'desel') { S.oSel = null; S.field = null; ui(); return; }
         if (!e2) return;
         if (a === 'oprops' && o.kind === 'pit') { if (lockedO(o)) return toast('Livello bloccato'); const n = SCpit.dup(w, e2); if (!n) return toast('Non c\'è spazio per duplicarla'); S.oSel = {kind: 'pit', id: n.id}; commit('Pittura duplicata'); return; }
+        if (a === 'oprops' && o.kind === 'led') { if (lockedO(o)) return toast('Livello bloccato'); const n = SCwl.dup(w, e2); if (!n) return toast('Non c\'è spazio per duplicarlo'); S.oSel = {kind: 'led', id: n.id}; commit('Profilo LED duplicato'); return; }
         if (a === 'oprops' && o.kind === 'riv') { if (lockedO(o)) return toast('Livello bloccato'); const n = SCriv.dup(w, e2); if (!n) return toast('Non c\'è spazio per duplicarlo'); S.oSel = {kind: 'riv', id: n.id}; commit('Rivestimento duplicato'); return; }
         if (a === 'oprops') { state.selected = {type: o.kind === 'cp' ? 'wall' : o.kind === 'pil' ? 'furniture' : o.kind, id: o.id}; state.sel = [state.selected]; try { updateSelectionPanel(); } catch (_) {} const sp = $w('selectionPanel'); if (sp) sp.style.display = 'block'; toast('Proprietà nel riquadro di selezione'); return; }
         if (lockedO(o)) return toast('Livello bloccato');
         if (o.kind === 'riv') SCriv.remove(w, e2);
         else if (o.kind === 'pit') SCpit.remove(w, e2);
+        else if (o.kind === 'led') SCwl.remove(SCwl.hostOf(e2.id) || w, e2);
         else if (o.kind === 'cp') { state.walls = state.walls.filter(x => x !== e2); try { detectRooms(); updateRoomList(); } catch (_) {} }
         else if (o.kind === 'pil') state.furniture = state.furniture.filter(x => x !== e2); else if (o.kind === 'door') state.doors = state.doors.filter(x => x !== e2); else state.windows = state.windows.filter(x => x !== e2);
         S.oSel = null; S.field = null; commit(ON[o.kind] + ' eliminata'); return;
@@ -17028,9 +17102,11 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       botole(c).forEach(t => bot.push(Math.round(t.w * 100) + '×' + Math.round(t.h * 100) + ' cm (' + nm + ')'));
     });
     const tot = (fn) => cs.reduce((s2, c) => s2 + sumL(fn(c)), 0);
-    const qv = tot(ledSegs), LS = lineSegs(), qp = sumL(LS);
+    const WS2 = (window.SCwl && SCwl.segs) ? SCwl.segs() : [], qv = tot(ledSegs), LS = lineSegs(), qp = sumL(LS) + sumL(WS2);
     const byEl = new Map(); LS.forEach(q => { byEl.set(q.el, (byEl.get(q.el) || 0) + q.L); kp.add(q.k); wp.add(q.w); });
     [...byEl].forEach(([el, L]) => pro.push((el.name || 'profilo LED') + ' ' + f2(L) + ' ml'));
+    const byW = new Map(); WS2.forEach(q => { byW.set(q.wall, (byW.get(q.wall) || 0) + q.L); kp.add(q.k); wp.add(q.w); });
+    [...byW].forEach(([wl, L]) => pro.push('prospetto ' + (wl.name || 'muro') + ' ' + f2(L) + ' ml'));
     if (qv > 0.001) out.push({key: 'csled_vel', um: 'm', q: qv, desc: 'Fornitura e posa di strip LED ' + [...kv].join('/') + ' K, ' + [...wv].join('/') + ' W/m, in gola luminosa nelle velette dei controsoffitti, con profilo in alluminio, alimentatore e collegamenti.', det: vel.join('; ') + ' = ' + f2(qv) + ' ml'});
     if (qp > 0.001) out.push({key: 'csled_pro', um: 'm', q: qp, desc: 'Fornitura e posa di profilo in alluminio con strip LED ' + [...kp].join('/') + ' K, ' + [...wp].join('/') + ' W/m, a filo soffitto o controsoffitto, compresi stuccatura del bordo, alimentatore e collegamenti.', det: pro.join('; ') + ' = ' + f2(qp) + ' ml'});
     if (bot.length) out.push({key: 'csbot', um: 'n.', q: bot.length, desc: 'Fornitura e posa di botola d\'ispezione in cartongesso a filo, con telaio in alluminio e apertura a scatto.', det: bot.join('; ')});
@@ -17044,6 +17120,10 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
         const n = Math.max(1, Math.ceil(q.L / 1.5)), lm = cf.w * 90 * q.L / n;
         for (let i = 0; i < n; i++) { const t = (i + 0.5) / n; out.push([q.a.x + (q.b.x - q.a.x) * t, q.a.y + (q.b.y - q.a.y) * t, (f.elev || 0) + q.z, 0, lm, cf.k, 'striscia']); }
       });
+    });
+    ((window.SCwl && SCwl.segs) ? SCwl.segs().map(q => ({a: q.p, b: q.q, L: q.L, z: null, fl: q.fl, k: q.k, w: q.w, v3: true})) : []).forEach(q => {   /* v24.9: profili sul prospetto, anche verticali */
+      const f = state.floors.find(x => x.id === q.fl) || {elev: 0}, n = Math.max(1, Math.ceil(q.L / 1.5)), lm = q.w * 90 * q.L / n;
+      for (let i = 0; i < n; i++) { const t = (i + 0.5) / n; out.push([q.a.x + (q.b.x - q.a.x) * t, q.a.y + (q.b.y - q.a.y) * t, (f.elev || 0) + q.a.z + (q.b.z - q.a.z) * t, 0, lm, q.k, 'striscia']); }
     });
     lineSegs().forEach(q => {
       const f = state.floors.find(x => x.id === q.fl) || {elev: 0}, n = Math.max(1, Math.ceil(q.L / 1.5)), lm = q.w * 90 * q.L / n;
@@ -20793,9 +20873,11 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
    SC_REL.v è l'unica versione: titolo, Guida, file salvato, avvisi e riga messaggi la leggono da qui.
    ======================================================================== */
 window.SC_REL = {
-  v: '24.7', d: '28/10/2026',
+  v: '24.9', d: '28/10/2026',
   news: [
-    ['24.7', 'Profilo LED: comando «Segui profilo» (Disegna › Cartongesso, o nella barra dello strumento). Con un muro, una controparete, un controsoffitto, una falsa trave, un\'Area, un locale o un disegno già selezionato, la striscia ne copia il contorno; altrimenti tocchi l\'oggetto. Nei disegni segue anche i tratti collegati e gli archi. Nel riquadro: quota da pavimento (vuoto = a soffitto) e pallini che curvano il tratto per forme tonde.'],
+    ['24.9', 'Profilo LED anche sul prospetto: nuovo strumento «💡 LED» (linee libere, anche in verticale, con punti da spostare e tratti curvi) e «Segui profilo» che copia il contorno di aperture, nicchie, fori, rivestimenti, pitture e contropareti. Si vede in 3D, illumina di notte e va nel computo al metro insieme a quelli della pianta.'],
+        ['24.8', 'Notte nel 3D: tolta la luna, una luce fissa che schiariva un solo lato dei muri. Ora le differenze di luce tra le pareti vengono solo dalle lampade.'],
+        ['24.7', 'Profilo LED: comando «Segui profilo» (Disegna › Cartongesso, o nella barra dello strumento). Con un muro, una controparete, un controsoffitto, una falsa trave, un\'Area, un locale o un disegno già selezionato, la striscia ne copia il contorno; altrimenti tocchi l\'oggetto. Nei disegni segue anche i tratti collegati e gli archi. Nel riquadro: quota da pavimento (vuoto = a soffitto) e pallini che curvano il tratto per forme tonde.'],
         ['24.6', 'Nuovo strumento «Profilo LED» (Disegna › Cartongesso): linea libera disegnata come un muro, col cursore sfalsato, punto per punto, ovunque e di qualsiasi lunghezza. Sostituisce l\'opzione per lato. Si trascinano punti e tratti, nome, colore e W/m nel riquadro; il computo ha la voce al metro. Le linee in costruzione di controsoffitti e false travi ora seguono il cursore.'],
         ['24.5', 'Controsoffitti: «LED nelle velette» (gola luminosa, colore e W/m), «Profilo LED a filo» attivabile per lato (tocca il pallino del lato), «Botola d\'ispezione» con misure in cm, da trascinare nel disegno. Si vedono in 2D e 3D; di notte nel 3D e nel tour le strisce illuminano. Il computo ha tre voci a parte: ml LED nelle velette, ml profili a filo, n. botole.'],
     ['24.4', 'Vista: due nuovi interruttori, «Skin dei pavimenti (Aree)» e «Skin dei rivestimenti». Spenti, pavimenti e rivestimenti si vedono in tinta unita nel 2D, nel 3D, nel prospetto e in stampa; computo e dati non cambiano. Il file per il cliente mostra sempre le finiture complete.'],
@@ -23186,6 +23268,134 @@ window.SC_REL = {
     box.addEventListener('change', () => { try { checkpoint(); } catch (_) {} });
     ['pointerdown', 'touchstart', 'wheel'].forEach(ev => box.addEventListener(ev, e => e.stopPropagation(), {passive: true}));
   }
+})();
+</script>
+<script>
+/* ========================================================================
+   v24.9 · PROFILI LED SUL PROSPETTO
+   w.leds = [{id, f (lato), pts:[{x (lungo il muro da p1), z (quota), b (freccia dell'arco)}], k (Kelvin), w (W/m), name}]
+   Linee libere, anche verticali; si disegnano punto per punto o con «Segui profilo» (copiano il contorno di un oggetto
+   e restano indipendenti). Computo, 3D e luci di notte passano da segs().
+   ======================================================================== */
+(function () {
+  const Lw = w => Math.hypot(w.p2.x - w.p1.x, w.p2.y - w.p1.y), r3 = v => Math.round(v * 1000) / 1000;
+  const toU = (w, f, x) => f > 0 ? Lw(w) - x : x;
+  const f2 = v => (Math.round(v * 100) / 100).toFixed(2).replace('.', ',');
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, m => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[m]));
+  const KS = [[2700, 'Calda 2700 K'], [3000, 'Calda 3000 K'], [4000, 'Naturale 4000 K']], WS = [4, 6, 8, 10, 14];
+  const leds = w => Array.isArray(w.leds) ? w.leds : (w.leds = []);
+  const find = id => { for (const w of state.walls) { const r = (w.leds || []).find(x => x.id === id); if (r) return r; } return null; };
+  const hostOf = id => state.walls.find(w => (w.leds || []).some(x => x.id === id));
+  const D = r => SCcs.dense({pts: r.pts.map(p => ({x: p.x, y: p.z, b: p.b}))}, false);   /* punti reali, archi compresi */
+  const len = r => { const P = D(r); let s = 0; for (let i = 0; i + 1 < P.length; i++) s += Math.hypot(P[i + 1].x - P[i].x, P[i + 1].y - P[i].y); return s; };
+  let CV = null;
+  const setCur = (r, i) => { CV = r && i != null ? {id: r.id, i} : null; };
+  function add(w, f, pts, name) {
+    const L = Lw(w), H = getWallHeight(w);
+    const P = pts.map(p => { const o = {x: r3(Math.max(0, Math.min(L, p.x))), z: r3(Math.max(0, Math.min(H, p.z)))}; if (p.b) o.b = Math.round(p.b * 10000) / 10000; return o; });
+    if (P.length < 2) { toast('Servono almeno 2 punti'); return null; }
+    const r = {id: newId(), f, pts: P, k: +appSettings.ledK || 3000, w: +appSettings.ledW || 8, name: name || ''};
+    if (len(r) < 0.02) { toast('Linea troppo corta'); return null; }
+    leds(w).push(r); return r;
+  }
+  function remove(w, r) { w.leds = leds(w).filter(x => x !== r); }
+  function dup(w, r) {
+    const L = Lw(w), n = JSON.parse(JSON.stringify(r)); n.id = newId(); const xs = r.pts.map(p => p.x), wd = Math.max(...xs) - Math.min(...xs) + 0.1;
+    let d = r.f > 0 ? -wd : wd; if (Math.max(...xs) + d > L || Math.min(...xs) + d < 0) d = -d; if (Math.max(...xs) + d > L || Math.min(...xs) + d < 0) return null;
+    n.pts.forEach(p => { p.x = r3(p.x + d); }); leds(w).push(n); return n;
+  }
+  const bbox = r => { const P = D(r); return {x0: Math.min(...P.map(p => p.x)), x1: Math.max(...P.map(p => p.x)), z0: Math.min(...P.map(p => p.y)), z1: Math.max(...P.map(p => p.y))}; };
+  function fitBox(w, r, q) {   /* sposta (e, se cambia la misura, scala) la linea */
+    const b = bbox(r), L = Lw(w), H = getWallHeight(w), bw = b.x1 - b.x0, bh = b.z1 - b.z0;
+    const nw = Math.max(bw < 1e-6 ? 0 : 0.01, Math.min(L, q.w)), nh = Math.max(bh < 1e-6 ? 0 : 0.01, Math.min(H, q.h)), x0 = Math.max(0, Math.min(L - nw, q.cx - nw / 2)), z0 = Math.max(0, Math.min(H - nh, q.y));
+    r.pts.forEach(p => { p.x = r3(x0 + (bw < 1e-6 ? 0 : (p.x - b.x0) / bw * nw)); p.z = r3(z0 + (bh < 1e-6 ? 0 : (p.z - b.z0) / bh * nh)); });
+  }
+  function hit(w, face, x, z, tol) {
+    const list = leds(w).filter(r => r.f === face).reverse();
+    for (const r of list) { const P = D(r); for (let i = 0; i + 1 < P.length; i++) { const a = P[i], c = P[i + 1], dx = c.x - a.x, dy = c.y - a.y, L2 = dx * dx + dy * dy || 1e-9, t = Math.max(0, Math.min(1, ((x - a.x) * dx + (z - a.y) * dy) / L2)); if (Math.hypot(a.x + dx * t - x, a.y + dy * t - z) <= tol) return r; } }
+    return null;
+  }
+  const chordMid = (p, q) => { const L = Math.hypot(q.x - p.x, q.z - p.z) || 1, s = p.b || 0; return {x: (p.x + q.x) / 2 - (q.z - p.z) / L * s, z: (p.z + q.z) / 2 + (q.x - p.x) / L * s}; };
+  function hitVertex(w, r, face, sx, sy, px, py) {
+    let best = null, bd = 16; r.pts.forEach((p, i) => { const d = Math.hypot(sx(toU(w, face, p.x)) - px, sy(p.z) - py); if (d < bd) { bd = d; best = {i, ins: false}; } });
+    if (best) return best;
+    for (let i = 0; i + 1 < r.pts.length; i++) { const m = chordMid(r.pts[i], r.pts[i + 1]), d = Math.hypot(sx(toU(w, face, m.x)) - px, sy(m.z) - py); if (d < 12 && d < bd) { bd = d; best = {i, ins: true}; } }
+    return best;
+  }
+  function moveVertex(w, r, i, x, z) { const L = Lw(w), H = getWallHeight(w), b = r.pts[i].b; r.pts[i] = {x: r3(Math.max(0, Math.min(L, x))), z: r3(Math.max(0, Math.min(H, z)))}; if (b) r.pts[i].b = b; }
+  function insertVertex(r, i) { const p = r.pts[i], q = r.pts[i + 1], m = {x: (p.x + q.x) / 2, z: (p.z + q.z) / 2}; if (p.b) { delete p.b; } r.pts.splice(i + 1, 0, m); return i + 1; }
+  function setBulge(r, i, x, z) {   /* trascinando il punto a metà tratto: curva */
+    const p = r.pts[i], q = r.pts[i + 1], L = Math.hypot(q.x - p.x, q.z - p.z) || 1, s = ((x - (p.x + q.x) / 2) * -(q.z - p.z) + (z - (p.z + q.z) / 2) * (q.x - p.x)) / L;
+    if (Math.abs(s) < 0.005) delete p.b; else p.b = Math.round(Math.max(-L, Math.min(L, s)) * 10000) / 10000;
+  }
+  function delVertex(r, i) { if (r.pts.length <= 2) return false; r.pts.splice(i, 1); return true; }
+  function draw(cx, w, face, sx, sy, s, oSel) {
+    leds(w).forEach(r => {
+      if (r.f !== face || r.pts.length < 2) return;
+      const sel = oSel && oSel.kind === 'led' && oSel.id === r.id, P = D(r);
+      cx.save(); cx.lineCap = 'round'; cx.lineJoin = 'round'; cx.setLineDash([]);
+      cx.beginPath(); P.forEach((p, i) => { const X = sx(toU(w, face, p.x)), Y = sy(p.y); i ? cx.lineTo(X, Y) : cx.moveTo(X, Y); });
+      cx.strokeStyle = sel ? '#22d3ee' : '#eab308'; cx.lineWidth = sel ? 5 : 3.6; cx.stroke(); cx.strokeStyle = 'rgba(255,255,255,.9)'; cx.lineWidth = 1.1; cx.stroke();
+      if (sel) {
+        for (let i = 0; i + 1 < r.pts.length; i++) { const m = chordMid(r.pts[i], r.pts[i + 1]); cx.beginPath(); cx.arc(sx(toU(w, face, m.x)), sy(m.z), 5, 0, 7); cx.fillStyle = 'rgba(255,255,255,.7)'; cx.fill(); cx.strokeStyle = '#22d3ee'; cx.lineWidth = 1.5; cx.stroke(); }
+        r.pts.forEach((p, i) => { const X = sx(toU(w, face, p.x)), Y = sy(p.z); cx.fillStyle = CV && CV.id === r.id && CV.i === i ? '#fbbf24' : '#fff'; cx.strokeStyle = '#0891b2'; cx.lineWidth = 2; cx.fillRect(X - 6, Y - 6, 12, 12); cx.strokeRect(X - 6, Y - 6, 12, 12); });
+      }
+      cx.restore();
+    });
+  }
+  function drawTmp(cx, w, face, sx, sy, P, cur) {
+    if (!P.length) return; cx.save(); cx.strokeStyle = '#eab308'; cx.lineWidth = 3; cx.setLineDash([7, 4]); cx.lineCap = 'round';
+    cx.beginPath(); P.forEach((p, i) => i ? cx.lineTo(sx(p.u), sy(p.v)) : cx.moveTo(sx(p.u), sy(p.v))); if (cur) cx.lineTo(sx(cur.u), sy(cur.v)); cx.stroke(); cx.setLineDash([]);
+    P.forEach((p, i) => { cx.fillStyle = i === 0 ? '#fbbf24' : '#eab308'; cx.beginPath(); cx.arc(sx(p.u), sy(p.v), i === 0 ? 7 : 5, 0, 7); cx.fill(); }); cx.restore();
+  }
+  function panelHTML(w, r) {
+    const ist = 'padding:7px 8px;border-radius:6px;border:1px solid #475569;background:#12151f;color:#e5e7eb;font:14px sans-serif;width:100%;box-sizing:border-box';
+    const sl = (k, opts, v) => '<select data-ld="' + k + '" style="' + ist + '">' + opts.map(([a, n]) => '<option value="' + a + '"' + (+v === +a ? ' selected' : '') + '>' + n + '</option>').join('') + '</select>';
+    return '<div class="wk-row" style="gap:6px"><label style="flex:1;font-size:12px;color:#cbd5e1">Colore luce' + sl('k', KS, r.k || 3000) + '</label><label style="flex:1;font-size:12px;color:#cbd5e1">Potenza' + sl('w', WS.map(x => [x, x + ' W/m']), r.w || 8) + '</label>' +
+      '<label style="flex:1;font-size:12px;color:#cbd5e1">Punto a metà tratto<select data-ld="mid" style="' + ist + '"><option value="move"' + (appSettings.csMid === 'curve' ? '' : ' selected') + '>Aggiunge un vertice</option><option value="curve"' + (appSettings.csMid === 'curve' ? ' selected' : '') + '>Curva il tratto</option></select></label></div>' +
+      '<div class="wk-hint"><b>' + f2(len(r)) + ' ml</b> · voce «profilo LED» al metro nel computo. Quadratini: sposta i punti · pallini: nuovo vertice o curva · trascina il resto per spostare tutta la linea.</div>' +
+      (CV && CV.id === r.id && r.pts[CV.i] && r.pts.length > 2 ? '<div class="wk-row"><button class="wk-b" data-ld="vdel">✖ Togli il vertice ' + (CV.i + 1) + '</button></div>' : '');
+  }
+  function bind(foot, ctl) {
+    foot.addEventListener('change', e => {
+      const t = e.target.closest && e.target.closest('[data-ld]'); if (!t) return; const o = ctl.sel(); if (!o || o.kind !== 'led') return; const r = find(o.id); if (!r) return;
+      if (t.dataset.ld === 'mid') { appSettings.csMid = t.value; try { persistSettings(); } catch (_) {} return; }
+      if (t.dataset.ld === 'k') { r.k = +t.value || 3000; appSettings.ledK = r.k; } else if (t.dataset.ld === 'w') { r.w = +t.value || 8; appSettings.ledW = r.w; }
+      try { persistSettings(); } catch (_) {} ctl.commit();
+    });
+    foot.addEventListener('click', e => {
+      const b = e.target.closest && e.target.closest('button[data-ld]'); if (!b) return; const o = ctl.sel(); if (!o || o.kind !== 'led') return; const r = find(o.id); if (!r) return;
+      if (b.dataset.ld === 'vdel' && CV && CV.id === r.id) { if (delVertex(r, CV.i)) { CV = null; ctl.commit('Vertice tolto'); } }
+    });
+  }
+  /* segmenti reali in 3D: {p, q} in coordinate di pianta (x, y) e quota z; L = lunghezza vera */
+  function segs() {
+    const out = [];
+    state.walls.forEach(w => {
+      if (!isEntityVisible(w) || !(w.leds || []).length) return;
+      const L = Lw(w), ux = (w.p2.x - w.p1.x) / L, uy = (w.p2.y - w.p1.y) / L, t = getWallThickness(w), fl = floorOf(w);
+      (w.leds || []).forEach(r => {
+        const off = (r.f > 0 ? -1 : 1) * (t / 2 + 0.012), P = D(r);
+        const at = q => ({x: w.p1.x + ux * q.x + uy * off, y: w.p1.y + uy * q.x - ux * off, z: q.y});
+        for (let i = 0; i + 1 < P.length; i++) { const a = at(P[i]), c = at(P[i + 1]), l = Math.hypot(c.x - a.x, c.y - a.y, c.z - a.z); if (l < 1e-4) continue; out.push({p: a, q: c, L: l, fl, k: +r.k || 3000, w: +r.w || 8, el: r, wall: w}); }
+      });
+    });
+    return out;
+  }
+  const colK = k => k <= 2700 ? 0xffc98a : k <= 3000 ? 0xffd9a8 : 0xfff0d8;
+  function add3D(scene) {
+    if (!window.THREE) return;
+    segs().forEach(q => {
+      try {
+        const f = state.floors.find(x => x.id === q.fl) || {elev: 0}, m = new THREE.MeshBasicMaterial({color: colK(q.k)}); m.toneMapped = false;
+        const dir = new THREE.Vector3(q.q.x - q.p.x, q.q.z - q.p.z, -(q.q.y - q.p.y)), mesh = new THREE.Mesh(new THREE.BoxGeometry(q.L, 0.02, 0.02), m);
+        mesh.position.set((q.p.x + q.q.x) / 2, (f.elev || 0) + (q.p.z + q.q.z) / 2, -(q.p.y + q.q.y) / 2);
+        mesh.quaternion.setFromUnitVectors(new THREE.Vector3(1, 0, 0), dir.clone().normalize()); mesh.userData.led = 1; scene.add(mesh);
+      } catch (e) { console.warn('LED prospetto 3D', e); }
+    });
+  }
+  window.SCwl = {find, hostOf, add, remove, dup, bbox, fitBox, hit, hitVertex, moveVertex, insertVertex, setBulge, delVertex, setCur, draw, drawTmp, panelHTML, bind, segs, add3D, len, D};
+  if (window.SCwk && SCwk.commit) bind(document.getElementById('wkFoot'), {commit: SCwk.commit, sel: SCwk.sel});
 })();
 </script>
 </body>
