@@ -1,4 +1,4 @@
-SimplyCAD Pro - pubblicazione su GitHub Pages (v25.0)
+SimplyCAD Pro - pubblicazione su GitHub Pages (v25.4)
 
 Contenuto (vanno caricati tutti, senza rinominarli e SENZA cartelle intorno):
   index.html  sw.js  manifest.webmanifest  icon-192.png  icon-512.png  icon-maskable.png  README.md
@@ -342,3 +342,20 @@ NOVITÀ v25.0
 - Impianti › «Allinea luci al centro»: porta le luci a soffitto sull'asse del corridoio (tenendo le distanze) o al centro della stanza; anche dal pannello della singola luce («Al centro stanza», «Sull'asse»).
 - Applique e Faretto a parete: si agganciano al muro, si vedono, si inseriscono e si spostano anche sul prospetto (strumento «🔆 Luce»), con tipo, potenza e colore. In 3D e di notte illuminano.
 - Cambiando tipo di luce le misure si adattano (faretto 9 cm, applique 12 cm…); la lampada nel 3D segue le misure dell'oggetto.
+
+NOVITÀ v25.1
+- «💶 Prezzo e nota» nel pannello di muro, porta, finestra, arredo/impianto, stanza e, dal prospetto, lavorazioni, rivestimenti e pitture: il prezzo della voce di computo è già scritto; se lo cambi vale per tutte le lavorazioni uguali. Le voci a corpo valgono per il singolo oggetto.
+- La nota dell'oggetto esce nel dettaglio della voce di computo.
+- I prezzi del computo ora sono salvati nel progetto (prima solo nel browser): sul tablet e sul PC trovi gli stessi prezzi.
+
+NOVITÀ v25.3
+- Rivestimento: ora ha lo spessore (cm) e si vede in 3D con il corpo pieno.
+- Impianti sul prospetto: strumento «Impianti» con tubi e cavi dentro il muro (acqua calda rosso, fredda blu, scarichi neri, fase marrone, neutro grigio, terra giallo, canalina). Nascosti di default, si mostrano da Vista > Impianti. Nel computo a metro lineare.
+- Punti a parete: applique, faretto a parete, presa, interruttore, quadro, inseribili e modificabili in prospetto.
+- Prezzo e nota su ogni oggetto, salvati nel progetto.
+- Corretto: «Aggiungi voce» nel computo non si apriva.
+
+NOVITÀ v25.4
+- Impianti in pianta: menu Strumenti > Impianti > «Impianto a linea». Disegni tubi e cavi liberi, scegli tipo, diametro e posizione: a pavimento (nel massetto), sopra il controsoffitto, oppure a quota libera. Stessi colori del prospetto.
+- Compaiono in pianta, in 3D e nel computo (al metro). Si mostrano da Vista > Impianti.
+- Sezione: gli impianti tagliati appaiono come punti colorati; quelli che corrono nel piano di taglio (entro 15 cm) come linee.

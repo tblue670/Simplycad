@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v25.0</title>
+<title>SimplyCAD Pro · v25.4</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -955,6 +955,7 @@ body.mode-3d #infoStrip .scale-badge{display:none}
         <label><input type="checkbox" id="showWallNames" checked> Nomi muri</label>
         <label><input type="checkbox" id="showSkFloor" checked> Skin dei pavimenti (Aree)</label>
         <label><input type="checkbox" id="showSkRiv" checked> Skin dei rivestimenti</label>
+        <label><input type="checkbox" id="showImp"> Impianti (tubi e cavi nei muri)</label>
       </div>
       <div class="menu-sep"></div>
       <div class="menu-label">Solo nel 3D</div>
@@ -4193,7 +4194,7 @@ const buildProjectBlob = () => {
     furniture: state.furniture, labels: state.labels, stairs: state.stairs, customFurn: window.SCcf ? SCcf.exportUsed() : {},
     layers: state.layers, currentLayerId: state.currentLayerId,
     nextLayerId: state.nextLayerId, nextId: state.nextId,
-    floors: state.floors, currentFloorId: state.currentFloorId, floorSeq: state.floorSeq, roofs: state.roofs, holes: state.holes, zones: state.zones, ceils: state.ceils || [], beams: state.beams || [], cmpOff: state.cmpOff || [], cmpCustom: state.cmpCustom || [], sections: state.sections || [], tourStart: state.tourStart || null, light3d: state.light3d || null, cart: state.cart || null,
+    floors: state.floors, currentFloorId: state.currentFloorId, floorSeq: state.floorSeq, roofs: state.roofs, holes: state.holes, zones: state.zones, ceils: state.ceils || [], beams: state.beams || [], cmpOff: state.cmpOff || [], cmpCustom: state.cmpCustom || [], cmpPrezzi: state.cmpPrezzi || null, sections: state.sections || [], tourStart: state.tourStart || null, light3d: state.light3d || null, cart: state.cart || null,
     meta: window.SCmeta ? SCmeta.get() : undefined,   /* v22.0: Dati progetto nel file */
     skins: state.skins || [], skinData: window.SCskin ? SCskin.exportUsed() : undefined,
     photos: window.SCph ? SCph.exportUsed() : undefined,
@@ -4304,7 +4305,7 @@ document.getElementById('fileInput').onchange = (e) => {
       state.stairs = data.stairs || [];
       state.floors = (data.floors && data.floors.length) ? data.floors : [{id: 'f0', name: 'Piano terra', elev: 0, h: 3, slabT: 0.3}];
       state.currentFloorId = state.floors.some(f => f.id === data.currentFloorId) ? data.currentFloorId : sortedFloors()[0].id;
-      state.floorSeq = data.floorSeq || state.floors.length; state.roofs = data.roofs || []; state.holes = data.holes || []; state.zones = data.zones || []; state.skins = data.skins || []; if (window.SCskin) SCskin.ingest(data.skinData, state.skins); state.ceils = data.ceils || []; state.beams = data.beams || []; state.cmpOff = data.cmpOff || []; state.cmpCustom = data.cmpCustom || []; state.sections = data.sections || []; state.tourStart = data.tourStart || null; state.light3d = data.light3d || null; state.cart = data.cart || null; try { if (data.meta && window.SCmeta) SCmeta.set(data.meta); } catch (_) {} try { if (window.SCph) { SCph.importAll(data.photos); const np = data.photos ? Object.keys(data.photos).length : 0, miss = SCph.missing(); setTimeout(() => toast('Progetto aperto' + (np ? ' · ' + np + ' foto' : '') + (miss ? ' · ⚠ ' + miss + ' foto non contenute nel file' : '')), 700); } } catch (_) {}
+      state.floorSeq = data.floorSeq || state.floors.length; state.roofs = data.roofs || []; state.holes = data.holes || []; state.zones = data.zones || []; state.skins = data.skins || []; if (window.SCskin) SCskin.ingest(data.skinData, state.skins); state.ceils = data.ceils || []; state.beams = data.beams || []; state.cmpOff = data.cmpOff || []; state.cmpCustom = data.cmpCustom || []; state.cmpPrezzi = data.cmpPrezzi || null; state.sections = data.sections || []; state.tourStart = data.tourStart || null; state.light3d = data.light3d || null; state.cart = data.cart || null; try { if (data.meta && window.SCmeta) SCmeta.set(data.meta); } catch (_) {} try { if (window.SCph) { SCph.importAll(data.photos); const np = data.photos ? Object.keys(data.photos).length : 0, miss = SCph.missing(); setTimeout(() => toast('Progetto aperto' + (np ? ' · ' + np + ' foto' : '') + (miss ? ' · ⚠ ' + miss + ' foto non contenute nel file' : '')), 700); } } catch (_) {}
       state.nextId = data.nextId || 1;
       state.layers = data.layers && data.layers.length ? data.layers :
         [{id: DEFAULT_LAYER_ID, name: '0', color: null, visible: true, locked: false}];
@@ -4388,7 +4389,7 @@ async function newSession() {
   state.furniture = []; state.labels = []; state.stairs = []; state.images = []; state.activeImageId = null;
   state.layers = [{id: DEFAULT_LAYER_ID, name: '0', color: null, visible: true, locked: false}];
   state.currentLayerId = DEFAULT_LAYER_ID; state.nextLayerId = 1;
-  state.floors = [{id: 'f0', name: 'Piano terra', elev: 0, h: 3, slabT: 0.3}]; state.currentFloorId = 'f0'; state.floorSeq = 1; state.roofs = []; state.holes = []; state.zones = []; state.skins = []; state.ceils = []; state.beams = []; state.cmpOff = []; state.cmpCustom = []; state.sections = []; state.tourStart = null; state.light3d = null; state.cart = null; try { if (window.SCmeta) SCmeta.set(null); } catch (_) {}
+  state.floors = [{id: 'f0', name: 'Piano terra', elev: 0, h: 3, slabT: 0.3}]; state.currentFloorId = 'f0'; state.floorSeq = 1; state.roofs = []; state.holes = []; state.zones = []; state.skins = []; state.ceils = []; state.beams = []; state.cmpOff = []; state.cmpCustom = []; state.cmpPrezzi = null; state.sections = []; state.tourStart = null; state.light3d = null; state.cart = null; try { if (window.SCmeta) SCmeta.set(null); } catch (_) {}
   state.sel = []; state.selected = null; state.pendingPoint = null;
   tmp = null; boxSel = null; drag = null; place = null;
   syncBgControls(); renderLayersPanel(); updateSelectionPanel(); updateRoomList(); refresh(); checkpoint(); fit();
@@ -6508,7 +6509,7 @@ function dragMove(e, raw) {
     }
     drag.target.x = r6(nx); drag.target.y = r6(ny);
     if (drag.target.type === 'pilastro' && window.SCpillar) SCpillar.attach(drag.target);
-    if (drag.target.type === 'punto_luce' && window.SClux) SClux.drag(drag.target);   /* v25.0 */   /* v21.0: aggancio al muro dove lo lasci */
+    if (window.SClux && (drag.target.type === 'punto_luce' || SClux.WALLP[drag.target.type])) SClux.drag(drag.target);   /* v25.0 */   /* v21.0: aggancio al muro dove lo lasci */
     if (state.stairs.includes(drag.target) && $('snapPts').checked) stairAnchor(drag.target, Math.max(0.05, 12 / viewScale), false);
     if (state.mode === '3d') build3D();
   } else if (drag.type === 'measurement') {
@@ -6703,7 +6704,7 @@ const snap = () => JSON.stringify({
   furniture: state.furniture, labels: state.labels, stairs: state.stairs,
   layers: state.layers, currentLayerId: state.currentLayerId, nextLayerId: state.nextLayerId,
   images: state.images.map(i => ({id: i.id, name: i.name, layerId: i.layerId, floorId: i.floorId, opacity: i.opacity, scale: i.scale, x: i.x, y: i.y, rot: i.rot || 0})),
-  floors: state.floors, floorSeq: state.floorSeq, roofs: state.roofs, holes: state.holes, zones: state.zones, ceils: state.ceils || [], beams: state.beams || [], cmpOff: state.cmpOff || [], cmpCustom: state.cmpCustom || [], sections: state.sections || [], tourStart: state.tourStart || null, light3d: state.light3d || null, cart: state.cart || null,
+  floors: state.floors, floorSeq: state.floorSeq, roofs: state.roofs, holes: state.holes, zones: state.zones, ceils: state.ceils || [], beams: state.beams || [], cmpOff: state.cmpOff || [], cmpCustom: state.cmpCustom || [], cmpPrezzi: state.cmpPrezzi || null, sections: state.sections || [], tourStart: state.tourStart || null, light3d: state.light3d || null, cart: state.cart || null,
   skins: state.skins || [],
   nextId: state.nextId
 });
@@ -6725,7 +6726,7 @@ function restore(s) {
     currentLayerId: d.currentLayerId || DEFAULT_LAYER_ID,
     nextLayerId: d.nextLayerId || 1,
     images: Array.isArray(d.images) ? d.images.map(m => { const o = imageStore.get(m.id); return o ? Object.assign(o, m) : null; }).filter(Boolean) : state.images,
-    floors: (d.floors && d.floors.length) ? d.floors : [{id: 'f0', name: 'Piano terra', elev: 0, h: 3, slabT: 0.3}], floorSeq: d.floorSeq || 1, roofs: d.roofs || [], holes: d.holes || [], zones: d.zones || [], skins: d.skins || [], ceils: d.ceils || [], beams: d.beams || [], cmpOff: d.cmpOff || [], cmpCustom: d.cmpCustom || [], sections: d.sections || [], tourStart: d.tourStart || null, light3d: d.light3d || null, cart: d.cart || null,
+    floors: (d.floors && d.floors.length) ? d.floors : [{id: 'f0', name: 'Piano terra', elev: 0, h: 3, slabT: 0.3}], floorSeq: d.floorSeq || 1, roofs: d.roofs || [], holes: d.holes || [], zones: d.zones || [], skins: d.skins || [], ceils: d.ceils || [], beams: d.beams || [], cmpOff: d.cmpOff || [], cmpCustom: d.cmpCustom || [], cmpPrezzi: d.cmpPrezzi || null, sections: d.sections || [], tourStart: d.tourStart || null, light3d: d.light3d || null, cart: d.cart || null,
     nextId: d.nextId, sel: [], selected: null, pendingPoint: null
   });
   if (!state.floors.some(f => f.id === state.currentFloorId)) state.currentFloorId = sortedFloors()[0].id;
@@ -8951,7 +8952,7 @@ $('impAnyInput').onchange = async e => {
     rooms: state.rooms, measurements: state.measurements,
     furniture: state.furniture, labels: state.labels, stairs: state.stairs, customFurn: window.SCcf ? SCcf.exportUsed() : {},
     layers: state.layers, currentLayerId: state.currentLayerId, nextLayerId: state.nextLayerId,
-    floors: state.floors, currentFloorId: state.currentFloorId, floorSeq: state.floorSeq, roofs: state.roofs, holes: state.holes, zones: state.zones, ceils: state.ceils || [], beams: state.beams || [], cmpOff: state.cmpOff || [], cmpCustom: state.cmpCustom || [], sections: state.sections || [], tourStart: state.tourStart || null, light3d: state.light3d || null, cart: state.cart || null,
+    floors: state.floors, currentFloorId: state.currentFloorId, floorSeq: state.floorSeq, roofs: state.roofs, holes: state.holes, zones: state.zones, ceils: state.ceils || [], beams: state.beams || [], cmpOff: state.cmpOff || [], cmpCustom: state.cmpCustom || [], cmpPrezzi: state.cmpPrezzi || null, sections: state.sections || [], tourStart: state.tourStart || null, light3d: state.light3d || null, cart: state.cart || null,
     skins: state.skins || [],
     nextId: state.nextId, imgCount: state.images.filter(i => i.dataUrl).length,
     settings: { wallHeight: $('wallHeight')?.value, wallThickness: $('wallThickness')?.value, gridSize: $('gridSize')?.value }
@@ -9060,7 +9061,7 @@ $('impAnyInput').onchange = async e => {
       state.stairs = d.stairs || [];
       state.floors = (d.floors && d.floors.length) ? d.floors : [{id: 'f0', name: 'Piano terra', elev: 0, h: 3, slabT: 0.3}];
       state.currentFloorId = state.floors.some(f => f.id === d.currentFloorId) ? d.currentFloorId : sortedFloors()[0].id;
-      state.floorSeq = d.floorSeq || state.floors.length; state.roofs = d.roofs || []; state.holes = d.holes || []; state.zones = d.zones || []; state.skins = d.skins || []; if (window.SCskin) SCskin.ingest(null, state.skins); state.ceils = d.ceils || []; state.beams = d.beams || []; state.cmpOff = d.cmpOff || []; state.cmpCustom = d.cmpCustom || []; state.sections = d.sections || []; state.tourStart = d.tourStart || null; state.light3d = d.light3d || null; state.cart = d.cart || null;
+      state.floorSeq = d.floorSeq || state.floors.length; state.roofs = d.roofs || []; state.holes = d.holes || []; state.zones = d.zones || []; state.skins = d.skins || []; if (window.SCskin) SCskin.ingest(null, state.skins); state.ceils = d.ceils || []; state.beams = d.beams || []; state.cmpOff = d.cmpOff || []; state.cmpCustom = d.cmpCustom || []; state.cmpPrezzi = d.cmpPrezzi || null; state.sections = d.sections || []; state.tourStart = d.tourStart || null; state.light3d = d.light3d || null; state.cart = d.cart || null;
       state.nextId = d.nextId || 1;
       if (d.layers && d.layers.length) state.layers = d.layers;
       state.currentLayerId = d.currentLayerId || DEFAULT_LAYER_ID;
@@ -11135,10 +11136,13 @@ updateRoomList();
    ======================================================================== */
 (function () {
   const PK = 'simplycad_computo_prezzi_v1', OK = 'simplycad_computo_opz_v1', METAKEY = 'planimetria_prova_meta_v1';
-  let prices = {}, opt = {dedInt: 4, dedMur: 1, hRiv: 2.2, imprev: 0, iva: 10, rivCucina: false, oneri: 0, tec: 0, ivaTec: 22};
-  try { prices = JSON.parse(localStorage.getItem(PK) || '{}') || {}; } catch (_) {}
+  let opt = {dedInt: 4, dedMur: 1, hRiv: 2.2, imprev: 0, iva: 10, rivCucina: false, oneri: 0, tec: 0, ivaTec: 22};
+  let prices0 = {}; try { prices0 = JSON.parse(localStorage.getItem(PK) || '{}') || {}; } catch (_) {}
+  /* v25.1: i prezzi stanno nel progetto; un progetto senza prezzi parte da quelli salvati nel browser */
+  const PR = () => state.cmpPrezzi || (state.cmpPrezzi = Object.assign({}, prices0));
+  const prices = new Proxy({}, {get: (t, k) => PR()[k], set: (t, k, v) => { PR()[k] = v; return true; }, has: (t, k) => k in PR(), deleteProperty: (t, k) => delete PR()[k], ownKeys: () => Reflect.ownKeys(PR()), getOwnPropertyDescriptor: (t, k) => k in PR() ? {value: PR()[k], enumerable: true, configurable: true, writable: true} : undefined});
   try { Object.assign(opt, JSON.parse(localStorage.getItem(OK) || '{}')); } catch (_) {}
-  const saveP = () => { try { localStorage.setItem(PK, JSON.stringify(prices)); } catch (_) {} };
+  const saveP = () => { try { prices0 = Object.assign({}, PR()); localStorage.setItem(PK, JSON.stringify(PR())); } catch (_) {} };
   const saveO = () => { try { localStorage.setItem(OK, JSON.stringify(opt)); } catch (_) {} };
   const it = (v, d = 2) => (Math.round(v * 10 ** d) / 10 ** d).toLocaleString('it-IT', {minimumFractionDigits: d, maximumFractionDigits: d});
   const eur = v => '€ ' + it(v, 2);
@@ -11299,6 +11303,7 @@ updateRoomList();
     if (window.SCwk) SCwk.items(walls).forEach(v => add('Opere murarie su pareti esistenti', v.key, v.desc, 'a corpo', 1, v.det));
     if (window.SCriv) SCriv.items().forEach(v => add('Sottofondi e pavimenti', v.key, v.desc, v.um, v.q, v.det));   /* v19.0: rivestimenti disegnati sul prospetto */
     if (window.SCpit) SCpit.items().forEach(v => add('Pitture e finiture', v.key, v.desc, v.um, v.q, v.det));   /* v22.9: pittura disegnata sul prospetto */
+    if (window.SCwl && SCwl.impItems) SCwl.impItems().forEach(v => add('Impianti', v.key, v.desc, v.um, v.q, v.det));   /* v25.3: tubi e cavi dal prospetto */
     if (window.SCcs && SCcs.ledItems) SCcs.ledItems().forEach(v => add('Opere in cartongesso', v.key, v.desc, v.um, v.q, v.det));   /* v24.5: LED e botole */
     if (window.SCcs && SCcs.paintItems) SCcs.paintItems().forEach(v => add('Pitture e finiture', v.key, v.desc, v.um, v.q, v.det));   /* v24.0: soffitti e controsoffitti */
     // finiture (v12.1: se ci sono Aree con lavorazioni a pavimento, massetto e pavimento vengono solo da quelle, a corpo)
@@ -11363,8 +11368,9 @@ updateRoomList();
     add('Impianti', 'el_quadro', 'Quadro elettrico di appartamento', 'n.', cnt('quadro'));
     add('Opere varie', 'scale', 'Scala interna', 'n.', state.stairs.filter(isEntityVisible).length);
     /* v13.0: voci aggiunte dall'utente, con formula costruita toccando le misure del disegno */
-    (state.cmpCustom || []).forEach(c => { const r = SCvf.evalF(c.f, L); if (r.ok) V.push({cat: c.cat || 'Voci aggiunte', key: 'cus_' + c.id, desc: c.desc || 'Voce aggiunta', um: c.um || 'm²', q: Math.max(0, r.v), det: SCvf.words(c.f, L) + ' = ' + it(r.v), cus: c.id}); else V.push({cat: c.cat || 'Voci aggiunte', key: 'cus_' + c.id, desc: c.desc || 'Voce aggiunta', um: c.um || 'm²', q: 0, det: 'Formula da completare: ' + SCvf.words(c.f, L), cus: c.id}); });
+    (state.cmpCustom || []).forEach(c => { const r = SCvfx.evalF(c.f, L); if (r.ok) V.push({cat: c.cat || 'Voci aggiunte', key: 'cus_' + c.id, desc: c.desc || 'Voce aggiunta', um: c.um || 'm²', q: Math.max(0, r.v), det: SCvfx.words(c.f, L) + ' = ' + it(r.v), cus: c.id}); else V.push({cat: c.cat || 'Voci aggiunte', key: 'cus_' + c.id, desc: c.desc || 'Voce aggiunta', um: c.um || 'm²', q: 0, det: 'Formula da completare: ' + SCvfx.words(c.f, L), cus: c.id}); });
     { const ord = new Map(); V.forEach(v => { if (!ord.has(v.cat)) ord.set(v.cat, ord.size); }); V.forEach((v, i) => v._i = i); V.sort((a, b) => ord.get(a.cat) - ord.get(b.cat) || a._i - b._i); }   /* v13.6: voci raggruppate per tipologia */
+    try { if (window.SCprezzo) SCprezzo.notes(V); } catch (e) { console.warn('note computo', e); }   /* v25.1 */
     return {V, L, pav, volTot};
   }
 
@@ -11430,8 +11436,8 @@ updateRoomList();
         body.innerHTML = top + h + '</tbody></table>'; subTot();
         const ao = body.querySelector('#cmpAllOn'); if (ao) ao.onclick = () => { state.cmpOff = []; try { checkpoint(); } catch (_) {} render(); };
       }
-      { const ab = body.querySelector('#cmpAdd'); if (ab) ab.onclick = () => SCvf.edit(null, R.L, () => { R = compute(); render(); });
-        body.querySelectorAll('[data-cus]').forEach(b => b.onclick = () => SCvf.edit(b.dataset.cus, R.L, () => { R = compute(); render(); })); }
+      { const ab = body.querySelector('#cmpAdd'); if (ab) ab.onclick = () => SCvfx.edit(null, R.L, () => { R = compute(); render(); });
+        body.querySelectorAll('[data-cus]').forEach(b => b.onclick = () => SCvfx.edit(b.dataset.cus, R.L, () => { R = compute(); render(); })); }
     } else if (tab === 'quadro') {
       body.innerHTML = quadroHTML();
     } else if (tab === 'locali') {
@@ -11460,7 +11466,7 @@ updateRoomList();
         <label>IVA sulle spese tecniche (%)<input data-o="ivaTec" inputmode="decimal" value="${it(opt.ivaTec)}"></label>
         <button class="wt-btn" id="cmpResetP">Azzera listino prezzi</button>
         <div class="cmp-note">I prezzi restano salvati sul dispositivo e si riapplicano a ogni progetto per voci uguali. Le quantità derivano dal disegno: locali chiusi, stato dei muri (esistente / da demolire / nuovo), porte, finestre, impianti generati, scale.</div></div>`;
-      body.querySelector('#cmpResetP').onclick = async () => { if (await uiConfirm('Azzerare tutti i prezzi salvati?')) { prices = {}; saveP(); totals(); } };
+      body.querySelector('#cmpResetP').onclick = async () => { if (await uiConfirm('Azzerare tutti i prezzi salvati?')) { state.cmpPrezzi = {}; saveP(); try { checkpoint(); } catch (_) {} totals(); } };
     }
     totals();
   }
@@ -13792,7 +13798,7 @@ updateRoomList();
     door: {c: '#fb923c'}, window: {c: '#2dd4bf'}, offset: {c: '#e879f9'}, rescale: {c: '#facc15'},
     line: {c: '#38bdf8'}, circle: {c: '#38bdf8'}, arc: {c: '#38bdf8'}, measure: {c: '#f472b6'}, dim: {c: '#f472b6'}, room: {c: '#a3e635'}, furniture: {c: '#c084fc'}, stairs: {c: '#c084fc'},
     text: {c: '#fde047'}, zone: {c: '#34d399'}, pillar: {c: '#94a3b8'}, hole: {c: '#fb7185'}, moveBg: {c: '#94a3b8'}, box: {c: '#22d3ee'},
-    cgcp: {c: '#e2e8f0'}, cgceil: {c: '#a78bfa'}, cgbeam: {c: '#f472b6'}, cgled: {c: '#eab308'}
+    cgcp: {c: '#e2e8f0'}, cgceil: {c: '#a78bfa'}, cgbeam: {c: '#f472b6'}, cgled: {c: '#eab308'}, cgimp: {c: '#22d3ee'}
   };
   const touch = () => !!(window.SClastPT && SClastPT() !== 'mouse');
   const guideOn = () => appSettings.guide !== false;
@@ -13921,7 +13927,7 @@ updateRoomList();
     if (t === 'zone') { const bz = !!(window.SCzone && SCzone.busy()); return mk(bz ? 'Area · tocca il vertice successivo, poi «Chiudi area»' : 'Area · tocca il primo vertice', bz ? [['zclose', '✔ Chiudi area'], ['undo', '↩ Togli punto'], ['done', '✔ Fine']] : T2); }
     if (t === 'offset') return mk('Parallela · tocca il muro o la forma da cui partire');
     if (t === 'cgcp') return mk('Controparete · tocca il muro dal lato dove va');
-    if (t === 'cgceil' || t === 'cgbeam' || t === 'cgled') { const n = window.SCcs ? SCcs.count() : 0, nm = t === 'cgceil' ? 'Controsoffitto' : t === 'cgled' ? 'Profilo LED' : 'Falsa trave', M = t === 'cgceil' && window.SCcs ? SCcs.mode() : 'pts';
+    if (t === 'cgceil' || t === 'cgbeam' || t === 'cgled' || t === 'cgimp') { const n = window.SCcs ? SCcs.count() : 0, nm = t === 'cgceil' ? 'Controsoffitto' : t === 'cgled' ? 'Profilo LED' : t === 'cgimp' ? 'Impianto' : 'Falsa trave', M = t === 'cgceil' && window.SCcs ? SCcs.mode() : 'pts';
       const MB = t === 'cgceil' && !n ? [['csmode', SCcs.modeName() + ' ›']] : [];
       if (M === 'room') return mk(nm + ' · tocca dentro un locale o un\'Area: la copre tutta', MB.concat([['done', '✔ Fine']]));
       if (M === 'rect') return mk(n ? nm + ' · tocca l\'angolo opposto' : nm + ' · tocca il primo angolo', n ? [['csundo', '↩ Togli punto'], ['done', '✔ Fine']] : MB.concat([['done', '✔ Fine']]));
@@ -15095,7 +15101,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
      Si selezionano e si modificano come le lavorazioni: riquadro {cx, y, w, h} lungo il muro (da p1), poi si riscrive l'oggetto. */
   const isCpW = w => !!(w && window.SCcg && SCcg.isCp && SCcg.isCp(w));
   const cpsOf = w => state.walls.filter(c => isCpW(c) && c.cg.host === w.id && isEntityVisible(c));
-  const ON = {door: 'Porta', window: 'Finestra', cp: 'Controparete', riv: 'Rivestimento', pil: 'Pilastro', pit: 'Pittura', led: 'Profilo LED', lux: 'Luce a parete'};
+  const ON = {door: 'Porta', window: 'Finestra', cp: 'Controparete', riv: 'Rivestimento', pil: 'Pilastro', pit: 'Pittura', led: 'Profilo LED', lux: 'Punto a parete'};
   /* v21.0: pilastri addossati a questo muro (dalla pianta): si vedono e si spostano anche nel prospetto */
   const pillarsOf = w => state.furniture.filter(f => f.type === 'pilastro' && f.pil && f.pil.wallId === w.id && isEntityVisible(f));
   function objOf(o) { if (!o) return null; if (o.kind === 'lux') return window.SClux ? SClux.find(o.id) : null; if (o.kind === 'led') return window.SCwl ? SCwl.find(o.id) : null; if (o.kind === 'pil') return state.furniture.find(x => x.id === o.id) || null; if (o.kind === 'riv') return window.SCriv ? SCriv.find(o.id) : null; if (o.kind === 'pit') return window.SCpit ? SCpit.find(o.id) : null; return o.kind === 'cp' ? wById(o.id) : (o.kind === 'door' ? state.doors : state.windows).find(x => x.id === o.id) || null; }
@@ -15305,7 +15311,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       <button class="wk-b" data-t="niche">Nicchia</button>
       <button class="wk-b" data-t="cut">Taglio</button>
       <button class="wk-b" data-t="cp" title="Controparete in cartongesso sul lato che guardi: tocca due angoli">Controparete</button>
-      <button class="wk-b" data-t="riv" title="Rivestimento con una skin sul lato che guardi: tocca due angoli">Rivestimento</button><button class="wk-b" data-t="led" title="Profilo LED: linea libera, anche in verticale, o «Segui profilo» su un oggetto">💡 LED</button><button class="wk-b" data-t="lux" title="Luce a parete: applique o faretto, tocca il punto sul muro">🔆 Luce</button><button class="wk-b" data-t="pit" title="Pittura: superficie colorata sul lato che guardi, a rettangolo o punto per punto">🎨 Pittura</button>
+      <button class="wk-b" data-t="riv" title="Rivestimento con una skin sul lato che guardi: tocca due angoli">Rivestimento</button><button class="wk-b" data-t="led" title="Profilo LED: linea libera, anche in verticale, o «Segui profilo» su un oggetto">💡 LED</button><button class="wk-b" data-t="imp" title="Impianti: tubi acqua calda e fredda, scarichi, cavi elettrici e canaline dentro il muro; linee libere, anche in verticale">🔧 Impianti</button><button class="wk-b" data-t="lux" title="Luci e punti a parete: applique, faretto, presa, interruttore, quadro; tocca il punto sul muro">🔆 Luci e punti</button><button class="wk-b" data-t="pit" title="Pittura: superficie colorata sul lato che guardi, a rettangolo o punto per punto">🎨 Pittura</button>
       <button class="wk-b" data-t="door" title="Porta: tocca due angoli sul muro (il lato in basso va a terra)">Porta</button>
       <button class="wk-b" data-t="window" title="Finestra: tocca due angoli sul muro (il lato in basso è il davanzale)">Finestra</button>
       <span class="wk-sep"></span>
@@ -15538,7 +15544,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     cx.textAlign = 'right'; cx.fillText(nr ? (nr.name || '') + ' ▶' : '', sx(L), sy(0) + (S.bays && S.bays.length > 1 ? 58 : 34));
     /* creazione in corso */
     if (S.tool === 'pit' && S.pitMode === 'poly' && window.SCpit) SCpit.drawTmp(cx, w, S.face, sx, sy, S.pp || [], S.cur);
-    if (S.tool === 'led' && window.SCwl && !S.ledArm) SCwl.drawTmp(cx, w, S.face, sx, sy, S.pp || [], S.cur);
+    if ((S.tool === 'led' || S.tool === 'imp') && window.SCwl && !S.ledArm) SCwl.drawTmp(cx, w, S.face, sx, sy, S.pp || [], S.cur, S.tool === 'imp' ? SCwl.IMPT[S.impT || 'acf'][1] : null);
     if (S.tool === 'mis' && S.m) {   /* v24.3: misura temporanea (non si stampa) */
       const A = S.m.a, B = S.m.b || S.cur; cx.save(); cx.strokeStyle = '#22d3ee'; cx.fillStyle = '#22d3ee';
       if (A && B) {
@@ -15663,9 +15669,9 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   function ledMake(w, ol) {
     if (!window.SCwl || !ol) return false;
     if (isEntityLocked(w)) { toast('Muro su livello bloccato'); return false; }
-    const r = SCwl.add(w, S.face, ol.pts, ''); if (!r) return false;
-    S.pp = []; S.ledArm = false; S.tool = 'sel'; S.selId = null; S.oSel = {kind: 'led', id: r.id};
-    commit('Profilo LED sul ' + ol.what + ': ' + f2(SCwl.len(r)) + ' ml'); return true;
+    const imp = S.tool === 'imp' ? (S.impT || 'acf') : null, r = SCwl.add(w, S.face, ol.pts, '', imp); if (!r) return false;
+    S.pp = []; S.ledArm = false; if (!imp) { S.tool = 'sel'; S.selId = null; S.oSel = {kind: 'led', id: r.id}; }
+    commit(imp ? SCwl.IMPT[imp][0] + ': ' + f2(SCwl.len(r)) + ' ml · tocca per una nuova linea, «Fine» per finire' : 'Profilo LED sul ' + ol.what + ': ' + f2(SCwl.len(r)) + ' ml'); return true;
   }
   function ledFollowSel(w) {   /* comando «Segui profilo»: l'oggetto già selezionato, altrimenti il prossimo toccato */
     let ol = null;
@@ -15816,7 +15822,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       S.cur = null; render(); ui(); } return; }
     if (S.tool === 'mis' && S.cur && e.type === 'pointerup') { if (!S.m || S.m.b) S.m = {a: S.cur, b: null}; else S.m.b = S.cur; S.cur = null; render(); ui(); return; }
     if (S.tool === 'pit' && S.pitMode === 'poly' && S.cur && e.type === 'pointerup') { pitPoint(w, S.cur); S.cur = null; return; }
-    if (S.tool === 'led' && S.cur && e.type === 'pointerup') { ledPoint(w, S.cur); S.cur = null; return; }
+    if ((S.tool === 'led' || S.tool === 'imp') && S.cur && e.type === 'pointerup') { ledPoint(w, S.cur); S.cur = null; return; }
     if (S.tool === 'lux' && S.cur && e.type === 'pointerup') { luxPoint(w, S.cur); S.cur = null; return; }
     if (S.tool !== 'sel' && S.cur && e.type === 'pointerup') {
       if (!S.first) { S.first = S.cur; toast('Ora il secondo angolo'); render(); ui(); return; }
@@ -15830,7 +15836,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   cv.addEventListener('contextmenu', e => e.preventDefault());
 
   /* ---------------------------------------------------------------- pulsanti, campi e tastierino */
-  P.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { S.tool = b.dataset.t; S.first = null; S.cur = null; S.pp = []; S.m = null; S.ledArm = false; if (S.tool !== 'sel') { S.selId = null; S.oSel = null; } ui(); render(); });
+  P.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { S.tool = b.dataset.t; S.first = null; S.cur = null; S.pp = []; S.m = null; S.ledArm = false; if (S.tool !== 'sel') { S.selId = null; S.oSel = null; } if (S.tool === 'imp' && !appSettings.showImp) { appSettings.showImp = true; try { persistSettings(); } catch (_) {} const c = document.getElementById('showImp'); if (c) c.checked = true; try { draw2D(); if (state.mode === '3d') build3D(); } catch (_) {} } ui(); render(); });
   P.querySelectorAll('[data-s]').forEach(b => b.onclick = () => {
     S.shape = b.dataset.s; const w = wById(S.wallId), k = w && selWork(w);
     if (k && k.k !== 'cut' && !isEntityLocked(w)) { k.sh = S.shape; if (k.sh === 'round') k.h = k.w; clampWork(w, k); commit(); } else { ui(); render(); }
@@ -15889,9 +15895,16 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
         h += '<div class="wk-row">' + (A ? '<button class="wk-b" data-a="mnew">↩ Nuova misura</button>' : '') + '<button class="wk-b sc-fine" data-a="done" title="Interrompe il comando e torna a Seleziona">✔ Fine</button></div>';
         foot.innerHTML = h; render(); return;
       }
+      if (S.tool === 'imp') {
+        const n = (S.pp || []).length, T = SCwl.IMPT;
+        h += '<div class="wk-hint"><b>Impianti</b> sul lato che guardi: scegli il tipo, poi tocca il primo punto e i successivi, anche in verticale; tocca di nuovo l\'ultimo punto o «Fine linea» per finire. Le linee passano dentro il muro e si vedono con «Impianti» nel menu Vista.</div>';
+        h += '<div class="wk-row" style="flex-wrap:wrap">' + Object.keys(T).map(k => '<button class="wk-b' + ((S.impT || 'acf') === k ? ' on' : '') + '" data-a="impt" data-m="' + k + '" style="border-left:6px solid ' + T[k][1] + '">' + T[k][0] + '</button>').join('') + '</div>';
+        h += '<div class="wk-row">' + (n >= 1 ? '<button class="wk-b" data-a="ledundo">↩ Togli punto</button>' : '') + (n >= 2 ? '<button class="wk-b" data-a="ledclose">✔ Fine linea</button>' : '') + '<button class="wk-b sc-fine" data-a="done" style="margin-left:auto">✔ Fine</button></div>';
+        foot.innerHTML = h; render(); return;
+      }
       if (S.tool === 'lux') {
-        h += '<div class="wk-hint"><b>Luce a parete</b> sul lato che guardi: tocca il punto sul muro, la quota è dove tocchi. Poi cambi tipo, potenza e colore.</div>';
-        h += '<div class="wk-row"><button class="wk-b' + (S.luxT !== 'faretto_p' ? ' on' : '') + '" data-a="luxt" data-m="applique">Applique</button><button class="wk-b' + (S.luxT === 'faretto_p' ? ' on' : '') + '" data-a="luxt" data-m="faretto_p">Faretto a parete</button><button class="wk-b sc-fine" data-a="done" style="margin-left:auto">✔ Fine</button></div>';
+        h += '<div class="wk-hint"><b>Luci e punti a parete</b> sul lato che guardi: scegli cosa mettere, poi tocca il punto sul muro (la quota è dove tocchi). Poi cambi tipo, potenza e colore.</div>';
+        h += '<div class="wk-row" style="flex-wrap:wrap">' + [['applique', 'Applique'], ['faretto_p', 'Faretto a parete'], ['presa', 'Presa'], ['interruttore', 'Interruttore'], ['quadro', 'Quadro']].map(([k, n]) => '<button class="wk-b' + ((S.luxT || 'applique') === k ? ' on' : '') + '" data-a="luxt" data-m="' + k + '">' + n + '</button>').join('') + '<button class="wk-b sc-fine" data-a="done" style="margin-left:auto">✔ Fine</button></div>';
         foot.innerHTML = h; render(); return;
       }
       if (S.tool === 'led') {
@@ -15914,7 +15927,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     } else if (S.oSel && objOf(S.oSel)) {
       const o = S.oSel, e = objOf(o), r = proxy(w, o), F = fields(w, r), lk = lockedO(o);
       const extra = o.kind === 'cp' ? '<span class="wk-hint">' + esc((e.name || '') + ' · sp. ' + cm(wt(e)) + ' cm') + '</span>' : (o.kind === 'window' && e.kind === 'slide' ? '<span class="wk-hint">scorrevole</span>' : '');
-      h += '<div class="wk-row"><b style="color:#22d3ee">' + ON[o.kind] + '</b>' + extra + '<button class="wk-b" data-a="odel" style="margin-left:auto;color:#fca5a5">🗑 Elimina</button><button class="wk-b sc-fine" data-a="done" title="Fine: deseleziona e torna allo stato iniziale">✔ Fine</button></div>';
+      h += '<div class="wk-row"><b style="color:#22d3ee">' + (o.kind === 'led' && e.imp ? 'Impianto · ' + SCwl.IMPT[e.imp][0] : ON[o.kind]) + '</b>' + extra + '<button class="wk-b" data-a="odel" style="margin-left:auto;color:#fca5a5">🗑 Elimina</button><button class="wk-b sc-fine" data-a="done" title="Fine: deseleziona e torna allo stato iniziale">✔ Fine</button></div>';
       if (lk) h += '<div class="wk-hint wk-warn">Su un livello bloccato: puoi solo guardare.</div>';
       h += '<div class="wk-row">' + F.map(([key, lab, v]) => '<button class="wk-f' + (S.field === key ? ' on' : '') + '" data-f="' + key + '"><small>' + lab + ' (m)</small><b>' + (S.field === key ? (S.buf ? esc(S.buf) : '<i>' + f2(v) + '</i>') : f2(v)) + '</b></button>').join('') + '</div>';
       if (S.field) h += keypadHTML();
@@ -15922,6 +15935,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       if (o.kind === 'riv' && window.SCriv) h += SCriv.panelHTML(w, e);
       if (o.kind === 'pit' && window.SCpit) h += SCpit.panelHTML(w, e);
       if (o.kind === 'lux') h += SClux.panelHTML(e); else if (o.kind === 'led' && window.SCwl) h += SCwl.panelHTML(w, e); else h += '<div class="wk-row"><button class="wk-b" data-a="ledfollow" title="Crea un profilo LED che copia il contorno di questo oggetto">⤷ Segui profilo (LED)</button></div>';
+      if (window.SCprezzo && o.kind !== 'pil' && !(o.kind === 'led' && !e.imp)) h += SCprezzo.panelHTML(o.kind === 'cp' ? 'wall' : o.kind === 'lux' ? 'furniture' : o.kind === 'led' ? 'imp' : o.kind, e, o.kind === 'cp' ? e : w);   /* v25.1 */
       h += '<div class="wk-row"><button class="wk-b" data-a="oprops">' + (o.kind === 'cp' ? 'Stratigrafia e prezzo' : o.kind === 'riv' || o.kind === 'pit' || o.kind === 'led' || o.kind === 'lux' ? 'Duplica' : 'Altre proprietà') + '</button></div>';
       if (o.kind === 'door') h += '<div class="wk-hint">La porta parte sempre da terra.</div>';
     } else if (k) {
@@ -15929,6 +15943,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       h += '<div class="wk-row"><b style="color:#22d3ee">' + KN[k.k] + (k.sh !== 'rect' ? ' ' + SN[k.sh] : '') + '</b>' + (k.k === 'niche' ? '<span class="wk-hint">sul ' + (k.f === S.face ? 'lato che guardi' : 'lato opposto') + '</span>' : '') + '<button class="wk-b" data-a="del" style="margin-left:auto;color:#fca5a5">🗑 Elimina</button><button class="wk-b sc-fine" data-a="done" title="Fine: deseleziona e torna allo stato iniziale">✔ Fine</button></div>';
       h += '<div class="wk-row">' + F.map(([key, lab, v]) => '<button class="wk-f' + (S.field === key ? ' on' : '') + '" data-f="' + key + '"><small>' + lab + ' (m)</small><b>' + (S.field === key ? (S.buf ? esc(S.buf) : '<i>' + f2(v) + '</i>') : f2(v)) + '</b></button>').join('') + '</div>';
       if (S.field) h += keypadHTML();
+      if (window.SCprezzo) h += SCprezzo.panelHTML('work', k, w);   /* v25.1 */
       h += '<div class="wk-row">' + (k.k === 'niche' ? '<button class="wk-b" data-a="face">Sposta sull\'altro lato</button>' : '') + '<button class="wk-b" data-a="dup">Duplica</button></div>';
     } else {
       const v = voce(w), q = v ? v.q : null;
@@ -15972,6 +15987,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       if (a === 'ledundo') { (S.pp || []).pop(); ui(); render(); return; }
       if (a === 'ledclose') { ledClose(w); return; }
       if (a === 'luxt') { S.luxT = ab.dataset.m; ui(); return; }
+      if (a === 'impt') { S.impT = ab.dataset.m; ui(); render(); return; }
       if (a === 'pmode') { S.pitMode = ab.dataset.m; S.pp = []; S.first = null; ui(); return; }
       if (a === 'pundo') { (S.pp || []).pop(); ui(); render(); return; }
       if (a === 'pclose') { pitClose(w); return; }
@@ -16557,7 +16573,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
 
   /* ---------------------------------------------------------------- disegno con lo strumento (punti col cursore sfalsato) */
   let tmp = [], boxes = [], active = null, pal = null, drag = null;
-  const isMine = t => t === 'cgceil' || t === 'cgbeam' || t === 'cgled';
+  const isMine = t => t === 'cgceil' || t === 'cgbeam' || t === 'cgled' || t === 'cgimp';
   const MODES = ['room', 'rect', 'pts'], MNAME = {room: '▦ Locale', rect: '▭ Rettangolo', pts: '✎ Punti'};
   const mode = () => MODES.includes(appSettings.csMode) ? appSettings.csMode : 'room';
   function cycleMode() { appSettings.csMode = MODES[(MODES.indexOf(mode()) + 1) % MODES.length]; try { persistSettings(); } catch (_) {} tmp = []; draw2D(); toast('Controsoffitto: ' + MNAME[mode()].slice(2)); }
@@ -16617,11 +16633,11 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   function finish() {
     const t = state.tool;
     if (t === 'cgceil' && tmp.length < 3) { if (tmp.length) toast('Controsoffitto: servono almeno 3 punti'); tmp = []; draw2D(); return; }
-    if ((t === 'cgbeam' || t === 'cgled') && tmp.length < 2) { if (tmp.length) toast((t === 'cgled' ? 'Profilo LED' : 'Falsa trave') + ': servono almeno 2 punti'); tmp = []; draw2D(); return; }
+    if ((t === 'cgbeam' || t === 'cgled' || t === 'cgimp') && tmp.length < 2) { if (tmp.length) toast((t === 'cgimp' ? 'Impianto' : t === 'cgled' ? 'Profilo LED' : 'Falsa trave') + ': servono almeno 2 punti'); tmp = []; draw2D(); return; }
     const d = DEF(), cg = {lastra: d.lastra, sp: d.sp, strati: d.strati, iso: !!d.isoCs};
     let el;
     if (t === 'cgceil') { const top = topOf(state.currentFloorId); el = assignLayer({id: newId(), pts: tmp.map(p => ({x: p.x, y: p.y})), h: Math.round(Math.max(1.8, Math.min(top - 0.05, +appSettings.csH || top - 0.3)) * 100) / 100, cg}); state.ceils.push(el); }
-    else { el = assignLayer({id: newId(), pts: tmp.map(p => ({x: p.x, y: p.y})), w: +appSettings.csBw || 0.3, hh: +appSettings.csBh || 0.25, sez: 'U', cg}); if (t === 'cgled') { el.w = 0.02; el.hh = 0.02; el.led = {k: +appSettings.ledK || 3000, w: +appSettings.ledW || 8}; } state.beams.push(el); }
+    else { el = assignLayer({id: newId(), pts: tmp.map(p => ({x: p.x, y: p.y})), w: +appSettings.csBw || 0.3, hh: +appSettings.csBh || 0.25, sez: 'U', cg}); if (t === 'cgled' || t === 'cgimp') { el.w = 0.02; el.hh = 0.02; el.led = {k: +appSettings.ledK || 3000, w: +appSettings.ledW || 8}; if (t === 'cgimp') { el.imp = IMPK(); el.d = IMPDIAM(el.imp); el.zm = appSettings.impZm || 'pav'; if (el.zm === 'lib') el.z = +appSettings.impZ || 0.5; showImpOn(); } } state.beams.push(el); }
     tmp = []; active = el; draw2D(); try { checkpoint(); } catch (_) {}
     openPal(el);
   }
@@ -16690,6 +16706,15 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     } catch (e) { console.warn('led 2D', e); }
     for (const b of state.beams) {
       if (!isEntityVisible(b) || b.pts.length < 2) continue;
+      if (b.imp && window.SCwl) {   /* v25.4: impianto a linea */
+        if (!SCwl.impOn() && b !== active) continue;
+        const T = SCwl.IMPT[b.imp] || SCwl.IMPT.acf, D = dense(b, false), S5 = D.map(q => worldToScreen(q.x, q.y)), path = () => { ctx.beginPath(); S5.forEach((q, i) => i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y)); ctx.stroke(); };
+        ctx.setLineDash([]); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+        ctx.strokeStyle = b === active ? '#fde047' : 'rgba(255,255,255,.9)'; ctx.lineWidth = b === active ? 6.5 : 5; path();
+        ctx.strokeStyle = T[1]; ctx.lineWidth = 3; path();
+        labelBox((b.name ? b.name + ' · ' : '') + T[0] + ' Ø' + b.d, f2(polyLen(D, false)) + ' ml · ' + ZMN[b.zm || 'pav'], D[Math.floor(D.length / 2)], T[1], b);
+        continue;
+      }
       if (b.led) {   /* v24.6: profilo LED libero */
         const D = dense(b, false), S5 = D.map(q => worldToScreen(q.x, q.y));
         ctx.setLineDash([]); ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = b === active ? '#fde047' : '#eab308'; ctx.lineWidth = b === active ? 4.5 : 3.2; ctx.beginPath(); S5.forEach((q, i) => i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y)); ctx.stroke();
@@ -16719,7 +16744,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       const S4 = rectPts(tmp[0], snapCs(hv, null)).map(p => worldToScreen(p.x, p.y)); ctx.strokeStyle = COL_C; ctx.lineWidth = 2; ctx.setLineDash([6, 4]); ctx.beginPath(); S4.forEach((s, i) => i ? ctx.lineTo(s.x, s.y) : ctx.moveTo(s.x, s.y)); ctx.closePath(); ctx.stroke(); ctx.setLineDash([]);
     }
     if (isMine(state.tool) && tmp.length) {
-      const col = state.tool === 'cgceil' ? COL_C : state.tool === 'cgled' ? '#eab308' : COL_B, S = tmp.map(p => worldToScreen(p.x, p.y));
+      const col = state.tool === 'cgceil' ? COL_C : state.tool === 'cgled' ? '#eab308' : state.tool === 'cgimp' ? ((window.SCwl && SCwl.IMPT[IMPK()]) || [0, '#22d3ee'])[1] : COL_B, S = tmp.map(p => worldToScreen(p.x, p.y));
       ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.setLineDash([6, 4]); ctx.beginPath(); S.forEach((s, i) => i ? ctx.lineTo(s.x, s.y) : ctx.moveTo(s.x, s.y));
       const hh = (window.SCfinger && SCfinger.active && SCfinger.active() && hover) ? hover : hv; if (hh && (state.tool !== 'cgceil' || mode() !== 'rect')) { const h = worldToScreen(hh.x, hh.y); ctx.lineTo(h.x, h.y); }
       ctx.stroke(); ctx.setLineDash([]);
@@ -16819,6 +16844,48 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       botole(el).map((t, i) => '<div style="display:flex;gap:5px;align-items:center;font-size:12px">Botola ' + (i + 1) + '<input data-bw="' + i + '" inputmode="decimal" value="' + Math.round(t.w * 100) + '" style="width:52px;padding:5px;border-radius:6px;border:1px solid #475569;background:#12151f;color:#e5e7eb"> × <input data-bh="' + i + '" inputmode="decimal" value="' + Math.round(t.h * 100) + '" style="width:52px;padding:5px;border-radius:6px;border:1px solid #475569;background:#12151f;color:#e5e7eb"> cm <button data-bd="' + i + '" style="margin-left:auto;padding:4px 9px;border-radius:6px;border:1px solid #475569;background:#1e293b;color:#e5e7eb;cursor:pointer">🗑</button></div>').join('') +
       (botole(el).length ? '<div style="font-size:11px;color:#9ca3b8">Trascina la botola nel disegno per spostarla.</div>' : '') + '</div>';
   }
+  /* v25.4 · IMPIANTI A LINEA: tubi e cavi in pianta (pavimento, sopra il controsoffitto, quota libera); stesse linee libere del profilo LED con el.imp */
+  const IMPK = () => (window.SCwl && SCwl.IMPT[appSettings.impT]) ? appSettings.impT : 'acf';
+  const IMPDIAM = k => (window.SCwl && SCwl.IMPT[k]) ? SCwl.IMPT[k][2] : 20;
+  const ZMN = {pav: 'A pavimento (nel massetto)', sop: 'Sopra il controsoffitto', lib: 'Quota libera'};
+  function showImpOn() { appSettings.showImp = true; try { persistSettings(); } catch (_) {} const c = document.getElementById('showImp'); if (c) c.checked = true; }
+  function openImpPal(el) {
+    closePal(); active = el; const T = window.SCwl.IMPT, DI = window.SCwl.DIAMS;
+    const ist = 'width:100%;box-sizing:border-box;padding:7px 8px;border-radius:6px;border:1px solid #475569;background:#12151f;color:#e5e7eb;font:14px sans-serif';
+    const sl = (id, opts, v) => '<select id="' + id + '" style="' + ist + '">' + opts.map(([k, n]) => '<option value="' + k + '"' + (String(v) === String(k) ? ' selected' : '') + '>' + n + '</option>').join('') + '</select>';
+    pal = document.createElement('div'); pal.className = 'sc-pal';
+    pal.style.cssText = 'position:fixed;z-index:9500;background:#1e1e2e;border:1px solid #22d3ee;border-radius:10px;padding:8px;box-shadow:0 6px 22px rgba(0,0,0,.55);font:13px sans-serif;color:#e5e7eb;display:flex;flex-direction:column;gap:6px;width:min(270px,calc(100vw - 12px))';
+    pal.innerHTML = '<div style="display:flex;align-items:center;gap:6px"><b style="flex:1;color:#22d3ee">Impianto</b><button id="imDel" class="sc-del" style="padding:5px 9px;border-radius:7px;border:1px solid #475569;background:#1e293b;color:#fca5a5;cursor:pointer">🗑</button><button id="imOk" style="padding:5px 11px;border-radius:7px;border:1px solid #475569;background:#1e293b;color:#e5e7eb;cursor:pointer">✔</button></div>' +
+      '<label style="font-size:12px">Tipo<select id="imT" style="' + ist + '"></select></label>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px"><label style="font-size:12px">Diametro (mm)<select id="imD" style="' + ist + '"></select></label><label style="font-size:12px">Posizione<select id="imZm" style="' + ist + '"></select></label></div>' +
+      '<label id="imZw" style="font-size:12px">Quota da pavimento (m)<input id="imZ" inputmode="decimal" style="' + ist + '"></label>' +
+      '<label style="font-size:12px">Nome<input id="imName" style="' + ist + '" value="' + esc(el.name || '') + '"></label>' +
+      '<div id="imSum" style="font-size:11.5px;color:#cbd5e1;background:#151826;border:1px solid #2f3550;border-radius:6px;padding:5px 7px"></div>' +
+      '<div style="font-size:11px;color:#9ca3b8;line-height:1.35">Quadratini: sposta i punti · pallini a metà tratto: spostano il tratto. Si vedono in pianta, 3D e sezione con Vista › Impianti.</div>';
+    document.body.appendChild(pal);
+    const $p = id => pal.querySelector('#' + id);
+    const fill = () => {
+      $p('imT').innerHTML = Object.keys(T).map(k => '<option value="' + k + '"' + (k === el.imp ? ' selected' : '') + '>' + T[k][0] + '</option>').join('');
+      $p('imD').innerHTML = (DI[el.imp] || [el.d]).map(d => '<option value="' + d + '"' + (+d === +el.d ? ' selected' : '') + '>' + d + '</option>').join('');
+      $p('imZm').innerHTML = Object.keys(ZMN).map(k => '<option value="' + k + '"' + (k === (el.zm || 'pav') ? ' selected' : '') + '>' + ZMN[k] + '</option>').join('');
+      $p('imZ').value = el.z != null && isFinite(el.z) ? f2(el.z) : ''; $p('imZw').style.display = (el.zm || 'pav') === 'lib' ? '' : 'none';
+      const L = polyLen(dense(el, false), false); $p('imSum').innerHTML = '<b>' + f2(L) + ' ml</b> · computo: voce «' + T[el.imp][0] + ' Ø' + el.d + '» al metro';
+    };
+    const ch = () => { fill(); draw2D(); if (state.mode === '3d') build3D(); };
+    const ck = () => { try { checkpoint(); } catch (_) {} };
+    $p('imT').onchange = e => { el.imp = e.target.value; el.d = IMPDIAM(el.imp); appSettings.impT = el.imp; try { persistSettings(); } catch (_) {} ch(); ck(); };
+    $p('imD').onchange = e => { el.d = +e.target.value; ch(); ck(); };
+    $p('imZm').onchange = e => { el.zm = e.target.value; appSettings.impZm = el.zm; if (el.zm === 'lib' && !(el.z >= 0)) el.z = +appSettings.impZ || 0.5; try { persistSettings(); } catch (_) {} ch(); ck(); };
+    $p('imZ').onchange = e => { const v = num(String(e.target.value).trim()); if (!(v >= 0 && v <= 10)) { toast('Quota da 0 a 10 m'); fill(); return; } el.z = v; appSettings.impZ = v; try { persistSettings(); } catch (_) {} ch(); ck(); };
+    $p('imName').oninput = e => { el.name = e.target.value; draw2D(); }; $p('imName').onchange = ck;
+    $p('imDel').onclick = () => { state.beams = state.beams.filter(x => x !== el); active = null; closePal(); draw2D(); if (state.mode === '3d') build3D(); ck(); toast('Eliminato'); };
+    $p('imOk').onclick = () => closePal();
+    fill();
+    const b = boxes.find(q => q.el === el), r = c2d.getBoundingClientRect(), W = pal.offsetWidth, H = pal.offsetHeight;
+    let x = b ? r.left + b.x + b.w + 8 : r.left + 80, y = b ? r.top + b.y : r.top + 80;
+    if (x + W > innerWidth - 6) x = b ? r.left + b.x - W - 8 : innerWidth - W - 6;
+    pal.style.left = Math.max(6, Math.min(innerWidth - W - 6, x)) + 'px'; pal.style.top = Math.max(Math.min(r.top + 4, innerHeight - H - 6), Math.min(innerHeight - H - 6, y)) + 'px';
+  }
   function openLedPal(el) {
     closePal(); active = el;
     const ist = 'width:100%;box-sizing:border-box;padding:7px 8px;border-radius:6px;border:1px solid #475569;background:#12151f;color:#e5e7eb;font:14px sans-serif', cf = Object.assign({k: 3000, w: 8}, el.led);
@@ -16850,6 +16917,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     pal.style.left = Math.max(6, Math.min(innerWidth - W - 6, x)) + 'px'; pal.style.top = Math.max(Math.min(r.top + 4, innerHeight - H - 6), Math.min(innerHeight - H - 6, y)) + 'px';
   }
   function openPal(el) {
+    if (el.imp && el.led && state.beams.includes(el) && window.SCwl) return openImpPal(el);
     if (el.led && state.beams.includes(el)) return openLedPal(el);
     closePal(); active = el;
     const isC = kindOf(el) === 'c', cg = el.cg, ist = 'width:100%;box-sizing:border-box;padding:7px 8px;border-radius:6px;border:1px solid #475569;background:#12151f;color:#e5e7eb;font:14px sans-serif';
@@ -17038,7 +17106,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   const zAt = (x, y, fl) => { let z = topOf(fl); state.ceils.forEach(c => { if (floorOf(c) === fl && isEntityVisible(c) && !isPaint(c) && c.pts.length >= 3 && c.h < z && inPoly({x, y}, dense(c, true))) z = c.h; }); return z - 0.004; };
   function lineSegs() {   /* v24.6: profili LED liberi (linee disegnate dove serve), a filo del controsoffitto sotto cui passano o del soffitto */
     const out = [];
-    state.beams.filter(b => b.led && isEntityVisible(b) && b.pts.length >= 2).forEach(b => {
+    state.beams.filter(b => b.led && !b.imp && isEntityVisible(b) && b.pts.length >= 2).forEach(b => {
       const fl = floorOf(b), D = dense(b, false), cf = Object.assign({k: 3000, w: 8}, b.led), zf = b.z != null && isFinite(b.z) ? +b.z : null;
       for (let i = 0; i + 1 < D.length; i++) { const a = D[i], c = D[i + 1], L = Math.hypot(c.x - a.x, c.y - a.y); if (L < 1e-4) continue; out.push({a: {x: a.x, y: a.y}, b: {x: c.x, y: c.y}, L, z: zf != null ? zf : zAt((a.x + c.x) / 2, (a.y + c.y) / 2, fl), fl, k: +cf.k || 3000, w: +cf.w || 8, el: b}); }
     });
@@ -17158,7 +17226,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     return out;
   }
   window.SCcs = {
-    ledItems, lightPts, ledSegs, lineSegs, follow, pickObj, mkLedLine, followArmed: () => LFM,
+    zAt, showImpOn, ledItems, lightPts, ledSegs, lineSegs, follow, pickObj, mkLedLine, followArmed: () => LFM,
     items: () => state.ceils.filter(isEntityVisible).map(voceC).concat(state.beams.filter(b => isEntityVisible(b) && !b.led).map(voceB)).filter(Boolean),
     priceOf: k => { const e = state.ceils.concat(state.beams).find(x => 'cs_' + x.id === k); return e && e.price != null ? +e.price : null; },
     setPrice: (k, v) => { const e = state.ceils.concat(state.beams).find(x => 'cs_' + x.id === k); if (e) e.price = v; },
@@ -17193,7 +17261,8 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     cgcp: 'M4 4v16M8 4v16M8 8h3M8 12h3M8 16h3',
     cgceil: 'M3 6h18M5 6v3h14V6M8 13h8M10 17h4',
     cgbeam: 'M3 5h18M7 5v6h10V5M3 15h4M10 15h4M17 15h4',
-    cgled: 'M3 12h18M6 8v8M18 8v8M10 5l1 2M14 5l-1 2'
+    cgled: 'M3 12h18M6 8v8M18 8v8M10 5l1 2M14 5l-1 2',
+    cgimp: 'M4 18h7V8h9M4 14h3M16 16h4'
   };
   const closeMenus = () => document.querySelectorAll('.menu-dropdown').forEach(m => m.classList.remove('open'));
   const pickTool = (t, msg) => { document.querySelectorAll('.tool').forEach(x => x.classList.toggle('active', x.dataset.tool === t)); state.tool = t; state.pendingPoint = null; try { measureStart = null; } catch (_) {} closeMenus(); if (msg) toast(msg); draw2D(); };
@@ -17210,12 +17279,14 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   const ceil = mkTool('cgceil', 'Controsoffitto', 'Controsoffitto: un locale o un\'Area con un tocco, un rettangolo o per punti. Quota, lastra e prezzo nel riquadro', 'cgceil', () => pickTool('cgceil'));
   const beam = mkTool('cgbeam', 'Falsa trave', 'Falsa trave / cassonetto: tocca i punti del percorso, poi «Fine»', 'cgbeam', () => pickTool('cgbeam', 'Falsa trave: tocca i punti del percorso, poi «Fine»'));
   const led = mkTool('cgled', 'Profilo LED', 'Profilo LED: tocca i punti della linea dove vuoi, di qualsiasi lunghezza, poi «Fine linea»', 'cgled', () => pickTool('cgled', 'Profilo LED: tocca i punti della linea, poi «Fine linea»'));
+  const imp = mkTool('cgimp', 'Impianto a linea', 'Impianti: tubi e cavi in pianta, a pavimento, sopra il controsoffitto o a quota libera. Colori: acqua calda rosso, fredda blu, scarichi nero, fase marrone, neutro grigio, terra giallo', 'cgimp', () => { SCcs.showImpOn(); pickTool('cgimp', 'Impianto: tocca i punti del percorso, poi «Fine linea»'); });
   const ledf = mkTool(null, 'Segui profilo', 'Segui profilo: la striscia LED copia il contorno dell\'oggetto selezionato (muro, controparete, controsoffitto, disegno)', 'cgled', () => { closeMenus(); SCcs.follow(); });
   if (oldCgw) oldCgw.hidden = true; if (oldCp) oldCp.hidden = true;
   const keep = document.createElement('div'); keep.hidden = true; if (oldCgw) keep.appendChild(oldCgw); if (oldCp) keep.appendChild(oldCp);
   const groups = [
     ['Muri e aperture', ['wall', 'door', 'window', 'pillar', 'stairs', 'hole']],
     ['Cartongesso', [cgw, cgcp, ceil, beam, led, ledf]],
+    ['Impianti', [imp]],
     ['Locali e superfici', ['room', 'zone']],
     ['Quote e annotazioni', ['dim', 'measure', 'text', 'line', 'circle', 'arc']],
     ['Arredi', ['furniture']]
@@ -17844,7 +17915,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   .cf-kp{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:9px}.cf-kp button{padding:10px 0;font-size:16px}
   .cf-foot{display:flex;gap:8px;margin-top:12px;align-items:center}.cf-box .wt-btn{min-height:36px}`;
   document.head.appendChild(st);
-  window.SCvf = {evalF, words, edit};
+  window.SCvfx = {evalF, words, edit};
 })();
 </script>
 <script>
@@ -20899,9 +20970,13 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
    SC_REL.v è l'unica versione: titolo, Guida, file salvato, avvisi e riga messaggi la leggono da qui.
    ======================================================================== */
 window.SC_REL = {
-  v: '25.0', d: '28/10/2026',
+  v: '25.4', d: '28/10/2026',
   news: [
-    ['25.0', 'Luci: nuovo comando «Impianti → Allinea luci al centro» (sull\'asse del corridoio o al centro della stanza; anche dal pannello della singola luce). Applique e faretto a parete si agganciano al muro, si vedono e si modificano anche sul prospetto (strumento «🔆 Luce»). La lampada nel 3D segue le misure dell\'oggetto.'],
+    ['25.4', 'Impianti in pianta: nel menu Strumenti › Impianti › «Impianto a linea» disegni tubi e cavi liberi (tipo, diametro, posizione a pavimento / sopra il controsoffitto / quota libera). Colori come sul prospetto. Compaiono in pianta, 3D e computo (al metro) e nella sezione: punti dove il taglio li attraversa, linee quando corrono nel piano di taglio (entro 15 cm). Si mostrano da Vista › Impianti. Corretto «Aggiungi voce» nel computo.'],
+    ['25.3', 'Impianti sul prospetto: strumento «🔧 Impianti» con linee libere (anche in verticale) dentro il muro: acqua calda rossa, acqua fredda blu, scarichi neri, elettrico fase marrone, neutro grigio, terra gialla, canaline. Si vedono con «Impianti» nel menu Vista (anche in 3D, attraverso i muri) e vanno nel computo al metro. Prese, interruttori e quadro si inseriscono e si spostano anche sul prospetto («🔆 Luci e punti»).'],
+        ['25.2', 'Spessore del rivestimento: campo «Spessore (cm)» nel pannello del rivestimento sul prospetto. Si vede in 3D come volume davanti al muro, con i vani di porte, finestre e nicchie, e compare nella voce di computo.'],
+        ['25.1', 'Prezzo e nota su ogni oggetto: nel pannello di muro, porta, finestra, arredo, rivestimento, pittura e lavorazioni (anche dal prospetto) compare «💶 Prezzo e nota» con il prezzo della voce di computo già inserito. Se lo cambi vale per tutte le lavorazioni uguali; le voci a corpo valgono per il singolo oggetto. La nota esce nel dettaglio della voce. I prezzi ora sono salvati nel progetto e non più solo nel browser.'],
+        ['25.0', 'Luci: nuovo comando «Impianti → Allinea luci al centro» (sull\'asse del corridoio o al centro della stanza; anche dal pannello della singola luce). Applique e faretto a parete si agganciano al muro, si vedono e si modificano anche sul prospetto (strumento «🔆 Luce»). La lampada nel 3D segue le misure dell\'oggetto.'],
         ['24.9', 'Profilo LED anche sul prospetto: nuovo strumento «💡 LED» (linee libere, anche in verticale, con punti da spostare e tratti curvi) e «Segui profilo» che copia il contorno di aperture, nicchie, fori, rivestimenti, pitture e contropareti. Si vede in 3D, illumina di notte e va nel computo al metro insieme a quelli della pianta.'],
         ['24.8', 'Notte nel 3D: tolta la luna, una luce fissa che schiariva un solo lato dei muri. Ora le differenze di luce tra le pareti vengono solo dalle lampade.'],
         ['24.7', 'Profilo LED: comando «Segui profilo» (Disegna › Cartongesso, o nella barra dello strumento). Con un muro, una controparete, un controsoffitto, una falsa trave, un\'Area, un locale o un disegno già selezionato, la striscia ne copia il contorno; altrimenti tocchi l\'oggetto. Nei disegni segue anche i tratti collegati e gli archi. Nel riquadro: quota da pavimento (vuoto = a soffitto) e pallini che curvano il tratto per forme tonde.'],
@@ -22005,7 +22080,7 @@ window.SC_REL = {
     const e = eff(r), c = e && resolve(w, r), cor = e ? e.corner : 'bl';
     let h = '<div class="wk-row" style="align-items:stretch;gap:6px"><label style="flex:1 1 150px;font-size:12px;color:#9ca3b8">Skin<select data-rv="sk" style="' + ist + '">' + SCskin.options(r.sk ? r.sk.id : '') + '</select></label>';
     if (e) h += '<label style="flex:1 1 150px;font-size:12px;color:#9ca3b8">Posa<select data-rv="posa" style="' + ist + '">' + posaOpts(r.sk.mode ? SCskin.modeKey({mode: r.sk.mode, off: r.sk.off}) : '') + '</select></label>';
-    h += '</div>';
+    h += '<label style="flex:1 1 110px;font-size:12px;color:#9ca3b8">Spessore (cm)<input data-rv="t" inputmode="decimal" value="' + (+r.t ? String(Math.round(r.t * 1000) / 10).replace('.', ',') : '') + '" placeholder="0" style="' + ist + '"></label></div>';
     if (e) {
       h += '<div class="wk-row"><button class="wk-b' + (e.posa.rot90 ? ' on' : '') + '" data-rv="rot">' + (e.posa.rot90 ? '▮ Piastrella in verticale' : '▬ Piastrella in orizzontale') + '</button></div>';
       h += '<div class="wk-row"><span class="wk-hint" style="margin:0">Parti da:</span>' + [['bl', '↙ basso sx'], ['br', '↘ basso dx'], ['tl', '↖ alto sx'], ['tr', '↗ alto dx']].map(([k, t]) => '<button class="wk-b' + (cor === k ? ' on' : '') + '" data-rv="cor" data-c="' + k + '">' + t + '</button>').join('') + '</div>';
@@ -22017,6 +22092,7 @@ window.SC_REL = {
   function bind(foot, ctl) {   /* ctl: {commit(msg), sel()} dal prospetto */
     foot.addEventListener('change', ev => {
       const el = ev.target.closest('[data-rv]'); if (!el) return; const o = ctl.sel(), r = o && o.kind === 'riv' && find(o.id), w = r && hostOf(o.id); if (!r) return;
+      if (el.dataset.rv === 't') { const v = parseFloat(String(el.value).replace(',', '.')); r.t = isFinite(v) && v > 0 ? Math.min(0.5, Math.round(v * 10) / 1000) : 0; if (!r.t) delete r.t; ctl.commit(r.t ? 'Spessore del rivestimento: ' + Math.round(r.t * 1000) / 10 + ' cm' : 'Spessore azzerato'); return; }
       if (el.dataset.rv === 'sk') { const id = el.value; if (!id) r.sk = null; else { SCskin.use(id); r.sk = {id}; LAST = id; } ctl.commit(); }
       else if (el.dataset.rv === 'posa' && r.sk) { const k = el.value; if (!k) { delete r.sk.mode; delete r.sk.off; } else { const m = SCskin.modeFrom(k); r.sk.mode = m.mode; r.sk.off = m.off; } ctl.commit(); }
     });
@@ -22033,16 +22109,27 @@ window.SC_REL = {
   function itemsComputo() {
     const g = {};
     all().forEach(({w, r}) => {
-      const c = resolve(w, r); if (!c) return; const sk = c.e.sk, key = 'riv_' + sk.id + '_' + c.e.posa.mode;
-      const o = g[key] || (g[key] = {key, sk, mode: c.e.posa.mode, area: 0, tiles: 0, bought: 0, list: []});
+      const c = resolve(w, r); if (!c) return; const sk = c.e.sk, key = 'riv_' + sk.id + '_' + c.e.posa.mode + (r.t ? '_t' + Math.round(r.t * 1000) : '');
+      const o = g[key] || (g[key] = {key, sk, mode: c.e.posa.mode, t: +r.t || 0, area: 0, tiles: 0, bought: 0, list: []});
       o.area += c.area; o.tiles += c.tiles; o.bought += c.bought; o.list.push((w.name || 'muro') + ' ' + f2(c.V.u1 - c.V.u0) + '×' + f2(c.V.z1 - c.V.z0) + ' m da ' + f2(c.V.z0) + ' m');
     });
     return Object.values(g).map(o => ({key: o.key, um: 'm²', q: o.area,
-      desc: 'Fornitura e posa di rivestimento «' + o.sk.name + '» ' + f1(o.sk.L * 100) + '×' + f1(o.sk.W * 100) + ' cm, posa ' + MN[o.mode] + ', fuga ' + f1((o.sk.g || 0) * 1000) + ' mm, su pareti: ' + o.list.join('; ') + '. Compresi collante, stuccatura e profili.',
+      desc: 'Fornitura e posa di rivestimento «' + o.sk.name + '» ' + f1(o.sk.L * 100) + '×' + f1(o.sk.W * 100) + ' cm, posa ' + MN[o.mode] + (o.t ? ', spessore ' + f1(o.t * 100) + ' cm' : '') + ', fuga ' + f1((o.sk.g || 0) * 1000) + ' mm, su pareti: ' + o.list.join('; ') + '. Compresi collante, stuccatura e profili.',
       det: o.tiles + ' pezzi · sfrido ' + f1((o.area > 0 ? o.bought / o.area - 1 : 0) * 100) + '%'}));
   }
   function drawnArea() { let a = 0; all().forEach(({w, r}) => { const c = resolve(w, r); if (c) a += c.area; }); return a; }
 
+  /* v25.2: corpo del rivestimento (volume con i vani di aperture e nicchie), davanti al muro */
+  function riv3Body(g, r, V, it, t, L, col) {
+    const T = +r.t || 0; if (T < 0.001) return;
+    try {
+      const sgn = r.f > 0 ? -1 : 1, gx = u => r.f > 0 ? L / 2 - u : u - L / 2;
+      const sh = new THREE.Shape([[V.u0, V.z0], [V.u1, V.z0], [V.u1, V.z1], [V.u0, V.z1]].map(([u, z]) => new THREE.Vector2(gx(u), z)));
+      it.holes.concat(it.niches).forEach(P => sh.holes.push(new THREE.Path(P.map(q => new THREE.Vector2(gx(q.x), q.y)))));
+      const bm = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, {depth: T, bevelEnabled: false}), new THREE.MeshStandardMaterial({color: col, roughness: 0.7, side: THREE.DoubleSide}));
+      bm.position.z = sgn * (t / 2); if (sgn < 0) bm.scale.z = -1; bm.receiveShadow = true; bm.userData.rivId = r.id; g.add(bm);
+    } catch (e) { console.warn('spessore rivestimento 3D', e); }
+  }
   /* ---------------------------------------------------------------- 3D: piano sulla faccia del muro */
   function add3D(scene) {
     if (!window.THREE || !THREE.CanvasTexture) return;
@@ -22058,7 +22145,7 @@ window.SC_REL = {
           const tx0 = new THREE.CanvasTexture(cv0);
           const m0 = new THREE.Mesh(new THREE.PlaneGeometry(Wd0, Hh0), new THREE.MeshStandardMaterial({map: tx0, transparent: true, alphaTest: 0.5, roughness: 0.5, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2}));
           const a0 = Math.atan2(w.p2.y - w.p1.y, w.p2.x - w.p1.x), g0 = new THREE.Group(); g0.position.set((w.p1.x + w.p2.x) / 2, 0, -(w.p1.y + w.p2.y) / 2); g0.rotation.y = a0;
-          m0.position.set((r.x0 + r.x1) / 2 - L0 / 2, (V0.z0 + V0.z1) / 2, (r.f > 0 ? -1 : 1) * (t0 / 2 + 0.003)); if (r.f > 0) m0.rotation.y = Math.PI; m0.receiveShadow = true; m0.userData.rivId = r.id; g0.add(m0); scene.add(g0); return;
+          m0.position.set((r.x0 + r.x1) / 2 - L0 / 2, (V0.z0 + V0.z1) / 2, (r.f > 0 ? -1 : 1) * (t0 / 2 + 0.003 + (+r.t || 0))); if (r.f > 0) m0.rotation.y = Math.PI; m0.receiveShadow = true; m0.userData.rivId = r.id; g0.add(m0); riv3Body(g0, r, V0, it0, t0, L0, (sk0 && sk0.col) || '#e7e2d8'); scene.add(g0); return;
         }
         const L = Lw(w), t = getWallThickness(w), V = c.V, it = items(w, r, true), Wd = V.u1 - V.u0, Hh = V.z1 - V.z0;
         const ppm = Math.max(60, Math.min(320, 2048 / Math.max(Wd, Hh, 0.5))), bb = {u0: V.u0, u1: V.u1, v0: V.z0, v1: V.z1};
@@ -22070,14 +22157,14 @@ window.SC_REL = {
         const m = new THREE.Mesh(new THREE.PlaneGeometry(Wd, Hh), new THREE.MeshStandardMaterial({map: tex, transparent: true, alphaTest: 0.5, roughness: 0.55, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2}));
         const ang = Math.atan2(w.p2.y - w.p1.y, w.p2.x - w.p1.x), g = new THREE.Group();
         g.position.set((w.p1.x + w.p2.x) / 2, 0, -(w.p1.y + w.p2.y) / 2); g.rotation.y = ang;
-        m.position.set((r.x0 + r.x1) / 2 - L / 2, (V.z0 + V.z1) / 2, (r.f > 0 ? -1 : 1) * (t / 2 + 0.003)); if (r.f > 0) m.rotation.y = Math.PI;
-        m.receiveShadow = true; m.userData.rivId = r.id; g.add(m); scene.add(g);
+        m.position.set((r.x0 + r.x1) / 2 - L / 2, (V.z0 + V.z1) / 2, (r.f > 0 ? -1 : 1) * (t / 2 + 0.003 + (+r.t || 0))); if (r.f > 0) m.rotation.y = Math.PI;
+        m.receiveShadow = true; m.userData.rivId = r.id; g.add(m); riv3Body(g, r, V, it, t, L, (c.e.sk && c.e.sk.col) || '#d9d4c7'); scene.add(g);
         /* v19.0: nicchie dentro il rivestimento: fondo, lati, sopra e sotto rivestiti con la stessa posa */
         const sg = r.f > 0 ? -1 : 1, texN = new THREE.CanvasTexture(cvN); texN.anisotropy = 4;
         (w.works || []).filter(k => k.k === 'niche' && k.f === r.f).forEach(k0 => {
           const k = SCwk.clamp(w, {...k0}), xa = k.cx - k.w / 2, xb = k.cx + k.w / 2, y0 = k.y, y1 = k.y + k.h;
           if (!(xa >= r.x0 - 1e-3 && xb <= r.x1 + 1e-3 && y0 >= r.z0 - 1e-3 && y1 <= r.z1 + 1e-3)) return;
-          const zf = sg * (t / 2 + 0.002), zb = sg * (t / 2 - k.d);
+          const zf = sg * (t / 2 + 0.002 + (+r.t || 0)), zb = sg * (t / 2 - k.d);
           const UV = (xw, y) => { const uv = r.f > 0 ? L - (xw + L / 2) : xw + L / 2; return [(uv - V.u0) / Wd, (y - V.z0) / Hh]; };
           const quads = [
             [[xa, y0, zb], [xb, y0, zb], [xb, y1, zb], [xa, y1, zb]],   /* fondo della nicchia */
@@ -22412,11 +22499,13 @@ window.SC_REL = {
     }); });
     return Object.values(g).map(o => ({key: o.key, um: 'm²', q: o.q, desc: VOCE[o.f.type] + ' «' + o.f.name + '»' + (o.f.code ? ' (' + o.f.code + ')' : '') + ', su pareti: ' + o.list.join('; ') + '. Superficie al netto delle aperture.', det: f2(o.q) + ' m² netti' + (o.f.pr != null ? ' · € ' + f2(o.f.pr) + '/m² dalla finitura' : '')}));
   }
+  const keyOf = r => { const f = clean(r.fin); return 'pit_' + f.type + '_' + (f.id || f.name); };
+  function setPrice(key, v) { state.walls.forEach(w => (w.pit || []).forEach(r => { if (r.fin && keyOf(r) === key) r.fin.pr = v; })); }
   function priceOf(key) { for (const w of state.walls) for (const r of (w.pit || [])) { const f = clean(r.fin); if ('pit_' + f.type + '_' + (f.id || f.name) === key && f.pr != null) return f.pr; } return null; }
   /* le finiture trovate nei progetti aperti entrano nella libreria */
   setInterval(() => { try { state.walls.forEach(w => (w.pit || []).forEach(r => learn(r.fin))); } catch (_) {} }, 4000);
 
-  window.SCpit = {voce: t => VOCE[t] || VOCE.tinta, add, remove, dup, find, hostOf, bbox, fitBox, draw, drawTmp, hit, hitVertex, moveVertex, insertVertex, delVertex, setCur, panelHTML, bind, openLib, closeLib, add3D, items, priceOf, net, tile, pattern, TYPES, presets: PRESETS, last: () => LAST};
+  window.SCpit = {voce: t => VOCE[t] || VOCE.tinta, add, remove, dup, find, hostOf, bbox, fitBox, draw, drawTmp, hit, hitVertex, moveVertex, insertVertex, delVertex, setCur, panelHTML, bind, openLib, closeLib, add3D, items, priceOf, keyOf, setPrice, net, tile, pattern, TYPES, presets: PRESETS, last: () => LAST};
   if (window.SCwk && SCwk.commit) bind(document.getElementById('wkFoot'), {commit: SCwk.commit, sel: SCwk.sel});
 })();
 </script>
@@ -22708,13 +22797,19 @@ window.SC_REL = {
       (state.beams || []).forEach(b => { if (b.led || !vis(b) || b.pts.length < 2) return; const f = floorById(floorOf(b)), top = SCcs.topOf(f.id), D = SCcs.dense(b, false);
         for (let i = 0; i + 1 < D.length; i++) { const a = D[i], q = D[i + 1], ex = q.x - a.x, ey = q.y - a.y, Ls = Math.hypot(ex, ey), den = ux * ey - uy * ex; if (Ls < 1e-4 || Math.abs(den) < 1e-9) continue; const wx = a.x - p1.x, wy = a.y - p1.y, sv = (wx * ey - wy * ex) / den, t = (wx * uy - wy * ux) / den; if (t < 0 || t > 1 || sv < 0 || sv > L) continue; const half = b.w / 2 / Math.max(0.15, Math.abs(den / Ls)), u = H(sv); cbeams.push({a: u - half, b: u + half, z0: f.elev + top - b.hh, z1: f.elev + top, o: b}); } });
     }
+    const imps = [];   /* v25.4: impianti tagliati (punti) o nel piano della sezione (linee) */
+    if (window.SCwl && SCwl.impOn()) { try { const nx = -uy, ny = ux; SCwl.impSegs().forEach(q => {
+      const f = floorById(q.fl); if (!f) return; const e = f.elev || 0, da = (q.p.x - p1.x) * nx + (q.p.y - p1.y) * ny, db = (q.q.x - p1.x) * nx + (q.q.y - p1.y) * ny, ua = (q.p.x - p1.x) * ux + (q.p.y - p1.y) * uy, ub = (q.q.x - p1.x) * ux + (q.q.y - p1.y) * uy;
+      if (Math.abs(da) < 0.15 && Math.abs(db) < 0.15) { if (Math.max(ua, ub) < 0 || Math.min(ua, ub) > L) return; imps.push({k: 'l', a: H(Math.max(0, Math.min(L, ua))), b: H(Math.max(0, Math.min(L, ub))), za: e + q.p.z, zb: e + q.q.z, imp: q.imp, d: q.d}); }
+      else if (da * db < 0) { const t = da / (da - db), u = ua + (ub - ua) * t; if (u >= 0 && u <= L) imps.push({k: 'd', u: H(u), z: e + q.p.z + (q.q.z - q.p.z) * t, imp: q.imp, d: q.d}); }
+    }); } catch (e) { console.warn('impianti in sezione', e); } }
     const xs = walls.flatMap(c => [c.h0, c.h1]).concat(rooms.flatMap(c => [c.h0, c.h1]), ceils.flatMap(c => [c.a, c.b]), roofsC.flatMap(r => [r[0].h, r[r.length - 1].h]));
     const zs = walls.map(c => c.z1).concat(slabs.map(c => c.z1), roofsC.flatMap(r => r.map(q => q.zt)));
-    return {L, H, ux, uy, side, walls, rooms, slabs, views: vrun, steps, roofs: roofsC, ceils, cvel, cbeams, fl, x0: xs.length ? Math.min(...xs) : 0, x1: xs.length ? Math.max(...xs) : L, z0: Math.min(0, fl[0].elev), z1: zs.length ? Math.max(...zs) : 3};
+    return {L, H, ux, uy, side, walls, rooms, slabs, views: vrun, steps, roofs: roofsC, ceils, cvel, cbeams, imps, fl, x0: xs.length ? Math.min(...xs) : 0, x1: xs.length ? Math.max(...xs) : L, z0: Math.min(0, fl[0].elev), z1: zs.length ? Math.max(...zs) : 3};
   }
   /* la geometria si ricalcola solo se cambia la traccia o il disegno (punto di annullamento) */
   const GC = {key: '', ref: null, G: null};
-  const geomC = sec => { const key = [sec.p1.x, sec.p1.y, sec.p2.x, sec.p2.y, sec.side].join(',') + '|' + state.walls.length + '|' + (state.roofs || []).length + '|' + JSON.stringify((state.ceils || []).map(c => [c.h, c.pts, c.vOff, c.fin && c.fin.c1])) + JSON.stringify((state.beams || []).map(b => [b.pts, b.w, b.hh])) + (S.coarse ? '|c' : ''), ref = typeof last === 'string' ? last : null; if (ref && GC.ref === ref && GC.key === key && GC.G) return GC.G; const G = geom(sec, S.coarse); GC.key = key; GC.ref = ref; GC.G = G; return G; };
+  const geomC = sec => { const key = [sec.p1.x, sec.p1.y, sec.p2.x, sec.p2.y, sec.side].join(',') + '|' + state.walls.length + '|' + (state.roofs || []).length + '|' + JSON.stringify((state.ceils || []).map(c => [c.h, c.pts, c.vOff, c.fin && c.fin.c1])) + JSON.stringify((state.beams || []).map(b => [b.pts, b.w, b.hh, b.imp, b.zm, b.z])) + (window.SCwl && SCwl.impOn() ? '|i' + JSON.stringify((state.walls || []).map(w => (w.leds || []).filter(r => r.imp).map(r => [r.pts, r.p, r.f]))) : '') + (S.coarse ? '|c' : ''), ref = typeof last === 'string' ? last : null; if (ref && GC.ref === ref && GC.key === key && GC.G) return GC.G; const G = geom(sec, S.coarse); GC.key = key; GC.ref = ref; GC.G = G; return G; };
 
   /* ---------------------------------------------------------------- pannello */
   const P = document.createElement('div'); P.id = 'szPanel'; P.hidden = true; P.setAttribute('role', 'dialog'); P.setAttribute('aria-label', 'Sezione');
@@ -22813,6 +22908,11 @@ window.SC_REL = {
     /* v24.0: controsoffitti (lastra al livello), velette, false travi; quota di ciascun piano */
     const csC = o.cs || '#c4b5fd';
     (G.cbeams || []).forEach(b => { const x = X(b.a), y = Y(b.z1), w = Math.max(2, (b.b - b.a) * S.view.s), h = (b.z1 - b.z0) * S.view.s; c.fillStyle = o.paper ? '#ffffff' : 'rgba(196,181,253,.25)'; c.fillRect(x, y, w, h); c.strokeStyle = csC; c.lineWidth = 1.4; c.strokeRect(x, y, w, h); });
+    (G.imps || []).forEach(q => {
+      const T = (window.SCwl && SCwl.IMPT[q.imp]) || ['', '#2563eb'], r = Math.max(3, q.d / 2000 * S.view.s);
+      if (q.k === 'd') { c.beginPath(); c.arc(X(q.u), Y(q.z), r, 0, 7); c.fillStyle = T[1]; c.fill(); c.strokeStyle = o.paper ? '#000' : '#fff'; c.lineWidth = 1.2; c.stroke(); }
+      else { c.lineCap = 'round'; c.beginPath(); c.moveTo(X(q.a), Y(q.za)); c.lineTo(X(q.b), Y(q.zb)); c.strokeStyle = o.paper ? '#000' : '#fff'; c.lineWidth = r * 2 + 2; c.stroke(); c.strokeStyle = T[1]; c.lineWidth = r * 2; c.stroke(); }
+    });
     (G.cvel || []).forEach(v => { const x = X(v.u), w = Math.max(3, 0.05 * S.view.s); c.fillStyle = csC; c.fillRect(x - w / 2, Y(v.z1), w, (v.z1 - v.z0) * S.view.s); });
     (G.ceils || []).forEach(q => {
       const sel = S.cs && S.cs === q.c, x = X(q.a), w = (q.b - q.a) * S.view.s, y = Y(q.z), th = Math.max(sel ? 5 : 3, q.t * S.view.s);
@@ -22870,6 +22970,7 @@ window.SC_REL = {
     (G.ceils || []).forEach(q => { us.push(q.a, q.b); zs.push(q.z, q.z - (q.t || 0)); });
     (G.cvel || []).forEach(q => { us.push(q.u); zs.push(q.z0, q.z1); });
     (G.cbeams || []).forEach(q => { us.push(q.a, q.b); zs.push(q.z0, q.z1); });
+    (G.imps || []).forEach(q => { if (q.k === 'd') { us.push(q.u); zs.push(q.z); } else { us.push(q.a, q.b); zs.push(q.za, q.zb); } });
     (G.rooms || []).forEach(q => { us.push(q.h0, q.h1); zs.push(q.f.elev); });
     (G.roofs || []).forEach(r => r.forEach(q => { us.push(q.h); zs.push(q.zt, q.zb); }));
     (G.fl || []).forEach(f => zs.push(f.elev));
@@ -23311,17 +23412,23 @@ window.SC_REL = {
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, m => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[m]));
   const KS = [[2700, 'Calda 2700 K'], [3000, 'Calda 3000 K'], [4000, 'Naturale 4000 K']], WS = [4, 6, 8, 10, 14];
   const leds = w => Array.isArray(w.leds) ? w.leds : (w.leds = []);
+  /* v25.3 · IMPIANTI: stesse linee libere del profilo LED, con r.imp = tipo; colori: acqua calda rosso, fredda blu, scarichi nero, fase marrone, neutro grigio, terra giallo */
+  const IMPT = {acc: ['Acqua calda', '#dc2626', 20], acf: ['Acqua fredda', '#2563eb', 20], scn: ['Scarico / acque nere', '#111827', 50], fas: ['Elettrico · fase', '#92400e', 16], neu: ['Elettrico · neutro', '#9ca3af', 16], ter: ['Elettrico · terra', '#eab308', 16], can: ['Canalina', '#e5e7eb', 30]};
+  const DIAMS = {acc: [16, 20, 25, 32], acf: [16, 20, 25, 32], scn: [40, 50, 63, 100, 125], fas: [16, 20, 25, 32], neu: [16, 20, 25, 32], ter: [16, 20, 25, 32], can: [20, 30, 50, 100]};
+  const IMPD = {acc: d => 'Tubazione multistrato Ø' + d + ' mm per acqua calda sanitaria, in traccia, compresi isolante e raccordi', acf: d => 'Tubazione multistrato Ø' + d + ' mm per acqua fredda, in traccia, compresi raccordi', scn: d => 'Tubazione di scarico in PP/PVC Ø' + d + ' mm per acque nere e reflue, compresi pezzi speciali e staffaggi',
+    fas: d => 'Conduttore di fase in tubo corrugato Ø' + d + ' mm, in traccia', neu: d => 'Conduttore di neutro in tubo corrugato Ø' + d + ' mm, in traccia', ter: d => 'Conduttore di terra in tubo corrugato Ø' + d + ' mm, in traccia', can: d => 'Canalina portacavi ' + d + ' mm, compreso fissaggio'};
+  const impOn = () => !!appSettings.showImp;
   const find = id => { for (const w of state.walls) { const r = (w.leds || []).find(x => x.id === id); if (r) return r; } return null; };
   const hostOf = id => state.walls.find(w => (w.leds || []).some(x => x.id === id));
   const D = r => SCcs.dense({pts: r.pts.map(p => ({x: p.x, y: p.z, b: p.b}))}, false);   /* punti reali, archi compresi */
   const len = r => { const P = D(r); let s = 0; for (let i = 0; i + 1 < P.length; i++) s += Math.hypot(P[i + 1].x - P[i].x, P[i + 1].y - P[i].y); return s; };
   let CV = null;
   const setCur = (r, i) => { CV = r && i != null ? {id: r.id, i} : null; };
-  function add(w, f, pts, name) {
+  function add(w, f, pts, name, imp) {
     const L = Lw(w), H = getWallHeight(w);
     const P = pts.map(p => { const o = {x: r3(Math.max(0, Math.min(L, p.x))), z: r3(Math.max(0, Math.min(H, p.z)))}; if (p.b) o.b = Math.round(p.b * 10000) / 10000; return o; });
     if (P.length < 2) { toast('Servono almeno 2 punti'); return null; }
-    const r = {id: newId(), f, pts: P, k: +appSettings.ledK || 3000, w: +appSettings.ledW || 8, name: name || ''};
+    const r = imp && IMPT[imp] ? {id: newId(), f, pts: P, imp, d: IMPT[imp][2], p: 0.04, name: name || ''} : {id: newId(), f, pts: P, k: +appSettings.ledK || 3000, w: +appSettings.ledW || 8, name: name || ''};
     if (len(r) < 0.02) { toast('Linea troppo corta'); return null; }
     leds(w).push(r); return r;
   }
@@ -23338,7 +23445,7 @@ window.SC_REL = {
     r.pts.forEach(p => { p.x = r3(x0 + (bw < 1e-6 ? 0 : (p.x - b.x0) / bw * nw)); p.z = r3(z0 + (bh < 1e-6 ? 0 : (p.z - b.z0) / bh * nh)); });
   }
   function hit(w, face, x, z, tol) {
-    const list = leds(w).filter(r => r.f === face).reverse();
+    const list = leds(w).filter(r => r.f === face && (!r.imp || impOn())).reverse();
     for (const r of list) { const P = D(r); for (let i = 0; i + 1 < P.length; i++) { const a = P[i], c = P[i + 1], dx = c.x - a.x, dy = c.y - a.y, L2 = dx * dx + dy * dy || 1e-9, t = Math.max(0, Math.min(1, ((x - a.x) * dx + (z - a.y) * dy) / L2)); if (Math.hypot(a.x + dx * t - x, a.y + dy * t - z) <= tol) return r; } }
     return null;
   }
@@ -23358,11 +23465,12 @@ window.SC_REL = {
   function delVertex(r, i) { if (r.pts.length <= 2) return false; r.pts.splice(i, 1); return true; }
   function draw(cx, w, face, sx, sy, s, oSel) {
     leds(w).forEach(r => {
-      if (r.f !== face || r.pts.length < 2) return;
+      if (r.f !== face || r.pts.length < 2 || (r.imp && !impOn())) return;
       const sel = oSel && oSel.kind === 'led' && oSel.id === r.id, P = D(r);
       cx.save(); cx.lineCap = 'round'; cx.lineJoin = 'round'; cx.setLineDash([]);
       cx.beginPath(); P.forEach((p, i) => { const X = sx(toU(w, face, p.x)), Y = sy(p.y); i ? cx.lineTo(X, Y) : cx.moveTo(X, Y); });
-      cx.strokeStyle = sel ? '#22d3ee' : '#eab308'; cx.lineWidth = sel ? 5 : 3.6; cx.stroke(); cx.strokeStyle = 'rgba(255,255,255,.9)'; cx.lineWidth = 1.1; cx.stroke();
+      if (r.imp) { const T = IMPT[r.imp] || IMPT.acf, lw = Math.max(3, Math.min(10, (r.d || 20) / 6)); if (sel) { cx.strokeStyle = '#22d3ee'; cx.lineWidth = lw + 4; cx.stroke(); } cx.strokeStyle = T[1]; cx.lineWidth = lw; cx.stroke(); cx.strokeStyle = 'rgba(255,255,255,.55)'; cx.lineWidth = 0.8; cx.stroke(); }
+      else { cx.strokeStyle = sel ? '#22d3ee' : '#eab308'; cx.lineWidth = sel ? 5 : 3.6; cx.stroke(); cx.strokeStyle = 'rgba(255,255,255,.9)'; cx.lineWidth = 1.1; cx.stroke(); }
       if (sel) {
         for (let i = 0; i + 1 < r.pts.length; i++) { const m = chordMid(r.pts[i], r.pts[i + 1]); cx.beginPath(); cx.arc(sx(toU(w, face, m.x)), sy(m.z), 5, 0, 7); cx.fillStyle = 'rgba(255,255,255,.7)'; cx.fill(); cx.strokeStyle = '#22d3ee'; cx.lineWidth = 1.5; cx.stroke(); }
         r.pts.forEach((p, i) => { const X = sx(toU(w, face, p.x)), Y = sy(p.z); cx.fillStyle = CV && CV.id === r.id && CV.i === i ? '#fbbf24' : '#fff'; cx.strokeStyle = '#0891b2'; cx.lineWidth = 2; cx.fillRect(X - 6, Y - 6, 12, 12); cx.strokeRect(X - 6, Y - 6, 12, 12); });
@@ -23370,12 +23478,22 @@ window.SC_REL = {
       cx.restore();
     });
   }
-  function drawTmp(cx, w, face, sx, sy, P, cur) {
-    if (!P.length) return; cx.save(); cx.strokeStyle = '#eab308'; cx.lineWidth = 3; cx.setLineDash([7, 4]); cx.lineCap = 'round';
+  function drawTmp(cx, w, face, sx, sy, P, cur, col) {
+    if (!P.length) return; cx.save(); cx.strokeStyle = col || '#eab308'; cx.lineWidth = 3; cx.setLineDash([7, 4]); cx.lineCap = 'round';
     cx.beginPath(); P.forEach((p, i) => i ? cx.lineTo(sx(p.u), sy(p.v)) : cx.moveTo(sx(p.u), sy(p.v))); if (cur) cx.lineTo(sx(cur.u), sy(cur.v)); cx.stroke(); cx.setLineDash([]);
-    P.forEach((p, i) => { cx.fillStyle = i === 0 ? '#fbbf24' : '#eab308'; cx.beginPath(); cx.arc(sx(p.u), sy(p.v), i === 0 ? 7 : 5, 0, 7); cx.fill(); }); cx.restore();
+    P.forEach((p, i) => { cx.fillStyle = col || (i === 0 ? '#fbbf24' : '#eab308'); cx.beginPath(); cx.arc(sx(p.u), sy(p.v), i === 0 ? 7 : 5, 0, 7); cx.fill(); }); cx.restore();
+  }
+  function impPanel(w, r) {
+    const ist = 'padding:7px 8px;border-radius:6px;border:1px solid #475569;background:#12151f;color:#e5e7eb;font:14px sans-serif;width:100%;box-sizing:border-box';
+    const sl = (k, opts, v) => '<select data-ld="' + k + '" style="' + ist + '">' + opts.map(([a, n]) => '<option value="' + a + '"' + (String(v) === String(a) ? ' selected' : '') + '>' + n + '</option>').join('') + '</select>';
+    const T = IMPT[r.imp] || IMPT.acf, th = getWallThickness(w);
+    return '<div class="wk-row" style="gap:6px"><label style="flex:1;font-size:12px;color:#cbd5e1">Tipo' + sl('it', Object.keys(IMPT).map(k => [k, IMPT[k][0]]), r.imp) + '</label><label style="flex:1;font-size:12px;color:#cbd5e1">Diametro' + sl('id', (DIAMS[r.imp] || [20]).map(d => [d, d + ' mm']), r.d) + '</label>' +
+      '<label style="flex:1;font-size:12px;color:#cbd5e1">Posizione nel muro' + sl('ip', [[0.02, 'Sotto l\'intonaco (2 cm)'], [0.04, 'In traccia (4 cm)'], [0.08, 'In profondità (8 cm)']].filter(o => o[0] < th / 2 + 0.001), r.p || 0.04) + '</label></div>' +
+      '<div class="wk-hint"><b style="color:' + T[1] + '">■</b> <b>' + f2(len(r)) + ' ml</b> · voce al metro nel computo. Quadratini: sposta i punti · pallini: nuovo vertice o curva · trascina il resto per spostare tutta la linea.</div>' +
+      (CV && CV.id === r.id && r.pts[CV.i] && r.pts.length > 2 ? '<div class="wk-row"><button class="wk-b" data-ld="vdel">✖ Togli il vertice ' + (CV.i + 1) + '</button></div>' : '');
   }
   function panelHTML(w, r) {
+    if (r.imp) return impPanel(w, r);
     const ist = 'padding:7px 8px;border-radius:6px;border:1px solid #475569;background:#12151f;color:#e5e7eb;font:14px sans-serif;width:100%;box-sizing:border-box';
     const sl = (k, opts, v) => '<select data-ld="' + k + '" style="' + ist + '">' + opts.map(([a, n]) => '<option value="' + a + '"' + (+v === +a ? ' selected' : '') + '>' + n + '</option>').join('') + '</select>';
     return '<div class="wk-row" style="gap:6px"><label style="flex:1;font-size:12px;color:#cbd5e1">Colore luce' + sl('k', KS, r.k || 3000) + '</label><label style="flex:1;font-size:12px;color:#cbd5e1">Potenza' + sl('w', WS.map(x => [x, x + ' W/m']), r.w || 8) + '</label>' +
@@ -23387,6 +23505,7 @@ window.SC_REL = {
     foot.addEventListener('change', e => {
       const t = e.target.closest && e.target.closest('[data-ld]'); if (!t) return; const o = ctl.sel(); if (!o || o.kind !== 'led') return; const r = find(o.id); if (!r) return;
       if (t.dataset.ld === 'mid') { appSettings.csMid = t.value; try { persistSettings(); } catch (_) {} return; }
+      if (r.imp) { if (t.dataset.ld === 'it') { r.imp = t.value; r.d = IMPT[r.imp][2]; } else if (t.dataset.ld === 'id') r.d = +t.value; else if (t.dataset.ld === 'ip') r.p = +t.value; ctl.commit(); return; }
       if (t.dataset.ld === 'k') { r.k = +t.value || 3000; appSettings.ledK = r.k; } else if (t.dataset.ld === 'w') { r.w = +t.value || 8; appSettings.ledW = r.w; }
       try { persistSettings(); } catch (_) {} ctl.commit();
     });
@@ -23402,6 +23521,7 @@ window.SC_REL = {
       if (!isEntityVisible(w) || !(w.leds || []).length) return;
       const L = Lw(w), ux = (w.p2.x - w.p1.x) / L, uy = (w.p2.y - w.p1.y) / L, t = getWallThickness(w), fl = floorOf(w);
       (w.leds || []).forEach(r => {
+        if (r.imp) return;   /* v25.3: gli impianti hanno le loro voci */
         const off = (r.f > 0 ? -1 : 1) * (t / 2 + 0.012), P = D(r);
         const at = q => ({x: w.p1.x + ux * q.x + uy * off, y: w.p1.y + uy * q.x - ux * off, z: q.y});
         for (let i = 0; i + 1 < P.length; i++) { const a = at(P[i]), c = at(P[i + 1]), l = Math.hypot(c.x - a.x, c.y - a.y, c.z - a.z); if (l < 1e-4) continue; out.push({p: a, q: c, L: l, fl, k: +r.k || 3000, w: +r.w || 8, el: r, wall: w}); }
@@ -23421,7 +23541,46 @@ window.SC_REL = {
       } catch (e) { console.warn('LED prospetto 3D', e); }
     });
   }
-  window.SCwl = {find, hostOf, add, remove, dup, bbox, fitBox, hit, hitVertex, moveVertex, insertVertex, setBulge, delVertex, setCur, draw, drawTmp, panelHTML, bind, segs, add3D, len, D};
+  /* segmenti reali degli impianti (dentro il muro) e computo al metro */
+  function impSegs() {
+    const out = [];
+    state.walls.forEach(w => {
+      if (!isEntityVisible(w) || !(w.leds || []).some(r => r.imp)) return;
+      const L = Lw(w), ux = (w.p2.x - w.p1.x) / L, uy = (w.p2.y - w.p1.y) / L, t = getWallThickness(w), fl = floorOf(w);
+      (w.leds || []).forEach(r => {
+        if (!r.imp) return;
+        const off = (r.f > 0 ? -1 : 1) * (t / 2 - Math.min(r.p || 0.04, t / 2 - 0.005)), P = D(r);
+        const at = q => ({x: w.p1.x + ux * q.x + uy * off, y: w.p1.y + uy * q.x - ux * off, z: q.y});
+        for (let i = 0; i + 1 < P.length; i++) { const a = at(P[i]), c = at(P[i + 1]), l = Math.hypot(c.x - a.x, c.y - a.y, c.z - a.z); if (l < 1e-4) continue; out.push({p: a, q: c, L: l, fl, imp: r.imp, d: r.d || 20, el: r, wall: w}); }
+      });
+    });
+    if (window.SCcs) state.beams.forEach(b => {   /* v25.4: linee d'impianto disegnate in pianta */
+      if (!b.imp || !isEntityVisible(b) || !b.pts || b.pts.length < 2) return;
+      const fl = floorOf(b), top = SCcs.topOf(fl), D = SCcs.dense(b, false), zm = b.zm || 'pav';
+      const zOf = (x, y) => { if (zm === 'lib') return b.z != null && isFinite(b.z) ? +b.z : 0.5; if (zm === 'pav') return 0.05; const base = SCcs.zAt(x, y, fl) + 0.004; return base < top - 0.01 ? base + Math.min(0.12, (top - base) / 2) : top - 0.05; };
+      for (let i = 0; i + 1 < D.length; i++) { const a = {x: D[i].x, y: D[i].y, z: zOf(D[i].x, D[i].y)}, c = {x: D[i + 1].x, y: D[i + 1].y, z: zOf(D[i + 1].x, D[i + 1].y)}, l = Math.hypot(c.x - a.x, c.y - a.y, c.z - a.z); if (l < 1e-4) continue; out.push({p: a, q: c, L: l, fl, imp: b.imp, d: b.d || 20, el: b, wall: null}); }
+    });
+    return out;
+  }
+  function impItems() {
+    const g = {};
+    impSegs().forEach(q => { const key = 'imp_' + q.imp + '_' + q.d, o = g[key] || (g[key] = {key, imp: q.imp, d: q.d, q: 0, n: new Set()}); o.q += q.L; o.n.add(q.wall ? (q.wall.name || 'muro') : 'pianta'); });
+    return Object.values(g).map(o => ({key: o.key, um: 'ml', q: o.q, desc: IMPD[o.imp](o.d), det: 'Sviluppo reale delle linee disegnate (prospetto e pianta) · ' + [...o.n].join(', ')}));
+  }
+  function add3DImp(scene) {
+    if (!window.THREE || !impOn()) return;
+    impSegs().forEach(q => {
+      try {
+        const f = state.floors.find(x => x.id === q.fl) || {elev: 0}, m = new THREE.MeshBasicMaterial({color: (IMPT[q.imp] || IMPT.acf)[1], depthTest: false, transparent: true, opacity: 0.95});
+        const dir = new THREE.Vector3(q.q.x - q.p.x, q.q.z - q.p.z, -(q.q.y - q.p.y)), rd = Math.max(0.004, q.d / 2000), mesh = new THREE.Mesh(new THREE.CylinderGeometry(rd, rd, q.L, 8), m);
+        mesh.position.set((q.p.x + q.q.x) / 2, (f.elev || 0) + (q.p.z + q.q.z) / 2, -(q.p.y + q.q.y) / 2);
+        mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize()); mesh.renderOrder = 998; mesh.userData.imp = 1; mesh.userData.noExport = true; scene.add(mesh);
+      } catch (e) { console.warn('impianti 3D', e); }
+    });
+  }
+  const add3DAll = scene => { add3D(scene); add3DImp(scene); };
+  { const c = document.getElementById('showImp'); if (c) { c.checked = !!appSettings.showImp; c.addEventListener('change', () => { appSettings.showImp = c.checked; try { persistSettings(); } catch (_) {} try { draw2D(); } catch (_) {} try { if (window.SCwk && SCwk.active()) SCwk.ui(); } catch (_) {} try { if (state.mode === '3d') build3D(); } catch (_) {} }); } }
+  window.SCwl = {DIAMS, find, hostOf, add, remove, dup, bbox, fitBox, hit, hitVertex, moveVertex, insertVertex, setBulge, delVertex, setCur, draw, drawTmp, panelHTML, bind, segs, add3D: add3DAll, len, D, IMPT, impSegs, impItems, impOn};
   if (window.SCwk && SCwk.commit) bind(document.getElementById('wkFoot'), {commit: SCwk.commit, sel: SCwk.sel});
 })();
 </script>
@@ -23434,13 +23593,17 @@ window.SC_REL = {
 (function () {
   const Lw = w => Math.hypot(w.p2.x - w.p1.x, w.p2.y - w.p1.y), r3 = v => Math.round(v * 1000) / 1000;
   const f2 = v => (Math.round(v * 100) / 100).toFixed(2).replace('.', ',');
-  const WALLT = {applique: 1, faretto_p: 1};
-  const NAMES = {plafoniera: 'Plafoniera', faretto: 'Faretto a incasso', sospensione: 'Sospensione', applique: 'Applique a parete', faretto_p: 'Faretto a parete', striscia: 'Striscia LED'};
+  const WALLT = {applique: 1, faretto_p: 1}, WALLP = {presa: 1, interruttore: 1, quadro: 1};   /* luci e punti a parete */
+  const NAMES = {presa: 'Presa', interruttore: 'Interruttore', quadro: 'Quadro elettrico', plafoniera: 'Plafoniera', faretto: 'Faretto a incasso', sospensione: 'Sospensione', applique: 'Applique a parete', faretto_p: 'Faretto a parete', striscia: 'Striscia LED'};
   /* misure e quota tipiche: w, d (profondità), h, z (da terra) */
   const DEF = {plafoniera: {w: .25, d: .25, h: .06, z: 2.62}, faretto: {w: .09, d: .09, h: .03, z: 2.67}, sospensione: {w: .2, d: .2, h: .2, z: 2.2}, applique: {w: .12, d: .1, h: .16, z: 1.6}, faretto_p: {w: .08, d: .08, h: .08, z: 2.0}};
   const tipoOf = f => (f.lt && f.lt.tipo) || 'plafoniera';
   const isLux = f => !!f && f.type === 'punto_luce';
-  const isWallT = f => isLux(f) && !!WALLT[tipoOf(f)];
+  const isWallT = f => (isLux(f) && !!WALLT[tipoOf(f)]) || (!!f && !!WALLP[f.type]);
+  const kindOf = f => f.type === 'punto_luce' ? tipoOf(f) : f.type;
+  /* quota del centro: per le luci è f.z, per prese, interruttori e quadro f.z è la parte bassa */
+  const zc = f => f.type === 'punto_luce' ? (f.z != null ? f.z : 1.6) : (f.z != null ? f.z : 0.3) + (f.h || 0.08) / 2;
+  const setZc = (f, v) => { f.z = r3(f.type === 'punto_luce' ? v : v - (f.h || 0.08) / 2); };
   const near = (a, b) => Math.abs(a - b) < 0.0051;
   const dimsDef = f => Object.keys(DEF).some(k => near(f.w, DEF[k].w) && near(f.d, DEF[k].d) && near(f.h, DEF[k].h));   /* misure non personalizzate: coincidono con quelle di un tipo */
   const zDef = f => Object.keys(DEF).some(k => near(f.z != null ? f.z : 2.62, DEF[k].z));
@@ -23550,14 +23713,14 @@ window.SC_REL = {
   updateSelectionPanel = function () {
     const r = outer.apply(this, arguments), info = document.getElementById('selectionInfo'), p = document.getElementById('selectionPanel');
     const f = state.sel.length === 1 && state.selected && state.selected.type === 'furniture' ? state.furniture.find(x => x.id === state.selected.id) : null;
-    if (f && isLux(f) && info && p && p.style.display !== 'none' && !document.getElementById('luxBlk')) {
+    if (f && (isLux(f) || WALLP[f.type]) && info && p && p.style.display !== 'none' && !document.getElementById('luxBlk')) {
       const d = document.createElement('div'); d.id = 'luxBlk'; d.style.cssText = 'margin-top:8px;padding-top:6px;border-top:1px solid #3a3a5e';
       if (isWallT(f) && f.lw) {
         d.innerHTML = '<div style="font-size:11px;color:#7dd3fc;margin-bottom:2px"><b>▣ Posizione sul muro</b></div><label>Distanza dal punto iniziale del muro (m)</label><input type="number" id="luxDist" value="' + f2(f.lw.dist).replace(',', '.') + '" min="0" step="0.05">' +
-          '<label>Quota del centro da terra (m)</label><input type="number" id="luxZ" value="' + f2(f.z != null ? f.z : 1.6).replace(',', '.') + '" min="0" step="0.05">' +
+          '<label>Quota del centro da terra (m)</label><input type="number" id="luxZ" value="' + f2(zc(f)).replace(',', '.') + '" min="0" step="0.05">' +
           '<div style="display:flex;gap:5px;margin-top:5px"><button class="action" id="luxSide" style="flex:1;font-size:11px">⇅ Lato opposto</button></div>';
       } else if (isWallT(f)) {
-        d.innerHTML = '<div style="font-size:11px;color:#fbbf24">Luce a parete libera: trascinala vicino a un muro per agganciarla.</div>';
+        d.innerHTML = '<div style="font-size:11px;color:#fbbf24">Libero: trascinalo vicino a un muro per agganciarlo (si sposta anche dal prospetto).</div>';
       } else {
         d.innerHTML = '<div style="font-size:11px;color:#7dd3fc;margin-bottom:4px"><b>⌖ Allineamento</b></div>' +
           '<div style="display:flex;gap:5px"><button class="action" id="luxCenter" style="flex:1;font-size:11px" title="Porta la luce al centro della stanza che la contiene">⌖ Al centro stanza</button><button class="action" id="luxAxis" style="flex:1;font-size:11px" title="Porta la luce sull\'asse centrale della stanza, tenendo la posizione lungo l\'asse (corridoi)">↔ Sull\'asse</button></div>';
@@ -23565,7 +23728,7 @@ window.SC_REL = {
       info.appendChild(d);
       const g = id => document.getElementById(id);
       if (g('luxDist')) g('luxDist').oninput = e => { const v = parseFloat(e.target.value); if (v >= 0 && f.lw) { f.lw.dist = v; sync(f); refresh(); } };
-      if (g('luxZ')) g('luxZ').oninput = e => { const v = parseFloat(e.target.value); if (v >= 0) { f.z = v; refresh(); } };
+      if (g('luxZ')) g('luxZ').oninput = e => { const v = parseFloat(e.target.value); if (v >= 0) { setZc(f, v); refresh(); } };
       if (g('luxSide')) g('luxSide').onclick = () => { f.lw.side = -f.lw.side; sync(f); refresh(); checkpoint(); };
       if (g('luxCenter')) g('luxCenter').onclick = () => runOne(f, 'center');
       if (g('luxAxis')) g('luxAxis').onclick = () => runOne(f, 'axis');
@@ -23577,21 +23740,27 @@ window.SC_REL = {
   /* ---------- prospetto ---------- */
   const luxOf = w => state.furniture.filter(f => isWallT(f) && f.lw && f.lw.wallId === w.id && isEntityVisible(f));
   const find = id => state.furniture.find(f => f.id === id && isWallT(f)) || null;
-  const zOf = f => f.z != null ? f.z : 1.6;
+  const zOf = zc;
   /* simbolo nel prospetto (cx: contesto, sx/sy: coordinate, s: scala) */
   function draw(cx, w, face, sx, sy, s, oSel) {
     luxOf(w).forEach(f => {
-      const front = f.lw.side === face, u = face > 0 ? Lw(w) - f.lw.dist : f.lw.dist, X = sx(u), Y = sy(zOf(f)), sel = oSel && oSel.kind === 'lux' && oSel.id === f.id, t = tipoOf(f);
+      const front = f.lw.side === face, u = face > 0 ? Lw(w) - f.lw.dist : f.lw.dist, X = sx(u), Y = sy(zOf(f)), sel = oSel && oSel.kind === 'lux' && oSel.id === f.id, t = kindOf(f);
       cx.save(); cx.globalAlpha = front ? 1 : 0.35; if (!front) cx.setLineDash([4, 3]);
       cx.fillStyle = '#fde68a'; cx.strokeStyle = sel ? '#22d3ee' : '#a16207'; cx.lineWidth = sel ? 3 : 1.6;
-      if (t === 'applique') {
+      if (t === 'presa' || t === 'interruttore') {
+        cx.fillStyle = '#e5e7eb'; cx.beginPath(); cx.rect(X - 8, Y - 8, 16, 16); cx.fill(); cx.stroke();
+        cx.fillStyle = '#1f2937'; if (t === 'presa') { cx.beginPath(); cx.arc(X - 3, Y, 1.8, 0, 7); cx.arc(X + 3, Y, 1.8, 0, 7); cx.fill(); } else { cx.fillRect(X - 1.5, Y - 5, 3, 10); }
+      } else if (t === 'quadro') {
+        const wq = Math.max(14, (f.w || 0.4) * s), hq = Math.max(14, (f.h || 0.5) * s); cx.fillStyle = '#cbd5e1'; cx.beginPath(); cx.rect(X - wq / 2, Y - hq / 2, wq, hq); cx.fill(); cx.stroke();
+        cx.fillStyle = '#1f2937'; cx.font = '700 10px sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.fillText('⚡', X, Y);
+      } else if (t === 'applique') {
         cx.beginPath(); cx.moveTo(X - 7, Y + 10); cx.lineTo(X - 7, Y - 2); cx.arc(X, Y - 2, 7, Math.PI, 0); cx.lineTo(X + 7, Y + 10); cx.closePath(); cx.fill(); cx.stroke();
       } else {
         cx.beginPath(); cx.arc(X, Y, 6, 0, 7); cx.fill(); cx.stroke();
         cx.strokeStyle = sel ? '#22d3ee' : '#fbbf24'; cx.setLineDash([3, 3]); cx.beginPath(); cx.moveTo(X, Y + 6); cx.lineTo(X - 14, Y + 30); cx.moveTo(X, Y + 6); cx.lineTo(X + 14, Y + 30); cx.stroke();
       }
       cx.restore();
-      if (sel || s > 70) { cx.fillStyle = '#fde68a'; cx.font = '600 10.5px "Segoe UI",sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'top'; cx.fillText(NAMES[t] + ' · ' + (+(f.lt && f.lt.lm) || 800) + ' lm', X, Y + 34); }
+      if (sel || s > 70) { cx.fillStyle = '#fde68a'; cx.font = '600 10.5px "Segoe UI",sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'top'; cx.fillText(NAMES[t] + (f.type === 'punto_luce' ? ' · ' + (+(f.lt && f.lt.lm) || 800) + ' lm' : ''), X, Y + (t === 'presa' || t === 'interruttore' ? 14 : 34)); }
     });
   }
   function hit(w, face, x, v, pxPerM) {
@@ -23600,8 +23769,14 @@ window.SC_REL = {
     return best;
   }
   function add(w, face, x, z, tipo) {
-    const t = WALLT[tipo] ? tipo : 'applique', d = DEF[t], L = Lw(w);
-    const f = assignLayer({id: newId(), type: 'punto_luce', x: 0, y: 0, w: d.w, d: d.d, h: d.h, color: FURNITURE.punto_luce.color, rot: 0, z: r3(Math.max(0.05, Math.min(getWallHeight(w) - 0.05, z))), lt: {tipo: t, lm: t === 'applique' ? 300 : 400, k: 3000}, lw: {wallId: w.id, dist: r3(Math.max(0.05, Math.min(L - 0.05, x))), side: face}});
+    const L = Lw(w), dist = r3(Math.max(0.05, Math.min(L - 0.05, x))), zz = Math.max(0.05, Math.min(getWallHeight(w) - 0.05, z)); let f;
+    if (WALLP[tipo]) {
+      const sp = FURNITURE[tipo];
+      f = assignLayer({id: newId(), type: tipo, x: 0, y: 0, w: sp.w, d: sp.d, h: sp.h, color: sp.color, rot: 0, z: 0, lw: {wallId: w.id, dist, side: face}}); setZc(f, zz);
+    } else {
+      const t = WALLT[tipo] ? tipo : 'applique', d = DEF[t];
+      f = assignLayer({id: newId(), type: 'punto_luce', x: 0, y: 0, w: d.w, d: d.d, h: d.h, color: FURNITURE.punto_luce.color, rot: 0, z: r3(zz), lt: {tipo: t, lm: t === 'applique' ? 300 : 400, k: 3000}, lw: {wallId: w.id, dist, side: face}});
+    }
     sync(f); state.furniture.push(f); return f;
   }
   function dup(w, f) {
@@ -23609,8 +23784,9 @@ window.SC_REL = {
     if (n.lw.dist < 0.05) return null; sync(n); state.furniture.push(n); return n;
   }
   function remove(f) { state.furniture = state.furniture.filter(x => x !== f); }
-  function write(w, f, cx, z) { f.lw.dist = r3(Math.max(0.05, Math.min(Lw(w) - 0.05, cx))); f.z = r3(Math.max(0.05, Math.min(getWallHeight(w) - 0.05, z))); sync(f); }
+  function write(w, f, cx, z) { f.lw.dist = r3(Math.max(0.05, Math.min(Lw(w) - 0.05, cx))); setZc(f, Math.max(0.05, Math.min(getWallHeight(w) - 0.05, z))); sync(f); }
   function panelHTML(f) {
+    if (f.type !== 'punto_luce') return '<div class="wk-hint">' + NAMES[f.type] + ' sul muro, lato ' + (f.lw.side > 0 ? 'sinistro' : 'destro') + '. Trascinalo per spostarlo; la quota è quella del centro. Si vede in pianta e in 3D.</div>';
     const ist = 'padding:7px 8px;border-radius:6px;border:1px solid #475569;background:#12151f;color:#e5e7eb;font:14px sans-serif;width:100%;box-sizing:border-box';
     const lt = Object.assign({tipo: 'applique', lm: 300, k: 3000}, f.lt || {});
     const sl = (k, opts, v) => '<select data-lx="' + k + '" style="' + ist + '">' + opts.map(([a, n]) => '<option value="' + a + '"' + (String(v) === String(a) ? ' selected' : '') + '>' + n + '</option>').join('') + '</select>';
@@ -23629,7 +23805,161 @@ window.SC_REL = {
     });
   }
   if (window.SCwk && SCwk.commit) bind(document.getElementById('wkFoot'), {commit: SCwk.commit, sel: SCwk.sel});
-  window.SClux = {sync, syncAll, attach, drag, onType, runAlign, alignAll, alignOne, fixSizes, luxOf, find, draw, hit, add, dup, remove, write, panelHTML, bind, isWallT, zOf, NAMES, DEF};
+  window.SClux = {WALLP, kindOf, sync, syncAll, attach, drag, onType, runAlign, alignAll, alignOne, fixSizes, luxOf, find, draw, hit, add, dup, remove, write, panelHTML, bind, isWallT, zOf, NAMES, DEF};
+})();
+</script>
+<script>
+/* ========================================================================
+   v25.1 · PREZZO E NOTA SU OGNI OGGETTO
+   Nel pannello dell'oggetto selezionato (pianta e prospetto) si vede il prezzo della voce di computo che lo riguarda,
+   già scritto; se lo cambi vale per tutte le lavorazioni uguali (stessa voce). Le voci a corpo sono per singolo oggetto.
+   La nota dell'oggetto (e.nota) esce nel dettaglio della voce di computo.
+   I prezzi sono salvati nel progetto (state.cmpPrezzi), non più solo nel browser.
+   ======================================================================== */
+(function () {
+  const cm = v => Math.round(v * 100);
+  const f2 = v => (Math.round(v * 100) / 100).toFixed(2).replace('.', ',');
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, m => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[m]));
+  const pNum = s => { s = String(s).trim(); if (s.includes(',')) s = s.replace(/\./g, '').replace(',', '.'); const v = parseFloat(s); return isFinite(v) && v >= 0 ? v : 0; };
+  const FUR = {punto_luce: 'el_luce', interruttore: 'el_int', presa: 'el_presa', quadro: 'el_quadro', radiatore: 'rad_el'};
+  const DOORK = ['single', 'double', 'slide', 'pocket', 'bifold', 'armored'];
+  const isCg = w => window.SCcg && ((SCcg.isCg && SCcg.isCg(w)) || (SCcg.isCp && SCcg.isCp(w)));
+  const demo = w => w && w.stato === 'demolire';
+
+  function wallKeys(w) {
+    const keys = [], st = w.stato || 'esistente';
+    if (isCg(w) && st !== 'demolire') { try { const v = SCcg.voce(w); if (v) keys.push(v.key); } catch (_) {} }
+    else if (st === 'demolire') keys.push(getWallThickness(w) <= 0.15 ? 'dem_tram' : 'dem_mur');
+    else if (st !== 'esistente') {
+      const t = getWallThickness(w), mk = w.material || 'standard';
+      keys.push(mk === 'cemento' ? 'new_ca_' + cm(t) : mk === 'cartongesso' ? 'new_cg_' + cm(t) : 'new_' + mk + '_' + cm(t));
+    }
+    if ((w.works || []).length) keys.push('mur_' + w.id);
+    return keys;
+  }
+  function keysOf(kind, e, w) {
+    try {
+      if (kind === 'wall') return wallKeys(e);
+      if (kind === 'work') return w ? ['mur_' + w.id] : [];
+      if (kind === 'riv') { const c = SCriv.resolve(w, e); return c ? ['riv_' + c.e.sk.id + '_' + c.e.posa.mode + (e.t ? '_t' + Math.round(e.t * 1000) : '')] : []; }
+      if (kind === 'pit') return [SCpit.keyOf(e)];
+      if (kind === 'imp') return ['imp_' + e.imp + '_' + e.d];
+      if (kind === 'door') { const k = e.kind || 'single'; if (k === 'open' || demo(state.walls.find(x => x.id === e.wallId))) return []; return ['por_' + k + '_' + cm(+e.width || 0.9) + 'x' + cm(+e.height || 2.1)]; }
+      if (kind === 'window') { if (demo(state.walls.find(x => x.id === e.wallId))) return []; return ['fin_' + cm(+e.width || 1.2) + 'x' + cm(+e.height || 1.2)]; }
+      if (kind === 'furniture') return FUR[e.type] ? [FUR[e.type]] : [];
+      if (kind === 'stairs') return ['scale'];
+      if (kind === 'room') return ['massetto', 'pavimento', 'battiscopa', 'tin_par', 'tin_sof'];
+    } catch (_) {}
+    return [];
+  }
+  function entityOf(ref) {
+    const [k, a, b] = ref.split(':'), wl = state.walls.find(x => String(x.id) === a);
+    if (k === 'wall') return {kind: k, e: wl, w: wl};
+    if (k === 'door') return {kind: k, e: state.doors.find(x => String(x.id) === a)};
+    if (k === 'window') return {kind: k, e: state.windows.find(x => String(x.id) === a)};
+    if (k === 'furniture') return {kind: k, e: state.furniture.find(x => String(x.id) === a)};
+    if (k === 'stairs') return {kind: k, e: state.stairs.find(x => String(x.id) === a)};
+    if (k === 'work') return {kind: k, e: wl && (wl.works || []).find(x => String(x.id) === b), w: wl};
+    if (k === 'riv') return {kind: k, e: wl && (wl.riv || []).find(x => String(x.id) === b), w: wl};
+    if (k === 'pit') return {kind: k, e: wl && (wl.pit || []).find(x => String(x.id) === b), w: wl};
+    if (k === 'imp') return {kind: k, e: wl && (wl.leds || []).find(x => String(x.id) === b), w: wl};
+    return {kind: k, e: null};
+  }
+  const refOf = (kind, e, w) => kind === 'work' || kind === 'riv' || kind === 'pit' || kind === 'imp' ? kind + ':' + w.id + ':' + e.id : kind + ':' + e.id;
+
+  /* ---------- note nel computo ---------- */
+  function* ents() {
+    for (const w of state.walls) { yield ['wall', w, w]; for (const k of (w.works || [])) yield ['work', k, w]; for (const r of (w.riv || [])) yield ['riv', r, w]; for (const r of (w.pit || [])) yield ['pit', r, w]; for (const r of (w.leds || [])) if (r.imp) yield ['imp', r, w]; }
+    for (const d of state.doors) yield ['door', d, null];
+    for (const d of state.windows) yield ['window', d, null];
+    for (const f of state.furniture) yield ['furniture', f, null];
+    for (const s of (state.stairs || [])) yield ['stairs', s, null];
+  }
+  const LBL = {wall: 'muro', work: 'lavorazione', riv: 'rivestimento', pit: 'pittura', imp: 'impianto', door: 'porta', window: 'finestra', furniture: 'oggetto', stairs: 'scala'};
+  function notes(V) {
+    for (const [kind, e, w] of ents()) {
+      if (!e.nota || !String(e.nota).trim()) continue;
+      const ks = keysOf(kind, e, w); let v = null; for (const k of ks) { v = V.find(x => x.key === k); if (v) break; } if (!v) continue;
+      v.det = (v.det ? v.det + ' · ' : '') + 'Nota (' + (kind === 'wall' && e.name ? e.name : LBL[kind]) + '): ' + String(e.nota).trim();
+    }
+  }
+
+  /* ---------- prezzi ---------- */
+  let cache = null;
+  const keys = () => { const t = Date.now(); if (!cache || t - cache.t > 600) cache = {t, v: SCcomputo.keys()}; return cache.v; };
+  const rowsFor = (kind, e, w) => {
+    const all = keys(), out = [];
+    if (kind === 'room') {
+      ['massetto', 'pavimento', 'battiscopa'].forEach(k => { const v = all.find(x => x.key === k); if (v) out.push({key: k, desc: v.desc, um: v.um, price: v.price}); });
+      const tp = all.find(x => x.key.startsWith('tin_par_')), ts = all.find(x => x.key.startsWith('tin_sof_'));
+      if (tp) out.push({key: 'tin_par', desc: 'Tinteggiatura pareti (stesso prezzo in tutte le stanze)', um: tp.um, price: tp.price});
+      if (ts) out.push({key: 'tin_sof', desc: 'Tinteggiatura soffitti (stesso prezzo in tutte le stanze)', um: ts.um, price: ts.price});
+      return out;
+    }
+    keysOf(kind, e, w).forEach(k => { const v = all.find(x => x.key === k); if (v) out.push({key: k, desc: v.desc, um: v.um, price: v.price}); });
+    return out;
+  };
+  const corpo = k => /^(mur_|cg_|cs_|pcs_|area_|cus_)/.test(k);
+  function setPrice(key, v) {
+    if (key.startsWith('mur_') && window.SCwk) SCwk.setPrice(key, v);
+    else if (key.startsWith('cs_') && window.SCcs) SCcs.setPrice(key, v);
+    else if (key.startsWith('cg_') && window.SCcg) SCcg.setPrice(key, v);
+    else if (key.startsWith('pit_') && window.SCpit && SCpit.setPrice) SCpit.setPrice(key, v);
+    else if (key.startsWith('area_')) { const z = state.zones.find(x => 'area_' + x.id === key); if (z) z.wkPrice = v; }
+    SCcomputo.setPrice(key, v); cache = null;
+    try { checkpoint(); } catch (_) {}
+  }
+
+  /* ---------- pannello (HTML) ---------- */
+  let OPEN = false;
+  const ist = 'padding:6px 8px;border-radius:6px;border:1px solid #475569;background:#12151f;color:#e5e7eb;font:13px sans-serif;box-sizing:border-box';
+  function panelHTML(kind, e, w) {
+    if (!e) return '';
+    const rows = OPEN ? rowsFor(kind, e, w) : [], ref = refOf(kind, e, w);
+    if (OPEN && !rows.length && kind !== 'room') return '<div class="prz" style="margin-top:8px;padding-top:6px;border-top:1px solid #3a3a5e"><div data-pzt style="font-weight:700;color:#86efac;cursor:pointer">💶 Prezzo e nota ▾</div><div style="font-size:11px;color:#9ca3b8;margin-top:3px">Nessuna voce di computo per questo oggetto (un muro esistente senza lavorazioni non ha voci).</div></div>';
+    let h = '<div class="prz" style="margin-top:8px;padding-top:6px;border-top:1px solid #3a3a5e"><div data-pzt style="font-weight:700;color:#86efac;cursor:pointer">💶 Prezzo e nota ' + (OPEN ? '▾' : '▸') + '</div>';
+    if (OPEN) {
+      rows.forEach(r => {
+        h += '<div style="margin-top:6px"><div style="font-size:11px;color:#cbd5e1;line-height:1.3">' + esc(r.desc.length > 120 ? r.desc.slice(0, 118) + '…' : r.desc) + '</div>' +
+          '<div style="display:flex;gap:6px;align-items:center;margin-top:3px"><span style="font-size:12px;color:#9ca3b8">€ ' + (r.um === 'a corpo' ? 'a corpo' : '/ ' + esc(r.um)) + '</span><input data-pz="' + esc(r.key) + '" inputmode="decimal" value="' + (+r.price ? f2(+r.price) : '') + '" placeholder="0,00" style="' + ist + ';width:110px"></div>' +
+          '<div style="font-size:10.5px;color:#9ca3b8;margin-top:2px">' + (corpo(r.key) ? 'Prezzo a corpo: vale solo per questo oggetto.' : 'Se lo cambi, vale per tutte le lavorazioni uguali (stessa voce).') + '</div></div>';
+      });
+    }
+    if (OPEN && kind !== 'room') h += '<div style="margin-top:6px"><div style="font-size:11px;color:#cbd5e1">Nota (esce nel dettaglio della voce di computo)</div><input data-pzn="' + esc(ref) + '" value="' + esc(e.nota || '') + '" placeholder="es. finta pietra in polistirolo" style="' + ist + ';width:100%"></div>';
+    return h + '</div>';
+  }
+  /* collegamento degli eventi a un contenitore (pannello di pianta o piede del prospetto) */
+  function bind(root, after) {
+    if (root._przB) return; root._przB = 1;
+    root.addEventListener('click', ev => { const t = ev.target.closest && ev.target.closest('[data-pzt]'); if (!t) return; OPEN = !OPEN; cache = null; after && after(); });
+    root.addEventListener('change', ev => {
+      const t = ev.target; if (!t || !t.dataset) return;
+      if (t.dataset.pz != null && t.dataset.pz !== '') { setPrice(t.dataset.pz, pNum(t.value)); t.value = pNum(t.value) ? f2(pNum(t.value)) : ''; after && after(true); return; }
+      if (t.dataset.pzn) { const r = entityOf(t.dataset.pzn); if (r && r.e) { r.e.nota = String(t.value || '').trim(); if (!r.e.nota) delete r.e.nota; try { checkpoint(); } catch (_) {} SCcomputo.compute && 0; } }
+    });
+  }
+
+  /* ---------- pianta ---------- */
+  const outer = updateSelectionPanel;
+  updateSelectionPanel = function () {
+    const r = outer.apply(this, arguments), info = document.getElementById('selectionInfo'), p = document.getElementById('selectionPanel'), s = state.selected;
+    if (!(state.sel && state.sel.length === 1 && s && info)) return r;
+    const old = document.getElementById('przBlk'); if (old) old.remove();
+    let kind = null, e = null;
+    if (s.type === 'wall') { kind = 'wall'; e = state.walls.find(x => x.id === s.id); }
+    else if (s.type === 'door') { kind = 'door'; e = state.doors.find(x => x.id === s.id); }
+    else if (s.type === 'window') { kind = 'window'; e = state.windows.find(x => x.id === s.id); }
+    else if (s.type === 'furniture') { kind = 'furniture'; e = state.furniture.find(x => x.id === s.id); }
+    else if (s.type === 'stairs') { kind = 'stairs'; e = (state.stairs || []).find(x => x.id === s.id); }
+    else if (s.type === 'room') { kind = 'room'; e = state.rooms.find(x => x.id === s.id); }
+    if (!e) return r;
+    if (kind === 'furniture' && !FUR[e.type]) return r;
+    const d = document.createElement('div'); d.id = 'przBlk'; d.innerHTML = panelHTML(kind, e, kind === 'wall' ? e : null); info.appendChild(d); bind(d, () => { updateSelectionPanel(); });
+    return r;
+  };
+
+  { const ft = document.getElementById('wkFoot'); if (ft) bind(ft, () => { try { SCwk.ui(); } catch (_) {} }); }   /* prospetto */
+  window.SCprezzo = {panelHTML, bind, notes, keysOf, rowsFor, setPrice, entityOf, open: () => OPEN};
 })();
 </script>
 </body>
