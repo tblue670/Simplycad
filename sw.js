@@ -1,5 +1,5 @@
 /* SimplyCAD Pro · funzionamento senza internet. A ogni nuova versione cambia VERSIONE. */
-const VERSIONE = 'simplycad-v24.9';
+const VERSIONE = 'simplycad-v25.0';
 const BASE = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-maskable.png'];
 const LIBRERIE = [
   'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js',

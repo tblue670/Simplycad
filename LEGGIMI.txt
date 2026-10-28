@@ -1,4 +1,4 @@
-SimplyCAD Pro - pubblicazione su GitHub Pages (v24.9)
+SimplyCAD Pro - pubblicazione su GitHub Pages (v25.0)
 
 Contenuto (vanno caricati tutti, senza rinominarli e SENZA cartelle intorno):
   index.html  sw.js  manifest.webmanifest  icon-192.png  icon-512.png  icon-maskable.png  README.md
@@ -337,3 +337,8 @@ NOVITÀ v24.8
 
 NOVITÀ v24.9
 - Profilo LED sul prospetto: strumento «💡 LED» (linee libere anche verticali, vertici e tratti curvi) e «Segui profilo» su aperture, nicchie, fori, rivestimenti, pitture, contropareti. 3D, notte e computo.
+
+NOVITÀ v25.0
+- Impianti › «Allinea luci al centro»: porta le luci a soffitto sull'asse del corridoio (tenendo le distanze) o al centro della stanza; anche dal pannello della singola luce («Al centro stanza», «Sull'asse»).
+- Applique e Faretto a parete: si agganciano al muro, si vedono, si inseriscono e si spostano anche sul prospetto (strumento «🔆 Luce»), con tipo, potenza e colore. In 3D e di notte illuminano.
+- Cambiando tipo di luce le misure si adattano (faretto 9 cm, applique 12 cm…); la lampada nel 3D segue le misure dell'oggetto.
