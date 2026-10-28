@@ -1,4 +1,4 @@
-SimplyCAD Pro - pubblicazione su GitHub Pages (v25.7)
+SimplyCAD Pro - pubblicazione su GitHub Pages (v25.8)
 
 Contenuto (vanno caricati tutti, senza rinominarli e SENZA cartelle intorno):
   index.html  sw.js  manifest.webmanifest  icon-192.png  icon-512.png  icon-maskable.png  README.md
@@ -375,3 +375,7 @@ NOVITÀ v25.6
 NOVITÀ v25.7
 - Impianti visibili sul prospetto: i tubi e i cavi disegnati in pianta (anche con «Collega punti») si vedono sul prospetto del muro lungo cui passano (entro lo spessore del muro + 20 cm). Tratteggiati se stanno sull'altro lato.
 - Collega punti ora fa anche la discesa verticale dal percorso (a pavimento o nel soffitto) fino a ogni punto: prese, interruttori, luci. Le discese si vedono in prospetto, 3D e sezione.
+
+NOVITÀ v25.8
+- Collega impianto elettrico (Strumenti > Impianti): collega da solo le luci all'interruttore più comodo, gli interruttori e le prese al quadro, con percorsi ad angolo retto che evitano i muri dove possono, e con le discese. Con una luce il percorso passa sopra il controsoffitto. Rifacendo il comando i collegamenti automatici vengono rigenerati.
+- Dal prospetto: strumento «Collega»: tocchi la partenza e poi i punti sul muro.

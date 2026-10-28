@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v25.7</title>
+<title>SimplyCAD Pro · v25.8</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -15330,7 +15330,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       <button class="wk-b" data-t="niche">Nicchia</button>
       <button class="wk-b" data-t="cut">Taglio</button>
       <button class="wk-b" data-t="cp" title="Controparete in cartongesso sul lato che guardi: tocca due angoli">Controparete</button>
-      <button class="wk-b" data-t="riv" title="Rivestimento con una skin sul lato che guardi: tocca due angoli">Rivestimento</button><button class="wk-b" data-t="led" title="Profilo LED: linea libera, anche in verticale, o «Segui profilo» su un oggetto">💡 LED</button><button class="wk-b" data-t="imp" title="Impianti: tubi acqua calda e fredda, scarichi, cavi elettrici e canaline dentro il muro; linee libere, anche in verticale">🔧 Impianti</button><button class="wk-b" data-t="lux" title="Luci e punti a parete: applique, faretto, presa, interruttore, quadro; tocca il punto sul muro">🔆 Luci e punti</button><button class="wk-b" data-t="pit" title="Pittura: superficie colorata sul lato che guardi, a rettangolo o punto per punto">🎨 Pittura</button>
+      <button class="wk-b" data-t="riv" title="Rivestimento con una skin sul lato che guardi: tocca due angoli">Rivestimento</button><button class="wk-b" data-t="led" title="Profilo LED: linea libera, anche in verticale, o «Segui profilo» su un oggetto">💡 LED</button><button class="wk-b" data-t="imp" title="Impianti: tubi acqua calda e fredda, scarichi, cavi elettrici e canaline dentro il muro; linee libere, anche in verticale">🔧 Impianti</button><button class="wk-b" data-t="lux" title="Luci e punti a parete: applique, faretto, presa, interruttore, quadro; tocca il punto sul muro">🔆 Luci e punti</button><button class="wk-b" data-t="col" title="Collega punti: tocca la partenza (quadro) e poi prese, interruttori, punti acqua…: ognuno viene collegato con tubo o cavo">🔗 Collega</button><button class="wk-b" data-t="pit" title="Pittura: superficie colorata sul lato che guardi, a rettangolo o punto per punto">🎨 Pittura</button>
       <button class="wk-b" data-t="door" title="Porta: tocca due angoli sul muro (il lato in basso va a terra)">Porta</button>
       <button class="wk-b" data-t="window" title="Finestra: tocca due angoli sul muro (il lato in basso è il davanzale)">Finestra</button>
       <span class="wk-sep"></span>
@@ -15700,6 +15700,16 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     S.tool = 'led'; S.ledArm = true; S.pp = []; S.selId = null; S.oSel = null; ui(); render();
     toast('Segui profilo: tocca l\'oggetto da seguire (apertura, nicchia, foro, rivestimento, pittura…)');
   }
+  function colPoint(w, uv) {   /* v25.8: collega due punti toccandoli sul prospetto */
+    if (!window.SClux || !window.SCcs) return;
+    const L = Lw(w), x = S.face > 0 ? L - uv.u : uv.u, f = SClux.hit(w, S.face, x, uv.v, S.view.s);
+    if (!f) { toast('Tocca un punto sul muro (presa, interruttore, quadro, punto acqua…)'); return; }
+    if (!S.colSrc) { S.colSrc = f.id; ui(); render(); toast('Partenza scelta. Tocca i punti da collegare'); return; }
+    if (S.colSrc === f.id) { S.colSrc = null; ui(); render(); toast('Partenza annullata'); return; }
+    const g = state.furniture.find(q => q.id === S.colSrc); if (!g) { S.colSrc = null; return; }
+    SCcs.connect(f, g); try { SCcs.showImpOn(); } catch (_) {}
+    commit('Collegato. Si vede nella pianta e anche qui, lungo il muro; tipo e posizione si cambiano toccando la linea in pianta');
+  }
   function luxPoint(w, uv) {   /* v25.0: luce a parete dal prospetto */
     if (isEntityLocked(w)) return toast('Muro su livello bloccato');
     const L = Lw(w), x = S.face > 0 ? L - uv.u : uv.u, f = SClux.add(w, S.face, x, uv.v, S.luxT);
@@ -15843,6 +15853,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     if (S.tool === 'pit' && S.pitMode === 'poly' && S.cur && e.type === 'pointerup') { pitPoint(w, S.cur); S.cur = null; return; }
     if ((S.tool === 'led' || S.tool === 'imp') && S.cur && e.type === 'pointerup') { ledPoint(w, S.cur); S.cur = null; return; }
     if (S.tool === 'lux' && S.cur && e.type === 'pointerup') { luxPoint(w, S.cur); S.cur = null; return; }
+    if (S.tool === 'col' && S.cur && e.type === 'pointerup') { colPoint(w, S.cur); S.cur = null; return; }
     if (S.tool !== 'sel' && S.cur && e.type === 'pointerup') {
       if (!S.first) { S.first = S.cur; toast('Ora il secondo angolo'); render(); ui(); return; }
       const a = S.first; S.first = null; createWork(a, S.cur); S.cur = null; render(); return;
@@ -15855,7 +15866,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   cv.addEventListener('contextmenu', e => e.preventDefault());
 
   /* ---------------------------------------------------------------- pulsanti, campi e tastierino */
-  P.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { S.tool = b.dataset.t; S.first = null; S.cur = null; S.pp = []; S.m = null; S.ledArm = false; if (S.tool !== 'sel') { S.selId = null; S.oSel = null; } if (S.tool === 'imp' && !appSettings.showImp) { appSettings.showImp = true; try { persistSettings(); } catch (_) {} const c = document.getElementById('showImp'); if (c) c.checked = true; try { draw2D(); if (state.mode === '3d') build3D(); } catch (_) {} } ui(); render(); });
+  P.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { S.tool = b.dataset.t; S.colSrc = null; S.first = null; S.cur = null; S.pp = []; S.m = null; S.ledArm = false; if (S.tool !== 'sel') { S.selId = null; S.oSel = null; } if (S.tool === 'imp' && !appSettings.showImp) { appSettings.showImp = true; try { persistSettings(); } catch (_) {} const c = document.getElementById('showImp'); if (c) c.checked = true; try { draw2D(); if (state.mode === '3d') build3D(); } catch (_) {} } ui(); render(); });
   P.querySelectorAll('[data-s]').forEach(b => b.onclick = () => {
     S.shape = b.dataset.s; const w = wById(S.wallId), k = w && selWork(w);
     if (k && k.k !== 'cut' && !isEntityLocked(w)) { k.sh = S.shape; if (k.sh === 'round') k.h = k.w; clampWork(w, k); commit(); } else { ui(); render(); }
@@ -15920,6 +15931,10 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
         h += '<div class="wk-row" style="flex-wrap:wrap">' + Object.keys(T).map(k => '<button class="wk-b' + ((S.impT || 'acf') === k ? ' on' : '') + '" data-a="impt" data-m="' + k + '" style="border-left:6px solid ' + T[k][1] + '">' + T[k][0] + '</button>').join('') + '</div>';
         h += '<div class="wk-row">' + (n >= 1 ? '<button class="wk-b" data-a="ledundo">↩ Togli punto</button>' : '') + (n >= 2 ? '<button class="wk-b" data-a="ledclose">✔ Fine linea</button>' : '') + '<button class="wk-b sc-fine" data-a="done" style="margin-left:auto">✔ Fine</button></div>';
         foot.innerHTML = h; render(); return;
+      }
+      if (S.tool === 'col') {
+        foot.innerHTML = '<div class="wk-hint"><b>Collega punti</b>: tocca la partenza (di solito il quadro) e poi le prese, gli interruttori, i punti acqua e scarico: ognuno viene collegato con la discesa e il percorso. ' + (S.colSrc ? '<b>Partenza scelta.</b>' : 'Tocca la partenza.') + '</div><div class="wk-row"><button class="wk-b sc-fine" data-a="done" style="margin-left:auto">✔ Fine</button></div>';
+        render(); return;
       }
       if (S.tool === 'lux') {
         h += '<div class="wk-hint"><b>Luci e punti a parete</b> sul lato che guardi: scegli cosa mettere, poi tocca il punto sul muro (la quota è dove tocchi). Poi cambi tipo, potenza e colore.</div>';
@@ -16930,18 +16945,36 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     if (sf && PTS[sf.type]) COLSRC = sf; showImpOn();
     toast(COLSRC ? 'Collega: partenza = punto selezionato. Tocca i punti da collegare' : 'Collega: tocca il punto di partenza (di solito il quadro)'); draw2D();
   }
+  function connect(f, g, extra) {   /* percorso ad angolo retto fra due punti, con le discese verticali; con una luce passa sopra il controsoffitto */
+    const pts = orth({x: r6(f.x), y: r6(f.y)}, {x: r6(g.x), y: r6(g.y)}), zm = (f.type === 'punto_luce' || g.type === 'punto_luce') ? 'sop' : (appSettings.impZm || 'pav');
+    const el = assignLayer(Object.assign({id: newId(), pts, w: 0.02, hh: 0.02, sez: 'U', cg: {}, led: {k: 3000, w: 8}, imp: TYP[f.type] || TYP[g.type] || EK(), d: 0, zm, name: ''}, extra || {}));
+    el.d = IMPDIAM(el.imp); if (zm === 'lib') el.z = +appSettings.impZ || 0.5;
+    const zp = h => (window.SClux && SClux.WALLP[h.type]) ? SClux.zOf(h) : (+h.z || 0) + (+h.h || 0) / 2; try { el.dz = [r3q(zp(f)), r3q(zp(g))]; } catch (_) {}
+    state.beams.push(el); return el;
+  }
+  /* collegamento automatico dell'impianto elettrico: luci → interruttore più comodo (o quadro), interruttori e prese → quadro */
+  function autoElec() {
+    if (isCurrentLayerLocked()) { toast('Livello corrente bloccato'); return; }
+    const fl = state.currentFloorId, F = state.furniture.filter(f => isEntityVisible(f) && floorOf(f) === fl), by = t => F.filter(f => f.type === t);
+    const Lx = by('punto_luce'), Ix = by('interruttore'), Qx = by('quadro'), Px = by('presa');
+    if (!Qx.length && !Ix.length) { toast('Servono almeno un quadro o degli interruttori sul piano'); return; }
+    const pathCost = pts => { let c = 0; for (let i = 0; i + 1 < pts.length; i++) c += Math.hypot(pts[i + 1].x - pts[i].x, pts[i + 1].y - pts[i].y) + 6 * wallCross(pts[i], pts[i + 1]); return c; };
+    const near = (f, list) => { let b = null, bc = 1e9; list.forEach(g => { if (g === f) return; const c = pathCost(orth({x: f.x, y: f.y}, {x: g.x, y: g.y})); if (c < bc) { bc = c; b = g; } }); return b; };
+    state.beams = state.beams.filter(b => !(b.auto === 'elec' && floorOf(b) === fl));
+    let nl = 0, ni = 0, np = 0;
+    Lx.forEach(f => { const g = near(f, Ix.length ? Ix : Qx); if (g) { connect(f, g, {auto: 'elec'}); nl++; } });
+    Ix.forEach(f => { const g = near(f, Qx); if (g) { connect(f, g, {auto: 'elec'}); ni++; } });
+    Px.forEach(f => { const g = near(f, Qx); if (g) { connect(f, g, {auto: 'elec'}); np++; } });
+    showImpOn(); draw2D(); if (state.mode === '3d') build3D(); try { checkpoint(); } catch (_) {}
+    toast('Collegati: ' + nl + ' luci, ' + ni + ' interruttori, ' + np + ' prese. Rifai il comando per rigenerare i collegamenti automatici');
+  }
   function colTap(cx, cy) {
     if (isCurrentLayerLocked()) { toast('Livello corrente bloccato'); return; }
     const r = c2d.getBoundingClientRect(), w = screenToWorld(cx - r.left, cy - r.top), f = ptAt(w);
     if (!f) { toast('Tocca un punto (presa, luce, quadro, punto acqua, scarico, collettore, condizionatore, termosifone)'); return; }
     if (!COLSRC) { COLSRC = f; toast('Partenza scelta. Tocca i punti da collegare'); draw2D(); return; }
     if (f === COLSRC) { COLSRC = null; toast('Partenza annullata: scegline un\'altra'); draw2D(); return; }
-    const pts = orth({x: r6(f.x), y: r6(f.y)}, {x: r6(COLSRC.x), y: r6(COLSRC.y)}), zm = appSettings.impZm || 'pav';
-    const el = assignLayer({id: newId(), pts, w: 0.02, hh: 0.02, sez: 'U', cg: {}, led: {k: 3000, w: 8}, imp: TYP[f.type] || TYP[COLSRC.type] || EK(), d: 0, zm, name: ''});
-    el.d = IMPDIAM(el.imp);
-    if (zm === 'lib') el.z = +appSettings.impZ || 0.5;
-    const zp = g => (window.SClux && SClux.WALLP[g.type]) ? SClux.zOf(g) : (+g.z || 0) + (+g.h || 0) / 2; try { el.dz = [r3q(zp(f)), r3q(zp(COLSRC))]; } catch (_) {}
-    state.beams.push(el); showImpOn(); draw2D(); if (state.mode === '3d') build3D(); try { checkpoint(); } catch (_) {}
+    const el = connect(f, COLSRC); showImpOn(); draw2D(); if (state.mode === '3d') build3D(); try { checkpoint(); } catch (_) {}
     toast('Collegato: ' + f2(polyLen(dense(el, false), false)) + ' ml (tipo e posizione si cambiano toccando la linea)');
   }
   function openLedPal(el) {
@@ -17284,7 +17317,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     return out;
   }
   window.SCcs = {
-    zAt, showImpOn, colArm, colSrc: () => COLSRC, ledItems, lightPts, ledSegs, lineSegs, follow, pickObj, mkLedLine, followArmed: () => LFM,
+    zAt, showImpOn, colArm, connect, autoElec, colSrc: () => COLSRC, ledItems, lightPts, ledSegs, lineSegs, follow, pickObj, mkLedLine, followArmed: () => LFM,
     items: () => state.ceils.filter(isEntityVisible).map(voceC).concat(state.beams.filter(b => isEntityVisible(b) && !b.led).map(voceB)).filter(Boolean),
     priceOf: k => { const e = state.ceils.concat(state.beams).find(x => 'cs_' + x.id === k); return e && e.price != null ? +e.price : null; },
     setPrice: (k, v) => { const e = state.ceils.concat(state.beams).find(x => 'cs_' + x.id === k); if (e) e.price = v; },
@@ -17340,13 +17373,14 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   const led = mkTool('cgled', 'Profilo LED', 'Profilo LED: tocca i punti della linea dove vuoi, di qualsiasi lunghezza, poi «Fine linea»', 'cgled', () => pickTool('cgled', 'Profilo LED: tocca i punti della linea, poi «Fine linea»'));
   const imp = mkTool('cgimp', 'Linea libera', 'Impianti: tubi e cavi in pianta, a pavimento, sopra il controsoffitto o a quota libera. Colori: acqua calda rosso, fredda blu, scarichi nero, fase marrone, neutro grigio, terra giallo', 'cgimp', () => { SCcs.showImpOn(); pickTool('cgimp', 'Impianto: tocca i punti del percorso, poi «Fine linea»'); });
   const colb = mkTool('cgcol', 'Collega punti', 'Collega punti: tocca la partenza (quadro) e poi le prese, le luci e gli interruttori: ognuno viene collegato con un percorso ad angolo retto', 'cgcol', () => { pickTool('cgcol'); SCcs.colArm(); });
+  const autoe = mkTool(null, 'Collega impianto elettrico', 'Collega da solo luci agli interruttori e interruttori e prese al quadro (percorsi ad angolo retto, con le discese). Rifacendo il comando i collegamenti automatici vengono rigenerati', 'cgcol', () => { closeMenus(); SCcs.autoElec(); });
   const ledf = mkTool(null, 'Segui profilo', 'Segui profilo: la striscia LED copia il contorno dell\'oggetto selezionato (muro, controparete, controsoffitto, disegno)', 'cgled', () => { closeMenus(); SCcs.follow(); });
   if (oldCgw) oldCgw.hidden = true; if (oldCp) oldCp.hidden = true;
   const keep = document.createElement('div'); keep.hidden = true; if (oldCgw) keep.appendChild(oldCgw); if (oldCp) keep.appendChild(oldCp);
   const groups = [
     ['Muri e aperture', ['wall', 'door', 'window', 'pillar', 'stairs', 'hole']],
     ['Cartongesso', [cgw, cgcp, ceil, beam, led, ledf]],
-    ['Impianti', [colb, imp]],
+    ['Impianti', [autoe, colb, imp]],
     ['Locali e superfici', ['room', 'zone']],
     ['Quote e annotazioni', ['dim', 'measure', 'text', 'line', 'circle', 'arc']],
     ['Arredi', ['furniture']]
@@ -21030,8 +21064,9 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
    SC_REL.v è l'unica versione: titolo, Guida, file salvato, avvisi e riga messaggi la leggono da qui.
    ======================================================================== */
 window.SC_REL = {
-  v: '25.7', d: '28/10/2026',
+  v: '25.8', d: '28/10/2026',
   news: [
+    ['25.8', 'Collegamenti più rapidi: «Collega impianto elettrico» (Strumenti › Impianti) collega da solo le luci all\'interruttore più comodo, gli interruttori e le prese al quadro, con percorsi ad angolo retto che evitano i muri dove possono e con le discese; con una luce il percorso passa sopra il controsoffitto. Rifacendo il comando i collegamenti automatici si rigenerano. Dal prospetto: strumento «🔗 Collega», tocchi la partenza e poi i punti sul muro.'],
     ['25.7', 'Impianti visibili sul prospetto: i tubi e i cavi disegnati in pianta (anche con «Collega punti») si vedono sul prospetto del muro lungo cui passano (entro lo spessore + 20 cm; tratteggiati se sono sull\'altro lato). «Collega punti» ora fa anche la discesa verticale dal percorso (a pavimento o nel soffitto) fino a ogni punto: prese, interruttori, luci. Le discese si vedono in prospetto, 3D e sezione.'],
     ['25.6', 'Nuovi punti impianto (Arredi › Impianti, e dal prospetto): punto acqua (calda e fredda o solo fredda), punto di scarico, collettore idrico, condizionatore (unità interna a parete e unità esterna). Sul muro si agganciano come prese e luci e si vedono in pianta, prospetto e 3D. Computo: una voce per tipo di punto. «Collega punti» li collega con la linea del tipo giusto (acqua fredda, scarico nero, termosifone acqua calda, condizionatore in canalina).'],
     ['25.5', 'Impianti più veloci: «Collega punti» (Strumenti › Impianti): tocchi il quadro e poi le prese, luci e interruttori, ognuno collegato con un percorso ad angolo retto che evita di attraversare i muri dove può. Punti luce (interrotto, deviato, invertito) e prese (singola, in sequenza) con il tipo scelto nel pannello e voci separate nel computo. I metri di tubi e cavi disegnati non entrano più nel computo (sono già nel prezzo dei punti): si possono includere da Computo › Opzioni; le canaline si contano sempre. «Impianto a linea» ora si chiama «Linea libera».'],
