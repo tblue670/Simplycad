@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v27.5</title>
+<title>SimplyCAD Pro · v27.7</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -17017,7 +17017,14 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
         ctx.setLineDash([]); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
         ctx.strokeStyle = b === active ? '#fde047' : 'rgba(255,255,255,.9)'; ctx.lineWidth = b === active ? 6.5 : 5; path();
         ctx.strokeStyle = T[1]; ctx.lineWidth = 3; path();
-        labelBox((b.name ? b.name + ' · ' : '') + T[0] + ' Ø' + b.d, f2(polyLen(D, false)) + ' ml · ' + ZMN[b.zm || 'pav'], D[Math.floor(D.length / 2)], T[1], b);
+        if (b.bg && b.bg.length) b.bg.forEach(q => {   /* v27.6: braga (Y nera) all'innesto */
+          const s0 = worldToScreen(q.x, q.y), r = Math.max(4, Math.min(8, viewScale * 0.06)); ctx.save(); ctx.beginPath(); ctx.arc(s0.x, s0.y, r, 0, 7); ctx.fillStyle = '#111827'; ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.2; ctx.stroke();
+          if (r >= 6) { ctx.fillStyle = '#fff'; ctx.font = 'bold ' + Math.round(r * 1.3) + 'px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('Y', s0.x, s0.y + 0.5); }
+          if (viewScale > 70) { ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'bottom'; const t = (q.col ? 'colonna ' : 'braga ') + q.dm + '/' + q.db; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.strokeText(t, s0.x + r + 2, s0.y - 2); ctx.fillStyle = '#111827'; ctx.fillText(t, s0.x + r + 2, s0.y - 2); }
+          ctx.restore();
+        });
+        if (b.net && b !== active) boxes.push({el: b, hid: true});
+        else labelBox((b.name ? b.name + ' · ' : '') + T[0] + ' Ø' + b.d, f2(polyLen(D, false)) + ' ml · ' + ZMN[b.zm || 'pav'] + (b.imp === 'scn' ? ' · pend. 1,5%' : ''), D[Math.floor(D.length / 2)], T[1], b);
         continue;
       }
       if (b.led) {   /* v24.6: profilo LED libero */
@@ -17138,7 +17145,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     if (window.SCfinger) SCfinger.hide();
     if (d.bot != null) { if (d.moved) { try { checkpoint(); } catch (_) {} } draw2D(); openPal(d.el); return; }
     if (d.h && d.h.k === 'm') side = d.h.i; else if (!d.h) side = null;
-    if (d.moved) { try { checkpoint(); } catch (_) {} draw2D(); if (d.h && d.h.k === 'm') openPal(d.el); }
+    if (d.moved) { freezeNet(d.el); try { checkpoint(); } catch (_) {} draw2D(); if (d.h && d.h.k === 'm') openPal(d.el); }
     else if (!d.h || d.h.k === 'm') openPal(d.el);
   };
   ws.addEventListener('pointerup', up, true); ws.addEventListener('pointercancel', up, true);
@@ -17295,38 +17302,208 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     toast('Collegati: ' + nl + ' luci, ' + ni + ' interruttori, ' + np + ' prese' + (nt ? ', ' + nt + ' prese TV' : '') + (nd ? ', ' + nd + ' prese dati' : '') + '. Rifai il comando per rigenerare i collegamenti automatici');
   }
   /* v26.2 · IMPIANTO IDRAULICO AUTOMATICO: punti acqua e scarico dai sanitari, poi collegamenti al collettore (calda rossa, fredda blu) e alla colonna di scarico (nero) */
-  const SAN = {washbasin: {a: 'cf', za: 0.55, zs: 0.5}, bidet: {a: 'cf', za: 0.25, zs: 0.2}, toilet: {a: 'f', za: 0.25, zs: 0.15, wc: 1}, bathtub: {a: 'cf', za: 0.6, zs: 0.1}, shower: {a: 'cf', za: 1.1, zs: 0.05}, sink: {a: 'cf', za: 0.5, zs: 0.45}, washer: {a: 'f', za: 0.9, zs: 0.6}, dishwasher: {a: 'f', za: 0.5, zs: 0.45}};
+  const SAN = {washbasin: {a: 'cf', za: 0.55, zs: 0.5}, bidet: {a: 'cf', za: 0.25, zs: 0.2}, toilet: {a: 'f', za: 0.25, zs: 0.15, wc: 1}, bathtub: {a: 'cf', za: 0.6, zs: 0.1}, shower: {a: 'cf', za: 1.1, zs: 0.05}, sink: {a: 'cf', za: 0.5, zs: 0.45}, washer: {a: 'f', za: 0.9, zs: 0.6}, dishwasher: {a: 'f', za: 0.5, zs: 0.45},
+    /* v27.6: sanitari della libreria */
+    wc_sosp: {a: 'f', za: 1.0, zs: 0.22, wc: 1}, bidet_sosp: {a: 'cf', za: 0.3, zs: 0.2}, lav_sosp: {a: 'cf', za: 0.55, zs: 0.5}, lav_mob60: {a: 'cf', za: 0.55, zs: 0.5}, lav_mob80: {a: 'cf', za: 0.55, zs: 0.5}, lav_mob100: {a: 'cf', za: 0.55, zs: 0.5},
+    doccia_80: {a: 'cf', za: 1.1, zs: 0.05}, doccia_70x90: {a: 'cf', za: 1.1, zs: 0.05}, doccia_80x120: {a: 'cf', za: 1.1, zs: 0.05}, doccia_90x140: {a: 'cf', za: 1.1, zs: 0.05}, vasca_160: {a: 'cf', za: 0.6, zs: 0.1}, vasca_free: {a: 'cf', za: 0.05, zs: 0.05, floor: 1},
+    lavatoio: {a: 'cf', za: 0.6, zs: 0.45}, sink2: {a: 'cf', za: 0.5, zs: 0.45}, lav_colonna: {a: 'f', za: 0.9, zs: 0.6}};
   const pCost = pts => { let c = 0; for (let i = 0; i + 1 < pts.length; i++) c += Math.hypot(pts[i + 1].x - pts[i].x, pts[i + 1].y - pts[i].y) + 6 * wallCross(pts[i], pts[i + 1]); return c; };
   const nearest = (f, list) => { let b = null, bc = 1e9; list.forEach(g => { if (g === f) return; const c = pCost(orth({x: f.x, y: f.y}, {x: g.x, y: g.y})); if (c < bc) { bc = c; b = g; } }); return b; };
-  function autoIdro() {
-    if (isCurrentLayerLocked()) { toast('Livello corrente bloccato'); return; }
+  /* v27.6 · IMPIANTO IDRAULICO «LOGICO»: le linee corrono lungo i muri (binari a distanza fissa dalla faccia), mai in diagonale.
+     Scarico: una dorsale per lato fino alla colonna, ogni sanitario entra con una diramazione corta e una braga a 45° nel verso dello scorrimento;
+     Ø110 dal WC in giù, Ø50 il resto. Acqua: a stella dal collettore (una calda e una fredda per sanitario, nessun giunto sotto il pavimento). */
+  const RAILD = {acf: 0.05, acc: 0.09, scn: 0.16, scn2: 0.23};
+  const md = (v, P) => ((v % P) + P) % P;
+  function railOf(rm, extra) {
+    const P = rm.polygon; if (!P || P.length < 3) return null;
+    let A = 0; P.forEach((p, i) => { const q = P[(i + 1) % P.length]; A += p.x * q.y - q.x * p.y; });
+    const sg = A > 0 ? 1 : -1, n = P.length, fl = floorOf(rm), W = state.walls.filter(w => isEntityVisible(w) && floorOf(w) === fl), L = [];
+    for (let i = 0; i < n; i++) {
+      const a = P[i], b = P[(i + 1) % n], len = Math.hypot(b.x - a.x, b.y - a.y) || 1, ux = (b.x - a.x) / len, uy = (b.y - a.y) / len, nx = -uy * sg, ny = ux * sg;
+      const m = {x: (a.x + b.x) / 2, y: (a.y + b.y) / 2}; let t = 0.15, bd = 1e9; W.forEach(w => { const d = distancePointToSegment(m, w.p1, w.p2); if (d < bd) { bd = d; t = getWallThickness(w); } });
+      const o = (bd < 0.3 ? t / 2 : 0) + extra; L.push({a: {x: a.x + nx * o, y: a.y + ny * o}, ux, uy});
+    }
+    const R = [];
+    for (let i = 0; i < n; i++) {
+      const l0 = L[(i + n - 1) % n], l1 = L[i], den = l0.ux * l1.uy - l0.uy * l1.ux;
+      if (Math.abs(den) < 1e-6) { R.push({...l1.a}); continue; }
+      const dx = l1.a.x - l0.a.x, dy = l1.a.y - l0.a.y, t = (dx * l1.uy - dy * l1.ux) / den; R.push({x: l0.a.x + l0.ux * t, y: l0.a.y + l0.uy * t});
+    }
+    const S = [0]; for (let i = 0; i < n; i++) { const p = R[i], q = R[(i + 1) % n]; S.push(S[i] + Math.hypot(q.x - p.x, q.y - p.y)); }
+    return {R, S, P: S[n] || 1, n};
+  }
+  function railProj(rl, p) {
+    let best = null;
+    for (let i = 0; i < rl.n; i++) { const a = rl.R[i], b = rl.R[(i + 1) % rl.n], dx = b.x - a.x, dy = b.y - a.y, L2 = dx * dx + dy * dy || 1e-9, t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / L2)), q = {x: a.x + dx * t, y: a.y + dy * t}, d = Math.hypot(q.x - p.x, q.y - p.y); if (!best || d < best.d) best = {d, q, s: rl.S[i] + Math.sqrt(L2) * t}; }
+    return best;
+  }
+  function railPath(rl, s0, s1, dir) {   /* punti da s0 a s1 lungo il binario, nel verso dir (+1 / −1), con gli angoli attraversati */
+    const len = dir > 0 ? md(s1 - s0, rl.P) : md(s0 - s1, rl.P);
+    const at = s => { s = md(s, rl.P); let i = 0; while (i < rl.n - 1 && rl.S[i + 1] < s) i++; const a = rl.R[i], b = rl.R[(i + 1) % rl.n], L = (rl.S[i + 1] - rl.S[i]) || 1e-9, t = (s - rl.S[i]) / L; return {x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t}; };
+    const out = [at(s0)], V = [];
+    for (let i = 0; i < rl.n; i++) { const d = dir > 0 ? md(rl.S[i] - s0, rl.P) : md(s0 - rl.S[i], rl.P); if (d > 1e-4 && d < len - 1e-4) V.push({d, p: rl.R[i]}); }
+    V.sort((a, b) => a.d - b.d).forEach(v => out.push({...v.p})); out.push(at(s1));
+    return out.map(p => ({x: r6(p.x), y: r6(p.y)}));
+  }
+  const dedup = P => P.filter((p, i) => !i || Math.hypot(p.x - P[i - 1].x, p.y - P[i - 1].y) > 0.005);
+  let IDQ = false, IDtip = false;
+  function autoIdro(quiet) {
+    if (isCurrentLayerLocked()) { if (!quiet) toast('Livello corrente bloccato'); return; }
     if (!window.SClux) return;
     const fl = state.currentFloorId, W = state.walls.filter(w => isEntityVisible(w) && floorOf(w) === fl);
-    state.furniture = state.furniture.filter(f => !(f.auto === 'idro' && floorOf(f) === fl));
+    const rooms = (state.rooms || []).filter(r => r.polygon && r.polygon.length > 2 && floorOf(r) === fl), PR = new Map();
+    function pseudo(q) {   /* v27.7: locale non chiuso da muri: rettangolo fra i muri più vicini nelle 4 direzioni (al massimo 4 m) */
+      const hit = (dx, dy) => { let best = 4; W.forEach(w => { const ex = w.p2.x - w.p1.x, ey = w.p2.y - w.p1.y, den = dx * ey - dy * ex; if (Math.abs(den) < 1e-9) return; const wx = w.p1.x - q.x, wy = w.p1.y - q.y, t = (wx * ey - wy * ex) / den, u = (wx * dy - wy * dx) / den; if (t > 0.02 && u >= -0.01 && u <= 1.01 && t < best) best = t; }); return best; };
+      const x0 = q.x - hit(-1, 0), x1 = q.x + hit(1, 0), y0 = q.y - hit(0, -1), y1 = q.y + hit(0, 1), id = 'v' + [x0, x1, y0, y1].map(v => Math.round(v * 10)).join('_');
+      if (!PR.has(id)) PR.set(id, {id, pseudo: 1, polygon: [{x: x0, y: y0}, {x: x1, y: y0}, {x: x1, y: y1}, {x: x0, y: y1}]});
+      return PR.get(id);
+    }
+    const roomOf = q => rooms.find(r => pointInPolygon({x: q.x, y: q.y}, r.polygon)) || pseudo(q);
+    state.furniture.forEach(f => { if (f.auto === 'idro' && f.ap && floorOf(f) === fl && Math.hypot(f.x - f.ap[0], f.y - f.ap[1]) > 0.02) { f.auto = null; delete f.ap; delete f.san; } });   /* spostato a mano: diventa manuale e resta dov'è */
+    const frozen = new Set(state.beams.filter(b => b.net && b.auto !== 'idro' && floorOf(b) === fl).map(b => b.net));   /* reti corrette a mano: non si toccano */
     state.beams = state.beams.filter(b => !(b.auto === 'idro' && floorOf(b) === fl));
+    /* punti acqua e scarico dei sanitari (stabili: lo stesso sanitario tiene gli stessi punti) */
+    const SANS = state.furniture.filter(f => SAN[f.type] && isEntityVisible(f) && floorOf(f) === fl);
+    const old = state.furniture.filter(f => f.auto === 'idro' && floorOf(f) === fl), keep = new Set();
+    const manual = state.furniture.filter(f => !f.auto && (f.type === 'pt_acqua' || f.type === 'pt_scarico') && floorOf(f) === fl && isEntityVisible(f));
     let np = 0;
-    state.furniture.filter(f => SAN[f.type] && isEntityVisible(f) && floorOf(f) === fl).forEach(f => {
-      let best = null, bd = 1e9; W.forEach(w => { const d = distancePointToSegment({x: f.x, y: f.y}, w.p1, w.p2); if (d < bd) { bd = d; best = w; } });
-      if (!best || bd > 1.5) return;
-      const w = best, L = Math.hypot(w.p2.x - w.p1.x, w.p2.y - w.p1.y), ux = (w.p2.x - w.p1.x) / L, uy = (w.p2.y - w.p1.y) / L, n = -(f.x - w.p1.x) * uy + (f.y - w.p1.y) * ux, side = n > 0 ? 1 : -1, t = (f.x - w.p1.x) * ux + (f.y - w.p1.y) * uy, S0 = SAN[f.type];
-      const a = SClux.add(w, side, t - 0.08, S0.za, 'pt_acqua'); a.auto = 'idro'; if (S0.a === 'f') a.acq = 'f';
-      const sc = SClux.add(w, side, t + 0.1, S0.zs, 'pt_scarico'); sc.auto = 'idro'; if (S0.wc) sc.wc = 1;
-      np++;
+    SANS.forEach(f => {
+      const S0 = SAN[f.type]; let best = null, bd = 1e9; W.forEach(w => { const d = distancePointToSegment({x: f.x, y: f.y}, w.p1, w.p2); if (d < bd) { bd = d; best = w; } });
+      const mk = (type, z, dt) => {
+        if (manual.some(g => g.type === type && Math.hypot(g.x - f.x, g.y - f.y) < Math.max(0.6, Math.max(f.w || 0, f.d || 0) * 0.7))) return null;   /* c'è già un punto messo a mano */
+        const g = old.find(o => o.san === f.id && o.type === type); let n;
+        if (best && bd <= 1.5 && !S0.floor) {
+          const w = best, L = Math.hypot(w.p2.x - w.p1.x, w.p2.y - w.p1.y), ux = (w.p2.x - w.p1.x) / L, uy = (w.p2.y - w.p1.y) / L, nn = -(f.x - w.p1.x) * uy + (f.y - w.p1.y) * ux, t = (f.x - w.p1.x) * ux + (f.y - w.p1.y) * uy;
+          n = SClux.add(w, nn > 0 ? 1 : -1, Math.max(0.05, Math.min(L - 0.05, t + dt)), z, type);
+        } else { n = assignLayer({id: newId(), type, x: r6(f.x + dt), y: r6(f.y), w: 0.1, d: 0.1, h: 0.06, z: 0.02, rot: 0, color: (FURNITURE[type] || {}).color || '#64748b'}); state.furniture.push(n); }   /* a pavimento (vasca libera) */
+        if (!n) return null;
+        if (g) { n.id = g.id; state.furniture = state.furniture.filter(x => x !== g); }
+        n.auto = 'idro'; n.san = f.id; n.ap = [n.x, n.y]; keep.add(n); return n;
+      };
+      const a = mk('pt_acqua', S0.za, -0.08); if (a && S0.a === 'f') a.acq = 'f';
+      const sc = mk('pt_scarico', S0.zs, 0.1); if (sc && S0.wc) sc.wc = 1;
+      if (a || sc) np++;
     });
+    const live = t => state.furniture.filter(f => f.type === t && floorOf(f) === fl && isEntityVisible(f) && (!f.auto || keep.has(f)));
+    let hubs = [];
+    const hub = (type, need, place) => {
+      if (!need || state.furniture.some(f => f.type === type && !f.auto && floorOf(f) === fl && isEntityVisible(f))) return;
+      const au = state.furniture.filter(f => f.type === type && f.auto === 'idro' && floorOf(f) === fl); if (au.length) { au.forEach(f => keep.add(f)); return; }
+      let n = null; try { n = place(); } catch (e) { console.warn('idraulico: ' + type, e); } if (n) { n.auto = 'idro'; n.ap = [n.x, n.y]; keep.add(n); hubs.push(type === 'col_scarico' ? 'colonna di scarico' : 'collettore'); }
+    };
+    const most = L => { const m = new Map(); L.forEach(f => { const r = roomOf(f); m.set(r, (m.get(r) || 0) + (f.wc ? 3 : 1)); }); let b = null, bn = -1; m.forEach((n, r) => { if (n > bn) { bn = n; b = r; } }); return b; };
+    hub('col_scarico', live('pt_scarico').length > 0, () => {   /* nell'angolo del locale più vicino al WC */
+      const L = live('pt_scarico'), wc = L.find(f => f.wc), rm = wc ? roomOf(wc) : most(L), ref = wc || {x: L.reduce((a, f) => a + f.x, 0) / L.length, y: L.reduce((a, f) => a + f.y, 0) / L.length};
+      const rl = railOf(rm, 0.1); if (!rl) return null; let b = null, bd = 1e9; rl.R.forEach(q => { const d = Math.hypot(q.x - ref.x, q.y - ref.y); if (d < bd) { bd = d; b = q; } });
+      const sp = FURNITURE.col_scarico, n = assignLayer({id: newId(), type: 'col_scarico', x: r6(b.x), y: r6(b.y), w: sp.w, d: sp.d, h: sp.h, z: 0, rot: 0, color: sp.color}); state.furniture.push(n); return n;
+    });
+    hub('collettore', live('pt_acqua').length > 0, () => {   /* sul muro del locale con più sanitari, lontano dai sanitari, vicino alla porta */
+      const L = live('pt_acqua'), rm = most(L), fx = SANS.filter(f => pointInPolygon({x: f.x, y: f.y}, rm.polygon)).concat(L); let best = null, bs = -1e9;
+      W.forEach(w => {
+        const Lw2 = Math.hypot(w.p2.x - w.p1.x, w.p2.y - w.p1.y); if (Lw2 < 0.7) return; const ux = (w.p2.x - w.p1.x) / Lw2, uy = (w.p2.y - w.p1.y) / Lw2, th = getWallThickness(w);
+        for (let t = 0.3; t <= Lw2 - 0.3; t += 0.15) for (const sd of [1, -1]) {
+          const p = {x: w.p1.x + ux * t - uy * sd * (th / 2 + 0.05), y: w.p1.y + uy * t + ux * sd * (th / 2 + 0.05)}; if (!pointInPolygon(p, rm.polygon)) continue;
+          const dmin = fx.length ? Math.min(...fx.map(f => Math.hypot(f.x - p.x, f.y - p.y) - Math.max(f.w || 0.1, f.d || 0.1) / 2)) : 3; if (dmin < 0.45) continue;
+          if (state.doors.some(d => d.wallId === w.id && Math.abs(d.t * Lw2 - t) < (d.width || 0.8) / 2 + 0.15) || state.windows.some(d => d.wallId === w.id && Math.abs(d.t * Lw2 - t) < (d.width || 0.8) / 2 + 0.1 && (d.sillHeight || 0) < 0.8)) continue;
+          let dd = 4; state.doors.forEach(d => { const dw = state.walls.find(x => x.id === d.wallId); if (!dw) return; const c = {x: dw.p1.x + (dw.p2.x - dw.p1.x) * d.t, y: dw.p1.y + (dw.p2.y - dw.p1.y) * d.t}; dd = Math.min(dd, Math.hypot(c.x - p.x, c.y - p.y)); });
+          const sc = -dd + Math.min(dmin, 1.5) * 0.5; if (sc > bs) { bs = sc; best = {w, sd, t}; }
+        }
+      });
+      return best ? SClux.add(best.w, best.sd, r3q(best.t), 0.5, 'collettore') : null;
+    });
+    state.furniture = state.furniture.filter(f => !(f.auto === 'idro' && floorOf(f) === fl && !keep.has(f)));
     const F = state.furniture.filter(f => isEntityVisible(f) && floorOf(f) === fl), by = t => F.filter(f => f.type === t);
     const PA = by('pt_acqua'), PS = by('pt_scarico'), CO = by('collettore'), CS = by('col_scarico');
-    let na = 0, ns = 0;
-    if (CO.length) PA.forEach(f => {
-      const g = nearest(f, CO); if (!g) return;
-      connect(f, g, {auto: 'idro', imp: 'acf', zm: 'pav'}).d = 20; na++;
-      if (f.acq !== 'f') { const sh = 0.05, f2_ = Object.assign({}, f, {x: f.x + sh, y: f.y + sh}), g2 = Object.assign({}, g, {x: g.x + sh, y: g.y + sh}); connect(f2_, g2, {auto: 'idro', imp: 'acc', zm: 'pav'}).d = 20; }
+    const nearS = (p, L) => { let b = null, bd = 1e9; L.forEach(g => { const d = Math.hypot(g.x - p.x, g.y - p.y); if (d < bd) { bd = d; b = g; } }); return b; };
+    const zp = h => (SClux.WALLP[h.type] && h.lw) ? SClux.zOf(h) : 0.05;
+    const RC = new Map(), rail = (rm, k) => { const key = rm.id + '|' + k; if (!RC.has(key)) RC.set(key, railOf(rm, RAILD[k])); return RC.get(key); };
+    const mkB = (pts, imp, d, net, extra) => {
+      pts = dedup(pts); if (pts.length < 2) return null; let len = 0; for (let i = 0; i + 1 < pts.length; i++) len += Math.hypot(pts[i + 1].x - pts[i].x, pts[i + 1].y - pts[i].y); if (len < 0.02) return null;
+      const el = assignLayer(Object.assign({id: newId(), pts, w: 0.02, hh: 0.02, sez: 'U', cg: {}, led: {k: 3000, w: 8}, imp, d, zm: 'pav', name: '', auto: 'idro', net}, extra || {}));
+      state.beams.push(el); return el;
+    };
+    const P0 = q => ({x: r6(q.x), y: r6(q.y)});
+    function route(f, g, k) {   /* dal punto al binario, lungo i muri dal lato più corto, poi al punto d'arrivo */
+      const rm = roomOf(f); if (!rm) return orth(P0(f), P0(g));
+      const rl = rail(rm, k); if (!rl) return orth(P0(f), P0(g));
+      const a = railProj(rl, f), b = railProj(rl, g), dp = md(b.s - a.s, rl.P);
+      return [P0(f)].concat(railPath(rl, a.s, b.s, dp <= rl.P - dp ? 1 : -1)).concat(cross(b.q, g, rm, k));
+    }
+    function cross(q, g, rm, k) {   /* arrivo in un altro locale: si entra e si prosegue lungo i muri di quello */
+      const rg = roomOf(g); if (!rg || rg === rm) return [P0(g)];
+      const rl = rail(rg, k); if (!rl) return [P0(g)];
+      const a = railProj(rl, q), b = railProj(rl, g), dp = md(b.s - a.s, rl.P);
+      return railPath(rl, a.s, b.s, dp <= rl.P - dp ? 1 : -1).concat([P0(g)]);
+    }
+    let na = 0, ns = 0, nb = 0;
+    PA.forEach(f => {
+      const net = 'acq:' + f.id;
+      if (frozen.has(net)) { if (state.beams.some(b => b.net === net && b.pts.length && Math.hypot(b.pts[0].x - f.x, b.pts[0].y - f.y) < 0.03)) return; state.beams = state.beams.filter(b => b.net !== net); }
+      const g = nearS(f, CO); if (!g) return;
+      mkB(route(f, g, 'acf'), 'acf', 20, net, {dz: [r3q(zp(f)), r3q(zp(g))]});
+      if (f.acq !== 'f') mkB(route(f, g, 'acc'), 'acc', 20, net, {dz: [r3q(zp(f)), r3q(zp(g))]});
+      na++;
     });
-    const WC = PS.filter(f => f.wc), TS = CS.length ? CS : WC;
-    PS.forEach(f => { if (TS.includes(f)) return; const g = nearest(f, TS); if (!g) return; const el = connect(f, g, {auto: 'idro', imp: 'scn', zm: 'pav'}); el.d = f.wc ? 100 : 50; ns++; });
-    WC.forEach(f => { if (!CS.length) return; });
-    showImpOn(); draw2D(); if (state.mode === '3d') build3D(); try { checkpoint(); } catch (_) {}
-    const miss = [!CO.length && PA.length ? 'manca il collettore: inseriscilo (Impianti › Inserisci punti) e rifai il comando' : '', !CS.length && !WC.length && PS.length ? 'manca la colonna di scarico (o un WC)' : ''].filter(Boolean);
-    toast('Idraulico: ' + np + ' sanitari con punti, ' + na + ' punti acqua collegati, ' + ns + ' scarichi collegati' + (miss.length ? ' · ' + miss.join(' · ') : ''));
+    const WC = PS.filter(f => f.wc), groups = new Map();
+    PS.forEach(f => { const rm = roomOf(f); if (!groups.has(rm)) groups.set(rm, []); groups.get(rm).push(f); });
+    const nets = new Set();
+    function patchFrozen(list, net) {   /* rete corretta a mano: le correzioni restano; i sanitari nuovi o spostati si innestano con una braga nel punto più vicino */
+      state.beams = state.beams.filter(b => { if (b.net !== net || !b.src) return true; const f = list.find(x => x.id === b.src); return !!f && Math.hypot(b.pts[0].x - f.x, b.pts[0].y - f.y) < 0.03; });
+      list.forEach(f => {
+        if (state.beams.some(b => b.net === net && b.pts.length && Math.hypot(b.pts[0].x - f.x, b.pts[0].y - f.y) < 0.03)) return;
+        let best = null; state.beams.forEach(b => { if (b.net !== net) return; for (let i = 0; i + 1 < b.pts.length; i++) { const a = b.pts[i], c = b.pts[i + 1], dx = c.x - a.x, dy = c.y - a.y, L2 = dx * dx + dy * dy || 1e-9, t = Math.max(0, Math.min(1, ((f.x - a.x) * dx + (f.y - a.y) * dy) / L2)), q = {x: a.x + dx * t, y: a.y + dy * t}, d = Math.hypot(q.x - f.x, q.y - f.y); if (!best || d < best.d) best = {d, q, b}; } });
+        if (!best) return; const D = f.wc ? 110 : 50; let path = [P0(f), P0(best.q)];
+        { const rm2 = roomOf(f), rl = rm2 ? rail(rm2, 'scn') : null;   /* lungo i muri fino al primo tratto della rete che corre sul binario */
+          if (rl) { const a = railProj(rl, f); let bj = null; state.beams.forEach(b => { if (b.net !== net || b === null) return; for (let i = 0; i + 1 < b.pts.length; i++) { const p = b.pts[i], c = b.pts[i + 1], Ls = Math.hypot(c.x - p.x, c.y - p.y), n = Math.max(1, Math.ceil(Ls / 0.05)); for (let k = 0; k <= n; k++) { const q = {x: p.x + (c.x - p.x) * k / n, y: p.y + (c.y - p.y) * k / n}, r = railProj(rl, q); if (r.d > 0.06) continue; const dp = md(r.s - a.s, rl.P), dd = Math.min(dp, rl.P - dp); if (!bj || dd < bj.dd) bj = {dd, r, dir: dp <= rl.P - dp ? 1 : -1, b}; } } });
+            if (bj) { path = [P0(f)].concat(railPath(rl, a.s, bj.r.s, bj.dir)); best = {q: bj.r.q, b: bj.b}; } } }
+        const br = mkB(path, 'scn', D, net, {dz: [r3q(zp(f)), 0.05], src: f.id});
+        if (br) { br.bg = [{x: r6(best.q.x), y: r6(best.q.y), dm: Math.max(+best.b.d || 50, D), db: D}]; nb++; ns++; }
+      });
+    }
+    groups.forEach((list, rm) => {
+      const rid = rm ? rm.id : null, net = 'scn:' + (rid != null ? rid : 'x'); nets.add(net); if (frozen.has(net)) { patchFrozen(list, net); return; }
+      const cx0 = list.reduce((a, f) => a + f.x, 0) / list.length, cy0 = list.reduce((a, f) => a + f.y, 0) / list.length, T = CS.length ? nearS({x: cx0, y: cy0}, CS) : null;
+      const rl = rm && T ? rail(rm, 'scn') : null;
+      if (!rl) {   /* senza locale o senza colonna: come prima, al WC più vicino */
+        const TS = CS.length ? CS : WC; list.forEach(f => { if (TS.includes(f)) return; const g = nearest(f, TS); if (!g) return; const el = connect(f, g, {auto: 'idro', imp: 'scn', zm: 'pav', net}); el.d = f.wc ? 110 : 50; ns++; }); return;
+      }
+      const pc = railProj(rl, T), sides = {};
+      list.forEach(f => { const q = railProj(rl, f), dp = md(q.s - pc.s, rl.P), dm = rl.P - dp, k = dp <= dm ? 1 : -1; (sides[k] = sides[k] || []).push({f, q, dist: Math.min(dp, dm), D: f.wc ? 110 : 50}); });
+      const ends = [];
+      Object.keys(sides).forEach(k => {
+        const L = sides[k].sort((a, b) => b.dist - a.dist), dir = -(+k); let D = L[0].D;
+        L.forEach((it, i) => {
+          const br = mkB([P0(it.f), P0(it.q.q)], 'scn', it.D, net, {dz: [r3q(zp(it.f)), 0.05], src: it.f.id});
+          if (i > 0) { D = Math.max(D, it.D); if (br) { br.bg = [{x: r6(it.q.q.x), y: r6(it.q.q.y), dm: D, db: it.D}]; nb++; } }
+          const nx = L[i + 1]; mkB(railPath(rl, it.q.s, nx ? nx.q.s : pc.s, dir), 'scn', D, net);
+          ns++;
+        });
+        ends.push(D);
+      });
+      const Dl = Math.max(...ends), lk = mkB([P0(pc.q)].concat(cross(pc.q, T, rm, 'scn2')), 'scn', Dl, net, {dz: [0.05, r3q(zp(T))]});
+      if (lk) { lk.bg = [{x: r6(T.x), y: r6(T.y), dm: Math.max(110, Dl), db: Dl, col: 1}]; nb++; if (ends.length > 1) { lk.bg.push({x: r6(pc.q.x), y: r6(pc.q.y), dm: Dl, db: Math.min(...ends)}); nb++; } }
+    });
+    { const pa = new Set(PA.map(f => 'acq:' + f.id)); state.beams = state.beams.filter(b => !(b.net && floorOf(b) === fl && ((b.net.startsWith('acq:') && !pa.has(b.net)) || (b.net.startsWith('scn:') && !nets.has(b.net))))); }
+    if (!quiet) showImpOn();
+    draw2D(); if (state.mode === '3d') build3D();
+    if (!quiet) { try { checkpoint(); } catch (_) {} }
+    const miss = hubs.length ? [hubs.join(' e ') + ' messi da soli: spostali dove servono, il resto si adegua'] : [];
+    if (!quiet) toast('Idraulico: ' + np + ' sanitari, ' + na + ' punti acqua, ' + ns + ' scarichi, ' + nb + ' braghe' + (frozen.size ? ' · ' + frozen.size + ' reti corrette a mano lasciate com\'erano' : '') + (miss.length ? ' · ' + miss.join(' · ') : ''));
+    else if (hubs.length) toast(miss[0]);
+    else if (!IDtip) { IDtip = true; toast('Impianto idraulico aggiornato da solo' + (miss.length ? ' · ' + miss[0] : '') + ' · si vede con Impianti › Mostra impianti'); }
+  }
+  /* reti automatiche corrette a mano: diventano manuali (non si rigenerano più) */
+  const freezeNet = el => { if (!el || el.auto !== 'idro' || !el.net) return false; state.beams.forEach(b => { if (b.net === el.net) b.auto = null; }); toast('Rete corretta a mano: non verrà più rigenerata da sola'); return true; };
+  /* rigenerazione automatica: prima di salvare il passo (annulla compreso), se sanitari, collettori, colonne o locali sono cambiati */
+  { const _cp = checkpoint; let LAST = null;
+    const sigOf = () => { const fl = state.currentFloorId, F = state.furniture.filter(f => floorOf(f) === fl && isEntityVisible(f) && (SAN[f.type] || f.type === 'collettore' || f.type === 'col_scarico' || ((f.type === 'pt_acqua' || f.type === 'pt_scarico') && !f.auto)));
+      if (!F.some(f => SAN[f.type])) return ''; return fl + JSON.stringify(F.map(f => [f.id, f.type, r3q(f.x), r3q(f.y), r3q(f.rot || 0), f.w, f.d, f.visible])) + JSON.stringify((state.rooms || []).filter(r => floorOf(r) === fl).map(r => r.polygon)); };
+    checkpoint = function () {
+      if (appSettings.idroAuto !== false && !IDQ) {
+        try { const sg = sigOf(); if (sg !== LAST) { const first = LAST === null && state.beams.some(b => b.auto === 'idro'), prev = LAST; LAST = sg; if ((sg || (prev && state.furniture.some(f => f.auto === 'idro'))) && !first) { IDQ = true; try { autoIdro(true); } finally { IDQ = false; } } } } catch (e) { console.warn('idraulico automatico', e); }
+      }
+      return _cp.apply(this, arguments);
+    };
   }
   /* v26.3 · LIBRERIA IMPIANTI: si sceglie il punto e poi si tocca dove metterlo (anche più volte); vicino a un muro si aggancia */
   const LIB = [
@@ -17710,7 +17887,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     return out;
   }
   window.SCcs = {
-    zAt, showImpOn, colArm, connect, autoElec, autoIdro, openLib, ptType: () => PT, colSrc: () => COLSRC, ledItems, lightPts, ledSegs, lineSegs, follow, pickObj, mkLedLine, followArmed: () => LFM,
+    zAt, showImpOn, freezeNet, colArm, connect, autoElec, autoIdro, openLib, ptType: () => PT, colSrc: () => COLSRC, ledItems, lightPts, ledSegs, lineSegs, follow, pickObj, mkLedLine, followArmed: () => LFM,
     items: () => state.ceils.filter(isEntityVisible).map(voceC).concat(state.beams.filter(b => isEntityVisible(b) && !b.led).map(voceB)).filter(Boolean),
     priceOf: k => { const e = state.ceils.concat(state.beams).find(x => 'cs_' + x.id === k); return e && e.price != null ? +e.price : null; },
     setPrice: (k, v) => { const e = state.ceils.concat(state.beams).find(x => 'cs_' + x.id === k); if (e) e.price = v; },
@@ -17783,7 +17960,8 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       const items = [lab('Punti e collegamenti'),
         row('impPtsBtn', '⏚', 'Inserisci punti…', 'libreria impianti', () => SCcs.openLib()),
         row('impAutoColBtn', '⚡', 'Collega impianto elettrico', 'automatico', () => SCcs.autoElec()),
-        row('impIdroBtn', '💧', 'Impianto idraulico', 'acqua e scarichi', () => SCcs.autoIdro()),
+        row('impIdroBtn', '💧', 'Impianto idraulico', 'rifai adesso', () => SCcs.autoIdro()),
+        row('impIdroAutoBtn', '🔁', 'Idraulico automatico', appSettings.idroAuto === false ? 'spento' : 'acceso', () => { appSettings.idroAuto = appSettings.idroAuto === false; try { persistSettings(); } catch (_) {} const k = document.querySelector('#impIdroAutoBtn .mi-kbd'); if (k) k.textContent = appSettings.idroAuto ? 'acceso' : 'spento'; toast(appSettings.idroAuto ? 'Idraulico automatico acceso: mettendo o spostando sanitari, punti e tubi si rifanno da soli' : 'Idraulico automatico spento: rifai a mano con Impianti › Impianto idraulico'); }),
         row('impColBtn', '🔗', 'Collega punti', 'tocca e collega', () => { pickTool('cgcol'); SCcs.colArm(); }),
         row('impLineBtn', '✎', 'Linea libera', 'tubo o cavo', () => { SCcs.showImpOn(); pickTool('cgimp', 'Impianto: tocca i punti del percorso, poi «Fine linea»'); }),
         row('impShowBtn', '👁', 'Mostra / nascondi impianti', 'tubi e cavi', () => { const c = document.getElementById('showImp'); if (c) { c.checked = !c.checked; c.dispatchEvent(new Event('change')); toast(c.checked ? 'Impianti visibili' : 'Impianti nascosti'); } }),
@@ -21587,8 +21765,10 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
    SC_REL.v è l'unica versione: titolo, Guida, file salvato, avvisi e riga messaggi la leggono da qui.
    ======================================================================== */
 window.SC_REL = {
-  v: '27.5', d: '29/10/2026',
+  v: '27.7', d: '29/10/2026',
   news: [
+    ['27.7', 'Idraulico automatico senza limiti: se mancano, colonna di scarico (nell\'angolo vicino al WC) e collettore (sul muro, lontano dai sanitari e vicino alla porta) si mettono da soli e si possono spostare; anche nei locali non chiusi da muri i tubi corrono lungo le pareti; nelle reti corrette a mano le correzioni restano e i sanitari nuovi o spostati si innestano da soli con una braga; punti e pezzi automatici spostati a mano diventano manuali. Braghe visibili anche in 3D.'],
+    ['27.6', 'Impianto idraulico automatico e «logico»: mettendo, spostando o togliendo un sanitario si creano da soli i punti acqua e scarico e i tubi. Lo scarico corre lungo i muri con una dorsale fino alla colonna; ogni sanitario entra con una braga a 45° nel verso dello scorrimento (Ø110 dal WC in giù, Ø50 il resto, pendenza 1,5%); le braghe si vedono in pianta e, con i tubi al metro, vanno in computo. L\'acqua va a stella dal collettore, anch\'essa lungo i muri. Le reti corrette a mano non si rigenerano più. Interruttore in Impianti › Idraulico automatico. Anche i sanitari della libreria nuova (sospesi, mobili lavabo, docce con box, vasche, lavatoio, lavello 2 vasche, lavatrice a colonna) hanno i loro punti.'],
     ['27.5', 'Selezione sotto il controsoffitto: in pianta vince l\'oggetto più piccolo (punto, luce, arredo, tubo) e toccando di nuovo nello stesso punto si passa a quello sotto, fino al controsoffitto; i tubi si prendono toccando la linea, non solo l\'etichetta. Prospetti interattivi: si vedono gli arredi davanti al muro (con i modelli della libreria) e si spostano lungo il muro e in altezza; nuovo comando «Arredo» per appoggiarne uno al muro dal prospetto; controsoffitti e false travi in sezione (trascinandoli cambi quota e altezza); i tubi tracciati in pianta si selezionano anche dal prospetto (tipo, percorso, spostamento lungo il muro); «Nel muro» tiene in vista impianti e punti con gli arredi trasparenti; anche nel prospetto toccando di nuovo si passa all\'oggetto sotto.'],
     ['27.4', 'Tavole: il Nord si imposta nel cartiglio (gradi) e c\'è la freccia del Nord nelle piante; i prospetti Sud, Est, Nord e Ovest seguono il Nord vero. Nei prospetti compaiono anche fori, tagli (con arco o tondo) e nicchie (tratteggiate, solo dal lato in cui sono) fatti dal prospetto del muro, e il timpano sotto il tetto copre quello che sta dietro. Il pilastro è nel gruppo Strutture.'],
     ['27.3', 'Tavole complete: prospetti dell\'edificio (Sud, Est, Nord, Ovest; in pianta l\'alto è il Nord) a linee, con porte, finestre, tetti, terreno e quote di livello, da aggiungere nel foglio come le sezioni; nuova tavola «Set completo» che stampa in sequenza le piante di tutti i piani, i quattro prospetti e tutte le sezioni, ognuna con il suo cartiglio. Arredi in stampa come blocchi CAD bianchi con contorno nero.'],
@@ -24225,7 +24405,10 @@ window.SC_REL = {
     const g = {};
     const all = !!(window.SCcomputo && SCcomputo.getOpt().impMl);
     impSegs().forEach(q => { if (!all && q.imp !== 'can') return; const key = 'imp_' + q.imp + '_' + q.d, o = g[key] || (g[key] = {key, imp: q.imp, d: q.d, q: 0, n: new Set()}); o.q += q.L; o.n.add(q.wall ? (q.wall.name || 'muro') : 'pianta'); });
-    return Object.values(g).map(o => ({key: o.key, um: 'ml', q: o.q, desc: IMPD[o.imp](o.d), det: 'Sviluppo reale delle linee disegnate (prospetto e pianta) · ' + [...o.n].join(', ')}));
+    const out = Object.values(g).map(o => ({key: o.key, um: 'ml', q: o.q, desc: IMPD[o.imp](o.d), det: 'Sviluppo reale delle linee disegnate (prospetto e pianta) · ' + [...o.n].join(', ')}));
+    if (all) { const gb = {}; (state.beams || []).forEach(b => { if (!b.imp || !b.bg || !isEntityVisible(b)) return; b.bg.forEach(q => { const k = 'braga_' + q.dm + '_' + q.db + (q.col ? 'c' : ''); (gb[k] = gb[k] || {key: k, q: 0, dm: q.dm, db: q.db, col: q.col}).q++; }); });   /* v27.6 */
+      Object.values(gb).forEach(o => out.push({key: o.key, um: 'n.', q: o.q, desc: (o.col ? 'Innesto in colonna di scarico con braga 87°' : 'Braga 45° per scarichi') + ' in PP Ø' + o.dm + '/' + o.db + ' mm, montata nel verso dello scorrimento, compresi guarnizioni e posa', det: 'Innesti della rete di scarico disegnata'})); }
+    return out;
   }
   function add3DImp(scene) {
     if (!window.THREE || !impOn()) return;
@@ -24238,7 +24421,12 @@ window.SC_REL = {
       } catch (e) { console.warn('impianti 3D', e); }
     });
   }
-  const add3DAll = scene => { add3D(scene); add3DImp(scene); };
+  function add3DBraghe(scene) {   /* v27.7: braghe e innesti in colonna come sfere scure nei punti d'innesto */
+    if (!window.THREE || !impOn()) return;
+    (state.beams || []).forEach(b => { if (!b.bg || !b.imp || !isEntityVisible(b)) return; const f = state.floors.find(x => x.id === floorOf(b)) || {elev: 0};
+      b.bg.forEach(q => { try { const m = new THREE.Mesh(new THREE.SphereGeometry(Math.max(0.03, q.dm / 2000 * 1.4), 12, 8), new THREE.MeshBasicMaterial({color: 0x111827, depthTest: false, transparent: true, opacity: 0.95})); m.position.set(q.x, (f.elev || 0) + 0.05, -q.y); m.renderOrder = 999; m.userData.imp = 1; m.userData.noExport = true; scene.add(m); } catch (_) {} }); });
+  }
+  const add3DAll = scene => { add3D(scene); add3DImp(scene); add3DBraghe(scene); };
   { const c = document.getElementById('showImp'); if (c) { c.checked = !!appSettings.showImp; c.addEventListener('change', () => { appSettings.showImp = c.checked; try { persistSettings(); } catch (_) {} try { draw2D(); } catch (_) {} try { if (window.SCwk && SCwk.active()) SCwk.ui(); } catch (_) {} try { if (state.mode === '3d') build3D(); } catch (_) {} }); } }
   window.SCwl = {DIAMS, find, hostOf, add, remove, dup, bbox, fitBox, hit, hitVertex, moveVertex, insertVertex, setBulge, delVertex, setCur, draw, drawTmp, panelHTML, bind, segs, add3D: add3DAll, len, D, IMPT, impSegs, impItems, impOn};
   if (window.SCwk && SCwk.commit) bind(document.getElementById('wkFoot'), {commit: SCwk.commit, sel: SCwk.sel});
@@ -25629,7 +25817,7 @@ window.SC_REL = {
     if (kind === 'ceil') { const top = SCcs.topOf(floorOf(e)); e.h = Math.round(Math.max(1.8, Math.min(top - 0.05, r.y)) * 100) / 100; return; }
     if (kind === 'cs' && !e.imp) { const top = SCcs.topOf(floorOf(e)); e.hh = Math.round(Math.max(0.03, Math.min(2, top - r.y)) * 100) / 100; return; }
     if (kind === 'cs') {   /* linea d'impianto: si spostano lungo il muro i vertici vicini a questo muro; in quota solo se il percorso è «a quota libera» */
-      const band = F.t / 2 + 0.2;
+      const band = F.t / 2 + 0.2; if (drag && !drag.frz && window.SCcs && SCcs.freezeNet) { drag.frz = 1; SCcs.freezeNet(e); }
       if (drag && !drag.orig) drag.orig = {pts: e.pts.map(p => ({...p})), cx: old.cx, y: old.y, z: e.z};
       const O = drag && drag.orig ? drag.orig : {pts: e.pts.map(p => ({...p})), cx: old.cx, y: old.y, z: e.z};
       const d = r.cx - O.cx;

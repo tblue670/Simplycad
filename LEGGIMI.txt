@@ -1,4 +1,4 @@
-SimplyCAD Pro - pubblicazione su GitHub Pages (v27.5)
+SimplyCAD Pro - pubblicazione su GitHub Pages (v27.7)
 
 Contenuto (vanno caricati tutti, senza rinominarli e SENZA cartelle intorno):
   index.html  sw.js  manifest.webmanifest  icon-192.png  icon-512.png  icon-maskable.png  README.md
@@ -463,3 +463,17 @@ NOVITÀ v27.5
 - Prospetto: i tubi tracciati in pianta si selezionano anche qui (tipo, percorso, spostamento lungo il muro).
 - Prospetto: pulsante «Nel muro»: impianti e punti sempre in vista, arredi trasparenti. Toccando di nuovo si passa all'oggetto sotto.
 - Tablet: gli strumenti del prospetto stanno su una riga che scorre, il disegno resta più grande.
+
+NOVITÀ v27.6
+- Impianto idraulico automatico: mettendo, spostando o togliendo un sanitario si creano da soli punti acqua, punti scarico e tubi (Impianti › Idraulico automatico per accenderlo o spegnerlo; «Impianto idraulico» lo rifà subito).
+- Scarico "logico": dorsale lungo i muri fino alla colonna, ogni sanitario entra con una braga a 45° nel verso dello scorrimento; Ø110 dal WC in giù, Ø50 il resto, pendenza 1,5%. Braghe visibili in pianta (Y nera) e, con i tubi al metro, in computo per diametro.
+- Acqua a stella dal collettore (calda e fredda per ogni sanitario), anch'essa lungo i muri; da un locale all'altro si prosegue lungo i muri del locale vicino.
+- Una rete automatica corretta a mano diventa manuale e non viene più rigenerata.
+- Anche i sanitari della libreria nuova hanno i loro punti acqua e scarico.
+
+NOVITÀ v27.7
+- Se mancano, colonna di scarico (nell'angolo vicino al WC) e collettore (sul muro, lontano dai sanitari e vicino alla porta) si mettono da soli; spostandoli diventano tuoi e i tubi si adeguano.
+- Anche nei locali non chiusi da muri (cucina aperta) i tubi corrono lungo le pareti.
+- Reti corrette a mano: le correzioni restano; sanitari nuovi o spostati si innestano da soli lungo il muro con una braga; tolto un sanitario, sparisce il suo ramo.
+- Punti acqua e scarico automatici spostati a mano diventano manuali e restano dove li hai messi.
+- Braghe visibili anche in 3D; le reti idrauliche non riempiono più la pianta di etichette (si toccano sulla linea).
