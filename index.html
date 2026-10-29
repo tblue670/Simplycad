@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v26.3</title>
+<title>SimplyCAD Pro · v26.8</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -2972,7 +2972,7 @@ function drawDoor(d) {
   const sel = (state.selected?.type === 'door' && state.selected.id === d.id) || (state.sel || []).some(x => x.type === 'door' && x.id === d.id);
   const p = worldToScreen(wall.p1.x + (wall.p2.x - wall.p1.x) * d.t, wall.p1.y + (wall.p2.y - wall.p1.y) * d.t);
   const hw = (d.width / 2) * viewScale, th = getWallThickness(wall) * viewScale;
-  const P = doorProps(d), col = sel ? '#22d3ee' : (d.color || '#ffb74d');
+  const P = doorProps(d), col = sel ? '#22d3ee' : (d.color || (P.kind === 'glass' ? '#7dd3fc' : '#ffb74d'));
   ctx.save();
   ctx.translate(p.x, p.y); ctx.rotate(getWallScreenAngle(wall));
   ctx.fillStyle = '#1e1e2e'; ctx.fillRect(-hw, -th / 2, hw * 2, th);
@@ -2989,7 +2989,13 @@ function drawDoor(d) {
     ctx.lineWidth = 1.2; ctx.setLineDash([4, 3]);
     ctx.beginPath(); ctx.arc(hx, 0, len, a0, a1, df < 0); ctx.stroke(); ctx.setLineDash([]);
   };
-  if (P.kind === 'single' || P.kind === 'armored') { if (P.hinge === 'L') leaf(-hw, 1, hw * 2); else leaf(hw, -1, hw * 2); }
+  if (P.kind === 'single' || P.kind === 'armored' || P.kind === 'flush' || P.kind === 'glass') { if (P.hinge === 'L') leaf(-hw, 1, hw * 2); else leaf(hw, -1, hw * 2); }
+  else if (P.kind === 'asym') { const a = hw * 2 * 0.66, b = hw * 2 - a; if (P.hinge === 'L') { leaf(-hw, 1, a); leaf(hw, -1, b); } else { leaf(-hw, 1, b); leaf(hw, -1, a); } }   /* v26.5 */
+  else if (P.kind === 'garage') {   /* v26.5 · basculante: anta nel muro e ingombro di apertura verso l'interno */
+    const dep = Math.min(2.2, (+d.height || 2.2) * 0.6) * viewScale * P.side;
+    ctx.strokeStyle = col; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-hw, 0); ctx.lineTo(hw, 0); ctx.stroke();
+    ctx.lineWidth = 1.2; ctx.setLineDash([6, 4]); ctx.strokeRect(-hw, Math.min(0, dep), hw * 2, Math.abs(dep)); ctx.beginPath(); ctx.moveTo(-hw, 0); ctx.lineTo(hw, dep); ctx.moveTo(hw, 0); ctx.lineTo(-hw, dep); ctx.stroke(); ctx.setLineDash([]);
+  }
   else if (P.kind === 'double') { leaf(-hw, 1, hw); leaf(hw, -1, hw); }
   else if (P.kind === 'slide') {
     const dir = P.hinge === 'L' ? 1 : -1, y = th * 0.2 * P.side;
@@ -3100,6 +3106,7 @@ function drawFurniture(f) {
   if (!spec) return;
   const sel = state.selected?.type === 'furniture' && state.selected.id === f.id;
   if (spec.custom) return drawCustomFurn(f, spec, sel);
+  if (spec.parts && window.SClib) return SClib.draw2D(f, spec, sel);   /* v26.5: simbolo dalla libreria dettagliata */
   const c = worldToScreen(f.x, f.y);
   const sw = Math.max(f.w * viewScale, 10), sd = Math.max(f.d * viewScale, 10);
   ctx.save();
@@ -3394,7 +3401,7 @@ function draw2D() {
   try { if (window.SCzoneFill) SCzoneFill(ctx); } catch (_) {}   /* v21.2: fondo e pezzi delle aree sotto a muri, porte, finestre e arredi */
   paintWallsScreen();
   for (const wl of state.walls) drawWall(wl);
-  for (const wi of state.windows) drawWindow(wi);
+  for (const wi of state.windows) { drawWindow(wi); try { drawWindowOsc(wi); } catch (_) {} }
   for (const d of state.doors) drawDoor(d);
   { const showF = document.getElementById('showFurniture').checked;
     for (const f of state.furniture) if (showF || STRUCT_TYPES.has(f.type)) drawFurniture(f); }
@@ -3516,6 +3523,7 @@ function placeFurniture(type, world) {
       if (wa !== null) rot = wa;
     }
     let px = world.x, py = world.y;
+    if (spec.parts && window.SClib && document.getElementById('furnSnapWall').checked) { const q = SClib.snapWall(px, py, type); if (q) { state.furniture.push(assignLayer({id: newId(), type, x: q.x, y: q.y, w: spec.w, d: spec.d, h: spec.h, color: spec.color, rot: q.rot, ...(spec.z != null ? {z: spec.z} : {})})); draw2D(); if (state.mode === '3d') build3D(); return; } }   /* v26.5: retro contro il muro */
     if (document.getElementById('snapGrid').checked) {
       const g = parseFloat(document.getElementById('gridSize').value) || 0.25;
       px = Math.round(px / g) * g; py = Math.round(py / g) * g;
@@ -3947,7 +3955,7 @@ function updateSelectionPanel() {
       <label>Colore telaio (∅ = automatico)</label>
       ${colorPickerHTML('objColF', d.frameColor || '', true)}
       <label>Tipo</label>
-      <select id="dKind">${[['single','Singola'],['double','Doppia'],['slide','Scorrevole'],['pocket','A scrigno'],['bifold','A soffietto'],['armored','Portoncino blindato'],['open','Vano libero']].map(([v,n]) => `<option value="${v}" ${doorProps(d).kind===v?'selected':''}>${n}</option>`).join('')}</select>
+      <select id="dKind">${[['single','Singola'],['double','Doppia'],['slide','Scorrevole'],['pocket','A scrigno'],['bifold','A soffietto'],['armored','Portoncino blindato'],['flush','Filo muro'],['glass','In vetro'],['asym','Doppia asimmetrica'],['garage','Basculante garage'],['open','Vano libero']].map(([v,n]) => `<option value="${v}" ${doorProps(d).kind===v?'selected':''}>${n}</option>`).join('')}</select>
       <label>Cerniera / scorrimento</label>
       <select id="dHinge"><option value="L" ${doorProps(d).hinge==='L'?'selected':''}>Sinistra</option><option value="R" ${doorProps(d).hinge==='R'?'selected':''}>Destra</option></select>
       <label>Verso apertura</label>
@@ -3982,6 +3990,9 @@ function updateSelectionPanel() {
       <select id="selWKind"><option value="hinged"${w.kind !== 'slide' ? ' selected' : ''}>A battente</option><option value="slide"${w.kind === 'slide' ? ' selected' : ''}>Scorrevole</option></select>
       <label>Ante</label>
       <select id="selPanes">${[1, 2, 3, 4].map(n => `<option value="${n}"${(w.panes || 1) === n ? ' selected' : ''}>${n} ant${n === 1 ? 'a' : 'e'}</option>`).join('')}</select>
+      <label>Oscurante</label>
+      <select id="selOsc"><option value=""${!w.osc ? ' selected' : ''}>Nessuno</option><option value="tap"${w.osc === 'tap' ? ' selected' : ''}>Tapparella con cassonetto</option><option value="per"${w.osc === 'per' ? ' selected' : ''}>Persiane</option><option value="scu"${w.osc === 'scu' ? ' selected' : ''}>Scuri interni</option></select>
+      ${w.osc ? '<button class="action" id="selOscSide" style="margin-top:4px;font-size:11px">⇄ Lato esterno: ' + (w.oscSide ? 'scelto a mano' : 'automatico') + ' (inverti)</button>' : ''}
       <label>Posizione sul muro</label>
       <input type="range" id="selPos" value="${w.t}" min="${range.min.toFixed(3)}" max="${range.max.toFixed(3)}" step="0.005">
       <label>Colore telaio (il vetro resta trasparente)</label>
@@ -3991,6 +4002,8 @@ function updateSelectionPanel() {
       { const wl = state.walls.find(x => x.id === w.wallId), L = wl ? Math.hypot(wl.p2.x - wl.p1.x, wl.p2.y - wl.p1.y) : 0; if (L && v > L + 1e-6) { toast('Il muro è lungo ' + L.toFixed(2).replace('.', ',') + ' m: la finestra non ci sta'); return; } } w.width = v; clampDoorWindowT(w); refreshPosSlider(w); draw2D(); if (state.mode === '3d') build3D(); };
     document.getElementById('selHeight').oninput = e => { if (isEntityLocked(w)) return; const v = numFieldValue(e.target, 0.3, 3); if (v === null) return; w.height = v; draw2D(); if (state.mode === '3d') build3D(); };
     document.getElementById('selSill').oninput = e => { if (isEntityLocked(w)) return; const v = numFieldValue(e.target, 0, 3); if (v === null) return; w.sillHeight = v; draw2D(); if (state.mode === '3d') build3D(); };
+    document.getElementById('selOsc').onchange = e => { if (isEntityLocked(w)) return; if (e.target.value) w.osc = e.target.value; else { delete w.osc; delete w.oscSide; } checkpoint(); updateSelectionPanel(); if (state.mode === '3d') build3D(); };
+    { const b = document.getElementById('selOscSide'); if (b) b.onclick = () => { if (isEntityLocked(w)) return; const cur = w.oscSide || winExtSide(w); w.oscSide = -cur; checkpoint(); updateSelectionPanel(); if (state.mode === '3d') build3D(); else toast('Lato invertito: lo vedi nel 3D'); }; }
     document.getElementById('selPanes').onchange = e => { if (isEntityLocked(w)) return; w.panes = +e.target.value; draw2D(); if (state.mode === '3d') build3D(); };
     document.getElementById('selWKind').onchange = e => { if (isEntityLocked(w)) return; w.kind = e.target.value === 'slide' ? 'slide' : undefined; if (w.kind === 'slide' && (w.panes || 1) < 2) { w.panes = w.width > 3.6 ? 3 : 2; document.getElementById('selPanes').value = String(w.panes); } draw2D(); if (state.mode === '3d') build3D(); };
     document.getElementById('selPos').oninput = e => { if (isEntityLocked(w)) return; w.t = parseFloat(e.target.value); clampDoorWindowT(w); draw2D(); if (state.mode === '3d') build3D(); };
@@ -4847,13 +4860,15 @@ function build3DDoor(g, d, T) {
   const base = new THREE.Color(d.color || '#a0825a');
   const leafMat = new THREE.MeshStandardMaterial({color: base, roughness: 0.65, side: THREE.DoubleSide});
   const panMat = new THREE.MeshStandardMaterial({color: base.clone().multiplyScalar(0.82), roughness: 0.7});
-  const frMat = new THREE.MeshStandardMaterial({color: d.frameColor ? new THREE.Color(d.frameColor) : base.clone().multiplyScalar(0.7), roughness: 0.6});
+  const frMat = new THREE.MeshStandardMaterial({color: d.frameColor ? new THREE.Color(d.frameColor) : (kind === 'garage' || kind === 'glass') ? new THREE.Color(0x9ca3af) : base.clone().multiplyScalar(0.7), roughness: 0.6});
   const hdMat = new THREE.MeshStandardMaterial({color: 0xbfc3c7, roughness: 0.3, metalness: 0.8});
   const fb = 0.05, fd = T + 0.03, LT = 0.04, iw = W - 2 * fb, ih = H - fb;
-  /* telaio: due stipiti e traverso */
+  /* telaio: due stipiti e traverso (non per la porta a filo muro) */
+  if (kind !== 'flush') {
   box3(g, frMat, fb, H, fd, fb / 2, H / 2, 0);
   box3(g, frMat, fb, H, fd, W - fb / 2, H / 2, 0);
   box3(g, frMat, W, fb, fd, W / 2, H - fb / 2, 0);
+  }
   const lever = (x, z, dirX) => { box3(g, hdMat, 0.13, 0.022, 0.022, x + dirX * 0.05, 1.0, z); box3(g, hdMat, 0.04, 0.05, 0.016, x, 1.0, z - Math.sign(z) * 0.012); };
   const leaf = (x0, w, hand) => {   /* anta con due specchiature per lato */
     box3(g, leafMat, w, ih, LT, x0 + w / 2, ih / 2, 0);
@@ -4877,6 +4892,22 @@ function build3DDoor(g, d, T) {
     }
   }
   else if (kind === 'double') { leaf(fb, iw / 2 - 0.002, 1); leaf(fb + iw / 2 + 0.002, iw / 2 - 0.002, -1); }
+  else if (kind === 'asym') { const a = iw * (left ? 0.66 : 0.34); leaf(fb, a - 0.002, 1); leaf(fb + a + 0.002, iw - a - 0.002, -1); }   /* v26.5: doppia asimmetrica */
+  else if (kind === 'flush') {   /* v26.5 · a filo muro: anta liscia complanare alla parete, senza telaio né coprifili, cerniere nascoste */
+    const fm = d.color ? leafMat : new THREE.MeshStandardMaterial({color: 0xeeeeea, roughness: 0.8}), z = side * (T / 2 - LT / 2 - 0.002);
+    box3(g, fm, W - 0.006, H - 0.004, LT, W / 2, (H - 0.004) / 2, z);
+    for (const sg of [1, -1]) lever(left ? W - 0.08 : 0.08, z + sg * (LT / 2 + 0.014), left ? -1 : 1);
+  } else if (kind === 'glass') {   /* v26.5 · in vetro: telaio sottile in alluminio, lastra temperata satinata, maniglione */
+    const al = new THREE.MeshStandardMaterial({color: 0xc8ccd0, roughness: 0.3, metalness: 0.6}), gl = new THREE.MeshStandardMaterial({color: 0xcfe8ef, roughness: 0.15, transparent: true, opacity: 0.45, depthWrite: false, side: THREE.DoubleSide}), pr = 0.035;
+    box3(g, al, pr, ih, LT, fb + pr / 2, ih / 2, 0); box3(g, al, pr, ih, LT, fb + iw - pr / 2, ih / 2, 0); box3(g, al, iw, pr, LT, fb + iw / 2, pr / 2, 0); box3(g, al, iw, pr, LT, fb + iw / 2, ih - pr / 2, 0);
+    box3(g, gl, iw - 2 * pr, ih - 2 * pr, 0.01, fb + iw / 2, ih / 2, 0, false);
+    for (const sg of [1, -1]) box3(g, hdMat, 0.025, 0.6, 0.025, fb + (left ? iw - 0.09 : 0.09), 1.05, sg * (LT / 2 + 0.03), false);
+  } else if (kind === 'garage') {   /* v26.5 · basculante: pannello in lamiera grecata, telaio in acciaio, maniglia centrale */
+    const st = new THREE.MeshStandardMaterial({color: d.color ? base : new THREE.Color(0xa3a8ae), roughness: 0.45, metalness: 0.5});
+    box3(g, st, iw, ih, 0.04, fb + iw / 2, ih / 2, 0);
+    for (let y = 0.15; y < ih - 0.05; y += 0.15) for (const sg of [1, -1]) box3(g, st, iw - 0.06, 0.03, 0.01, fb + iw / 2, y, sg * 0.024, false);
+    for (const sg of [1, -1]) { box3(g, hdMat, 0.18, 0.03, 0.03, fb + iw / 2, 1.0, sg * 0.04, false); box3(g, st, 0.08, 0.08, 0.06, fb + 0.1, ih - 0.1, sg * 0.04, false); }
+  }
   else if (kind === 'pocket') {   /* a scrigno: anta a filo, senza specchiature, con maniglia incassata */
     box3(g, leafMat, iw, ih, LT, fb + iw / 2, ih / 2, 0);
     for (const sg of [1, -1]) box3(g, hdMat, 0.03, 0.16, 0.006, fb + (left ? iw - 0.06 : 0.06), 1.0, sg * (LT / 2 + 0.003), false);
@@ -4893,6 +4924,37 @@ function build3DDoor(g, d, T) {
     }
     for (const sg of [1, -1]) box3(g, hdMat, 0.025, 0.025, 0.02, fb + (left ? iw - 0.03 : 0.03), 1.0, sg * (LT / 2 + 0.012), false);
   }
+}
+function winExtSide(wi) {   /* v26.6: +1 = lato del muro verso l'esterno nel riferimento locale della finestra (z+), -1 il contrario */
+  if (wi.oscSide) return wi.oscSide;
+  const wl = state.walls.find(x => x.id === wi.wallId); if (!wl) return 1;
+  const dx = wl.p2.x - wl.p1.x, dy = wl.p2.y - wl.p1.y, L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L, mx = wl.p1.x + dx * wi.t, my = wl.p1.y + dy * wi.t, o = getWallThickness(wl) / 2 + 0.4;
+  const inR = (x, y) => (state.rooms || []).some(r => r.polygon && r.polygon.length > 2 && pointInPolygon({x, y}, r.polygon));
+  const a = inR(mx + nx * o, my + ny * o), b = inR(mx - nx * o, my - ny * o);
+  return a && !b ? 1 : (!a && b ? -1 : 1);
+}
+/* v26.8 · oscuranti in pianta: tapparella = tratteggio sul filo esterno con guide; persiane = ante aperte contro il muro esterno; scuri = ante ripiegate all'interno */
+function drawWindowOsc(wi) {
+  if (!wi || !wi.osc || !isEntityVisible(wi)) return;
+  const wl = state.walls.find(x => x.id === wi.wallId); if (!wl) return;
+  const dx = wl.p2.x - wl.p1.x, dy = wl.p2.y - wl.p1.y, L = Math.hypot(dx, dy) || 1, ux = dx / L, uy = dy / L, sx = winExtSide(wi), ex = sx > 0 ? uy : -uy, ey = sx > 0 ? -ux : ux;
+  const T = getWallThickness(wl), W = +wi.width || 1.2, mx = wl.p1.x + dx * wi.t, my = wl.p1.y + dy * wi.t, n = Math.min(2, Math.max(1, wi.panes || 1));
+  const P = (a, o) => worldToScreen(mx + ux * a + ex * o, my + uy * a + ey * o), line = (a, b) => { ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); };
+  ctx.save(); ctx.lineCap = 'round'; ctx.setLineDash([]);
+  const col = wi.osc === 'per' ? '#4ade80' : wi.osc === 'scu' ? '#d6a46b' : '#e5e7eb';
+  ctx.strokeStyle = col; ctx.lineWidth = Math.max(1.5, Math.min(3, viewScale * 0.03));
+  if (wi.osc === 'tap') {
+    const o = T / 2 + 0.03; ctx.setLineDash([6, 4]); line(P(-W / 2, o), P(W / 2, o)); ctx.setLineDash([]);
+    line(P(-W / 2 - 0.02, T / 2), P(-W / 2 - 0.02, o + 0.02)); line(P(W / 2 + 0.02, T / 2), P(W / 2 + 0.02, o + 0.02));
+  } else if (wi.osc === 'per') {
+    const o = T / 2 + 0.03, lw = W / n;
+    line(P(-W / 2, o), P(-W / 2 - lw, o)); if (n > 1) line(P(W / 2, o), P(W / 2 + lw, o)); else line(P(-W / 2, T / 2), P(-W / 2, o));
+    if (n > 1) { line(P(-W / 2, T / 2), P(-W / 2, o)); line(P(W / 2, T / 2), P(W / 2, o)); }
+  } else if (wi.osc === 'scu') {
+    const o = -(T / 2 + 0.03), lw = W / n / 2;
+    line(P(-W / 2, -T / 2), P(-W / 2 + lw * 0.2, o - lw * 0.6)); if (n > 1) line(P(W / 2, -T / 2), P(W / 2 - lw * 0.2, o - lw * 0.6));
+  }
+  ctx.restore();
 }
 function build3DWindow(g, wi, T) {
   const W = wi.width, H = wi.height, y0 = wi.sillHeight || 0, nP = Math.max(1, Math.min(4, wi.panes || 1)), two = nP === 2, slide = wi.kind === 'slide';
@@ -4926,6 +4988,25 @@ function build3DWindow(g, wi, T) {
     const hx = n === 1 ? x0 + aw - sb - 0.03 : (i % 2 === 0 ? x0 + aw - sb - 0.02 : x0 + sb + 0.02), hy = pf ? y0 + 1.0 : cy;
     box3(g, hdMat, 0.02, 0.1, 0.03, hx, hy, sd / 2 + 0.012, false);
     if (pf) box3(g, hdMat, 0.02, 0.1, 0.03, hx, hy, -(sd / 2 + 0.012), false);
+  }
+  /* v26.6 · oscuranti: tapparella con cassonetto, persiane a battente aperte sul muro, scuri interni */
+  if (wi.osc) {
+    const ex = winExtSide(wi), oc = new THREE.MeshStandardMaterial({color: new THREE.Color(wi.oscCol || (wi.osc === 'per' ? '#2f5d3a' : wi.osc === 'scu' ? '#a0825a' : '#d6d3d1')), roughness: 0.6});
+    if (wi.osc === 'tap') {
+      const zf = ex * (T / 2 + 0.012), gh = y0 + H;
+      box3(g, oc, 0.03, H, 0.035, -0.015, cy, zf); box3(g, oc, 0.03, H, 0.035, W + 0.015, cy, zf);   /* guide */
+      const dn = H * 0.3; box3(g, oc, W, dn, 0.012, W / 2, gh - dn / 2, zf);   /* avvolgibile abbassato al 30% */
+      for (let y = gh - 0.045; y > gh - dn; y -= 0.045) box3(g, sMat, W, 0.004, 0.014, W / 2, y, zf, false);
+      box3(g, sMat, W + 0.12, 0.25, 0.02, W / 2, gh + 0.125, -ex * (T / 2 + 0.01));   /* cassonetto (cielino interno) */
+    } else {
+      const zf = ex * (T / 2 + 0.03), inner = wi.osc === 'scu', z2 = inner ? -ex * (T / 2 + 0.03) : zf, n = Math.min(2, Math.max(1, wi.panes || 1)), lw = W / n, th = inner ? 0.025 : 0.035;
+      for (let i = 0; i < n; i++) {
+        const x = n === 1 ? -lw / 2 - 0.02 : (i === 0 ? -lw / 2 - 0.02 : W + lw / 2 + 0.02);
+        box3(g, oc, lw, H, th, x, cy, z2);
+        if (!inner) for (let y = y0 + 0.12; y < y0 + H - 0.08; y += 0.06) box3(g, oc, lw - 0.08, 0.012, th + 0.012, x, y, z2, false);   /* lamelle */
+        box3(g, hdMat, 0.02, 0.06, 0.02, x + (x < 0 ? lw / 2 - 0.04 : -lw / 2 + 0.04), cy, z2 + (inner ? -ex : ex) * (th / 2 + 0.01), false);
+      }
+    }
   }
   /* davanzale */
   if (y0 > 0.05) box3(g, sMat, W + 0.1, 0.03, T + 0.08, W / 2, y0 - 0.015, 0, false);   /* v23.6: niente ombra seghettata sotto il davanzale */
@@ -5151,6 +5232,8 @@ function build3D() {
         g.position.set(f.x, 0.03, -f.y); g.rotation.y = rz; g.receiveShadow = true; scene.add(g);
       } else if (spec.custom) {
         buildCustomFurn3D(f, spec, mat, rz);
+      } else if (window.SClib && (spec.parts || f.type === 'punto_luce') && SClib.build3D(f, spec, rz + (f.lw && f.lw.side === 1 ? Math.PI : 0), _zz)) {   /* v26.5: modello a pezzi */
+        _zDone = true;
       } else if (f.type === 'camino') {
         const g = new THREE.Group(); g.position.set(f.x, 0, -f.y); g.rotation.y = rz;
         const W = f.w, D = f.d, k = Math.min(1, h / 2.2), dark = new THREE.MeshStandardMaterial({color: 0x2b2220, roughness: 0.9});
@@ -6012,7 +6095,7 @@ function ctxItems(w) {
       const P = doorProps(one), up = () => { updateSelectionPanel(); draw2D(); };
       add('🔁', 'Inverti cerniera', () => { one.hinge = P.hinge === 'L' ? 'R' : 'L'; up(); });
       add('↕️', 'Inverti verso apertura', () => { one.side = -P.side; up(); });
-      [['single', 'Singola'], ['double', 'Doppia'], ['slide', 'Scorrevole'], ['pocket', 'A scrigno'], ['bifold', 'A soffietto'], ['armored', 'Portoncino blindato'], ['open', 'Vano libero']].forEach(([k, n]) => add(P.kind === k ? '●' : '○', 'Tipo: ' + n, () => { one.kind = k; up(); }));
+      [['single', 'Singola'], ['double', 'Doppia'], ['slide', 'Scorrevole'], ['pocket', 'A scrigno'], ['bifold', 'A soffietto'], ['armored', 'Portoncino blindato'], ['flush', 'Filo muro'], ['glass', 'In vetro'], ['asym', 'Doppia asimmetrica'], ['garage', 'Basculante garage'], ['open', 'Vano libero']].forEach(([k, n]) => add(P.kind === k ? '●' : '○', 'Tipo: ' + n, () => { one.kind = k; up(); }));
       sep();
     }
     if (walls.length) {
@@ -11169,7 +11252,7 @@ updateRoomList();
     ...state.doors.filter(d => d.wallId === w.id && isEntityVisible(d)).map(d => ({o: d, type: 'door', w: +d.width || 0.9, h: +d.height || 2.1, sill: 0})),
     ...state.windows.filter(d => d.wallId === w.id && isEntityVisible(d)).map(d => ({o: d, type: 'win', w: +d.width || 1.2, h: +d.height || 1.2, sill: d.sillHeight != null ? +d.sillHeight : 0.9}))
   ];
-  const DOORK = {single: 'a battente', double: 'a due ante', slide: 'scorrevole', pocket: 'a scrigno', bifold: 'a soffietto', armored: 'portoncino blindato', open: 'vano libero'};
+  const DOORK = {single: 'a battente', double: 'a due ante', slide: 'scorrevole', pocket: 'a scrigno', bifold: 'a soffietto', armored: 'portoncino blindato', flush: 'a filo muro con telaio invisibile', glass: 'in vetro temperato con telaio in alluminio', asym: 'a due ante asimmetriche', garage: 'basculante da garage in acciaio', open: 'vano libero'};
 
   /* ---------- poligono netto del locale (filo interno muri) ---------- */
   /* superficie occupata da pilastri (rettangolo ruotato, ritagliato sul locale) e colonne (ellisse) */
@@ -11346,14 +11429,15 @@ updateRoomList();
       const k = `por_${P.kind}_${cm(+d.width || 0.9)}x${cm(+d.height || 2.1)}`;
       (dg[k] || (dg[k] = {k, desc: `Porta interna ${DOORK[P.kind]} ${cm(+d.width || 0.9)}×${cm(+d.height || 2.1)} cm, completa di telaio e ferramenta`, n: 0})).n++;
     });
-    let dav = 0;
+    let dav = 0; const osc = {};
     state.windows.filter(d => isEntityVisible(d) && !isDemo(state.walls.find(w => w.id === d.wallId))).forEach(d => {
       const w = +d.width || 1.2, h = +d.height || 1.2, k = `fin_${cm(w)}x${cm(h)}`;
       (wg[k] || (wg[k] = {k, desc: `Serramento esterno ${cm(w)}×${cm(h)} cm, completo di vetrocamera`, n: 0})).n++;
-      dav += w;
+      dav += w; if (d.osc) { const ko = 'osc_' + d.osc; (osc[ko] || (osc[ko] = {k: ko, a: 0, n: []})).a += w * h; osc[ko].n.push(cm(w) + '×' + cm(h)); }
     });
     Object.values(dg).sort((a, b) => a.k.localeCompare(b.k)).forEach(g => add('Serramenti', g.k, g.desc, 'n.', g.n));
     Object.values(wg).sort((a, b) => a.k.localeCompare(b.k)).forEach(g => add('Serramenti', g.k, g.desc, 'n.', g.n));
+    { const OD = {osc_tap: 'Tapparella avvolgibile in PVC/alluminio con guide, cassonetto coibentato e comando', osc_per: 'Persiane a battente in alluminio o legno, con cardini e ferramenta', osc_scu: 'Scuri interni in legno, con cerniere e ferramenta'}; Object.values(osc).forEach(o => add('Serramenti', o.k, OD[o.k], 'm²', o.a, o.n.join('; '))); }
     add('Serramenti', 'davanzali', 'Davanzali e soglie in pietra (sviluppo luce finestre)', 'ml', dav);
 
     // solai di interpiano e coperture
@@ -11387,6 +11471,9 @@ updateRoomList();
       add('Impianti', 'pt_dati', 'Presa dati RJ45 cat. 6 con cavo UTP', 'n.', cnt('pt_dati'));
       add('Impianti', 'antenna', 'Centralino TV: amplificatore e partitore, collegamento all\'antenna', 'n.', cnt('antenna'));
       add('Impianti', 'router', 'Centralino dati: quadretto di rete con patch panel', 'n.', cnt('router'));
+      add('Impianti', 'caldaia', 'Caldaia murale a condensazione, compresi kit scarico fumi, allacciamenti e messa in servizio', 'n.', cnt('caldaia'));
+      add('Impianti', 'scaldabagno', 'Scaldabagno elettrico ad accumulo 80 l, compresi allacciamenti', 'n.', cnt('scaldabagno'));
+      add('Impianti', 'stufa_pellet', 'Stufa a pellet, compresi canna fumaria e presa d\'aria', 'n.', cnt('stufa_pellet'));
       add('Impianti', 'col_scarico', 'Colonna di scarico in PP/PVC Ø100–125 mm con braghe e ispezione (per piano)', 'n.', cnt('col_scarico'));
       add('Impianti', 'split', 'Climatizzatore a parete: unità interna ed esterna, linee frigorifere, scarico condensa e collegamento elettrico', 'n.', cnt('split')); }
     { const PP = F.filter(f => f.type === 'presa'), nc = PP.filter(f => f.seq === 'sc').length, na = PP.filter(f => f.seq === 'sa').length;
@@ -12831,7 +12918,7 @@ updateRoomList();
     if (!(w > 0) || !(d > 0) || !(st >= 2) || ang === null) fail('Valori non validi'); state.stairs.push(assignLayer({id: newId(), x: q.x, y: q.y, w, d, steps: Math.round(st), rot: ang * D2R})); refresh(); setTimeout(checkpoint, 0); ok('Scala inserita: ' + w + ' × ' + d + ' m, ' + Math.round(st) + ' gradini');
   }, {deleg: a => a.length >= 1 && !ptTok(a[0])});
   def('Disegno', 'scalastampa', 'scalastampa 100', 'Imposta la scala di stampa (20, 50, 100, 200, 500)', () => {}, {deleg: () => true, alias: 'scala'});
-  const kinds = {singola: 'single', singolo: 'single', doppia: 'double', doppio: 'double', scorrevole: 'slide', scrigno: 'pocket', soffietto: 'bifold', blindata: 'armored', blindato: 'armored', portoncino: 'armored', libera: 'open', libero: 'open', vano: 'open'};
+  const kinds = {singola: 'single', singolo: 'single', doppia: 'double', doppio: 'double', scorrevole: 'slide', scrigno: 'pocket', soffietto: 'bifold', blindata: 'armored', blindato: 'armored', portoncino: 'armored', filo: 'flush', rasomuro: 'flush', vetro: 'glass', vetrata: 'glass', asimmetrica: 'asym', basculante: 'garage', garage: 'garage', libera: 'open', libero: 'open', vano: 'open'};
   function openingArgs(raw) {
     const words = [], nums = []; let kind = null, centre = false;
     raw.forEach(t => { const n = norm(t); if (kinds[n]) kind = kinds[n]; else if (n === 'centro') centre = true; else if (lenOf(t) !== null && words.length) nums.push(lenOf(t)); else if (lenOf(t) !== null && !words.length) nums.push(lenOf(t)); else words.push(t); });
@@ -14521,7 +14608,7 @@ function SCwalkFactory(THREE, scene, camera, dom, host) {
       var m = new THREE.Mesh(geo, mat);
       var gw = +l[7], gb = tipo === 'plafoniera' ? 0.4 : (tipo === 'faretto' || tipo === 'faretto_p') ? 0.1 : (tipo === 'applique' || tipo === 'sospensione') ? 0.18 : 0;
       if (gw > 0 && gb) { var gs = Math.max(0.15, Math.min(6, gw / gb)); if (geo === glowGeo.s) m.scale.set(gs, gs, gs); else m.scale.set(gs, 1, gs); }   /* v25.0: la lampada cambia con le misure */ m.position.set(l[0], l[2] - drop, -l[1]); m.userData.noExport = true;
-      if (l[3] !== 0) glowGrp.add(m);
+      if (l[3] !== 0 && !window.SClib) glowGrp.add(m);   /* v26.5: la lampada è il modello della libreria */
       lts.push(m.position); ltp.push({lm: lm, k: k, tipo: tipo, col: kRGB(k), mat: mat});
     });
     scene.add(glowGrp);
@@ -15343,7 +15430,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       <button class="wk-b" data-t="niche">Nicchia</button>
       <button class="wk-b" data-t="cut">Taglio</button>
       <button class="wk-b" data-t="cp" title="Controparete in cartongesso sul lato che guardi: tocca due angoli">Controparete</button>
-      <button class="wk-b" data-t="riv" title="Rivestimento con una skin sul lato che guardi: tocca due angoli">Rivestimento</button><button class="wk-b" data-t="led" title="Profilo LED: linea libera, anche in verticale, o «Segui profilo» su un oggetto">💡 LED</button><button class="wk-b" data-t="imp" title="Impianti: tubi acqua calda e fredda, scarichi, cavi elettrici e canaline dentro il muro; linee libere, anche in verticale">🔧 Impianti</button><button class="wk-b" data-t="lux" title="Luci e punti a parete: applique, faretto, presa, interruttore, quadro; tocca il punto sul muro">🔆 Luci e punti</button><button class="wk-b" data-t="col" title="Collega punti: tocca la partenza (quadro) e poi prese, interruttori, punti acqua…: ognuno viene collegato con tubo o cavo">🔗 Collega</button><button class="wk-b" data-t="pit" title="Pittura: superficie colorata sul lato che guardi, a rettangolo o punto per punto">🎨 Pittura</button>
+      <button class="wk-b" data-t="riv" title="Rivestimento con una skin sul lato che guardi: tocca due angoli">Rivestimento</button><button class="wk-b" data-t="led" title="Profilo LED: linea libera, anche in verticale, o «Segui profilo» su un oggetto">💡 LED</button><button class="wk-b" data-t="imp" title="Linea impianto a mano, solo per le eccezioni: di norma usa «Collega» o i comandi automatici del menu Impianti">✎ Linea impianto</button><button class="wk-b" data-t="lux" title="Luci e punti a parete: applique, faretto, presa, interruttore, quadro; tocca il punto sul muro">🔆 Luci e punti</button><button class="wk-b" data-t="col" title="Collega punti: tocca la partenza (quadro) e poi prese, interruttori, punti acqua…: ognuno viene collegato con tubo o cavo">🔗 Collega</button><button class="wk-b" data-t="pit" title="Pittura: superficie colorata sul lato che guardi, a rettangolo o punto per punto">🎨 Pittura</button>
       <button class="wk-b" data-t="door" title="Porta: tocca due angoli sul muro (il lato in basso va a terra)">Porta</button>
       <button class="wk-b" data-t="window" title="Finestra: tocca due angoli sul muro (il lato in basso è il davanzale)">Finestra</button>
       <span class="wk-sep"></span>
@@ -15940,8 +16027,9 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       }
       if (S.tool === 'imp') {
         const n = (S.pp || []).length, T = SCwl.IMPT;
-        h += '<div class="wk-hint"><b>Impianti</b> sul lato che guardi: scegli il tipo, poi tocca il primo punto e i successivi, anche in verticale; tocca di nuovo l\'ultimo punto o «Fine linea» per finire. Le linee passano dentro il muro e si vedono con «Impianti» nel menu Vista.</div>';
-        h += '<div class="wk-row" style="flex-wrap:wrap">' + Object.keys(T).map(k => '<button class="wk-b' + ((S.impT || 'acf') === k ? ' on' : '') + '" data-a="impt" data-m="' + k + '" style="border-left:6px solid ' + T[k][1] + '">' + T[k][0] + '</button>').join('') + '</div>';
+        const ESS = ['lux', 'pre', 'acf', 'acc', 'scn', 'tv', 'dat']; if (!ESS.includes(S.impT)) S.impT = 'acf';
+        h += '<div class="wk-hint"><b>Linea impianto</b> (solo eccezioni): scegli il tipo e tocca i punti; «Fine linea» per finire.</div>';
+        h += '<div class="wk-row" style="flex-wrap:wrap">' + ESS.map(k => '<button class="wk-b' + (S.impT === k ? ' on' : '') + '" data-a="impt" data-m="' + k + '" style="border-left:6px solid ' + T[k][1] + '">' + T[k][0] + '</button>').join('') + '</div>';
         h += '<div class="wk-row">' + (n >= 1 ? '<button class="wk-b" data-a="ledundo">↩ Togli punto</button>' : '') + (n >= 2 ? '<button class="wk-b" data-a="ledclose">✔ Fine linea</button>' : '') + '<button class="wk-b sc-fine" data-a="done" style="margin-left:auto">✔ Fine</button></div>';
         foot.innerHTML = h; render(); return;
       }
@@ -16917,7 +17005,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     document.body.appendChild(pal);
     const $p = id => pal.querySelector('#' + id);
     const fill = () => {
-      $p('imT').innerHTML = Object.keys(T).map(k => '<option value="' + k + '"' + (k === el.imp ? ' selected' : '') + '>' + T[k][0] + '</option>').join('');
+      $p('imT').innerHTML = Object.keys(T).filter(k => ['lux', 'pre', 'acf', 'acc', 'scn', 'tv', 'dat'].includes(k) || k === el.imp).map(k => '<option value="' + k + '"' + (k === el.imp ? ' selected' : '') + '>' + T[k][0] + '</option>').join('');
       $p('imD').innerHTML = (DI[el.imp] || [el.d]).map(d => '<option value="' + d + '"' + (+d === +el.d ? ' selected' : '') + '>' + d + '</option>').join('');
       $p('imZm').innerHTML = Object.keys(ZMN).map(k => '<option value="' + k + '"' + (k === (el.zm || 'pav') ? ' selected' : '') + '>' + ZMN[k] + '</option>').join('');
       $p('imZ').value = el.z != null && isFinite(el.z) ? f2(el.z) : ''; $p('imZw').style.display = (el.zm || 'pav') === 'lib' ? '' : 'none';
@@ -16978,7 +17066,8 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     const near = (f, list) => { let b = null, bc = 1e9; list.forEach(g => { if (g === f) return; const c = pathCost(orth({x: f.x, y: f.y}, {x: g.x, y: g.y})); if (c < bc) { bc = c; b = g; } }); return b; };
     state.beams = state.beams.filter(b => !(b.auto === 'elec' && floorOf(b) === fl));
     let nl = 0, ni = 0, np = 0;
-    Lx.forEach(f => { const g = near(f, Ix.length ? Ix : Qx); if (g) { connect(f, g, {auto: 'elec'}); nl++; } });
+    const roomOf = q => (state.rooms || []).find(r => r.polygon && r.polygon.length > 2 && floorOf(r) === fl && pointInPolygon({x: q.x, y: q.y}, r.polygon)) || null;   /* v26.8: prima gli interruttori della stessa stanza */
+    Lx.forEach(f => { const rm = roomOf(f), same = rm ? Ix.filter(i => roomOf(i) === rm) : []; const g = near(f, same.length ? same : Ix.length ? Ix : Qx); if (g) { connect(f, g, {auto: 'elec'}); nl++; } });
     Ix.forEach(f => { const g = near(f, Qx); if (g) { connect(f, g, {auto: 'elec'}); ni++; } });
     Px.forEach(f => { const g = near(f, Qx); if (g) { connect(f, g, {auto: 'elec'}); np++; } });
     const Ax = by('antenna'), Rx = by('router'); let nt = 0, nd = 0;
@@ -17025,7 +17114,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   const LIB = [
     ['Elettrico', 'linea luci arancione, linea prese viola', ['quadro', 'interruttore', 'presa', 'punto_luce']],
     ['Idraulico', 'acqua calda rossa, fredda blu, scarichi neri', ['collettore', 'pt_acqua', 'pt_scarico', 'col_scarico']],
-    ['Riscaldamento e clima', 'termosifoni in acqua calda, condizionatori in canalina', ['radiatore', 'split', 'unita_est']],
+    ['Riscaldamento e clima', 'termosifoni in acqua calda, condizionatori in canalina', ['caldaia', 'radiatore', 'stufa_pellet', 'scaldabagno', 'split', 'unita_est']],
     ['TV e dati', 'linea TV verde, linea dati rosa', ['antenna', 'pt_tv', 'router', 'pt_dati']]];
   let PT = null;
   function closeLib() { const e = document.getElementById('impLib'); if (e) e.remove(); }
@@ -19179,7 +19268,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   const FALLBACK = () => { const M = META(); return {committente: M.client || '', indirizzo: M.address || '', oggetto: M.name && M.name !== 'Nuovo progetto' ? M.name : ''}; };
   const CARTV = () => { const C = CART(), F = FALLBACK(); ['committente', 'indirizzo', 'oggetto'].forEach(k => { if (!String(C[k] || '').trim()) C[k] = F[k]; }); return C; };
   /* v22.0: abaco delle aperture (sigle P1… porte, F1… finestre) */
-  const DK = {single: 'Battente', double: 'Battente 2 ante', slide: 'Scorrevole', pocket: 'A scrigno', bifold: 'A soffietto', armored: 'Blindata', open: 'Vano libero'};
+  const DK = {single: 'Battente', double: 'Battente 2 ante', slide: 'Scorrevole', pocket: 'A scrigno', bifold: 'A soffietto', armored: 'Blindata', flush: 'Filo muro', glass: 'In vetro', asym: 'Doppia asimmetrica', garage: 'Basculante', open: 'Vano libero'};
   function opsOf(fid) {
     const vis = e => { const l = getLayer(e.layerId); return !(l && l.visible === false) && floorOf(e) === fid; };
     const wi = new Map(state.walls.map((w, i) => [w.id, i]));
@@ -21162,8 +21251,13 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
    SC_REL.v è l'unica versione: titolo, Guida, file salvato, avvisi e riga messaggi la leggono da qui.
    ======================================================================== */
 window.SC_REL = {
-  v: '26.3', d: '28/10/2026',
+  v: '26.8', d: '29/10/2026',
   news: [
+    ['26.8', 'Arredi più realistici: sanitari, vasca freestanding, vasi e paralumi con forme tornite e morbide; cuscini, materassi, sedute e lavabi con spigoli arrotondati. Calorifero, piano cucina, armadi e librerie si ricalcolano alle misure: più largo = più elementi, basi e ante, più alto = più ripiani. Oscuranti delle finestre anche in pianta (tapparella tratteggiata, persiane e scuri come ante). Collegamento automatico: ogni luce va prima a un interruttore della sua stanza.'],
+    ['26.7', 'Finestre con oscuranti: tapparella con cassonetto, persiane a battente, scuri interni (lato esterno riconosciuto da solo, si può invertire), in 3D e nel computo al m². Nuovi oggetti: caldaia murale, scaldabagno, stufa a pellet (libreria impianti, con voce nel computo), lavatrice con asciugatrice a colonna, cassapanca, scaffale da garage; calorifero a elementi in 3D.'],
+    ['26.6', 'Porte nuove: a filo muro (senza telaio né coprifili, complanare alla parete), in vetro (telaio in alluminio e maniglione), doppia asimmetrica (anta grande e anta piccola), basculante da garage (con ingombro di apertura in pianta). In pianta, 3D, computo e prezzi.'],
+    ['26.5', 'Libreria arredi dettagliata: ogni oggetto è fatto di pezzi (gambe, cuscini, ante, maniglie, rubinetti…) con simbolo in pianta a linee e 3D più realistico, in scala alle misure. Bagno (WC e bidet a terra e sospesi, lavabi, mobili bagno 60/80/100, docce 80, 90, 70×90 e walk-in 80×120 e 90×140, vasche, lavatoio, scaldasalviette, specchio), rubinetteria, cucina a moduli da 60 (basi, cassettiere, pensili, colonna forno, frigoriferi, piani cottura 60/75/90, lavelli, cappa, isola), soggiorno, pranzo, camera, studio, esterno e garage. Le lampade hanno un modello (plafoniere, pannello LED, faretti, binario, sospensioni, lampadario, applique) che cambia solo l\'aspetto. Toccando vicino a un muro l\'oggetto si appoggia con il retro al muro.'],
+    ['26.4', 'Linea impianto a mano ridotta all\'essenziale (solo eccezioni): sul prospetto e in pianta 7 tipi (linea luci, linea prese, acqua fredda, acqua calda, scarico, TV, dati), niente profondità nel muro né fase/neutro/terra/canalina separati. Le linee già disegnate con quei tipi restano.'],
     ['26.3', 'Libreria impianti (Impianti › Inserisci punti): elettrico, idraulico, riscaldamento e clima, TV e dati, ognuno con il colore delle sue linee; scegli il punto e tocca dove metterlo, anche più volte; vicino a un muro si aggancia. Nuovi: presa TV/SAT, presa dati, centralino TV, centralino dati, con linea TV verde e linea dati rosa (anche nel collegamento automatico). Gli impianti non sono più nel catalogo Arredi.'],
     ['26.2', 'Impianto idraulico automatico (Impianti › Impianto idraulico): per ogni sanitario (lavabo, bidet, WC, vasca, doccia, lavello, lavatrice, lavastoviglie) mette il punto acqua e lo scarico sul muro più vicino, alle quote tipiche; poi collega i punti acqua al collettore (fredda blu, calda rossa) e gli scarichi alla colonna di scarico (o al WC), tutto a pavimento con le discese. Nuovo oggetto «Colonna di scarico». Rifacendo il comando i punti e i collegamenti automatici si rigenerano.'],
     ['26.1', 'Tutti gli impianti nel menu «Impianti»: inserisci punti, collega impianto elettrico, collega punti, linea libera, mostra/nascondi; sotto restano caloriferi, impianto elettrico automatico e allinea luci. Tolti da Disegna.'],
@@ -23702,9 +23796,9 @@ window.SC_REL = {
     const ist = 'padding:7px 8px;border-radius:6px;border:1px solid #475569;background:#12151f;color:#e5e7eb;font:14px sans-serif;width:100%;box-sizing:border-box';
     const sl = (k, opts, v) => '<select data-ld="' + k + '" style="' + ist + '">' + opts.map(([a, n]) => '<option value="' + a + '"' + (String(v) === String(a) ? ' selected' : '') + '>' + n + '</option>').join('') + '</select>';
     const T = IMPT[r.imp] || IMPT.acf, th = getWallThickness(w);
-    return '<div class="wk-row" style="gap:6px"><label style="flex:1;font-size:12px;color:#cbd5e1">Tipo' + sl('it', Object.keys(IMPT).map(k => [k, IMPT[k][0]]), r.imp) + '</label><label style="flex:1;font-size:12px;color:#cbd5e1">Diametro' + sl('id', (DIAMS[r.imp] || [20]).map(d => [d, d + ' mm']), r.d) + '</label>' +
-      '<label style="flex:1;font-size:12px;color:#cbd5e1">Posizione nel muro' + sl('ip', [[0.02, 'Sotto l\'intonaco (2 cm)'], [0.04, 'In traccia (4 cm)'], [0.08, 'In profondità (8 cm)']].filter(o => o[0] < th / 2 + 0.001), r.p || 0.04) + '</label></div>' +
-      '<div class="wk-hint"><b style="color:' + T[1] + '">■</b> <b>' + f2(len(r)) + ' ml</b> · voce al metro nel computo. Quadratini: sposta i punti · pallini: nuovo vertice o curva · trascina il resto per spostare tutta la linea.</div>' +
+    return '<div class="wk-row" style="gap:6px"><label style="flex:1;font-size:12px;color:#cbd5e1">Tipo' + sl('it', Object.keys(IMPT).filter(k => ['lux', 'pre', 'acf', 'acc', 'scn', 'tv', 'dat'].includes(k) || k === r.imp).map(k => [k, IMPT[k][0]]), r.imp) + '</label><label style="flex:1;font-size:12px;color:#cbd5e1">Diametro' + sl('id', (DIAMS[r.imp] || [20]).map(d => [d, d + ' mm']), r.d) + '</label>' +
+      '</div>' +
+      '<div class="wk-hint"><b style="color:' + T[1] + '">■</b> <b>' + f2(len(r)) + ' ml</b> · quadratini: sposta i punti.</div>' +
       (CV && CV.id === r.id && r.pts[CV.i] && r.pts.length > 2 ? '<div class="wk-row"><button class="wk-b" data-ld="vdel">✖ Togli il vertice ' + (CV.i + 1) + '</button></div>' : '');
   }
   function panelHTML(w, r) {
@@ -23816,7 +23910,7 @@ window.SC_REL = {
   const WALLT = {applique: 1, faretto_p: 1}, WALLP = {presa: 1, interruttore: 1, quadro: 1, pt_acqua: 1, pt_scarico: 1, collettore: 1, split: 1, pt_tv: 1, pt_dati: 1, antenna: 1, router: 1};   /* luci e punti a parete */
   const NAMES = {presa: 'Presa', interruttore: 'Interruttore', quadro: 'Quadro elettrico', pt_acqua: 'Punto acqua', pt_scarico: 'Punto di scarico', collettore: 'Collettore idrico', split: 'Condizionatore', pt_tv: 'Presa TV', pt_dati: 'Presa dati', antenna: 'Centralino TV', router: 'Centralino dati', plafoniera: 'Plafoniera', faretto: 'Faretto a incasso', sospensione: 'Sospensione', applique: 'Applique a parete', faretto_p: 'Faretto a parete', striscia: 'Striscia LED'};
   /* misure e quota tipiche: w, d (profondità), h, z (da terra) */
-  const DEF = {plafoniera: {w: .25, d: .25, h: .06, z: 2.62}, faretto: {w: .09, d: .09, h: .03, z: 2.67}, sospensione: {w: .2, d: .2, h: .2, z: 2.2}, applique: {w: .12, d: .1, h: .16, z: 1.6}, faretto_p: {w: .08, d: .08, h: .08, z: 2.0}};
+  const DEF = {plafoniera: {w: .35, d: .35, h: .08, z: 2.62}, faretto: {w: .09, d: .09, h: .03, z: 2.67}, sospensione: {w: .45, d: .45, h: .25, z: 1.95}, applique: {w: .1, d: .12, h: .22, z: 1.7}, faretto_p: {w: .08, d: .12, h: .1, z: 2.0}};   /* v26.5: misure dei modelli della libreria */
   const tipoOf = f => (f.lt && f.lt.tipo) || 'plafoniera';
   const isLux = f => !!f && f.type === 'punto_luce';
   const isWallT = f => (isLux(f) && !!WALLT[tipoOf(f)]) || (!!f && !!WALLP[f.type]);
@@ -23945,12 +24039,17 @@ window.SC_REL = {
         d.innerHTML = '<div style="font-size:11px;color:#7dd3fc;margin-bottom:4px"><b>⌖ Allineamento</b></div>' +
           '<div style="display:flex;gap:5px"><button class="action" id="luxCenter" style="flex:1;font-size:11px" title="Porta la luce al centro della stanza che la contiene">⌖ Al centro stanza</button><button class="action" id="luxAxis" style="flex:1;font-size:11px" title="Porta la luce sull\'asse centrale della stanza, tenendo la posizione lungo l\'asse (corridoi)">↔ Sull\'asse</button></div>';
       }
+      if (f.type === 'punto_luce' && window.SClib) {   /* v26.5: modello della lampada (solo aspetto; la luce dipende dal tipo) */
+        const t = tipoOf(f), cur = SClib.luxModel(f), ML = Object.keys(SClib.LUXM).filter(k => SClib.LUXM[k].tipo === t);
+        if (ML.length > 1) d.innerHTML += '<label style="margin-top:6px;display:block">Modello</label><select id="luxMod">' + ML.map(k => '<option value="' + k + '"' + (cur === SClib.LUXM[k] ? ' selected' : '') + '>' + SClib.LUXM[k].name + '</option>').join('') + '</select>';
+      }
       if (f.type === 'punto_luce' || f.type === 'presa' || f.type === 'pt_acqua') {   /* v25.5: tipo di punto, per il computo */
         const isL = f.type === 'punto_luce', isA = f.type === 'pt_acqua', O = isL ? [['', 'Interrotto'], ['dev', 'Deviato'], ['inv', 'Invertito']] : isA ? [['', 'Acqua calda e fredda'], ['f', 'Solo acqua fredda']] : [['', 'Singola (cassetto proprio)'], ['sc', 'In sequenza, stesso cassetto'], ['sa', 'In sequenza, altro cassetto']], cur = (isL ? f.cmd : isA ? f.acq : f.seq) || '';
         d.innerHTML += '<label style="margin-top:6px;display:block">' + (isL ? 'Comando (per il computo)' : isA ? 'Tipo di punto (per il computo)' : 'Posa (per il computo)') + '</label><select id="luxPt">' + O.map(([k, n]) => '<option value="' + k + '"' + (k === cur ? ' selected' : '') + '>' + n + '</option>').join('') + '</select>';
       }
       info.appendChild(d);
       const g = id => document.getElementById(id);
+      if (g('luxMod')) g('luxMod').onchange = e => { const M = SClib.LUXM[e.target.value]; if (!M) return; f.lt = Object.assign({}, f.lt || {}, {model: e.target.value}); f.w = M.w; f.d = M.d; f.h = M.h; sync(f); refresh(); checkpoint(); };
       if (g('luxPt')) g('luxPt').onchange = e => { const k = e.target.value, key = f.type === 'punto_luce' ? 'cmd' : f.type === 'pt_acqua' ? 'acq' : 'seq'; if (k) f[key] = k; else delete f[key]; checkpoint(); };
       if (g('luxDist')) g('luxDist').oninput = e => { const v = parseFloat(e.target.value); if (v >= 0 && f.lw) { f.lw.dist = v; sync(f); refresh(); } };
       if (g('luxZ')) g('luxZ').oninput = e => { const v = parseFloat(e.target.value); if (v >= 0) { setZc(f, v); refresh(); } };
@@ -24063,7 +24162,7 @@ window.SC_REL = {
   const pNum = s => { s = String(s).trim(); if (s.includes(',')) s = s.replace(/\./g, '').replace(',', '.'); const v = parseFloat(s); return isFinite(v) && v >= 0 ? v : 0; };
   const FUR = {punto_luce: 'el_luce', interruttore: 'el_int', presa: 'el_presa', quadro: 'el_quadro', radiatore: 'rad_el', pt_acqua: 'pt_acq_cf', pt_scarico: 'pt_scar', split: 'split', collettore: 'collettore', col_scarico: 'col_scarico', pt_tv: 'pt_tv', pt_dati: 'pt_dati', antenna: 'antenna', router: 'router'};
   const furKey = e => e.type === 'punto_luce' ? 'el_luce' + (e.cmd === 'dev' ? '_dev' : e.cmd === 'inv' ? '_inv' : '') : e.type === 'presa' ? 'el_presa' + (e.seq === 'sc' ? '_sc' : e.seq === 'sa' ? '_sa' : '') : e.type === 'pt_acqua' && e.acq === 'f' ? 'pt_acq_f' : FUR[e.type];
-  const DOORK = ['single', 'double', 'slide', 'pocket', 'bifold', 'armored'];
+  const DOORK = ['single', 'double', 'slide', 'pocket', 'bifold', 'armored', 'flush', 'glass', 'asym', 'garage'];
   const isCg = w => window.SCcg && ((SCcg.isCg && SCcg.isCg(w)) || (SCcg.isCp && SCcg.isCp(w)));
   const demo = w => w && w.stato === 'demolire';
 
@@ -24201,6 +24300,467 @@ window.SC_REL = {
 
   { const ft = document.getElementById('wkFoot'); if (ft) bind(ft, () => { try { SCwk.ui(); } catch (_) {} }); }   /* prospetto */
   window.SCprezzo = {panelHTML, bind, notes, keysOf, rowsFor, setPrice, entityOf, open: () => OPEN};
+})();
+</script>
+<script>
+/* ========================================================================
+   v26.5 · LIBRERIA ARREDI DETTAGLIATA (SClib)
+   Ogni oggetto è fatto di pezzi con misure, quota e materiale; ne derivano il simbolo in pianta (vista dall'alto)
+   e il modello 3D. Coordinate in metri dal centro: x lungo la larghezza, y lungo la profondità (y+ = retro, verso il muro),
+   z da terra. Cambiando larghezza, profondità e altezza dell'oggetto tutto si adatta in proporzione.
+   Pezzi: b = parallelepipedo {x,y,z,w,d,h}; c = cilindro verticale {x,y,z,r,h, r2 (raggio in alto), sx, sy (ovale)};
+          s = sfera {x,y,z (centro),r, sz (schiacciata), half (solo metà alta)}; h = cilindro orizzontale {x,y,z (asse),r,l, ax 'x'|'y'}.
+   Opzioni del pezzo: m = materiale (c ceramica, m metallo, g vetro, e luce, f tessuto, w legno, st pietra, p laccato),
+          main = prende il colore scelto dall'utente, p:0 = non si disegna in pianta, dash = tratteggiato in pianta (sopra la testa).
+   Misure tipiche: sanitari dal manuale tecnico Geberit 2025 (valori medi), arredi dalle misure commerciali correnti.
+   ======================================================================== */
+(function () {
+  if (typeof FURNITURE === 'undefined') return;
+  /* ---------------------------------------------------------------- costruttori dei pezzi */
+  const B = (x, y, z, w, d, h, c, m, o) => Object.assign({k: 'b', x, y, z, w, d, h, c, m}, o || {});
+  const C = (x, y, z, r, h, c, m, o) => Object.assign({k: 'c', x, y, z, r, h, c, m}, o || {});
+  const S = (x, y, z, r, c, m, o) => Object.assign({k: 's', x, y, z, r, c, m}, o || {});
+  const H = (x, y, z, r, l, c, m, o) => Object.assign({k: 'h', x, y, z, r, l, c, m, ax: 'x'}, o || {});
+  const LA = (x, y, z, pts, c, m, o) => Object.assign({k: 'l', x, y, z, pts, c, m, r: Math.max(...pts.map(q => q[0])), h: Math.max(...pts.map(q => q[1]))}, o || {});   /* v26.8: solido di rotazione (profilo [raggio, quota]) */
+  const HY = (x, y, z, r, l, c, m, o) => Object.assign({k: 'h', x, y, z, r, l, c, m, ax: 'y'}, o || {});
+  const WH = '#ffffff', CH = '#d1d5db', DK = '#1f2937', GL = '#bfe3f0', INOX = '#c0c4c8';
+  const mix = (x, y, z, o) => [C(x, y, z, 0.022, 0.03, CH, 'm', o), C(x, y + 0.01, z + 0.03, 0.016, 0.1, CH, 'm', o), HY(x, y - 0.05, z + 0.12, 0.011, 0.11, CH, 'm', o), H(x, y + 0.02, z + 0.135, 0.008, 0.07, CH, 'm', Object.assign({p: 0}, o || {}))];   /* miscelatore monocomando */
+  const handleV = (x, y, z, l) => C(x, y, z, 0.008, l, CH, 'm', {p: 0});
+  const handleH = (x, y, z, l) => H(x, y, z, 0.008, l, CH, 'm', {p: 0});
+
+  /* ---------------------------------------------------------------- famiglie parametriche */
+  /* v26.8 · sanitari con forme morbide: tazza e catino come solidi di rotazione (profilo raggio/quota), ovali */
+  const BOWL_T = [[0, 0], [0.11, 0], [0.115, 0.02], [0.105, 0.12], [0.12, 0.24], [0.16, 0.33], [0.18, 0.38], [0.188, 0.4], [0.175, 0.408], [0.13, 0.39], [0.07, 0.3], [0, 0.27]];
+  const BOWL_S = [[0, 0], [0.09, 0], [0.14, 0.04], [0.172, 0.12], [0.186, 0.19], [0.178, 0.205], [0.13, 0.19], [0.07, 0.12], [0, 0.1]];
+  const SEAT = [[0.12, 0], [0.18, 0], [0.19, 0.012], [0.182, 0.022], [0.12, 0.022], [0.112, 0.01], [0.12, 0]];
+  const LID = [[0, 0], [0.18, 0], [0.188, 0.008], [0.175, 0.02], [0, 0.024]];
+  function wc(susp) {   /* WC: tazza ovale, sedile, coperchio, cassetta o placca */
+    const P = [];
+    if (susp) { P.push(B(0, 0.22, 0.2, 0.34, 0.1, 0.22, WH, 'c', {main: 1, rr: 0.03})); P.push(B(0, 0.29, 0.95, 0.25, 0.015, 0.16, '#e5e7eb', 'm', {p: 0, rr: 0.01})); P.push(LA(0, -0.035, 0.2, BOWL_S, WH, 'c', {sy: 1.42, main: 1})); }
+    else { P.push(LA(0, -0.04, 0, BOWL_T, WH, 'c', {sy: 1.38, main: 1})); P.push(B(0, 0.255, 0.39, 0.37, 0.16, 0.38, WH, 'c', {main: 1, rr: 0.035})); P.push(C(0, 0.255, 0.77, 0.022, 0.012, CH, 'm')); }
+    const zs = susp ? 0.405 : 0.408;
+    P.push(LA(0, -0.045, zs, SEAT, '#f8fafc', 'p', {sy: 1.4}), LA(0, -0.045, zs + 0.022, LID, '#f8fafc', 'p', {sy: 1.4}));
+    return P;
+  }
+  function bidet(susp) {
+    const P = [];
+    if (susp) { P.push(B(0, 0.22, 0.2, 0.34, 0.1, 0.22, WH, 'c', {main: 1, rr: 0.03}), LA(0, -0.035, 0.2, BOWL_S.map(q => [q[0], q[1] * 1.15]), WH, 'c', {sy: 1.4, main: 1})); }
+    else P.push(LA(0, -0.03, 0, BOWL_T.map(q => [q[0], q[1] * 0.98]), WH, 'c', {sy: 1.35, main: 1}));
+    return P.concat(mix(0, 0.17, susp ? 0.43 : 0.4));
+  }
+  function basin(w, d, z, under) {   /* lavabo: corpo, vasca incassata, piletta, miscelatore */
+    const P = [B(0, 0, z, w, d, 0.15, WH, 'c', {main: 1, rr: 0.04}), B(0, -0.02, z + 0.149, w * 0.7, d * 0.62, 0.004, '#e8eef4', 'c', {rr: 0.06}), C(0, -0.02, z + 0.152, 0.02, 0.002, '#9ca3af', 'm', {p: 0})];
+    if (under === 'col') P.push(C(0, 0.1, 0, 0.09, z, WH, 'c', {sy: 0.9}));
+    if (under === 'sif') P.push(C(0, 0.12, z - 0.25, 0.02, 0.25, CH, 'm', {p: 0}));
+    return P.concat(mix(0, d / 2 - 0.07, z + 0.15));
+  }
+  function vanity(w) {   /* mobile bagno sospeso con lavabo integrato, due cassetti, specchio */
+    const d = 0.46, z = 0.3, h = 0.52;
+    const P = [B(0, 0, z, w, d, h - 0.02, '#d6c7b0', 'w', {main: 1}), B(0, -d / 2 + 0.001, z + 0.26, w - 0.02, 0.002, 0.005, '#8a7a64', 'w', {p: 0}),
+      handleH(0, -d / 2 - 0.015, z + 0.4, Math.min(0.3, w * 0.4)), handleH(0, -d / 2 - 0.015, z + 0.15, Math.min(0.3, w * 0.4)),
+      B(0, 0, z + h - 0.02, w, d, 0.05, WH, 'c', {rr: 0.02}), B(0, -0.03, z + h + 0.029, w * 0.6, d * 0.6, 0.003, '#e8eef4', 'c', {rr: 0.06}),
+      B(0, d / 2 - 0.01, 1.05, Math.min(w, 1.0), 0.02, 0.7, '#d7eef5', 'g', {p: 0})];
+    return P.concat(mix(0, d / 2 - 0.08, z + h + 0.03));
+  }
+  function showerTray(w, d, walk) {   /* piatto doccia con box in vetro (o parete fissa walk-in), colonna doccia */
+    const P = [B(0, 0, 0, w, d, 0.04, WH, 'c', {main: 1}), C(0, 0, 0.041, 0.04, 0.002, '#9ca3af', 'm', {p: 0})];
+    const H2 = 1.95, t = 0.008;
+    if (walk) P.push(B(-w / 2 + 0.005, 0.1 * d, 0.04, t, d * 0.8, H2, GL, 'g'), B(-w / 2 + 0.005, 0.1 * d, 0.04 + H2 - 0.02, 0.02, d * 0.8, 0.02, CH, 'm', {p: 0}));
+    else { P.push(B(0, -d / 2 + 0.005, 0.04, w, t, H2, GL, 'g'), B(-w / 2 + 0.005, 0, 0.04, t, d, H2, GL, 'g'), B(0, -d / 2 + 0.005, 0.04 + H2 - 0.02, w, 0.02, 0.02, CH, 'm', {p: 0}), B(-w / 2 + 0.005, 0, 0.04 + H2 - 0.02, 0.02, d, 0.02, CH, 'm', {p: 0}), handleV(w * 0.1, -d / 2 - 0.02, 0.95, 0.3)); }
+    P.push(C(w / 2 - 0.15, d / 2 - 0.03, 0.9, 0.012, 1.15, CH, 'm', {p: 0}), HY(w / 2 - 0.15, d / 2 - 0.15, 2.05, 0.01, 0.25, CH, 'm', {p: 0}), C(w / 2 - 0.15, d / 2 - 0.28, 2.02, 0.11, 0.012, CH, 'm', {dash: 1}), B(w / 2 - 0.15, d / 2 - 0.035, 1.05, 0.08, 0.05, 0.12, CH, 'm', {p: 0}));
+    return P;
+  }
+  function tub(w, d) {   /* vasca rettangolare: pareti, fondo, bordo, miscelatore */
+    const t = 0.07, h = 0.56;
+    return [B(0, -d / 2 + t / 2, 0, w, t, h, WH, 'c', {main: 1}), B(0, d / 2 - t / 2, 0, w, t, h, WH, 'c', {main: 1}), B(-w / 2 + t / 2, 0, 0, t, d - 2 * t, h, WH, 'c', {main: 1}), B(w / 2 - t / 2, 0, 0, t, d - 2 * t, h, WH, 'c', {main: 1}),
+      B(0, 0, 0, w - 2 * t, d - 2 * t, 0.12, '#eef2f6', 'c'), C(-w / 2 + 0.2, 0, 0.121, 0.025, 0.002, '#9ca3af', 'm', {p: 0})].concat(mix(-w / 2 + 0.05, 0, h, {p: 0}));
+  }
+  function carcass(w, d, h, opt) {   /* modulo cucina: fianchi, zoccolo, frontale, maniglie, top */
+    opt = opt || {}; const zo = 0.1, top = opt.top !== false ? 0.04 : 0, P = [];
+    P.push(B(0, 0.02, 0, w - 0.01, d - 0.08, zo, '#3f3f46', 'p', {p: 0}));
+    P.push(B(0, 0, zo, w - 0.004, d - 0.02, h - zo - top, opt.c || '#f4f4f2', 'p', {main: 1}));
+    const fr = opt.fronts || [h - zo - top], z0 = zo; let z = z0;
+    fr.forEach((fh, i) => { P.push(B(0, -d / 2 + 0.005, z + 0.002, w - 0.008, 0.006, fh - 0.004, opt.c || '#f4f4f2', 'p', {p: 0, main: 1})); if (opt.handles !== false) P.push(handleH(0, -d / 2 - 0.012, z + fh - 0.05, Math.min(0.32, w * 0.55))); z += fh; });
+    if (top) P.push(B(0, -0.01, h - top, w, d + 0.02, top, opt.tc || '#a8a29e', 'st'));
+    return P;
+  }
+  function wallUnit(w, h, z) {   /* pensile */
+    return [B(0, 0, z, w - 0.004, 0.34, h, '#f4f4f2', 'p', {main: 1, dash: 1}), B(0, -0.172, z + 0.002, w - 0.008, 0.006, h - 0.004, '#f4f4f2', 'p', {p: 0, main: 1}), handleH(0, -0.185, z + 0.05, Math.min(0.32, w * 0.55))];
+  }
+  function hob(w, n) {   /* piano cottura a induzione/gas: vetro nero e fuochi */
+    const P = [B(0, -0.01, 0.901, w - 0.08, 0.5, 0.008, '#111827', 'g2')];
+    const pos = n === 5 ? [[-0.22, 0.1], [-0.22, -0.12], [0.22, 0.1], [0.22, -0.12], [0, -0.01]] : n === 3 ? [[-0.2, 0], [0.12, 0.1], [0.12, -0.12]] : [[-0.14, 0.1], [-0.14, -0.12], [0.14, 0.1], [0.14, -0.12]];
+    const k = (w - 0.1) / 0.5; pos.forEach(([x, y], i) => P.push(C(x * Math.min(1.5, k), y, 0.909, i === 4 ? 0.1 : 0.08, 0.002, '#4b5563', 'p')));
+    return P;
+  }
+  function sofa(w, d, seats, opt) {   /* divano: base, cuscini seduta e schienale, braccioli, piedini */
+    opt = opt || {}; const arm = 0.18, P = [], sh = 0.42, bw = w - 2 * arm, sd = d - 0.22;
+    P.push(B(0, 0.02, 0.06, w, d - 0.04, 0.3, '#5b6474', 'f', {main: 1, rr: 0.03}));
+    P.push(B(-w / 2 + arm / 2, 0, 0.06, arm, d, 0.58, '#5b6474', 'f', {main: 1, rr: 0.05}), B(w / 2 - arm / 2, 0, 0.06, arm, d, 0.58, '#5b6474', 'f', {main: 1, rr: 0.05}));
+    P.push(B(0, d / 2 - 0.11, 0.36, bw, 0.2, 0.44, '#5b6474', 'f', {main: 1, rr: 0.05}));
+    for (let i = 0; i < seats; i++) { const cw = bw / seats, x = -bw / 2 + cw * (i + 0.5); P.push(B(x, -0.1, 0.36, cw - 0.012, sd - 0.03, 0.12, '#6b7486', 'f', {main: 1, rr: 0.05})); P.push(B(x, d / 2 - 0.25, 0.48, cw - 0.03, 0.14, 0.38, '#6b7486', 'f', {main: 1, rr: 0.06})); }
+    [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b]) => P.push(C(a * (w / 2 - 0.06), b * (d / 2 - 0.06), 0, 0.02, 0.06, DK, 'w', {p: 0})));
+    return P;
+  }
+  function bed(w, l, opt) {   /* letto: giroletto, materasso, testiera, cuscini, piumone */
+    opt = opt || {}; const P = [], hb = 1.0, fr = opt.box ? 0.38 : 0.3;
+    P.push(B(0, 0, opt.box ? 0 : 0.08, w, l, opt.box ? fr : fr - 0.08, '#8b6b4a', 'w', {main: 1}));
+    if (!opt.box) [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b]) => P.push(B(a * (w / 2 - 0.04), b * (l / 2 - 0.04), 0, 0.06, 0.06, 0.08, '#6b4f35', 'w', {p: 0})));
+    P.push(B(0, l / 2 - 0.04, 0, w + 0.04, 0.08, hb, '#8b6b4a', 'w', {main: 1}));
+    P.push(B(0, -0.03, fr, w - 0.06, l - 0.14, 0.2, '#f5f5f4', 'f', {rr: 0.06}));
+    P.push(B(0, -0.18, fr + 0.2, w - 0.02, l - 0.62, 0.035, '#cbd5e1', 'f', {rr: 0.03}));
+    const np = w > 1.2 ? 2 : 1, pw = (w - 0.2) / np; for (let i = 0; i < np; i++) P.push(B(-((w - 0.2) / 2) + pw * (i + 0.5), l / 2 - 0.28, fr + 0.2, pw - 0.06, 0.34, 0.12, '#ffffff', 'f', {rx: -0.25, rr: 0.05}));
+    return P;
+  }
+  function table(w, d, h, opt) {   /* tavolo: piano e gambe (o colonna centrale per i tondi) */
+    opt = opt || {}; const t = 0.04, P = [];
+    if (opt.round) { P.push(C(0, 0, h - t, w / 2, t, '#8b6f47', 'w', {sy: d / w, main: 1}), C(0, 0, 0.03, 0.05, h - t - 0.03, DK, 'm', {p: 0}), C(0, 0, 0, 0.25, 0.03, DK, 'm', {p: 0})); return P; }
+    P.push(B(0, 0, h - t, w, d, t, opt.c || '#8b6f47', opt.m || 'w', {main: 1}));
+    const lw = opt.lw || 0.05; [[-1, -1], [1, -1], [1, 1], [-1, 1]].forEach(([a, b]) => P.push(B(a * (w / 2 - lw / 2 - 0.04), b * (d / 2 - lw / 2 - 0.04), 0, lw, lw, h - t, opt.lc || '#3f3f46', opt.lm || 'm', {p: 0})));
+    P.push(B(0, -d / 2 + 0.06, h - t - 0.08, w - 0.2, 0.02, 0.08, opt.c || '#8b6f47', 'w', {p: 0}), B(0, d / 2 - 0.06, h - t - 0.08, w - 0.2, 0.02, 0.08, opt.c || '#8b6f47', 'w', {p: 0}));
+    return P;
+  }
+  function chair(opt) {   /* sedia: seduta, schienale, 4 gambe */
+    opt = opt || {}; const c = opt.c || '#8b6f47', m = opt.m || 'w';
+    const P = [B(0, -0.02, 0.44, 0.44, 0.42, 0.04, c, m, {main: 1, rr: 0.015}), B(0, 0.19, 0.48, 0.42, 0.03, 0.42, c, m, {main: 1, rr: 0.012})];
+    [[-1, -1], [1, -1], [1, 1], [-1, 1]].forEach(([a, b]) => P.push(B(a * 0.19, b * 0.18 - 0.02, 0, 0.03, 0.03, 0.44, opt.lc || c, m, {p: 0})));
+    if (opt.pad) P.push(B(0, -0.02, 0.48, 0.42, 0.4, 0.03, opt.pad, 'f', {rr: 0.015}));
+    return P;
+  }
+  function wardrobe(w, d, h, doors, slide) {   /* armadio: corpo, ante (battenti o scorrevoli), maniglie, zoccolo */
+    const P = [B(0, 0, 0, w, d - 0.02, h, '#e7e1d7', 'w', {main: 1})], dw = w / doors;
+    for (let i = 0; i < doors; i++) {
+      const x = -w / 2 + dw * (i + 0.5), yy = slide ? -d / 2 + (i % 2 ? 0.035 : 0.005) : -d / 2 + 0.005;
+      P.push(B(x, yy, 0.06, (slide ? dw + 0.03 : dw - 0.006), 0.02, h - 0.08, '#efe9df', 'w', {p: 0, main: 1}));
+      if (!slide) P.push(handleV(x + (i % 2 ? -1 : 1) * (dw / 2 - 0.05), -d / 2 - 0.02, h * 0.42, 0.3)); else P.push(handleV(x + (i % 2 ? -1 : 1) * (dw / 2 - 0.04), yy - 0.015, h * 0.4, 0.5));
+    }
+    return P;
+  }
+  function drawers(w, d, h, n, c) {   /* cassettiera / comodino */
+    const P = [B(0, 0, 0.05, w, d, h - 0.05, c || '#a0825a', 'w', {main: 1}), B(0, 0.02, 0, w - 0.06, d - 0.08, 0.05, DK, 'w', {p: 0})], fh = (h - 0.07) / n;
+    for (let i = 0; i < n; i++) { P.push(B(0, -d / 2 + 0.004, 0.06 + fh * i, w - 0.02, 0.008, fh - 0.01, c || '#a0825a', 'w', {p: 0, main: 1})); P.push(handleH(0, -d / 2 - 0.012, 0.06 + fh * (i + 0.5), Math.min(0.25, w * 0.4))); }
+    return P;
+  }
+  function shelves(w, d, h, n, c, closedLow) {   /* libreria: fianchi, ripiani, schiena */
+    const t = 0.025, P = [B(-w / 2 + t / 2, 0, 0, t, d, h, c, 'w', {main: 1}), B(w / 2 - t / 2, 0, 0, t, d, h, c, 'w', {main: 1}), B(0, d / 2 - 0.005, 0, w, 0.01, h, c, 'w', {p: 0})];
+    for (let i = 0; i <= n; i++) P.push(B(0, 0, Math.min(h - t, i * (h - t) / n), w - 2 * t, d - 0.01, t, c, 'w', {main: 1}));
+    if (closedLow) P.push(B(0, -d / 2 + 0.005, 0.02, w - 0.05, 0.01, h / n - 0.02, c, 'w', {p: 0}));
+    for (let i = 0; i < n; i++) for (let j = 0; j < 5; j++) P.push(B(-w / 2 + 0.1 + j * 0.05 + (i % 2) * 0.15, 0.02, i * (h - t) / n + t, 0.035, d * 0.7, (h / n) * 0.65, ['#7c2d12', '#1e3a8a', '#14532d', '#78350f', '#334155'][(i + j) % 5], 'p', {p: 0}));
+    return P;
+  }
+
+  const wl = (w, d) => [[-w / 2 + 0.05, 0, w / 2 - 0.05, 0, 1], [-w / 2, -d / 2 + 0.025, w / 2, -d / 2 + 0.025]];   /* armadio: asta appendiabiti tratteggiata e filo delle ante */
+  /* ---------------------------------------------------------------- catalogo */
+  const L = {};
+  const def = (k, g, name, icon, w, d, h, color, parts, o) => { L[k] = Object.assign({k, g, name, icon, w, d, h, color, parts}, o || {}); };
+  /* BAGNO · sanitari (misure medie Geberit 2025) */
+  def('toilet', 'Bagno', 'WC a terra con cassetta', '🚽', 0.38, 0.67, 0.78, WH, wc(false));
+  def('wc_sosp', 'Bagno', 'WC sospeso', '🚽', 0.36, 0.54, 0.42, WH, wc(true), {z: 0});
+  def('bidet', 'Bagno', 'Bidet a terra', '🚽', 0.38, 0.55, 0.4, WH, bidet(false));
+  def('bidet_sosp', 'Bagno', 'Bidet sospeso', '🚽', 0.36, 0.52, 0.42, WH, bidet(true));
+  def('washbasin', 'Bagno', 'Lavabo con colonna 60', '🚰', 0.6, 0.46, 0.85, WH, basin(0.6, 0.46, 0.7, 'col'));
+  def('lav_sosp', 'Bagno', 'Lavabo sospeso 60', '🚰', 0.6, 0.45, 0.85, WH, basin(0.6, 0.45, 0.7, 'sif'));
+  def('lav_mob60', 'Bagno', 'Mobile bagno con lavabo 60', '🚰', 0.6, 0.46, 0.85, '#d6c7b0', vanity(0.6));
+  def('lav_mob80', 'Bagno', 'Mobile bagno con lavabo 80', '🚰', 0.8, 0.46, 0.85, '#d6c7b0', vanity(0.8));
+  def('lav_mob100', 'Bagno', 'Mobile bagno con lavabo 100', '🚰', 1.0, 0.46, 0.85, '#d6c7b0', vanity(1.0));
+  def('shower', 'Bagno', 'Doccia 90×90 con box', '🚿', 0.9, 0.9, 2.0, GL, showerTray(0.9, 0.9));
+  def('doccia_80', 'Bagno', 'Doccia 80×80 con box', '🚿', 0.8, 0.8, 2.0, GL, showerTray(0.8, 0.8));
+  def('doccia_70x90', 'Bagno', 'Doccia 70×90 con box', '🚿', 0.9, 0.7, 2.0, GL, showerTray(0.9, 0.7));
+  def('doccia_80x120', 'Bagno', 'Doccia walk-in 80×120', '🚿', 1.2, 0.8, 2.0, GL, showerTray(1.2, 0.8, true));
+  def('doccia_90x140', 'Bagno', 'Doccia walk-in 90×140', '🚿', 1.4, 0.9, 2.0, GL, showerTray(1.4, 0.9, true));
+  def('bathtub', 'Bagno', 'Vasca 170×75', '🛁', 1.7, 0.75, 0.58, WH, tub(1.7, 0.75));
+  def('vasca_160', 'Bagno', 'Vasca 160×70', '🛁', 1.6, 0.7, 0.58, WH, tub(1.6, 0.7));
+  def('vasca_free', 'Bagno', 'Vasca freestanding', '🛁', 1.7, 0.8, 0.6, WH, [LA(0, 0, 0, [[0, 0], [0.3, 0], [0.37, 0.22], [0.405, 0.5], [0.42, 0.6], [0.395, 0.6], [0.37, 0.42], [0.31, 0.2], [0, 0.16]], WH, 'c', {sx: 2.02, sy: 0.95, main: 1}), C(0.95, 0, 0, 0.02, 0.95, CH, 'm', {p: 0}), HY(0.95, -0.06, 0.95, 0.012, 0.13, CH, 'm', {p: 0})]);
+  def('lavatoio', 'Bagno', 'Lavatoio 60×50', '🚰', 0.6, 0.5, 0.85, WH, [B(0, 0, 0, 0.6, 0.5, 0.85, '#e5e7eb', 'p', {main: 1}), B(0, -0.03, 0.849, 0.48, 0.36, 0.002, '#cbd5e1', 'c')].concat(mix(0, 0.2, 0.85)));
+  def('towel_rad', 'Bagno', 'Scaldasalviette', '🧺', 0.5, 0.08, 1.2, '#e5e7eb', (() => { const P = [C(-0.23, 0, 0, 0.015, 1.2, '#e5e7eb', 'm', {main: 1}), C(0.23, 0, 0, 0.015, 1.2, '#e5e7eb', 'm', {main: 1})]; for (let i = 0; i < 12; i++) P.push(H(0, 0, 0.08 + i * 0.095 + (i > 5 ? 0.06 : 0), 0.01, 0.46, '#e5e7eb', 'm', {p: 0, main: 1})); return P; })(), {z: 0.15});
+  def('specchio', 'Bagno', 'Specchio contenitore', '🪞', 0.8, 0.14, 0.7, '#d7eef5', [B(0, 0, 0, 0.8, 0.14, 0.7, '#f4f4f2', 'p', {main: 1, dash: 1}), B(0, -0.071, 0.01, 0.78, 0.004, 0.68, '#d7eef5', 'g', {p: 0}), B(0, -0.06, -0.02, 0.6, 0.03, 0.02, '#fff7d6', 'e', {p: 0})], {z: 1.2});
+  def('washer', 'Bagno', 'Lavatrice', '🌀', 0.6, 0.6, 0.85, '#f1f5f9', [B(0, 0, 0, 0.6, 0.58, 0.85, '#f1f5f9', 'p', {main: 1}), HY(0, -0.3, 0.42, 0.18, 0.02, '#cbd5e1', 'm', {p: 0}), HY(0, -0.305, 0.42, 0.14, 0.012, '#1e293b', 'g2', {p: 0}), B(0, -0.29, 0.76, 0.56, 0.02, 0.08, '#e2e8f0', 'p', {p: 0}), HY(0.2, -0.305, 0.77, 0.025, 0.02, CH, 'm', {p: 0})]);
+  def('dryer', 'Bagno', 'Asciugatrice', '🌀', 0.6, 0.6, 0.85, '#f1f5f9', [B(0, 0, 0, 0.6, 0.58, 0.85, '#f1f5f9', 'p', {main: 1}), HY(0, -0.3, 0.45, 0.2, 0.02, '#cbd5e1', 'm', {p: 0}), HY(0, -0.305, 0.45, 0.16, 0.012, '#334155', 'g2', {p: 0}), B(0, -0.29, 0.76, 0.56, 0.02, 0.08, '#e2e8f0', 'p', {p: 0})]);
+  /* RUBINETTERIA (si appoggiano o si fissano al muro) */
+  def('miscelatore', 'Rubinetteria', 'Miscelatore lavabo', '🚰', 0.06, 0.16, 0.16, CH, mix(0, 0.05, 0), {z: 0.85});
+  def('colonna_doccia', 'Rubinetteria', 'Colonna doccia con soffione', '🚿', 0.3, 0.4, 2.1, CH, [C(0, 0.18, 0, 0.012, 1.15, CH, 'm', {main: 1}), B(0, 0.165, 0.15, 0.09, 0.05, 0.12, CH, 'm', {main: 1}), HY(0, 0.05, 1.15, 0.01, 0.26, CH, 'm', {p: 0}), C(0, -0.08, 1.12, 0.12, 0.012, CH, 'm', {main: 1}), C(0.08, 0.16, 0.7, 0.012, 0.25, CH, 'm', {p: 0})], {z: 0.9});
+  def('soffione', 'Rubinetteria', 'Soffione a soffitto 30', '🚿', 0.3, 0.3, 0.3, CH, [C(0, 0, 0, 0.15, 0.012, CH, 'm', {main: 1}), C(0, 0, 0.012, 0.01, 0.29, CH, 'm', {p: 0})], {z: 2.1});
+  def('rubinetto_est', 'Rubinetteria', 'Rubinetto da esterno', '🚰', 0.08, 0.14, 0.1, '#b08d57', [C(0, 0.04, 0, 0.025, 0.1, '#b08d57', 'm', {main: 1}), HY(0, -0.02, 0.04, 0.012, 0.1, '#b08d57', 'm'), H(0, 0.04, 0.1, 0.006, 0.07, '#dc2626', 'p', {p: 0})], {z: 0.6});
+  /* CUCINA · moduli da 60 */
+  def('counter', 'Cucina', 'Piano cucina 240 (4 basi)', '🍳', 2.4, 0.6, 0.9, '#f4f4f2', [].concat(...[0, 1, 2, 3].map(i => carcass(0.6, 0.6, 0.9).map(p => Object.assign({}, p, {x: p.x - 0.9 + i * 0.6})))), {gen: (w, d, h) => { const n = Math.max(1, Math.round(w / 0.6)), mw = w / n; return [].concat(...Array.from({length: n}, (_, i) => carcass(mw, d, h).map(p => Object.assign({}, p, {x: p.x - w / 2 + mw * (i + 0.5)})))); }});
+  def('base60', 'Cucina', 'Base 60 con anta', '🗄️', 0.6, 0.6, 0.9, '#f4f4f2', carcass(0.6, 0.6, 0.9));
+  def('base_cass', 'Cucina', 'Base 60 cassettiera', '🗄️', 0.6, 0.6, 0.9, '#f4f4f2', carcass(0.6, 0.6, 0.9, {fronts: [0.24, 0.26, 0.26]}));
+  def('base90', 'Cucina', 'Base 90 con due ante', '🗄️', 0.9, 0.6, 0.9, '#f4f4f2', carcass(0.9, 0.6, 0.9));
+  def('angolo', 'Cucina', 'Base ad angolo 100', '🗄️', 1.0, 0.6, 0.9, '#f4f4f2', carcass(1.0, 0.6, 0.9));
+  def('pensile60', 'Cucina', 'Pensile 60', '🗄️', 0.6, 0.35, 0.72, '#f4f4f2', wallUnit(0.6, 0.72, 0), {z: 1.45});
+  def('pensile90', 'Cucina', 'Pensile 90', '🗄️', 0.9, 0.35, 0.72, '#f4f4f2', wallUnit(0.9, 0.72, 0), {z: 1.45});
+  def('colonna_forno', 'Cucina', 'Colonna forno e microonde', '🔥', 0.6, 0.6, 2.2, '#f4f4f2', carcass(0.6, 0.6, 2.2, {top: false, fronts: [0.6, 0.6, 0.4, 0.5]}).concat([B(0, -0.31, 0.72, 0.56, 0.01, 0.56, '#1f2937', 'g2', {p: 0}), handleH(0, -0.33, 1.24, 0.45), B(0, -0.31, 1.32, 0.56, 0.01, 0.38, '#1f2937', 'g2', {p: 0})]));
+  def('fridge', 'Cucina', 'Frigorifero combinato 60', '🧊', 0.6, 0.65, 1.85, INOX, [B(0, 0.01, 0, 0.6, 0.62, 1.85, INOX, 'm', {main: 1}), B(0, -0.31, 0.02, 0.598, 0.02, 0.62, INOX, 'm', {p: 0}), B(0, -0.31, 0.66, 0.598, 0.02, 1.17, INOX, 'm', {p: 0}), handleV(0.26, -0.34, 0.3, 0.3), handleV(0.26, -0.34, 0.8, 0.45)]);
+  def('frigo_sbs', 'Cucina', 'Frigorifero side by side 90', '🧊', 0.91, 0.72, 1.78, INOX, [B(0, 0.01, 0, 0.91, 0.69, 1.78, INOX, 'm', {main: 1}), B(-0.23, -0.355, 0.02, 0.45, 0.02, 1.74, INOX, 'm', {p: 0}), B(0.23, -0.355, 0.02, 0.45, 0.02, 1.74, INOX, 'm', {p: 0}), handleV(-0.03, -0.38, 0.6, 0.6), handleV(0.03, -0.38, 0.6, 0.6), B(-0.23, -0.367, 1.1, 0.16, 0.005, 0.25, '#1f2937', 'g2', {p: 0})]);
+  def('stove', 'Cucina', 'Base con piano cottura 60', '🔥', 0.6, 0.6, 0.9, '#f4f4f2', carcass(0.6, 0.6, 0.9).concat(hob(0.6, 4)));
+  def('piano75', 'Cucina', 'Piano cottura 75 (5 fuochi)', '🔥', 0.75, 0.6, 0.9, '#f4f4f2', carcass(0.75, 0.6, 0.9).concat(hob(0.75, 5)));
+  def('piano90', 'Cucina', 'Piano cottura 90 (5 fuochi)', '🔥', 0.9, 0.6, 0.9, '#f4f4f2', carcass(0.9, 0.6, 0.9).concat(hob(0.9, 5)));
+  def('oven', 'Cucina', 'Base con forno 60', '🔥', 0.6, 0.6, 0.9, '#f4f4f2', carcass(0.6, 0.6, 0.9, {fronts: [0.15, 0.61]}).concat([B(0, -0.31, 0.3, 0.56, 0.01, 0.46, '#1f2937', 'g2', {p: 0}), handleH(0, -0.33, 0.72, 0.45), B(0, -0.31, 0.77, 0.56, 0.01, 0.06, '#9ca3af', 'm', {p: 0})]));
+  def('dishwasher', 'Cucina', 'Lavastoviglie 60', '🍽️', 0.6, 0.6, 0.9, '#f4f4f2', carcass(0.6, 0.6, 0.9).concat([B(0, -0.305, 0.12, 0.58, 0.008, 0.08, '#d1d5db', 'm', {p: 0})]));
+  def('sink', 'Cucina', 'Base con lavello 1 vasca 80', '🚰', 0.8, 0.6, 0.9, '#f4f4f2', carcass(0.8, 0.6, 0.9).concat([B(-0.08, -0.02, 0.901, 0.42, 0.4, 0.004, INOX, 'm'), B(0.25, -0.02, 0.901, 0.22, 0.4, 0.004, '#d1d5db', 'm', {p: 0}), C(-0.08, -0.02, 0.906, 0.03, 0.002, '#6b7280', 'm', {p: 0})], mix(-0.08, 0.22, 0.9)));
+  def('sink2', 'Cucina', 'Base con lavello 2 vasche 120', '🚰', 1.2, 0.6, 0.9, '#f4f4f2', carcass(1.2, 0.6, 0.9).concat([B(-0.32, -0.02, 0.901, 0.36, 0.4, 0.004, INOX, 'm'), B(0.08, -0.02, 0.901, 0.36, 0.4, 0.004, INOX, 'm'), B(0.42, -0.02, 0.901, 0.24, 0.4, 0.004, '#d1d5db', 'm', {p: 0})], mix(-0.12, 0.22, 0.9)));
+  def('cappa', 'Cucina', 'Cappa a parete 90', '💨', 0.9, 0.5, 1.0, INOX, [B(0, 0, 0, 0.9, 0.5, 0.08, INOX, 'm', {main: 1, dash: 1}), C(0, 0.08, 0.08, 0.2, 0.25, INOX, 'm', {r2: 0.14, sy: 1.4, p: 0}), B(0, 0.12, 0.33, 0.26, 0.24, 0.67, INOX, 'm', {p: 0}), B(0, -0.2, -0.002, 0.7, 0.06, 0.002, '#fff7d6', 'e', {p: 0})], {z: 1.6});
+  def('island', 'Cucina', 'Isola cucina 180', '🍳', 1.8, 0.9, 0.9, '#f4f4f2', [B(0, 0.04, 0, 1.7, 0.76, 0.1, '#3f3f46', 'p', {p: 0}), B(0, 0, 0.1, 1.8, 0.86, 0.76, '#f4f4f2', 'p', {main: 1}), B(0, -0.03, 0.86, 1.86, 0.98, 0.04, '#a8a29e', 'st'), handleH(-0.45, -0.445, 0.78, 0.3), handleH(0.45, -0.445, 0.78, 0.3)]);
+  def('microonde', 'Cucina', 'Microonde da appoggio', '🔥', 0.5, 0.4, 0.3, '#1f2937', [B(0, 0, 0, 0.5, 0.4, 0.3, '#1f2937', 'p', {main: 1}), B(-0.06, -0.201, 0.04, 0.34, 0.004, 0.22, '#0f172a', 'g2', {p: 0})], {z: 0.9});
+  def('sgabello', 'Cucina', 'Sgabello alto', '🪑', 0.4, 0.4, 0.78, '#3f3f46', [C(0, 0, 0.72, 0.19, 0.06, '#3f3f46', 'f', {main: 1}), C(0, 0, 0.02, 0.025, 0.7, CH, 'm', {p: 0}), C(0, 0, 0, 0.2, 0.02, CH, 'm', {p: 0}), C(0, 0, 0.28, 0.17, 0.015, CH, 'm', {p: 0})]);
+  /* SOGGIORNO */
+  def('sofa_2', 'Soggiorno', 'Divano 2 posti 170', '🛋️', 1.7, 0.92, 0.84, '#5b6474', sofa(1.7, 0.92, 2));
+  def('sofa_3', 'Soggiorno', 'Divano 3 posti 220', '🛋️', 2.2, 0.95, 0.84, '#5b6474', sofa(2.2, 0.95, 3));
+  def('sofa_angolo', 'Soggiorno', 'Divano angolare 270×170', '🛋️', 2.7, 1.7, 0.84, '#5b6474', (() => { const P = sofa(2.7, 0.95, 3).map(p => Object.assign({}, p, {y: p.y + 0.375})); P.push(B(1.35 - 0.475, -0.475, 0.06, 0.95, 0.75, 0.3, '#5b6474', 'f', {main: 1}), B(1.35 - 0.475, -0.475, 0.36, 0.91, 0.73, 0.12, '#6b7486', 'f', {main: 1}), B(1.35 - 0.09, -0.475, 0.06, 0.18, 0.75, 0.58, '#5b6474', 'f', {main: 1})); return P; })());
+  def('chaise', 'Soggiorno', 'Divano con penisola 260×160', '🛋️', 2.6, 1.6, 0.84, '#5b6474', (() => { const P = sofa(2.6, 0.95, 3).map(p => Object.assign({}, p, {y: p.y + 0.325})); P.push(B(1.3 - 0.4, -0.475, 0.06, 0.8, 0.65, 0.3, '#5b6474', 'f', {main: 1}), B(1.3 - 0.4, -0.475, 0.36, 0.77, 0.63, 0.12, '#6b7486', 'f', {main: 1})); return P; })());
+  def('armchair', 'Soggiorno', 'Poltrona', '🪑', 0.85, 0.85, 0.82, '#5b6474', sofa(0.85, 0.85, 1));
+  def('pouf', 'Soggiorno', 'Pouf', '🟤', 0.5, 0.5, 0.42, '#a16207', [LA(0, 0, 0, [[0, 0], [0.235, 0], [0.25, 0.03], [0.25, 0.37], [0.235, 0.415], [0.15, 0.42], [0, 0.42]], '#a16207', 'f', {main: 1})]);
+  def('tavolino', 'Soggiorno', 'Tavolino da salotto 110×60', '☕', 1.1, 0.6, 0.4, '#8b6f47', table(1.1, 0.6, 0.4, {lw: 0.04}).concat([B(0, 0, 0.1, 1.0, 0.5, 0.02, '#8b6f47', 'w', {p: 0})]));
+  def('tv', 'Soggiorno', 'TV 55"', '📺', 1.24, 0.25, 0.78, '#111827', [B(0, 0.08, 0.06, 1.24, 0.03, 0.72, '#111827', 'p', {main: 1}), B(0, 0.064, 0.08, 1.2, 0.002, 0.68, '#0b1220', 'g2', {p: 0}), B(-0.45, -0.02, 0, 0.06, 0.2, 0.02, '#374151', 'm'), B(0.45, -0.02, 0, 0.06, 0.2, 0.02, '#374151', 'm'), B(-0.45, 0.06, 0, 0.03, 0.03, 0.08, '#374151', 'm', {p: 0}), B(0.45, 0.06, 0, 0.03, 0.03, 0.08, '#374151', 'm', {p: 0})]);
+  def('tv_stand', 'Soggiorno', 'Mobile TV 180', '📺', 1.8, 0.42, 0.5, '#3f3f46', drawers(1.8, 0.42, 0.5, 1, '#3f3f46').concat([B(0, -0.215, 0.06, 0.004, 0.006, 0.42, DK, 'w', {p: 0})]));
+  L.credenza = {k: 'credenza', g: 'Soggiorno', name: 'Madia / credenza 180', icon: '🗄️', w: 1.8, d: 0.45, h: 0.8, color: '#a0825a', parts: wardrobe(1.8, 0.45, 0.7, 3).map(p => Object.assign({}, p, {z: p.z + 0.1, h: p.k === 'b' && p.h > 0.6 ? 0.7 : p.h})).concat([B(-0.8, 0, 0, 0.04, 0.4, 0.1, DK, 'm', {p: 0}), B(0.8, 0, 0, 0.04, 0.4, 0.1, DK, 'm', {p: 0})])};
+  def('bookshelf', 'Soggiorno', 'Libreria 120', '📚', 1.2, 0.35, 2.0, '#a0825a', shelves(1.2, 0.35, 2.0, 5, '#a0825a', true), {gen: (w, d, h) => shelves(w, d, h, Math.max(1, Math.round(h / 0.38)), '#a0825a', true)});
+  def('vetrina', 'Soggiorno', 'Vetrina', '🗄️', 1.0, 0.42, 1.9, '#a0825a', shelves(1.0, 0.42, 1.9, 4, '#a0825a').concat([B(0, -0.205, 0.02, 0.97, 0.006, 1.86, '#d7eef5', 'g', {p: 0})]));
+  def('piano', 'Soggiorno', 'Pianoforte verticale', '🎹', 1.5, 0.6, 1.25, '#111827', [B(0, 0.12, 0, 1.5, 0.36, 1.25, '#111827', 'p', {main: 1}), B(0, -0.12, 0.7, 1.46, 0.3, 0.05, '#111827', 'p', {main: 1}), B(0, -0.15, 0.75, 1.3, 0.16, 0.015, '#f8fafc', 'p'), B(-0.66, -0.12, 0, 0.06, 0.26, 0.7, '#111827', 'p'), B(0.66, -0.12, 0, 0.06, 0.26, 0.7, '#111827', 'p')]);
+  def('plant', 'Soggiorno', 'Pianta in vaso', '🪴', 0.5, 0.5, 1.2, '#4a7c59', [LA(0, 0, 0, [[0, 0], [0.14, 0], [0.19, 0.32], [0.205, 0.35], [0.185, 0.35], [0.16, 0.3], [0, 0.3]], '#b45309', 'p'), S(0, 0, 0.75, 0.25, '#3f7d4e', 'f', {sz: 1.3, main: 1}), S(0.1, 0.06, 0.95, 0.16, '#4a8c5c', 'f', {p: 0}), S(-0.09, -0.05, 1.02, 0.15, '#2f6b3f', 'f', {p: 0})]);
+  def('plant_small', 'Soggiorno', 'Pianta piccola', '🪴', 0.3, 0.3, 0.55, '#4a7c59', [LA(0, 0, 0, [[0, 0], [0.09, 0], [0.125, 0.2], [0.135, 0.22], [0.12, 0.22], [0, 0.19]], '#b45309', 'p'), S(0, 0, 0.36, 0.14, '#3f7d4e', 'f', {sz: 1.2, main: 1})]);
+  def('lamp_terra', 'Soggiorno', 'Lampada da terra', '💡', 0.4, 0.4, 1.65, '#f5f0e1', [C(0, 0, 0, 0.16, 0.03, DK, 'm'), C(0, 0, 0.03, 0.012, 1.35, DK, 'm', {p: 0}), LA(0, 0, 1.35, [[0.2, 0], [0.13, 0.3]], '#f5f0e1', 'f', {main: 1}), C(0, 0, 1.36, 0.08, 0.004, '#fff3c4', 'e', {p: 0})]);
+  def('lamp_tavolo', 'Soggiorno', 'Lampada da tavolo', '💡', 0.3, 0.3, 0.5, '#f5f0e1', [LA(0, 0, 0, [[0, 0], [0.06, 0], [0.085, 0.08], [0.07, 0.2], [0.03, 0.25], [0, 0.25]], '#94a3b8', 'c'), LA(0, 0, 0.25, [[0.15, 0], [0.1, 0.22]], '#f5f0e1', 'f', {main: 1}), C(0, 0, 0.26, 0.05, 0.004, '#fff3c4', 'e', {p: 0})], {z: 0.75});
+  /* PRANZO */
+  def('table_dining', 'Pranzo', 'Tavolo 160×90', '🍽️', 1.6, 0.9, 0.75, '#8b6f47', table(1.6, 0.9, 0.75));
+  def('tavolo_180', 'Pranzo', 'Tavolo 180×90', '🍽️', 1.8, 0.9, 0.75, '#8b6f47', table(1.8, 0.9, 0.75));
+  def('tavolo_140', 'Pranzo', 'Tavolo 140×80', '🍽️', 1.4, 0.8, 0.75, '#8b6f47', table(1.4, 0.8, 0.75));
+  def('table_round', 'Pranzo', 'Tavolo tondo Ø120', '🍽️', 1.2, 1.2, 0.75, '#8b6f47', table(1.2, 1.2, 0.75, {round: 1}));
+  def('chair', 'Pranzo', 'Sedia', '🪑', 0.45, 0.47, 0.9, '#8b6f47', chair());
+  def('sedia_imb', 'Pranzo', 'Sedia imbottita', '🪑', 0.45, 0.47, 0.9, '#8b6f47', chair({pad: '#9ca3af'}));
+  /* CAMERA */
+  def('bed_double', 'Camera', 'Letto matrimoniale 160×200', '🛏️', 1.7, 2.12, 1.0, '#8b6b4a', bed(1.7, 2.12));
+  def('letto_cont', 'Camera', 'Letto contenitore 160×200', '🛏️', 1.72, 2.14, 1.05, '#8b6b4a', bed(1.72, 2.14, {box: 1}));
+  def('letto_120', 'Camera', 'Letto 1 piazza e mezza 120×200', '🛏️', 1.3, 2.1, 1.0, '#8b6b4a', bed(1.3, 2.1));
+  def('bed_single', 'Camera', 'Letto singolo 90×200', '🛏️', 1.0, 2.1, 1.0, '#8b6b4a', bed(1.0, 2.1));
+  def('bunk', 'Camera', 'Letto a castello', '🛏', 1.0, 2.05, 1.65, '#c8a882', (() => { const P = [], y = 0; [0.25, 1.15].forEach(z => { P.push(B(0, 0, z, 1.0, 2.05, 0.08, '#c8a882', 'w', {main: 1}), B(0, 0, z + 0.08, 0.92, 1.95, 0.16, '#f5f5f4', 'f')); }); [[-1, -1], [1, -1], [1, 1], [-1, 1]].forEach(([a, b]) => P.push(B(a * 0.47, b * 1.0, 0, 0.06, 0.06, 1.65, '#c8a882', 'w', {p: 0}))); for (let i = 0; i < 5; i++) P.push(H(0.47, -0.6, 0.3 + i * 0.25, 0.012, 0.06, '#a0825a', 'w', {p: 0})); return P; })());
+  def('nightstand', 'Camera', 'Comodino', '🛏️', 0.5, 0.4, 0.5, '#a0825a', drawers(0.5, 0.4, 0.5, 2));
+  def('dresser', 'Camera', 'Cassettiera 100', '🗄️', 1.0, 0.5, 0.85, '#a0825a', drawers(1.0, 0.5, 0.85, 4));
+  def('wardrobe', 'Camera', 'Armadio 4 ante 200', '🚪', 2.0, 0.6, 2.4, '#e7e1d7', wardrobe(2.0, 0.6, 2.4, 4), {l2: wl(2.0, 0.6), gen: (w, d, h) => wardrobe(w, d, h, Math.max(1, Math.round(w / 0.5))), l2gen: wl});
+  def('armadio_100', 'Camera', 'Armadio 2 ante 100', '🚪', 1.0, 0.6, 2.4, '#e7e1d7', wardrobe(1.0, 0.6, 2.4, 2), {l2: wl(1.0, 0.6), gen: (w, d, h) => wardrobe(w, d, h, Math.max(1, Math.round(w / 0.5))), l2gen: wl});
+  def('armadio_300', 'Camera', 'Armadio 6 ante 300', '🚪', 3.0, 0.6, 2.4, '#e7e1d7', wardrobe(3.0, 0.6, 2.4, 6), {l2: wl(3.0, 0.6), gen: (w, d, h) => wardrobe(w, d, h, Math.max(1, Math.round(w / 0.5))), l2gen: wl});
+  def('armadio_scorr', 'Camera', 'Armadio ante scorrevoli 250', '🚪', 2.5, 0.66, 2.4, '#e7e1d7', wardrobe(2.5, 0.66, 2.4, 2, true), {l2: wl(2.5, 0.66), gen: (w, d, h) => wardrobe(w, d, h, Math.max(2, Math.round(w / 1.25)), true), l2gen: wl});
+  def('cabina', 'Camera', 'Cabina armadio a U 200×180', '👔', 2.0, 1.8, 2.3, '#e7e1d7', (() => { const P = [], c = '#e7e1d7'; [[0, 0.65, 2.0, 0.5], [-0.75, -0.25, 0.5, 1.3], [0.75, -0.25, 0.5, 1.3]].forEach(([x, y, w, d]) => { P.push(B(x, y, 0, w, d, 0.02, c, 'w', {main: 1}), B(x, y, 2.28, w, d, 0.02, c, 'w', {p: 0}), B(x, y, 0.9, w, d, 0.02, c, 'w', {p: 0})); }); P.push(H(0, 0.65, 1.85, 0.012, 1.9, CH, 'm', {p: 0}), HY(-0.75, -0.25, 1.85, 0.012, 1.2, CH, 'm', {p: 0}), HY(0.75, -0.25, 1.85, 0.012, 1.2, CH, 'm', {p: 0})); return P; })());
+  def('culla', 'Camera', 'Lettino bambino 60×120', '👶', 0.66, 1.26, 0.9, '#f5f0e1', [B(0, 0, 0.3, 0.66, 1.26, 0.04, '#f5f0e1', 'w', {main: 1}), B(0, 0, 0.34, 0.6, 1.2, 0.12, '#ffffff', 'f'), B(0, 0.61, 0, 0.66, 0.04, 0.9, '#f5f0e1', 'w', {main: 1}), B(0, -0.61, 0, 0.66, 0.04, 0.9, '#f5f0e1', 'w', {main: 1}), B(-0.31, 0, 0.3, 0.03, 1.2, 0.6, '#f5f0e1', 'w', {p: 0}), B(0.31, 0, 0.3, 0.03, 1.2, 0.6, '#f5f0e1', 'w', {p: 0})]);
+  /* STUDIO */
+  def('desk', 'Studio', 'Scrivania 140×70 con cassettiera', '🖥️', 1.4, 0.7, 0.75, '#e7e1d7', [B(0, 0, 0.72, 1.4, 0.7, 0.03, '#e7e1d7', 'w', {main: 1}), B(-0.68, 0, 0, 0.03, 0.66, 0.72, '#e7e1d7', 'w', {p: 0}), B(0.68, 0, 0, 0.03, 0.66, 0.72, '#e7e1d7', 'w', {p: 0}), B(0, 0.3, 0.35, 1.34, 0.02, 0.35, '#e7e1d7', 'w', {p: 0})].concat(drawers(0.4, 0.55, 0.6, 3, '#d6cfc4').map(p => Object.assign({}, p, {x: p.x + 0.42, p: 0}))).concat([B(-0.25, 0.15, 0.75, 0.55, 0.05, 0.33, '#111827', 'p', {p: 0}), B(-0.25, 0.18, 0.75, 0.2, 0.15, 0.01, '#111827', 'p', {p: 0}), B(-0.25, -0.12, 0.75, 0.42, 0.14, 0.012, '#e5e7eb', 'p', {p: 0})]));
+  def('scrivania_120', 'Studio', 'Scrivania 120×60', '🖥️', 1.2, 0.6, 0.75, '#e7e1d7', table(1.2, 0.6, 0.75, {c: '#e7e1d7', lc: '#9ca3af'}));
+  def('sedia_uff', 'Studio', 'Sedia da ufficio', '🪑', 0.62, 0.62, 1.05, '#1f2937', (() => { const P = [B(0, -0.02, 0.45, 0.48, 0.46, 0.08, '#1f2937', 'f', {main: 1}), B(0, 0.22, 0.6, 0.44, 0.06, 0.45, '#1f2937', 'f', {main: 1, rx: 0.12}), C(0, 0, 0.08, 0.025, 0.37, CH, 'm', {p: 0})]; for (let i = 0; i < 5; i++) { const a = i * Math.PI * 2 / 5; P.push(B(Math.cos(a) * 0.14, Math.sin(a) * 0.14, 0.05, 0.3, 0.035, 0.03, '#374151', 'p', {ry: a, p: 0}), S(Math.cos(a) * 0.28, Math.sin(a) * 0.28, 0.025, 0.025, DK, 'p', {p: 0})); } return P; })());
+  def('libreria_bassa', 'Studio', 'Libreria bassa 80', '📚', 0.8, 0.35, 0.8, '#a0825a', shelves(0.8, 0.35, 0.8, 2, '#a0825a'), {gen: (w, d, h) => shelves(w, d, h, Math.max(1, Math.round(h / 0.38)), '#a0825a')});
+  def('schedario', 'Studio', 'Cassettiera ufficio su ruote', '🗄️', 0.42, 0.55, 0.6, '#9ca3af', drawers(0.42, 0.55, 0.6, 3, '#9ca3af'));
+  /* ESTERNO E GARAGE */
+  def('tavolo_est', 'Esterno', 'Tavolo da esterno 160×90', '⛱️', 1.6, 0.9, 0.75, '#9a7b58', table(1.6, 0.9, 0.75, {c: '#9a7b58', lc: '#4b5563'}));
+  def('sedia_est', 'Esterno', 'Sedia da esterno', '🪑', 0.55, 0.58, 0.85, '#4b5563', chair({c: '#4b5563', m: 'm'}));
+  def('lettino', 'Esterno', 'Lettino prendisole', '🏖️', 0.7, 1.95, 0.35, '#9a7b58', [B(0, -0.2, 0.25, 0.65, 1.4, 0.04, '#9a7b58', 'w', {main: 1}), B(0, 0.68, 0.32, 0.65, 0.55, 0.04, '#9a7b58', 'w', {main: 1, rx: 0.55}), B(0, -0.2, 0.29, 0.6, 1.35, 0.05, '#e5e7eb', 'f'), B(-0.3, -0.85, 0, 0.04, 0.04, 0.25, '#4b5563', 'm', {p: 0}), B(0.3, -0.85, 0, 0.04, 0.04, 0.25, '#4b5563', 'm', {p: 0}), HY(-0.3, 0.75, 0.1, 0.1, 0.04, DK, 'p', {p: 0, ax: 'x'}), H(0, 0.75, 0.1, 0.05, 0.62, DK, 'p', {p: 0})]);
+  def('ombrellone', 'Esterno', 'Ombrellone Ø300', '⛱️', 3.0, 3.0, 2.5, '#e7e1d7', [C(0, 0, 0, 0.25, 0.08, '#4b5563', 'st', {p: 0}), C(0, 0, 0.08, 0.02, 2.35, '#d6d3d1', 'm', {p: 0}), C(0, 0, 2.05, 1.5, 0.4, '#e7e1d7', 'f', {r2: 0.03, main: 1})]);
+  def('barbecue', 'Esterno', 'Barbecue', '🔥', 1.2, 0.55, 1.15, '#1f2937', [B(0, 0, 0.1, 0.65, 0.5, 0.75, '#1f2937', 'm', {main: 1}), C(0, 0, 0.85, 0.25, 0.2, '#111827', 'm', {sx: 1.25, p: 0}), B(-0.48, 0, 0.82, 0.3, 0.45, 0.03, '#6b7280', 'm'), B(0.48, 0, 0.82, 0.3, 0.45, 0.03, '#6b7280', 'm'), H(0, -0.3, 0.6, 0.008, 0.4, CH, 'm', {p: 0})]);
+  def('auto', 'Esterno', 'Automobile', '🚗', 1.8, 4.4, 1.5, '#64748b', [B(0, 0, 0.3, 1.8, 4.4, 0.55, '#64748b', 'p', {main: 1}), B(0, 0.2, 0.85, 1.6, 2.2, 0.55, '#64748b', 'p', {main: 1, p: 0}), B(0, 0.2, 0.88, 1.62, 2.1, 0.48, '#1e293b', 'g2', {p: 0}), HY(-0.82, 1.35, 0.33, 0.33, 0.24, '#111827', 'p', {ax: 'x', p: 0}), HY(0.82, 1.35, 0.33, 0.33, 0.24, '#111827', 'p', {ax: 'x', p: 0}), HY(-0.82, -1.35, 0.33, 0.33, 0.24, '#111827', 'p', {ax: 'x', p: 0}), HY(0.82, -1.35, 0.33, 0.33, 0.24, '#111827', 'p', {ax: 'x', p: 0}), B(-0.6, -2.19, 0.6, 0.3, 0.03, 0.1, '#fff7d6', 'e', {p: 0}), B(0.6, -2.19, 0.6, 0.3, 0.03, 0.1, '#fff7d6', 'e', {p: 0})]);
+  def('bici', 'Esterno', 'Bicicletta', '🚲', 0.6, 1.75, 1.0, '#1f2937', [HY(0, 0.6, 0.35, 0.34, 0.03, '#111827', 'p', {ax: 'x'}), HY(0, -0.6, 0.35, 0.34, 0.03, '#111827', 'p', {ax: 'x'}), HY(0, 0, 0.6, 0.02, 1.0, '#dc2626', 'm', {p: 0}), C(0, 0.2, 0.6, 0.012, 0.3, '#dc2626', 'm', {p: 0}), H(0, -0.5, 1.0, 0.012, 0.55, DK, 'm')]);
+  /* IMPIANTI con aspetto dettagliato (restano nella libreria impianti) */
+  def('radiatore', 'Impianti', 'Calorifero', '♨', 0.8, 0.1, 0.6, '#e5e7eb', (() => { const P = []; for (let i = 0; i < 10; i++) P.push(B(-0.36 + i * 0.08, 0, 0, 0.07, 0.08, 0.6, '#eceef0', 'p', {main: 1})); P.push(H(0, 0, 0.03, 0.02, 0.8, '#eceef0', 'p', {p: 0}), H(0, 0, 0.57, 0.02, 0.8, '#eceef0', 'p', {p: 0}), C(-0.42, 0, -0.02, 0.012, 0.06, CH, 'm', {p: 0}), C(0.42, 0, -0.02, 0.012, 0.06, CH, 'm', {p: 0})); return P; })(), {z: 0.12, gen: (w, d, h) => { const n = Math.max(2, Math.round(w / 0.08)), ew = w / n, P = []; for (let i = 0; i < n; i++) P.push(B(-w / 2 + ew * (i + 0.5), 0, 0, ew - 0.008, d * 0.8, h, '#eceef0', 'p', {main: 1, rr: 0.01})); P.push(H(0, 0, 0.03, 0.02, w, '#eceef0', 'p', {p: 0}), H(0, 0, h - 0.03, 0.02, w, '#eceef0', 'p', {p: 0}), C(-w / 2 - 0.02, 0, -0.02, 0.012, 0.06, CH, 'm', {p: 0}), C(w / 2 + 0.02, 0, -0.02, 0.012, 0.06, CH, 'm', {p: 0})); return P; }});
+  def('caldaia', 'Impianti', 'Caldaia murale a condensazione', '🔥', 0.42, 0.3, 0.7, '#f1f5f9', [B(0, 0, 0, 0.42, 0.3, 0.7, '#f1f5f9', 'p', {main: 1}), B(0, -0.151, 0.08, 0.3, 0.004, 0.08, '#1f2937', 'g2', {p: 0}), C(0, 0.05, 0.7, 0.05, 0.25, '#e5e7eb', 'm', {p: 0}), C(-0.12, 0.05, -0.12, 0.012, 0.12, CH, 'm', {p: 0}), C(0, 0.05, -0.12, 0.012, 0.12, CH, 'm', {p: 0}), C(0.12, 0.05, -0.12, 0.012, 0.12, CH, 'm', {p: 0})], {z: 1.3});
+  def('scaldabagno', 'Impianti', 'Scaldabagno elettrico 80 l', '🔥', 0.45, 0.47, 0.8, '#f1f5f9', [C(0, 0, 0, 0.225, 0.8, '#f1f5f9', 'p', {main: 1}), B(0, -0.2, 0.05, 0.12, 0.06, 0.08, '#e5e7eb', 'p', {p: 0})], {z: 1.4});
+  def('stufa_pellet', 'Impianti', 'Stufa a pellet', '🔥', 0.5, 0.52, 1.0, '#374151', [B(0, 0, 0, 0.5, 0.52, 1.0, '#374151', 'm', {main: 1}), B(0, -0.262, 0.35, 0.36, 0.006, 0.4, '#111827', 'g2', {p: 0}), B(0, -0.264, 0.42, 0.24, 0.004, 0.18, '#f97316', 'e', {p: 0}), C(0, 0.2, 1.0, 0.04, 0.4, '#1f2937', 'm', {dash: 1})]);
+  def('lav_colonna', 'Bagno', 'Lavatrice con asciugatrice a colonna', '🌀', 0.6, 0.62, 1.75, '#f1f5f9', [B(0, 0, 0, 0.6, 0.6, 0.85, '#f1f5f9', 'p', {main: 1}), B(0, 0, 0.88, 0.6, 0.6, 0.85, '#f1f5f9', 'p', {main: 1}), B(0, 0, 0.85, 0.6, 0.62, 0.03, '#9ca3af', 'm', {p: 0}), HY(0, -0.3, 0.42, 0.18, 0.02, '#cbd5e1', 'm', {p: 0}), HY(0, -0.305, 0.42, 0.14, 0.012, '#1e293b', 'g2', {p: 0}), HY(0, -0.3, 1.3, 0.2, 0.02, '#cbd5e1', 'm', {p: 0}), HY(0, -0.305, 1.3, 0.16, 0.012, '#334155', 'g2', {p: 0})]);
+  def('scaffale', 'Esterno', 'Scaffale metallico garage 100×40', '🗄️', 1.0, 0.4, 1.8, '#9ca3af', (() => { const P = []; [[-1, -1], [1, -1], [1, 1], [-1, 1]].forEach(([a, b]) => P.push(B(a * 0.48, b * 0.18, 0, 0.035, 0.035, 1.8, '#9ca3af', 'm', {main: 1}))); for (let i = 0; i < 5; i++) P.push(B(0, 0, 0.1 + i * 0.4, 1.0, 0.4, 0.02, '#cbd5e1', 'm', {p: i === 4 ? 1 : 0})); return P; })());
+  def('cassapanca', 'Camera', 'Cassapanca', '🧺', 1.0, 0.45, 0.48, '#a0825a', [B(0, 0, 0.04, 1.0, 0.45, 0.4, '#a0825a', 'w', {main: 1}), B(0, 0, 0.44, 1.02, 0.47, 0.04, '#8b6b4a', 'w'), B(-0.45, 0, 0, 0.06, 0.4, 0.04, DK, 'w', {p: 0}), B(0.45, 0, 0, 0.06, 0.4, 0.04, DK, 'w', {p: 0})]);
+  /* LUCI decorative: modelli per i punti luce (l'illuminazione dipende sempre dal tipo) */
+  const LUXM = {
+    plaf_tonda: {tipo: 'plafoniera', name: 'Plafoniera tonda', w: 0.35, d: 0.35, h: 0.08, parts: [C(0, 0, 0.06, 0.17, 0.02, WH, 'p'), S(0, 0, 0.06, 0.16, '#fffbea', 'e', {sz: 0.38, half: 1})]},
+    plaf_quadra: {tipo: 'plafoniera', name: 'Plafoniera quadrata', w: 0.4, d: 0.4, h: 0.07, parts: [B(0, 0, 0.02, 0.4, 0.4, 0.05, WH, 'p'), B(0, 0, 0.0, 0.36, 0.36, 0.02, '#fffbea', 'e')]},
+    pannello: {tipo: 'plafoniera', name: 'Pannello LED 60×60', w: 0.6, d: 0.6, h: 0.03, parts: [B(0, 0, 0.005, 0.6, 0.6, 0.025, '#e5e7eb', 'm'), B(0, 0, 0, 0.57, 0.57, 0.006, '#fffbea', 'e')]},
+    faretto: {tipo: 'faretto', name: 'Faretto a incasso', w: 0.09, d: 0.09, h: 0.03, parts: [C(0, 0, 0.022, 0.045, 0.008, WH, 'm'), C(0, 0, 0.012, 0.03, 0.012, '#fffbea', 'e')]},
+    faretto_orient: {tipo: 'faretto', name: 'Faretto orientabile', w: 0.1, d: 0.1, h: 0.16, parts: [C(0, 0, 0.14, 0.045, 0.02, WH, 'p'), C(0, 0, 0.03, 0.035, 0.11, WH, 'p'), C(0, 0, 0.025, 0.025, 0.006, '#fffbea', 'e')]},
+    binario: {tipo: 'faretto', name: 'Binario con 3 faretti', w: 1.0, d: 0.05, h: 0.18, parts: [B(0, 0, 0.15, 1.0, 0.035, 0.03, DK, 'm')].concat([-0.35, 0, 0.35].reduce((a, x) => a.concat([C(x, 0, 0.12, 0.012, 0.03, DK, 'm', {p: 0}), C(x, 0, 0.02, 0.035, 0.1, DK, 'p'), C(x, 0, 0.018, 0.026, 0.004, '#fffbea', 'e', {p: 0})]), []))},
+    sosp_cupola: {tipo: 'sospensione', name: 'Sospensione a cupola', w: 0.45, d: 0.45, h: 0.25, cable: 1, parts: [S(0, 0, 0.02, 0.225, '#1f2937', 'p', {sz: 1.0, half: 2}), C(0, 0, 0.02, 0.07, 0.006, '#fffbea', 'e', {p: 0})]},
+    sosp_globo: {tipo: 'sospensione', name: 'Sospensione a globo', w: 0.3, d: 0.3, h: 0.3, cable: 1, parts: [S(0, 0, 0.15, 0.15, '#fffbea', 'e'), C(0, 0, 0.29, 0.03, 0.03, '#b08d57', 'm', {p: 0})]},
+    sosp_lineare: {tipo: 'sospensione', name: 'Sospensione lineare 120', w: 1.2, d: 0.07, h: 0.06, cable: 2, parts: [B(0, 0, 0.015, 1.2, 0.07, 0.045, DK, 'm'), B(0, 0, 0.008, 1.16, 0.05, 0.008, '#fffbea', 'e', {p: 0})]},
+    lampadario: {tipo: 'sospensione', name: 'Lampadario a bracci', w: 0.7, d: 0.7, h: 0.5, cable: 1, parts: (() => { const P = [C(0, 0, 0.05, 0.02, 0.4, '#b08d57', 'm', {p: 0}), S(0, 0, 0.1, 0.06, '#b08d57', 'm')]; for (let i = 0; i < 5; i++) { const a = i * Math.PI * 2 / 5, x = Math.cos(a) * 0.3, y = Math.sin(a) * 0.3; P.push(B(x / 2, y / 2, 0.1, 0.3, 0.015, 0.015, '#b08d57', 'm', {ry: a, p: 0}), C(x, y, 0.1, 0.02, 0.04, '#b08d57', 'm'), C(x, y, 0.14, 0.045, 0.11, '#fffbea', 'e', {r2: 0.03})); } return P; })()},
+    applique: {tipo: 'applique', name: 'Applique su/giù', w: 0.1, d: 0.12, h: 0.22, parts: [B(0, 0.05, 0.06, 0.08, 0.02, 0.1, DK, 'm'), C(0, -0.01, 0, 0.045, 0.22, DK, 'm'), C(0, -0.01, -0.002, 0.03, 0.004, '#fffbea', 'e', {p: 0}), C(0, -0.01, 0.218, 0.03, 0.004, '#fffbea', 'e', {p: 0})]},
+    applique_globo: {tipo: 'applique', name: 'Applique a globo', w: 0.2, d: 0.2, h: 0.2, parts: [B(0, 0.09, 0.07, 0.08, 0.02, 0.08, '#b08d57', 'm'), S(0, -0.01, 0.1, 0.1, '#fffbea', 'e')]},
+    applique_barra: {tipo: 'applique', name: 'Applique a barra (specchio)', w: 0.6, d: 0.08, h: 0.05, parts: [B(0, 0.03, 0, 0.6, 0.02, 0.05, CH, 'm'), B(0, -0.01, 0.005, 0.58, 0.05, 0.04, '#fffbea', 'e')]},
+    faretto_p: {tipo: 'faretto_p', name: 'Faretto a parete', w: 0.08, d: 0.12, h: 0.1, parts: [B(0, 0.05, 0.02, 0.06, 0.02, 0.06, DK, 'm'), C(0, -0.01, 0, 0.035, 0.1, DK, 'p'), C(0, -0.01, -0.002, 0.026, 0.004, '#fffbea', 'e', {p: 0})]}
+  };
+  const LUXDEF = {plafoniera: 'plaf_tonda', faretto: 'faretto', sospensione: 'sosp_cupola', applique: 'applique', faretto_p: 'faretto_p'};
+  const luxModel = f => { if (!f || f.type !== 'punto_luce') return null; const t = (f.lt && f.lt.tipo) || 'plafoniera', m = f.lt && f.lt.model; return LUXM[m] && LUXM[m].tipo === t ? LUXM[m] : LUXM[LUXDEF[t]] || null; };
+
+  /* ---------------------------------------------------------------- registrazione nel catalogo (stessi nomi per gli oggetti già esistenti) */
+  const sel = document.getElementById('furnitureType');
+  Object.values(L).forEach(it => {
+    if (!it || !it.parts) return; const old = FURNITURE[it.k];
+    FURNITURE[it.k] = Object.assign({}, old || {}, {name: it.name, w: it.w, d: it.d, h: it.h, color: it.color, icon: it.icon, parts: it.parts, lib: 1}, it.z != null ? {z: it.z} : {}, it.l2 ? {l2: it.l2} : {}, it.gen ? {gen: it.gen, l2gen: it.l2gen} : {});
+    if (!old && sel && !sel.querySelector('option[value="' + it.k + '"]')) { const o = document.createElement('option'); o.value = it.k; o.textContent = it.icon + ' ' + it.name; sel.appendChild(o); }
+  });
+  const G0 = window.FURN_GROUPS || {}, G = {};
+  ['Bagno', 'Rubinetteria', 'Cucina', 'Soggiorno', 'Pranzo', 'Camera', 'Studio', 'Esterno'].forEach(g => { G[g === 'Esterno' ? 'Esterno e garage' : g] = Object.values(L).filter(it => it && it.g === g).map(it => it.k); });
+  G['Varie'] = ['rug', 'camino', 'door_arc'];
+  Object.keys(G0).forEach(g => { if (g === 'Struttura' || g === 'Impianti') G[g] = G0[g]; });
+  window.FURN_GROUPS = G;
+
+  /* ---------------------------------------------------------------- materiali */
+  const MC = new Map();
+  /* riflessi: una piccola stanza chiara come ambiente per metalli, ceramiche e vetri (solo per questi materiali) */
+  let ENV = null, envTried = false;
+  function envMap() {
+    if (ENV || envTried) return ENV; envTried = true;
+    try {
+      if (typeof renderer === 'undefined' || !renderer || !THREE.PMREMGenerator) return null;
+      const es = new THREE.Scene(), g = new THREE.SphereGeometry(10, 32, 16), cols = [], pos = g.attributes.position;
+      for (let i = 0; i < pos.count; i++) { const t = (pos.getY(i) + 10) / 20, c = new THREE.Color('#4b463f').lerp(new THREE.Color('#d9dadb'), Math.pow(t, 0.7)); cols.push(c.r, c.g, c.b); }
+      g.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
+      es.add(new THREE.Mesh(g, new THREE.MeshBasicMaterial({vertexColors: true, side: THREE.BackSide})));
+      const win = new THREE.Mesh(new THREE.PlaneGeometry(6, 4), new THREE.MeshBasicMaterial({color: 0xffffff})); win.position.set(0, 3, -9); es.add(win);
+      const pm = new THREE.PMREMGenerator(renderer); ENV = pm.fromScene(es, 0.04).texture; pm.dispose();
+    } catch (e) { console.warn('ambiente riflessi', e); ENV = null; }
+    return ENV;
+  }
+  function mat(c, m, ds) {
+    const key = c + '|' + m + (ds ? '|2' : ''); let r = MC.get(key); if (r) return r;
+    const col = new THREE.Color(c); if (m !== 'e' && m !== 'g' && col.r + col.g + col.b > 2.7) col.multiplyScalar(0.84);   /* il bianco puro brucia: così si vedono le ombre */
+    if (m === 'g') r = new THREE.MeshStandardMaterial({color: col, roughness: 0.05, metalness: 0.1, transparent: true, opacity: 0.28, depthWrite: false, side: THREE.DoubleSide});
+    else if (m === 'g2') r = new THREE.MeshStandardMaterial({color: col, roughness: 0.08, metalness: 0.3});
+    else if (m === 'e') { r = new THREE.MeshStandardMaterial({color: col, emissive: col, emissiveIntensity: 0.9, roughness: 0.4}); }
+    else if (m === 'm') r = new THREE.MeshStandardMaterial({color: col, roughness: 0.3, metalness: 0.55});
+    else if (m === 'c') r = new THREE.MeshStandardMaterial({color: col, roughness: 0.12, metalness: 0.02});
+    else if (m === 'f') r = new THREE.MeshStandardMaterial({color: col, roughness: 0.95});
+    else if (m === 'w') r = new THREE.MeshStandardMaterial({color: col, roughness: 0.62});
+    else if (m === 'st') r = new THREE.MeshStandardMaterial({color: col, roughness: 0.35, metalness: 0.05});
+    else r = new THREE.MeshStandardMaterial({color: col, roughness: 0.5});
+    if (ds) r.side = THREE.DoubleSide;
+    if (m === 'm' || m === 'c' || m === 'g' || m === 'g2' || m === 'st') { const e = envMap(); if (e) { r.envMap = e; r.envMapIntensity = m === 'm' ? 0.45 : m === 'st' ? 0.12 : m === 'c' ? 0.2 : 0.35; } }
+    r.userData = {libShared: 1}; MC.set(key, r); return r;
+  }
+  /* geometrie condivise per tipo: si costruiscono una volta e si riusano per tutti gli oggetti uguali */
+  const GC = new Map();
+  function geo(p) {
+    const key = p.k + '|' + [p.w, p.d, p.h, p.r, p.r2, p.l, p.half, p.rr].join(',') + (p.k === 'l' ? JSON.stringify(p.pts) : ''); let g = GC.get(key); if (g) return g;
+    if (p.k === 'b' && p.rr) {   /* v26.8: parallelepipedo con spigoli arrotondati (cuscini, materassi, sanitari) */
+      const bv = Math.min(p.rr, p.h / 3, p.w / 4, p.d / 4), w = p.w - 2 * bv, d = p.d - 2 * bv, rc = Math.max(0.001, Math.min(p.rr - bv * 0.5, w / 2 - 0.001, d / 2 - 0.001)), sh = new THREE.Shape();
+      sh.moveTo(-w / 2 + rc, -d / 2); sh.lineTo(w / 2 - rc, -d / 2); sh.quadraticCurveTo(w / 2, -d / 2, w / 2, -d / 2 + rc); sh.lineTo(w / 2, d / 2 - rc); sh.quadraticCurveTo(w / 2, d / 2, w / 2 - rc, d / 2); sh.lineTo(-w / 2 + rc, d / 2); sh.quadraticCurveTo(-w / 2, d / 2, -w / 2, d / 2 - rc); sh.lineTo(-w / 2, -d / 2 + rc); sh.quadraticCurveTo(-w / 2, -d / 2, -w / 2 + rc, -d / 2);
+      g = new THREE.ExtrudeGeometry(sh, {depth: Math.max(0.001, p.h - 2 * bv), bevelEnabled: bv > 0.0005, bevelThickness: bv, bevelSize: bv, bevelSegments: 3, curveSegments: 5}); g.rotateX(-Math.PI / 2); g.translate(0, -(p.h - 2 * bv) / 2, 0);
+    }
+    else if (p.k === 'l') g = new THREE.LatheGeometry(p.pts.map(q => new THREE.Vector2(Math.max(0, q[0]), q[1])), 36);
+    else if (p.k === 'b') g = new THREE.BoxGeometry(p.w, p.h, p.d);
+    else if (p.k === 'c') g = new THREE.CylinderGeometry(p.r2 != null ? p.r2 : p.r, p.r, p.h, Math.max(12, Math.min(40, Math.round(p.r * 160))));
+    else if (p.k === 's') g = new THREE.SphereGeometry(p.r, 24, 16, 0, Math.PI * 2, 0, p.half ? Math.PI / 2 : Math.PI);
+    else g = new THREE.CylinderGeometry(p.r, p.r, p.l, Math.max(10, Math.min(32, Math.round(p.r * 200))));
+    g.userData = {libShared: 1}; GC.set(key, g); return g;
+  }
+  function meshOf(p, userCol) {
+    const m = new THREE.Mesh(geo(p), mat(p.main && userCol ? userCol : p.c, p.m, !!p.half || p.k === 'l'));
+    if (p.k === 'b') { m.position.set(p.x, p.z + p.h / 2, -p.y); if (p.ry) m.rotation.y = p.ry; if (p.rx) m.rotation.x = p.rx; }
+    else if (p.k === 'c') { m.position.set(p.x, p.z + p.h / 2, -p.y); if (p.sx || p.sy) m.scale.set(p.sx || 1, 1, p.sy || 1); }
+    else if (p.k === 'l') { m.position.set(p.x, p.z, -p.y); if (p.sx || p.sy) m.scale.set(p.sx || 1, 1, p.sy || 1); }
+    else if (p.k === 's') { m.position.set(p.x, p.z, -p.y); if (p.sz) m.scale.set(1, p.sz, 1); if (p.half === 1) m.rotation.x = Math.PI; }
+    else { m.position.set(p.x, p.z, -p.y); if (p.ax === 'x') m.rotation.z = Math.PI / 2; else m.rotation.x = Math.PI / 2; }
+    if (p.m !== 'g' && p.m !== 'e') { m.castShadow = true; m.receiveShadow = true; }
+    if (p.m === 'g') m.renderOrder = 2;
+    return m;
+  }
+  /* v26.5 · prestazioni: i pezzi dello stesso materiale si fondono in un'unica geometria per tipo di oggetto
+     (un divano = 2-3 oggetti da disegnare invece di 20); il risultato si riusa per tutti gli oggetti uguali */
+  const MG = new Map();
+  const r3 = v => Math.round((+v || 0) * 1000) / 1000;
+  function partsOf(f, M) {   /* oggetti con «gen»: i pezzi si ricalcolano alle misure reali (elementi del calorifero, ante, basi) */
+    if (!M.gen) return {parts: M.parts, w: M.w, d: M.d, h: M.h, gen: false};
+    const w = r3(f.w || M.w), d = r3(f.d || M.d), h = r3(f.h || M.h), k = w + 'x' + d + 'x' + h;
+    M._gc = M._gc || new Map(); let P = M._gc.get(k); if (!P) { try { P = M.gen(w, d, h); } catch (_) { P = M.parts; } M._gc.set(k, P); if (M._gc.size > 60) M._gc.delete(M._gc.keys().next().value); }
+    return {parts: P, w, d, h, gen: true, key: k};
+  }
+  function mergedOf(M, key) {
+    let r = MG.get(key); if (r && r.every(q => q.geo.attributes && q.geo.attributes.position)) return r;
+    const uc = key.split('|')[1] || null, B2 = new Map();
+    M.parts.forEach(p => {
+      try {
+        const m = meshOf(p, uc); m.updateMatrix(); let gg = m.geometry.clone(); gg.applyMatrix4(m.matrix); if (gg.index) gg = gg.toNonIndexed();
+        const k = m.material.uuid + '|' + m.castShadow + '|' + (m.renderOrder || 0); let b = B2.get(k); if (!b) B2.set(k, b = {mat: m.material, cast: m.castShadow, ro: m.renderOrder, list: []}); b.list.push(gg);
+      } catch (_) {}
+    });
+    r = [];
+    B2.forEach(b => {
+      let n = 0; b.list.forEach(gg => n += gg.attributes.position.count);
+      const P = new Float32Array(n * 3), N = new Float32Array(n * 3); let o = 0;
+      b.list.forEach(gg => { P.set(gg.attributes.position.array, o * 3); if (gg.attributes.normal) N.set(gg.attributes.normal.array, o * 3); o += gg.attributes.position.count; gg.dispose(); });
+      const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(P, 3)); geo.setAttribute('normal', new THREE.BufferAttribute(N, 3)); geo.computeBoundingSphere(); geo.computeBoundingBox();
+      r.push({geo, mat: b.mat, cast: b.cast, ro: b.ro});
+    });
+    MG.set(key, r); return r;
+  }
+  /* modello 3D dell'oggetto (gruppo in scala alle misure dell'oggetto) */
+  function build3D(f, spec, rz, zz) {
+    const lm = luxModel(f), M0 = lm || spec; if (!M0 || !M0.parts) return false;
+    const PG = lm ? {parts: M0.parts, w: M0.w, d: M0.d, h: M0.h} : partsOf(f, M0), M = {parts: PG.parts, w: PG.w, d: PG.d, h: PG.h};
+    const sx = (f.w || M.w) / M.w, sy = (f.d || M.d) / M.d, sz = (f.h || M.h) / M.h;
+    let uc = null; try { const c0 = getEntityColor(f, f.color || spec.color); if (c0 && String(c0).toLowerCase() !== String(spec.color || '').toLowerCase()) uc = c0; } catch (_) {}
+    const g = new THREE.Group(); g.position.set(f.x, zz || 0, -f.y); g.rotation.y = rz || 0;
+    const inner = new THREE.Group(); inner.scale.set(sx, sz, sy); g.add(inner);
+    mergedOf(M, (lm ? 'lux:' : 'f:') + (lm ? Object.keys(LUXM).find(k => LUXM[k] === lm) : f.type) + '|' + (uc || '') + '|' + (PG.gen ? PG.key : '')).forEach(q => { const m = new THREE.Mesh(q.geo, q.mat); m.castShadow = q.cast; m.receiveShadow = q.cast; if (q.ro) m.renderOrder = q.ro; inner.add(m); });
+    g.userData.furnId = f.id; scene.add(g);
+    if (lm && lm.cable) {   /* cavo fino al soffitto o al controsoffitto */
+      try {
+        const fl = typeof floorOf === 'function' ? floorOf(f) : null, top = window.SCcs && SCcs.zAt ? SCcs.zAt(f.x, f.y, fl) + 0.004 : 2.7, z1 = (zz || 0) + (f.h || lm.h);
+        if (top - z1 > 0.03) {
+          const n = lm.cable === 2 ? 2 : 1, cm = mat('#1f2937', 'p');
+          for (let i = 0; i < n; i++) { const off = n === 2 ? (i ? 1 : -1) * (f.w || lm.w) * 0.4 : 0, ca = Math.cos(rz || 0), sa = Math.sin(rz || 0); const c = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, top - z1, 6), cm); c.position.set(f.x + off * ca, z1 + (top - z1) / 2, -(f.y + off * sa)); scene.add(c); }
+        }
+      } catch (_) {}
+    }
+    return true;
+  }
+
+  /* ---------------------------------------------------------------- simbolo in pianta (vista dall'alto, pezzi ordinati per quota) */
+  const shade = (hex, k) => {   /* schiarisce un colore #rrggbb verso il bianco (senza dipendere dal 3D) */
+    let h = String(hex || '#999999').replace('#', ''); if (h.length === 3) h = h.split('').map(c => c + c).join(''); h = h.slice(0, 6);
+    const n = parseInt(h, 16); if (!isFinite(n)) return hex; const f = v => Math.round(v + (255 - v) * k);
+    return 'rgb(' + f((n >> 16) & 255) + ',' + f((n >> 8) & 255) + ',' + f(n & 255) + ')';
+  };
+  function draw2D(f, spec, sel) {
+    const M = partsOf(f, spec), c = worldToScreen(f.x, f.y), s = viewScale, kx = (f.w || M.w) / M.w * s, ky = (f.d || M.d) / M.d * s;
+    let uc = null; try { const c0 = getEntityColor(f, f.color || spec.color); if (c0 && String(c0).toLowerCase() !== String(spec.color || '').toLowerCase()) uc = c0; } catch (_) {}
+    ctx.save(); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'; ctx.filter = 'none'; ctx.translate(c.x, c.y); ctx.rotate(-(f.rot || 0)); ctx.lineJoin = 'round';
+    const P = M.parts.filter(p => p.p !== 0).map(p => ({p, top: p.k === 's' ? p.z + p.r * (p.sz || 1) : p.k === 'h' ? p.z + p.r : p.z + p.h})).sort((a, b) => a.top - b.top);
+    const l2 = spec.gen && spec.l2gen ? spec.l2gen(M.w, M.d) : spec.l2;
+    const lw = Math.max(0.6, Math.min(1.4, s / 60));
+    P.forEach(({p}) => {
+      const col = p.main && uc ? uc : p.c, glass = p.m === 'g', em = p.m === 'e';
+      ctx.beginPath();
+      if (p.k === 'b') { ctx.save(); ctx.translate(p.x * kx, -p.y * ky); if (p.ry) ctx.rotate(-p.ry); if (p.rr && ctx.roundRect) ctx.roundRect(-p.w * kx / 2, -p.d * ky / 2, p.w * kx, p.d * ky, Math.min(p.rr * Math.min(kx, ky), p.w * kx / 2, p.d * ky / 2)); else ctx.rect(-p.w * kx / 2, -p.d * ky / 2, p.w * kx, p.d * ky); ctx.restore(); }
+      else if (p.k === 'l') ctx.ellipse(p.x * kx, -p.y * ky, Math.max(0.5, p.r * (p.sx || 1) * kx), Math.max(0.5, p.r * (p.sy || 1) * ky), 0, 0, Math.PI * 2);
+      else if (p.k === 'c') { const r = Math.max(p.r, p.r2 != null ? p.r2 : 0); ctx.ellipse(p.x * kx, -p.y * ky, Math.max(0.5, r * (p.sx || 1) * kx), Math.max(0.5, r * (p.sy || 1) * ky), 0, 0, Math.PI * 2); }
+      else if (p.k === 's') ctx.ellipse(p.x * kx, -p.y * ky, Math.max(0.5, p.r * kx), Math.max(0.5, p.r * ky), 0, 0, Math.PI * 2);
+      else { const L2 = p.l / 2; if (p.ax === 'x') ctx.rect((p.x - L2) * kx, (-p.y - p.r) * ky, p.l * kx, 2 * p.r * ky); else ctx.rect((p.x - p.r) * kx, (-p.y - L2) * ky, 2 * p.r * kx, p.l * ky); }
+      if (!glass) { ctx.globalAlpha = 0.95; ctx.fillStyle = em ? '#fff3c4' : shade(col, p.m === 'm' ? 0.35 : 0.12); ctx.fill(); ctx.globalAlpha = 1; }
+      ctx.setLineDash(p.dash ? [5, 3] : []); ctx.strokeStyle = sel ? '#fbbf24' : glass ? '#38bdf8' : 'rgba(17,24,39,.75)'; ctx.lineWidth = sel ? lw + 0.8 : lw; ctx.stroke(); ctx.setLineDash([]);
+    });
+    (l2 || []).forEach(l => { ctx.beginPath(); ctx.setLineDash(l[4] ? [6, 4] : []); ctx.moveTo(l[0] * kx, -l[1] * ky); ctx.lineTo(l[2] * kx, -l[3] * ky); ctx.strokeStyle = 'rgba(17,24,39,.75)'; ctx.lineWidth = lw; ctx.stroke(); }); ctx.setLineDash([]);
+    if (sel) { ctx.setLineDash([6, 4]); ctx.strokeStyle = '#22d3ee'; ctx.lineWidth = 1.6; ctx.strokeRect(-(f.w || M.w) * s / 2 - 5, -(f.d || M.d) * s / 2 - 5, (f.w || M.w) * s + 10, (f.d || M.d) * s + 10); ctx.setLineDash([]); }
+    ctx.restore();
+    if (sel) {
+      const t = typeof fmtLen === 'function' ? fmtLen(f.w) + ' × ' + fmtLen(f.d) : f.w.toFixed(2) + ' × ' + f.d.toFixed(2) + ' m', sw = f.w * s, sd = f.d * s;
+      ctx.save(); ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      const tw = ctx.measureText(t).width + 12, ty = c.y - Math.max(sw, sd) * 0.72 - 16, tx = c.x;
+      ctx.fillStyle = 'rgba(15,23,42,.92)'; ctx.strokeStyle = '#22d3ee'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(tx - tw / 2, ty - 10, tw, 20, 6) : ctx.rect(tx - tw / 2, ty - 10, tw, 20); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#e5e7eb'; ctx.fillText(t, tx, ty); ctx.restore();
+    }
+  }
+  /* inserimento: se tocchi vicino a un muro l'oggetto si appoggia con il retro al muro (tavoli, sedie e oggetti liberi no) */
+  const FREE = new Set(['table_dining', 'tavolo_180', 'tavolo_140', 'table_round', 'chair', 'sedia_imb', 'island', 'pouf', 'tavolino', 'plant', 'plant_small', 'lamp_terra', 'lamp_tavolo', 'sgabello', 'tavolo_est', 'sedia_est', 'lettino', 'ombrellone', 'barbecue', 'auto', 'bici', 'vasca_free', 'sedia_uff', 'armchair', 'microonde']);
+  function snapWall(px, py, k) {
+    const spec = FURNITURE[k]; if (!spec || !spec.parts || FREE.has(k)) return null;
+    let best = null, bd = 1e9;
+    for (const w of state.walls) {
+      if (!isEntityVisible(w) || (typeof floorOf === 'function' && floorOf(w) !== state.currentFloorId)) continue;
+      const dx = w.p2.x - w.p1.x, dy = w.p2.y - w.p1.y, L2 = Math.hypot(dx, dy); if (L2 < 0.2) continue;
+      const ux = dx / L2, uy = dy / L2, t = (px - w.p1.x) * ux + (py - w.p1.y) * uy; if (t < 0 || t > L2) continue;
+      const n = -(px - w.p1.x) * uy + (py - w.p1.y) * ux, gap = Math.abs(n) - getWallThickness(w) / 2; if (gap < bd) { bd = gap; best = {w, ux, uy, t, n}; }
+    }
+    if (!best || bd > 0.8) return null;
+    const sd = best.n >= 0 ? 1 : -1, off = getWallThickness(best.w) / 2 + spec.d / 2 + 0.005, nx = -best.uy * sd, ny = best.ux * sd;   /* normale verso l'oggetto */
+    const x = best.w.p1.x + best.ux * best.t + nx * off, y = best.w.p1.y + best.uy * best.t + ny * off;
+    const rot = Math.atan2(-nx, ny) + Math.PI;   /* il retro (+y locale) guarda il muro */
+    return {x: Math.round(x * 1e4) / 1e4, y: Math.round(y * 1e4) / 1e4, rot};
+  }
+  window.SClib = {partsOf, snapWall, L, LUXM, LUXDEF, luxModel, build3D, draw2D, mat, count: () => Object.keys(L).filter(k => L[k] && L[k].parts).length};
 })();
 </script>
 </body>

@@ -1,4 +1,4 @@
-SimplyCAD Pro - pubblicazione su GitHub Pages (v26.3)
+SimplyCAD Pro - pubblicazione su GitHub Pages (v26.8)
 
 Contenuto (vanno caricati tutti, senza rinominarli e SENZA cartelle intorno):
   index.html  sw.js  manifest.webmanifest  icon-192.png  icon-512.png  icon-maskable.png  README.md
@@ -398,3 +398,29 @@ NOVITÀ v26.3
 - Libreria impianti (Impianti > Inserisci punti): elettrico, idraulico, riscaldamento e clima, TV e dati, ognuno con il colore delle sue linee. Scegli il punto e tocca dove metterlo, anche più volte; vicino a un muro si aggancia.
 - Nuovi: presa TV/SAT, presa dati, centralino TV, centralino dati; linea TV verde e linea dati rosa, anche nel collegamento automatico.
 - Gli impianti non sono più nel catalogo Arredi.
+
+NOVITÀ v26.4
+- Linea impianto a mano ridotta all'essenziale, solo per le eccezioni: sul prospetto e in pianta 7 tipi (linea luci, linea prese, acqua fredda, acqua calda, scarico, TV, dati). Tolti la profondità nel muro e i tipi fase/neutro/terra/canalina separati. Le linee già disegnate con quei tipi restano.
+
+NOVITÀ v26.5 · LIBRERIA ARREDI DETTAGLIATA
+- Ogni oggetto è fatto di pezzi (gambe, cuscini, ante, maniglie, rubinetti…): simbolo in pianta a linee come i blocchi CAD e 3D più realistico, in scala alle misure scelte. Gli oggetti già presenti nei progetti si aggiornano da soli.
+- Bagno (misure medie Geberit): WC e bidet a terra e sospesi, lavabo a colonna e sospeso, mobili bagno 60/80/100 con specchio, docce 80×80, 90×90, 70×90, walk-in 80×120 e 90×140, vasche 170×75, 160×70 e freestanding, lavatoio, scaldasalviette, specchio contenitore, lavatrice, asciugatrice, colonna lavatrice+asciugatrice.
+- Rubinetteria: miscelatore, colonna doccia, soffione, rubinetto da esterno.
+- Cucina a moduli da 60: basi, cassettiera, base 90, angolo, pensili 60 e 90, colonna forno, frigoriferi 60 e side by side, piani cottura 60/75/90, forno, lavastoviglie, lavelli 1 e 2 vasche, cappa, isola, microonde, sgabello.
+- Soggiorno, pranzo, camera, studio, esterno e garage: divani lineari, angolare e con penisola, poltrona, pouf, tavolini, TV, mobile TV, madia, librerie, vetrina, pianoforte, piante, lampade da terra e da tavolo, tavoli 140/160/180 e tondo, sedie, letti (matrimoniale, contenitore, 120, singolo, castello, lettino), comodino, cassettiere, armadi 100/200/300 e scorrevole, cabina armadio, scrivanie, sedia da ufficio, tavolo e sedie da esterno, lettino, ombrellone, barbecue, auto, bici, scaffale.
+- Lampade: ogni punto luce ha un modello (plafoniera tonda o quadrata, pannello LED, faretto a incasso o orientabile, binario, sospensione a cupola, a globo, lineare, lampadario a bracci, applique) che cambia solo l'aspetto; si sceglie nel pannello della luce.
+- Toccando vicino a un muro l'oggetto si appoggia con il retro al muro (tavoli, sedie e oggetti liberi no).
+
+NOVITÀ v26.6 · PORTE
+- Nuove: a filo muro, in vetro, doppia asimmetrica, basculante da garage. In pianta, 3D, computo e prezzi.
+
+NOVITÀ v26.7
+- Finestre con oscuranti: tapparella con cassonetto, persiane, scuri interni (lato esterno riconosciuto da solo, si può invertire). In 3D e nel computo al m².
+- Nuovi impianti nella libreria: caldaia murale, scaldabagno, stufa a pellet (con voce nel computo).
+- 3D più leggero: i pezzi di ogni oggetto vengono uniti per materiale, utile sui tablet.
+
+NOVITÀ v26.8
+- Forme più realistiche: WC, bidet, vasca freestanding, vasi e paralumi con forme tornite e morbide; cuscini, materassi, sedute e lavabi con spigoli arrotondati.
+- Calorifero, piano cucina, armadi e librerie si ricalcolano alle misure: più largo = più elementi, basi e ante; più alto = più ripiani.
+- Oscuranti anche in pianta: tapparella tratteggiata sul filo esterno, persiane e scuri come ante.
+- Collegamento automatico: ogni luce va prima a un interruttore della sua stanza.
