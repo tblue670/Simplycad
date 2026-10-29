@@ -1,4 +1,4 @@
-SimplyCAD Pro - pubblicazione su GitHub Pages (v27.7)
+SimplyCAD Pro - pubblicazione su GitHub Pages (v27.8)
 
 Contenuto (vanno caricati tutti, senza rinominarli e SENZA cartelle intorno):
   index.html  sw.js  manifest.webmanifest  icon-192.png  icon-512.png  icon-maskable.png  README.md
@@ -477,3 +477,11 @@ NOVITÀ v27.7
 - Reti corrette a mano: le correzioni restano; sanitari nuovi o spostati si innestano da soli lungo il muro con una braga; tolto un sanitario, sparisce il suo ramo.
 - Punti acqua e scarico automatici spostati a mano diventano manuali e restano dove li hai messi.
 - Braghe visibili anche in 3D; le reti idrauliche non riempiono più la pianta di etichette (si toccano sulla linea).
+
+NOVITÀ v27.8
+- Composizione arredo (Disegna › Arredi › Composizione su misura, oppure dalla scelta arredi): finestra con vista frontale e pianta per comporre cucine, bagni, armadi, pareti TV e lavanderie a blocchi.
+  Blocchi: basi, pensili, colonne, angoli, a giorno, mensole, fianchi, specchi. Frontali: ante, cassetti, ribalte, vetro, forno, frigo, scorrevoli. Apertura SX/DX, maniglia, gola o push, colori di corpo e frontali.
+  Incassi: lavello, piano cottura, lavabo, lavastoviglie, forno, frigo, cappa, lavatrice. Top continuo automatico. Due pareti ad angolo (cucina a L).
+- Modelli di partenza, «Elenco elementi» stampabile con prezzi, salvataggio in «I miei arredi».
+- Posa toccando il muro: oggetti singoli raggruppati che si spostano insieme; «Modifica composizione» la riapre; «Separa» la scioglie. Voce a corpo nel computo, prese per gli elettrodomestici, acqua e scarico automatici per lavelli e lavabi.
+- Importa modello 3D (GLB, glTF, OBJ+MTL) di produttori o librerie gratuite CC0: contorno in pianta, sagoma nel prospetto, forma vera in 3D; resta sul dispositivo e viaggia nel file progetto.
