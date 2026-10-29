@@ -1,4 +1,4 @@
-SimplyCAD Pro - pubblicazione su GitHub Pages (v26.8)
+SimplyCAD Pro - pubblicazione su GitHub Pages (v27.4)
 
 Contenuto (vanno caricati tutti, senza rinominarli e SENZA cartelle intorno):
   index.html  sw.js  manifest.webmanifest  icon-192.png  icon-512.png  icon-maskable.png  README.md
@@ -424,3 +424,33 @@ NOVITÀ v26.8
 - Calorifero, piano cucina, armadi e librerie si ricalcolano alle misure: più largo = più elementi, basi e ante; più alto = più ripiani.
 - Oscuranti anche in pianta: tapparella tratteggiata sul filo esterno, persiane e scuri come ante.
 - Collegamento automatico: ogni luce va prima a un interruttore della sua stanza.
+
+NOVITÀ v26.9 · STATO DI FATTO E DI PROGETTO
+- Porte e finestre hanno uno stato: esistente, nuova apertura (giallo: si demolisce il muro), da chiudere (rosso: tamponamento). Si vede in pianta, in sezione, nelle tavole di fatto e di progetto e nel computo (apertura di vano e tamponamento al m²).
+- In sezione i muri da demolire sono gialli e quelli nuovi rossi.
+
+NOVITÀ v27.0 · STRUTTURE
+- Pianta strutturale (Vista > Pianta strutturale, e come tavola di stampa): muri portanti campiti, arredi nascosti, travi e pilastri.
+- Orditura del solaio (Strumenti > Strutture): doppia freccia nel verso dei travetti, con tipo (laterocemento, predalles, legno, acciaio, soletta) e spessore, che vanno nel computo del solaio.
+- Trave in due tocchi, messa sotto il solaio.
+- «Muro portante» anche nel pannello del muro in pianta.
+
+NOVITÀ v27.1 · COPIE DI SICUREZZA E SINCRONIZZAZIONE
+- File > Copie e sincronizzazione: scegli una volta una cartella (anche sincronizzata con Dropbox, OneDrive, Drive o su chiavetta). Ogni 10 minuti ci va una copia del progetto: 10 recenti più una al giorno per una settimana, con «Torna a una copia».
+- «Sincronizza» confronta questo dispositivo con la cartella e prende la versione cambiata; se sono cambiate entrambe chiede quale tenere e conserva l'altra.
+- Sui dispositivi che non permettono le cartelle (Android): «Invia» (scarica il file) e «Ricevi» (apre il file), con lo stesso confronto.
+- Elenco dei progetti nella cartella per aprirli da un altro dispositivo.
+
+NOVITÀ v27.2 · PREVENTIVO
+- Progetto > Preventivo per il cliente (o pulsante «Preventivo» nel computo): intestazione e logo della ditta, numero progressivo, cliente, oggetto, voci per categoria (con quantità e prezzi o solo descrizioni e totali), sconto, sicurezza, IVA, totale, pianta e vista 3D, condizioni modificabili che restano per i prossimi preventivi, firme. Si stampa o si salva in PDF.
+
+NOVITÀ v27.3 · TAVOLE COMPLETE
+- Prospetti dell'edificio (Sud, Est, Nord, Ovest; in pianta l'alto è il Nord) a linee, con porte, finestre, solai, tetti, terreno e quote di livello. Si aggiungono nel foglio come le sezioni («Aggiungi prospetto»).
+- Nuova tavola «Set completo»: piante di tutti i piani, i quattro prospetti e tutte le sezioni in sequenza, ognuna con il suo cartiglio.
+- In stampa gli arredi sono blocchi CAD bianchi con contorno nero.
+
+NOVITÀ v27.4
+- Nord impostabile nel cartiglio (gradi in senso orario dall'alto della pianta), con freccia del Nord nelle piante. I prospetti Sud, Est, Nord e Ovest seguono il Nord vero.
+- Nei prospetti compaiono anche fori, tagli (con arco o tondo) e nicchie (tratteggiate, solo dal lato in cui sono) fatti dal prospetto del muro.
+- Il timpano sotto il tetto copre ciò che sta dietro.
+- Il pilastro è nel gruppo Strutture.

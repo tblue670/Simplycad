@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v26.8</title>
+<title>SimplyCAD Pro · v27.4</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -949,6 +949,7 @@ body.mode-3d #infoStrip .scale-badge{display:none}
       <div class="menu-pad">
         <label><input type="checkbox" id="showDimensions" checked> Quote muri</label>
         <label><input type="checkbox" id="showFurniture" checked> Arredi</label>
+        <label><input type="checkbox" id="showStr"> Pianta strutturale</label>
         <label><input type="checkbox" id="showLabels" checked> Testi</label>
         <label><input type="checkbox" id="showRoomColors" checked> Stanze colorate</label>
         <label><input type="checkbox" id="showRoomNames" checked> Nomi stanze</label>
@@ -3401,8 +3402,9 @@ function draw2D() {
   try { if (window.SCzoneFill) SCzoneFill(ctx); } catch (_) {}   /* v21.2: fondo e pezzi delle aree sotto a muri, porte, finestre e arredi */
   paintWallsScreen();
   for (const wl of state.walls) drawWall(wl);
-  for (const wi of state.windows) { drawWindow(wi); try { drawWindowOsc(wi); } catch (_) {} }
-  for (const d of state.doors) drawDoor(d);
+  if (window.SCstr) try { SCstr.drawPlan(); } catch (_) {}   /* v27.0: pianta strutturale */
+  for (const wi of state.windows) { drawWindow(wi); try { drawWindowOsc(wi); drawOpeningStato(wi); } catch (_) {} }
+  for (const d of state.doors) { drawDoor(d); try { drawOpeningStato(d); } catch (_) {} }
   { const showF = document.getElementById('showFurniture').checked;
     for (const f of state.furniture) if (showF || STRUCT_TYPES.has(f.type)) drawFurniture(f); }
   for (const s of state.stairs) drawStairs(s);
@@ -3860,6 +3862,7 @@ function updateSelectionPanel() {
       <input type="number" id="selWallHeight" value="${getWallHeight(w).toFixed(2)}" min="1" max="10" step="0.1">
       <label>Spessore (m)</label>
       <input type="number" id="selWallThickness" value="${getWallThickness(w).toFixed(2)}" min="0.01" max="2" step="0.01">
+      <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="selWallPort"${w.portante ? ' checked' : ''} style="width:auto"> Muro portante (struttura)</label>
       <label>Materiale</label>
       <select id="selWallMat">${Object.entries(WALL_MATERIALS).map(([k, m]) => `<option value="${k}"${(w.material || 'standard') === k ? ' selected' : ''}>${m.name}</option>`).join('')}</select>
       <label>Colore</label>
@@ -3878,6 +3881,7 @@ function updateSelectionPanel() {
       </div>`;
     document.getElementById('selWallName').onchange = e => { if (isEntityLocked(w)) { e.target.value = w.name; return; } if (!setWallName(w, e.target.value)) e.target.value = w.name; else updateSelectionPanel(); };
     document.getElementById('selWallStato').onchange = e => { if (isEntityLocked(w)) return; w.stato = e.target.value; draw2D(); if (state.mode === '3d') build3D(); };
+    { const pc = document.getElementById('selWallPort'); if (pc) pc.onchange = e => { if (isEntityLocked(w)) return; w.portante = e.target.checked; if (!w.portante) delete w.portante; checkpoint(); draw2D(); }; }   /* v27.0 */
     document.getElementById('selWallMat').onchange = e => { if (isEntityLocked(w)) return; w.material = e.target.value; delete w.color; updateSelectionPanel(); draw2D(); if (state.mode === '3d') build3D(); };
     bindColorPicker('selWallCol', c => { if (isEntityLocked(w)) return; w.color = c; w.cu = 1; draw2D(); if (state.mode === '3d') build3D(); });
     const ti = document.getElementById('selWallThickness');
@@ -3961,9 +3965,11 @@ function updateSelectionPanel() {
       <label>Verso apertura</label>
       <select id="dSide"><option value="1" ${doorProps(d).side===1?'selected':''}>Lato A</option><option value="-1" ${doorProps(d).side===-1?'selected':''}>Lato B</option></select>
       <label>Angolo apertura (°)</label>
-      <input type="number" id="dAng" value="${doorProps(d).ang}" min="10" max="180" step="5">`;
+      <input type="number" id="dAng" value="${doorProps(d).ang}" min="10" max="180" step="5">
+      <label>Stato</label><select id="opSt"><option value=""${!d.stato ? ' selected' : ''}>Esistente</option><option value="nuovo"${d.stato === 'nuovo' ? ' selected' : ''}>Nuova apertura (giallo: si demolisce il muro)</option><option value="demolire"${d.stato === 'demolire' ? ' selected' : ''}>Da chiudere (rosso: tamponamento)</option></select>`;
     const dUp = () => { draw2D(); if (state.mode === '3d') build3D(); };
     document.getElementById('dKind').onchange = e => { if (isEntityLocked(d)) return; d.kind = e.target.value; dUp(); };
+    document.getElementById('opSt').onchange = e => { if (isEntityLocked(d)) return; if (e.target.value) d.stato = e.target.value; else delete d.stato; checkpoint(); dUp(); };   /* v26.9 */
     document.getElementById('dHinge').onchange = e => { if (isEntityLocked(d)) return; d.hinge = e.target.value; dUp(); };
     document.getElementById('dSide').onchange = e => { if (isEntityLocked(d)) return; d.side = parseInt(e.target.value); dUp(); };
     document.getElementById('dAng').oninput = e => { if (isEntityLocked(d)) return; const v = numFieldValue(e.target, 10, 180); if (v === null) return; d.ang = v; draw2D(); };
@@ -3990,6 +3996,7 @@ function updateSelectionPanel() {
       <select id="selWKind"><option value="hinged"${w.kind !== 'slide' ? ' selected' : ''}>A battente</option><option value="slide"${w.kind === 'slide' ? ' selected' : ''}>Scorrevole</option></select>
       <label>Ante</label>
       <select id="selPanes">${[1, 2, 3, 4].map(n => `<option value="${n}"${(w.panes || 1) === n ? ' selected' : ''}>${n} ant${n === 1 ? 'a' : 'e'}</option>`).join('')}</select>
+      <label>Stato</label><select id="opStW"><option value=""${!w.stato ? ' selected' : ''}>Esistente</option><option value="nuovo"${w.stato === 'nuovo' ? ' selected' : ''}>Nuova apertura (giallo: si demolisce il muro)</option><option value="demolire"${w.stato === 'demolire' ? ' selected' : ''}>Da chiudere (rosso: tamponamento)</option></select>
       <label>Oscurante</label>
       <select id="selOsc"><option value=""${!w.osc ? ' selected' : ''}>Nessuno</option><option value="tap"${w.osc === 'tap' ? ' selected' : ''}>Tapparella con cassonetto</option><option value="per"${w.osc === 'per' ? ' selected' : ''}>Persiane</option><option value="scu"${w.osc === 'scu' ? ' selected' : ''}>Scuri interni</option></select>
       ${w.osc ? '<button class="action" id="selOscSide" style="margin-top:4px;font-size:11px">⇄ Lato esterno: ' + (w.oscSide ? 'scelto a mano' : 'automatico') + ' (inverti)</button>' : ''}
@@ -4002,6 +4009,7 @@ function updateSelectionPanel() {
       { const wl = state.walls.find(x => x.id === w.wallId), L = wl ? Math.hypot(wl.p2.x - wl.p1.x, wl.p2.y - wl.p1.y) : 0; if (L && v > L + 1e-6) { toast('Il muro è lungo ' + L.toFixed(2).replace('.', ',') + ' m: la finestra non ci sta'); return; } } w.width = v; clampDoorWindowT(w); refreshPosSlider(w); draw2D(); if (state.mode === '3d') build3D(); };
     document.getElementById('selHeight').oninput = e => { if (isEntityLocked(w)) return; const v = numFieldValue(e.target, 0.3, 3); if (v === null) return; w.height = v; draw2D(); if (state.mode === '3d') build3D(); };
     document.getElementById('selSill').oninput = e => { if (isEntityLocked(w)) return; const v = numFieldValue(e.target, 0, 3); if (v === null) return; w.sillHeight = v; draw2D(); if (state.mode === '3d') build3D(); };
+    document.getElementById('opStW').onchange = e => { if (isEntityLocked(w)) return; if (e.target.value) w.stato = e.target.value; else delete w.stato; checkpoint(); draw2D(); if (state.mode === '3d') build3D(); };   /* v26.9 */
     document.getElementById('selOsc').onchange = e => { if (isEntityLocked(w)) return; if (e.target.value) w.osc = e.target.value; else { delete w.osc; delete w.oscSide; } checkpoint(); updateSelectionPanel(); if (state.mode === '3d') build3D(); };
     { const b = document.getElementById('selOscSide'); if (b) b.onclick = () => { if (isEntityLocked(w)) return; const cur = w.oscSide || winExtSide(w); w.oscSide = -cur; checkpoint(); updateSelectionPanel(); if (state.mode === '3d') build3D(); else toast('Lato invertito: lo vedi nel 3D'); }; }
     document.getElementById('selPanes').onchange = e => { if (isEntityLocked(w)) return; w.panes = +e.target.value; draw2D(); if (state.mode === '3d') build3D(); };
@@ -4934,6 +4942,16 @@ function winExtSide(wi) {   /* v26.6: +1 = lato del muro verso l'esterno nel rif
   return a && !b ? 1 : (!a && b ? -1 : 1);
 }
 /* v26.8 · oscuranti in pianta: tapparella = tratteggio sul filo esterno con guide; persiane = ante aperte contro il muro esterno; scuri = ante ripiegate all'interno */
+/* v26.9 · stato delle aperture in pianta: nuova apertura = giallo nel vano (si demolisce), da chiudere = rosso (tamponamento) */
+function drawOpeningStato(o) {
+  if (!o || !o.stato || !isEntityVisible(o) || window.__noStato) return;
+  const wl = state.walls.find(x => x.id === o.wallId); if (!wl) return;
+  const p = worldToScreen(wl.p1.x + (wl.p2.x - wl.p1.x) * o.t, wl.p1.y + (wl.p2.y - wl.p1.y) * o.t), hw = (+o.width || 0.9) / 2 * viewScale, th = getWallThickness(wl) * viewScale;
+  ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(getWallScreenAngle(wl));
+  ctx.globalAlpha = o.stato === 'demolire' ? 0.85 : 0.6; ctx.fillStyle = o.stato === 'demolire' ? '#ef4444' : '#facc15'; ctx.fillRect(-hw, -th / 2, hw * 2, th);
+  ctx.globalAlpha = 1; ctx.strokeStyle = '#111827'; ctx.lineWidth = 1; ctx.strokeRect(-hw, -th / 2, hw * 2, th);
+  ctx.restore();
+}
 function drawWindowOsc(wi) {
   if (!wi || !wi.osc || !isEntityVisible(wi)) return;
   const wl = state.walls.find(x => x.id === wi.wallId); if (!wl) return;
@@ -11423,27 +11441,30 @@ updateRoomList();
     add('Intonaci e tinteggiature', 'tin_est', 'Tinteggiatura esterna facciate, due mani', 'm²', intE);
 
     // serramenti (solo su muri non da demolire)
-    const dg = {}, wg = {};
+    const dg = {}, wg = {}, ops = {ap: {a: 0, n: []}, tp: {a: 0, n: []}};
+    const opSt = (o, w, h) => { if (o.stato === 'nuovo') { ops.ap.a += w * h; ops.ap.n.push(cm(w) + '×' + cm(h)); } else if (o.stato === 'demolire') { ops.tp.a += w * h; ops.tp.n.push(cm(w) + '×' + cm(h)); } };   /* v26.9 */
     state.doors.filter(d => isEntityVisible(d) && !isDemo(state.walls.find(w => w.id === d.wallId))).forEach(d => {
-      const P = doorProps(d); if (P.kind === 'open') return;
+      const P = doorProps(d); opSt(d, +d.width || 0.9, +d.height || 2.1); if (d.stato === 'demolire') return; if (P.kind === 'open') return;
       const k = `por_${P.kind}_${cm(+d.width || 0.9)}x${cm(+d.height || 2.1)}`;
       (dg[k] || (dg[k] = {k, desc: `Porta interna ${DOORK[P.kind]} ${cm(+d.width || 0.9)}×${cm(+d.height || 2.1)} cm, completa di telaio e ferramenta`, n: 0})).n++;
     });
     let dav = 0; const osc = {};
     state.windows.filter(d => isEntityVisible(d) && !isDemo(state.walls.find(w => w.id === d.wallId))).forEach(d => {
-      const w = +d.width || 1.2, h = +d.height || 1.2, k = `fin_${cm(w)}x${cm(h)}`;
+      const w = +d.width || 1.2, h = +d.height || 1.2, k = `fin_${cm(w)}x${cm(h)}`; opSt(d, w, h); if (d.stato === 'demolire') return;
       (wg[k] || (wg[k] = {k, desc: `Serramento esterno ${cm(w)}×${cm(h)} cm, completo di vetrocamera`, n: 0})).n++;
       dav += w; if (d.osc) { const ko = 'osc_' + d.osc; (osc[ko] || (osc[ko] = {k: ko, a: 0, n: []})).a += w * h; osc[ko].n.push(cm(w) + '×' + cm(h)); }
     });
     Object.values(dg).sort((a, b) => a.k.localeCompare(b.k)).forEach(g => add('Serramenti', g.k, g.desc, 'n.', g.n));
     Object.values(wg).sort((a, b) => a.k.localeCompare(b.k)).forEach(g => add('Serramenti', g.k, g.desc, 'n.', g.n));
     { const OD = {osc_tap: 'Tapparella avvolgibile in PVC/alluminio con guide, cassonetto coibentato e comando', osc_per: 'Persiane a battente in alluminio o legno, con cardini e ferramenta', osc_scu: 'Scuri interni in legno, con cerniere e ferramenta'}; Object.values(osc).forEach(o => add('Serramenti', o.k, OD[o.k], 'm²', o.a, o.n.join('; '))); }
+    add('Demolizioni e rimozioni', 'ap_nuova', 'Apertura di nuovo vano in muratura esistente, compresi taglio, demolizione, architrave o cerchiatura (da dimensionare), riquadratura e trasporto a discarica', 'm²', ops.ap.a, ops.ap.n.join('; '));
+    add('Murature e tramezzi', 'tamponamento', 'Tamponamento di vano esistente in muratura, compresi ammorsamenti, intonaco sulle due facce e rimozione del serramento', 'm²', ops.tp.a, ops.tp.n.join('; '));
     add('Serramenti', 'davanzali', 'Davanzali e soglie in pietra (sviluppo luce finestre)', 'ml', dav);
 
     // solai di interpiano e coperture
     if (window.SCfl) {
       const sg = {}, bump = (key, desc, um, q, nm) => { const g = sg[key] || (sg[key] = {key, desc, um, q: 0, n: []}); g.q += q; g.n.push(nm); };
-      SCfl.slabs().forEach(s => bump('solaio_' + cm(s.t), `Solaio di interpiano in laterocemento sp. ${cm(s.t)} cm, compresi cordoli e finitura intradosso`, 'm²', s.area, s.floor.name));
+      SCfl.slabs().forEach(s => { const sv = window.SCstr && SCstr.slabVoce(s); bump(sv ? sv.key : 'solaio_' + cm(s.t), sv ? sv.desc : `Solaio di interpiano in laterocemento sp. ${cm(s.t)} cm, compresi cordoli e finitura intradosso`, 'm²', s.area, s.floor.name); });   /* v27.0: tipo dall'orditura */
       const TN = {doppia: 'a due falde', singola: 'a falda singola', padiglione: 'a padiglione', piana: 'piana'};
       SCfl.roofs().forEach(R => {
         const t = R.roof.type, nm = R.floor.name;
@@ -11504,6 +11525,7 @@ updateRoomList();
       <div class="cmp-head"><h2>Computo metrico estimativo</h2>
         <button class="wt-btn" id="cmpCsv" title="Scarica CSV per Excel">CSV</button>
         <button class="wt-btn" id="cmpPrint" title="Stampa o salva PDF">Stampa</button>
+        <button class="wt-btn" id="cmpPrev" title="Preventivo per il cliente" style="background:#1677a8;color:#fff">Preventivo</button>
         <button class="wt-btn" id="cmpClose" title="Chiudi">×</button></div>
       <div class="cmp-tabs"><button data-t="voci">Computo</button><button data-t="quadro">Quadro economico</button><button data-t="locali">Locali</button><button data-t="opz">Opzioni</button></div>
       <div class="cmp-body" id="cmpBody"></div>
@@ -11513,6 +11535,7 @@ updateRoomList();
     panel.querySelector('#cmpClose').onclick = () => panel.classList.add('prova-hide');
     panel.querySelector('#cmpCsv').onclick = csv;
     panel.querySelector('#cmpPrint').onclick = printOut;
+    panel.querySelector('#cmpPrev').onclick = prevDlg;
     panel.querySelector('.cmp-tabs').onclick = e => { const b = e.target.closest('[data-t]'); if (b) { tab = b.dataset.t; render(); } };
     const body = panel.querySelector('#cmpBody');
     body.addEventListener('change', e => {
@@ -11689,6 +11712,88 @@ updateRoomList();
     w.document.close();
   }
 
+  /* ---------- v27.2 · PREVENTIVO PER IL CLIENTE ----------
+     Dal computo: intestazione della ditta (stessi dati e logo del cartiglio di stampa), cliente, numero e data, oggetto,
+     voci raggruppate per categoria (dettagliate con quantità e prezzi, oppure solo descrizioni e totali per categoria),
+     sconto, oneri della sicurezza, IVA, totale, condizioni modificabili (salvate per i prossimi preventivi), pianta e vista 3D, firme. */
+  const PCOND = 'Validità dell\'offerta: {gg} giorni dalla data.\nPagamento: 30% all\'accettazione, 40% a metà lavori, saldo a fine lavori.\nSono esclusi: pratiche edilizie e spese tecniche (se non indicate), oneri di occupazione suolo pubblico, opere non descritte.\nI prezzi si intendono per lavori eseguiti in condizioni normali; eventuali varianti saranno concordate per iscritto.\nComputi e quantità sono ricavati dal disegno e vanno verificati in cantiere.';
+  function prevDlg() {
+    R = compute();
+    const P = Object.assign({n: '', gg: 30, mode: 'det', sc: 0, img: true, img3: true, cond: PCOND}, appSettings.prev || {}), m = meta();
+    const num = P.next || ((new Date().getFullYear()) + '/' + String(1).padStart(3, '0'));
+    const bg = document.createElement('div'); bg.className = 'prova-modal-bg'; bg.style.zIndex = 1200;
+    const ist = 'width:100%;box-sizing:border-box;padding:7px 8px;border-radius:6px;border:1px solid #475569;background:#12151f;color:#e5e7eb;font:14px sans-serif';
+    const has3 = typeof renderer !== 'undefined' && renderer && renderer.domElement && state.mode === '3d';
+    bg.innerHTML = `<div class="prova-modal" style="width:min(600px,100%)"><h3 style="margin:0 0 8px">📝 Preventivo per il cliente</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <label style="font-size:12px">Numero<input data-p="num" style="${ist}" value="${esc(num)}"></label>
+        <label style="font-size:12px">Validità (giorni)<input data-p="gg" inputmode="numeric" style="${ist}" value="${esc(P.gg)}"></label>
+        <label style="font-size:12px">Cliente<input data-p="cli" style="${ist}" value="${esc(m.client || (state.cart && state.cart.committente) || '')}"></label>
+        <label style="font-size:12px">Indirizzo lavori<input data-p="ind" style="${ist}" value="${esc(m.address || (state.cart && state.cart.indirizzo) || '')}"></label>
+        <label style="font-size:12px;grid-column:1/3">Oggetto<input data-p="ogg" style="${ist}" value="${esc((state.cart && state.cart.oggetto) || m.name || '')}" placeholder="es. Ristrutturazione bagno"></label>
+        <label style="font-size:12px">Dettaglio<select data-p="mode" style="${ist}"><option value="det"${P.mode === 'det' ? ' selected' : ''}>Voci con quantità e prezzi</option><option value="cat"${P.mode === 'cat' ? ' selected' : ''}>Descrizioni e totali per categoria</option></select></label>
+        <label style="font-size:12px">Sconto %<input data-p="sc" inputmode="decimal" style="${ist}" value="${esc(P.sc)}"></label>
+      </div>
+      <label style="font-size:12px;display:block;margin-top:8px">Condizioni (restano per i prossimi preventivi; {gg} = giorni di validità)<textarea data-p="cond" rows="6" style="${ist};font-size:12.5px">${esc(P.cond)}</textarea></label>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:6px;font-size:13px"><label><input type="checkbox" data-p="img"${P.img ? ' checked' : ''}> Pianta</label><label${has3 ? '' : ' style="opacity:.5" title="Apri il 3D e inquadra la vista prima di creare il preventivo"'}><input type="checkbox" data-p="img3"${P.img3 && has3 ? ' checked' : ''}${has3 ? '' : ' disabled'}> Vista 3D attuale</label></div>
+      <div style="font-size:11.5px;color:#9ca3b8;margin-top:6px">Ditta e logo sono quelli del cartiglio (Stampa in scala). Le voci senza prezzo non vengono messe nel preventivo.</div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px"><button class="wt-btn" data-b="x">Annulla</button><button class="wt-btn" data-b="go" style="background:#1677a8;color:#fff">Crea preventivo</button></div></div>`;
+    document.body.appendChild(bg);
+    ['pointerdown', 'touchstart', 'wheel'].forEach(ev => bg.addEventListener(ev, e => e.stopPropagation(), {passive: true}));
+    bg.addEventListener('click', e => {
+      const b = e.target.closest('[data-b]'); if (!b) return; if (b.dataset.b === 'x') { bg.remove(); return; }
+      const g = k => bg.querySelector('[data-p="' + k + '"]'), V = {num: g('num').value.trim(), gg: Math.max(1, parseInt(g('gg').value) || 30), cli: g('cli').value.trim(), ind: g('ind').value.trim(), ogg: g('ogg').value.trim(), mode: g('mode').value, sc: Math.max(0, Math.min(100, parseFloat(String(g('sc').value).replace(',', '.')) || 0)), cond: g('cond').value, img: g('img').checked, img3: g('img3').checked};
+      const nx = V.num.replace(/(\d+)(?!.*\d)/, d => String(+d + 1).padStart(d.length, '0'));
+      appSettings.prev = {gg: V.gg, mode: V.mode, sc: V.sc, img: V.img, img3: V.img3, cond: V.cond, next: nx}; try { persistSettings(); } catch (_) {}
+      bg.remove(); prevOut(V);
+    });
+  }
+  function planSVG() {
+    try {
+      if (!window.SCprint || !SCprint.renderPlan || !SCprint.bboxOf) return '';
+      const fid = state.currentFloorId, B = SCprint.bboxOf(fid); if (!B) return '';
+      const vw = 700, vh = 440, bw = Math.max(1, B.x1 - B.x0 + 1.2), bh = Math.max(1, B.y1 - B.y0 + 1.2), pxm = Math.min(vw / bw, vh / bh), s = 1000 / (pxm * 25.4 / 96);
+      const r = SCprint.renderPlan(fid, (B.x0 + B.x1) / 2, (B.y0 + B.y1) / 2, vw, vh, s, {color: 'bn', wallDims: true, abaco: false, secTrace: false, wallNames: false}, 'comp');
+      return `<svg viewBox="0 0 ${vw} ${vh}" width="100%" style="max-height:115mm" xmlns="http://www.w3.org/2000/svg"><defs>${r.defs || ''}</defs><rect width="${vw}" height="${vh}" fill="#fff"/>${r.body || ''}</svg>`;
+    } catch (e) { console.warn('pianta nel preventivo', e); return ''; }
+  }
+  function prevOut(V) {
+    R = compute();
+    const w = window.open('', '_blank'); if (!w) { toast('Consenti le finestre popup'); return; }
+    const D = Object.assign({n: '', r2: '', r3: ''}, appSettings.cartDitta || {}); let LG = ''; try { LG = localStorage.getItem('simplycad_logo_v1') || ''; } catch (_) {}
+    const L = ON().filter(v => price(v.key) > 0 && v.q > 0), cats = []; L.forEach(v => { let c = cats.find(x => x.n === v.cat); if (!c) cats.push(c = {n: v.cat, v: [], t: 0}); c.v.push(v); c.t += v.q * price(v.key); });
+    const lav = cats.reduce((s, c) => s + c.t, 0), sc = lav * V.sc / 100, net = lav - sc, sic = net * (opt.oneri || 0) / 100, imp = net + sic, iva = imp * (opt.iva || 0) / 100, tot = imp + iva;
+    let rows = '', n = 0;
+    cats.forEach(c => {
+      rows += `<tr class="cat"><td colspan="${V.mode === 'det' ? 6 : 3}">${esc(c.n)}</td></tr>`;
+      c.v.forEach(v => { n++; const q = v.q, p = price(v.key);
+        rows += V.mode === 'det' ? `<tr><td>${n}</td><td>${esc(v.desc)}</td><td>${esc(v.um)}</td><td class="r">${it(q)}</td><td class="r">${it(p)}</td><td class="r">${it(q * p)}</td></tr>` : `<tr><td>${n}</td><td colspan="2">${esc(v.desc)} <span class="q">(${it(q)} ${esc(v.um)})</span></td></tr>`; });
+      rows += `<tr class="sub"><td></td><td colspan="${V.mode === 'det' ? 4 : 1}">Totale ${esc(c.n)}</td><td class="r">${it(c.t)}</td></tr>`;
+    });
+    const img3 = V.img3 && typeof renderer !== 'undefined' && renderer ? (() => { try { renderer.render(scene, camera); return renderer.domElement.toDataURL('image/jpeg', 0.85); } catch (_) { return ''; } })() : '';
+    const pl = V.img ? planSVG() : '', oggi = new Date().toLocaleDateString('it-IT');
+    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Preventivo ${esc(V.num)} ${esc(V.cli)}</title><style>
+      @page{size:A4;margin:14mm}body{font-family:Arial,Helvetica,sans-serif;color:#111;font-size:10.5pt;margin:0;padding:16px}
+      .hd{display:flex;gap:16px;align-items:flex-start;border-bottom:2px solid #111;padding-bottom:8px}.hd img{max-height:22mm;max-width:55mm}.hd .dt{font-size:9.5pt;color:#333;line-height:1.4}.hd b{font-size:13pt;color:#111}
+      .tt{display:flex;justify-content:space-between;margin:14px 0 6px;gap:20px}.box{border:1px solid #999;border-radius:4px;padding:6px 10px;font-size:10pt;line-height:1.45;flex:1}
+      h1{font-size:16pt;margin:12px 0 2px}table{width:100%;border-collapse:collapse;margin-top:8px}th,td{border-bottom:1px solid #ccc;padding:4px 5px;vertical-align:top;text-align:left}
+      th{background:#eee;font-size:9pt}.r{text-align:right;white-space:nowrap}tr.cat td{background:#f2f2f2;font-weight:bold;padding-top:8px}tr.sub td{font-style:italic;border-bottom:1.5px solid #888}.q{color:#555;font-size:9pt}
+      .tot{margin-top:10px;margin-left:auto;width:62%}.tot td{border:0;padding:3px 5px}.tot tr.g td{font-weight:bold;font-size:12pt;border-top:2px solid #111}
+      .cond{white-space:pre-wrap;font-size:9.5pt;line-height:1.45;border-top:1px solid #999;margin-top:14px;padding-top:6px}.imgs{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;page-break-inside:avoid}.imgs>div{flex:1;min-width:45%;border:1px solid #ccc;padding:4px}.imgs img{width:100%}
+      .firme{display:flex;justify-content:space-between;margin-top:26px;page-break-inside:avoid}.firme div{width:42%;border-top:1px solid #111;padding-top:4px;font-size:9.5pt;text-align:center}
+      @media print{.np{display:none}}</style></head><body>
+      <div class="hd">${LG ? `<img src="${LG}">` : ''}<div class="dt"><b>${esc(D.n || 'La tua ditta')}</b><br>${esc(D.r2 || '')}<br>${esc(D.r3 || '')}</div></div>
+      <h1>Preventivo n. ${esc(V.num || '—')}</h1><div>del ${oggi} · valido ${V.gg} giorni</div>
+      <div class="tt"><div class="box"><b>Cliente</b><br>${esc(V.cli || '—')}<br>${esc(V.ind || '')}</div><div class="box"><b>Oggetto</b><br>${esc(V.ogg || 'Lavori edili')}</div></div>
+      <table><thead>${V.mode === 'det' ? '<tr><th>N.</th><th>Descrizione</th><th>U.M.</th><th class="r">Quantità</th><th class="r">Prezzo €</th><th class="r">Importo €</th></tr>' : '<tr><th>N.</th><th colspan="1">Descrizione dei lavori</th><th class="r">Importo €</th></tr>'}</thead><tbody>${rows || '<tr><td colspan="6">Nessuna voce con prezzo: inserisci i prezzi nel computo.</td></tr>'}</tbody></table>
+      <table class="tot"><tr><td>Totale lavori</td><td class="r">€ ${it(lav)}</td></tr>${V.sc ? `<tr><td>Sconto ${it(V.sc, 1)}%</td><td class="r">− € ${it(sc)}</td></tr><tr><td>Totale scontato</td><td class="r">€ ${it(net)}</td></tr>` : ''}${opt.oneri ? `<tr><td>Oneri della sicurezza ${it(opt.oneri, 1)}%</td><td class="r">€ ${it(sic)}</td></tr>` : ''}<tr><td>Imponibile</td><td class="r">€ ${it(imp)}</td></tr><tr><td>IVA ${it(opt.iva || 0, 1)}%</td><td class="r">€ ${it(iva)}</td></tr><tr class="g"><td>TOTALE</td><td class="r">€ ${it(tot)}</td></tr></table>
+      ${pl || img3 ? `<div class="imgs">${pl ? `<div>${pl}<div class="q">Pianta (indicativa)</div></div>` : ''}${img3 ? `<div><img src="${img3}"><div class="q">Vista 3D (indicativa)</div></div>` : ''}</div>` : ''}
+      <div class="cond">${esc(String(V.cond || '').replace(/\{gg\}/g, V.gg))}</div>
+      <div class="firme"><div>La ditta</div><div>Il cliente, per accettazione</div></div>
+      <p class="np"><button onclick="print()">Stampa / salva PDF</button></p></body></html>`);
+    w.document.close();
+  }
+
   /* ---------- voci di menu: Progetto > Computo e preventivo ---------- */
   const an = Array.from(document.querySelectorAll('[data-menu="project"] .menu-label')).find(x => x.textContent.trim() === 'Analisi');
   if (an && !document.getElementById('computoBtn')) {
@@ -11698,7 +11803,8 @@ updateRoomList();
       mk('computoBtn', '📋', 'Computo metrico estimativo', 'voci e prezzi', () => open('voci')),
       mk('economicoBtn', '💶', 'Quadro economico', '', () => open('quadro')),
       mk('computoCsvBtn', '⬇️', 'Esporta computo', 'CSV', csv),
-      mk('computoPrintBtn', '🖨', 'Stampa computo e quadro economico', 'PDF', printOut)];
+      mk('computoPrintBtn', '🖨', 'Stampa computo e quadro economico', 'PDF', printOut),
+      mk('preventivoBtn', '📝', 'Preventivo per il cliente', 'PDF', prevDlg)];
     const sep = document.createElement('div'); sep.className = 'menu-sep';
     an.before(...els, sep);
     const cost = document.getElementById('costBtn'); if (cost) { const l = cost.querySelector('.mi-label'); if (l) l.textContent = 'Stima economica rapida (€/m²)'; }
@@ -13914,7 +14020,7 @@ updateRoomList();
     door: {c: '#fb923c'}, window: {c: '#2dd4bf'}, offset: {c: '#e879f9'}, rescale: {c: '#facc15'},
     line: {c: '#38bdf8'}, circle: {c: '#38bdf8'}, arc: {c: '#38bdf8'}, measure: {c: '#f472b6'}, dim: {c: '#f472b6'}, room: {c: '#a3e635'}, furniture: {c: '#c084fc'}, stairs: {c: '#c084fc'},
     text: {c: '#fde047'}, zone: {c: '#34d399'}, pillar: {c: '#94a3b8'}, hole: {c: '#fb7185'}, moveBg: {c: '#94a3b8'}, box: {c: '#22d3ee'},
-    cgcp: {c: '#e2e8f0'}, cgceil: {c: '#a78bfa'}, cgbeam: {c: '#f472b6'}, cgled: {c: '#eab308'}, cgimp: {c: '#22d3ee'}, cgcol: {c: '#22d3ee'}, cgpt: {c: '#22d3ee'}
+    cgcp: {c: '#e2e8f0'}, cgceil: {c: '#a78bfa'}, cgbeam: {c: '#f472b6'}, cgled: {c: '#eab308'}, cgimp: {c: '#22d3ee'}, cgcol: {c: '#22d3ee'}, cgpt: {c: '#22d3ee'}, strord: {c: '#f59e0b'}, strbeam: {c: '#f59e0b'}
   };
   const touch = () => !!(window.SClastPT && SClastPT() !== 'mouse');
   const guideOn = () => appSettings.guide !== false;
@@ -14043,6 +14149,7 @@ updateRoomList();
     if (t === 'zone') { const bz = !!(window.SCzone && SCzone.busy()); return mk(bz ? 'Area · tocca il vertice successivo, poi «Chiudi area»' : 'Area · tocca il primo vertice', bz ? [['zclose', '✔ Chiudi area'], ['undo', '↩ Togli punto'], ['done', '✔ Fine']] : T2); }
     if (t === 'offset') return mk('Parallela · tocca il muro o la forma da cui partire');
     if (t === 'cgcp') return mk('Controparete · tocca il muro dal lato dove va');
+    if (t === 'strord' || t === 'strbeam') return mk((t === 'strord' ? 'Orditura solaio' : 'Trave') + ' · ' + (window.SCstr && SCstr.busy() ? 'tocca il secondo punto' : 'tocca il primo punto'), [['done', '✔ Fine']]);
     if (t === 'cgpt') return mk('Punto impianto · ' + (window.SCcs && SCcs.ptType() && FURNITURE[SCcs.ptType()] ? FURNITURE[SCcs.ptType()].name + ': tocca dove metterlo' : 'scegli dalla libreria'), [['ptlib', '☰ Libreria'], ['done', '✔ Fine']]);
     if (t === 'cgcol') return mk(window.SCcs && SCcs.colSrc() ? 'Collega · tocca i punti da collegare alla partenza' : 'Collega · tocca il punto di partenza (di solito il quadro)', [['done', '✔ Fine']]);
     if (t === 'cgceil' || t === 'cgbeam' || t === 'cgled' || t === 'cgimp') { const n = window.SCcs ? SCcs.count() : 0, nm = t === 'cgceil' ? 'Controsoffitto' : t === 'cgled' ? 'Profilo LED' : t === 'cgimp' ? 'Impianto' : 'Falsa trave', M = t === 'cgceil' && window.SCcs ? SCcs.mode() : 'pts';
@@ -17527,7 +17634,10 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     cgbeam: 'M3 5h18M7 5v6h10V5M3 15h4M10 15h4M17 15h4',
     cgled: 'M3 12h18M6 8v8M18 8v8M10 5l1 2M14 5l-1 2',
     cgimp: 'M4 18h7V8h9M4 14h3M16 16h4',
-    cgcol: 'M5 6h6v12h8M5 6a1.5 1.5 0 1 0 0 .01M19 18a1.5 1.5 0 1 0 0 .01'
+    cgcol: 'M5 6h6v12h8M5 6a1.5 1.5 0 1 0 0 .01M19 18a1.5 1.5 0 1 0 0 .01',
+    strord: 'M3 12h18M3 12l4-3M3 12l4 3M21 12l-4-3M21 12l-4 3M8 16l3-5M12 16l3-5',
+    strbeam: 'M3 9h18v6H3zM3 12h18',
+    strview: 'M4 4h16v16H4zM4 4l16 16M20 4L4 20'
   };
   const closeMenus = () => document.querySelectorAll('.menu-dropdown').forEach(m => m.classList.remove('open'));
   const pickTool = (t, msg) => { document.querySelectorAll('.tool').forEach(x => x.classList.toggle('active', x.dataset.tool === t)); state.tool = t; state.pendingPoint = null; try { measureStart = null; } catch (_) {} closeMenus(); if (msg) toast(msg); draw2D(); };
@@ -17546,6 +17656,9 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   const led = mkTool('cgled', 'Profilo LED', 'Profilo LED: tocca i punti della linea dove vuoi, di qualsiasi lunghezza, poi «Fine linea»', 'cgled', () => pickTool('cgled', 'Profilo LED: tocca i punti della linea, poi «Fine linea»'));
   const imp = mkTool('cgimp', 'Linea libera', 'Impianti: tubi e cavi in pianta, a pavimento, sopra il controsoffitto o a quota libera. Colori: acqua calda rosso, fredda blu, scarichi nero, fase marrone, neutro grigio, terra giallo', 'cgimp', () => { SCcs.showImpOn(); pickTool('cgimp', 'Impianto: tocca i punti del percorso, poi «Fine linea»'); });
   const colb = mkTool('cgcol', 'Collega punti', 'Collega punti: tocca la partenza (quadro) e poi le prese, le luci e gli interruttori: ognuno viene collegato con un percorso ad angolo retto', 'cgcol', () => { pickTool('cgcol'); SCcs.colArm(); });
+  const stOrd = mkTool('strord', 'Orditura solaio', 'Orditura del solaio: tocca due punti nel verso dei travetti; poi scegli tipo e spessore (vale per il solaio sopra questo piano)', 'strord', () => { SCstr.setView(true); pickTool('strord', 'Orditura: tocca il primo punto'); });
+  const stBeam = mkTool('strbeam', 'Trave', 'Trave: tocca inizio e fine, si mette sotto il solaio', 'strbeam', () => { SCstr.setView(true); pickTool('strbeam', 'Trave: tocca l\'inizio'); });
+  const stView = mkTool(null, 'Pianta strutturale', 'Mostra o nasconde la pianta strutturale: muri portanti campiti, orditure, travi e pilastri; arredi nascosti', 'strview', () => { closeMenus(); SCstr.setView(!SCstr.on()); toast(SCstr.on() ? 'Pianta strutturale' : 'Pianta normale'); });
   const autoe = mkTool(null, 'Collega impianto elettrico', 'Collega da solo luci agli interruttori e interruttori e prese al quadro (percorsi ad angolo retto, con le discese). Rifacendo il comando i collegamenti automatici vengono rigenerati', 'cgcol', () => { closeMenus(); SCcs.autoElec(); });
   const ledf = mkTool(null, 'Segui profilo', 'Segui profilo: la striscia LED copia il contorno dell\'oggetto selezionato (muro, controparete, controsoffitto, disegno)', 'cgled', () => { closeMenus(); SCcs.follow(); });
   if (oldCgw) oldCgw.hidden = true; if (oldCp) oldCp.hidden = true;
@@ -17566,8 +17679,9 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     } }
   const keep = document.createElement('div'); keep.hidden = true; if (oldCgw) keep.appendChild(oldCgw); if (oldCp) keep.appendChild(oldCp);
   const groups = [
-    ['Muri e aperture', ['wall', 'door', 'window', 'pillar', 'stairs', 'hole']],
+    ['Muri e aperture', ['wall', 'door', 'window', 'stairs', 'hole']],
     ['Cartongesso', [cgw, cgcp, ceil, beam, led, ledf]],
+    ['Strutture', ['pillar', stOrd, stBeam, stView]],
     ['Locali e superfici', ['room', 'zone']],
     ['Quote e annotazioni', ['dim', 'measure', 'text', 'line', 'circle', 'arc']],
     ['Arredi', ['furniture']]
@@ -19477,9 +19591,9 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       sd: $('showDimensions').checked, sn: appSettings.showWallNames, cw: Object.getOwnPropertyDescriptor(c2d, 'clientWidth'), ch: Object.getOwnPropertyDescriptor(c2d, 'clientHeight')};
     for (const k in _patCCache) delete _patCCache[k];
     for (const k in _statoPat) delete _statoPat[k];
-    let undo = null;
+    let undo = null, opKeep = null; const strPrev = appSettings.strView;
     try {
-      window.__printing = true;
+      window.__printing = true; appSettings.strView = v === 'str';
       Object.defineProperty(c2d, 'clientWidth', {get: () => vw, configurable: true}); Object.defineProperty(c2d, 'clientHeight', {get: () => vh, configurable: true});
       viewScale = 1000 / s / 25.4 * 96; viewOffset = {x: -cx * viewScale, y: cy * viewScale};
       state.sel = []; state.selected = null; state.tool = 'select'; state.pendingPoint = null; try { hover = null; hoverRaw = null; } catch (_) {} lastMouseWorld = null; measureStart = null;
@@ -19489,6 +19603,8 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       paintWallsDouble = paintWallsPaper;
       if (v === 'fatto' || v === 'prog') {   /* v16.0: stato di fatto (senza i muri nuovi) · stato di progetto (senza i demoliti), senza colori */
         state.walls = W0.filter(w => v === 'fatto' ? w.stato !== 'nuovo' : w.stato !== 'demolire').map(w => { const c = Object.assign({}, w); delete c.stato; return c; });
+        opKeep = {d: state.doors, w: state.windows}; const keepOp = o => v === 'fatto' ? o.stato !== 'nuovo' : o.stato !== 'demolire';   /* v26.9: aperture con stato */
+        state.doors = state.doors.filter(keepOp); state.windows = state.windows.filter(keepOp); window.__noStato = true;
         try { detectRooms(); } catch (_) {}
       }
       RV = state.rooms;
@@ -19500,6 +19616,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     } catch (e) { console.warn('stampa', e); }
     finally {
       if (undo) undo();
+      if (opKeep) { state.doors = opKeep.d; state.windows = opKeep.w; } window.__noStato = false; appSettings.strView = strPrev;
       if (state.walls !== W0) { state.walls = W0; state.rooms = R0; try { updateRoomList(); } catch (_) {} }
       window.__printing = false;
       if (keep.cw) Object.defineProperty(c2d, 'clientWidth', keep.cw); else delete c2d.clientWidth;
@@ -19537,7 +19654,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   const T = (x, y, t, fs, o = {}) => `<text x="${mm(x).toFixed(2)}" y="${mm(y).toFixed(2)}" font-family="Arial, Helvetica, sans-serif" font-size="${mm(fs).toFixed(2)}"${o.b ? ' font-weight="bold"' : ''}${o.a ? ` text-anchor="${o.a}"` : ''}${o.c ? ` fill="${o.c}"` : ''} dominant-baseline="${o.bl || 'alphabetic'}">${esc(t)}</text>`;
   const Ln = (x1, y1, x2, y2, w = 0.25) => `<line x1="${mm(x1).toFixed(2)}" y1="${mm(y1).toFixed(2)}" x2="${mm(x2).toFixed(2)}" y2="${mm(y2).toFixed(2)}" stroke="#000" stroke-width="${mm(w).toFixed(2)}"/>`;
   const Rc = (x, y, w, h, sw = 0.25, fill = 'none') => `<rect x="${mm(x).toFixed(2)}" y="${mm(y).toFixed(2)}" width="${mm(w).toFixed(2)}" height="${mm(h).toFixed(2)}" fill="${fill}" stroke="${sw ? '#000' : 'none'}" stroke-width="${mm(sw).toFixed(2)}"/>`;
-  const VNAME = {fatto: 'Stato di fatto', prog: 'Stato di progetto', comp: 'Comparativa (gialli e rossi)'};
+  const VNAME = {fatto: 'Stato di fatto', prog: 'Stato di progetto', comp: 'Comparativa (gialli e rossi)', str: 'Pianta strutturale'};
   function cartiglio(L, o, fl, idx, v) {
     const C = CARTV(), Dt = DITTA(), x = L.W - L.m - L.cartW, y = L.by, w = L.cartW, h = L.band; let s = Rc(x, y, w, h, 0.5);
     const rows = [16, 7, 7, 8, 6]; let yy = y;
@@ -19557,7 +19674,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     yy += rows[2]; s += Ln(x, yy, x + w, yy);
     /* riga 4: titolo tavola */
     const sz = detsOf(fl.id).map(secOf).filter(Boolean).map(x => x.name + '–' + x.name);   /* v22.4 */
-    const tit = (C.titolo ? C.titolo + (o.floors === 'all' && state.floors.length > 1 ? ' – ' + fl.name : '') : 'Pianta ' + fl.name.toLowerCase() + (sz.length ? ' e sezion' + (sz.length > 1 ? 'i ' : 'e ') + sz.join(', ') : '')) + (o.tav && o.tav !== 'comp' ? ' – ' + (VNAME[v] || '') : '');
+    const tit = (isElev(v) || isSezP(v)) ? vName(v) : (C.titolo ? C.titolo + (o.floors === 'all' && state.floors.length > 1 ? ' – ' + fl.name : '') : 'Pianta ' + fl.name.toLowerCase() + (sz.length ? ' e sezion' + (sz.length > 1 ? 'i ' : 'e ') + sz.join(', ') : '')) + (o.tav && o.tav !== 'comp' && o.tav !== 'set' && !isElev(v) && !isSezP(v) ? ' – ' + (VNAME[v] || '') : '');
     s += lab(x + 1.5, yy + 2.6, 'Elaborato') + T(x + 1.5, yy + 6.8, fitText(tit, w - 3, 3.6, true), 3.6, {b: 1});
     yy += rows[3]; s += Ln(x, yy, x + w, yy);
     /* riga 5: tav | scala | formato | data */
@@ -19623,7 +19740,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   function detSVG(L, o, fl, v) {
     return detsOf(fl.id).map((d, i) => {
       const w = Math.max(20, Math.min(d.w, L.vw)), h = Math.max(20, Math.min(d.h, L.vh)), x = Math.max(0, Math.min(d.x, L.vw - w)), y = Math.max(0, Math.min(d.y, L.vh - h));
-      const r = d.kind === 'sez' ? renderSez(d, mm(w), mm(h), o) : renderPlan(fl.id, d.c.x, d.c.y, mm(w), mm(h), d.s, o, v), id = 'dc' + Math.random().toString(36).slice(2, 8);
+      const r = d.kind === 'sez' ? renderSez(d, mm(w), mm(h), o) : d.kind === 'pro' ? renderElev(d.dir || 'pS', d.c.x, d.c.y, mm(w), mm(h), d.s, o) : renderPlan(fl.id, d.c.x, d.c.y, mm(w), mm(h), d.s, o, v), id = 'dc' + Math.random().toString(36).slice(2, 8);
       return `<g class="det" data-i="${i}"><g transform="translate(${mm(L.vx + x).toFixed(2)} ${mm(L.vy + y).toFixed(2)})"><defs><clipPath id="${id}"><rect width="${mm(w).toFixed(2)}" height="${mm(h).toFixed(2)}"/></clipPath>${r.defs}</defs>` +
         `<rect width="${mm(w).toFixed(2)}" height="${mm(h).toFixed(2)}" fill="#fff"/><g clip-path="url(#${id})"><g class="ddwg">${r.body}</g></g>` +
         `<rect width="${mm(w).toFixed(2)}" height="${mm(h).toFixed(2)}" fill="none" stroke="#000" stroke-width="${mm(0.35).toFixed(2)}"/>` +
@@ -19631,23 +19748,127 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
         `<text x="${mm(1.5).toFixed(2)}" y="${mm(3.6).toFixed(2)}" font-family="Arial, Helvetica, sans-serif" font-size="${mm(2.6).toFixed(2)}" font-weight="bold">${esc(fitText((d.t || 'Dettaglio') + ' – 1:' + d.s, Math.min(w, 70) - 3, 2.6, true))}</text></g></g>`;
     }).join('');
   }
+  /* ================================================================ v27.3 · PROSPETTI (viste dell'edificio da fuori, a linee, per le tavole)
+     Pittore: si disegnano i muri dal più lontano al più vicino (bianchi con contorno), con porte e finestre; poi i tetti.
+     Orientamento: in pianta l'alto è il Nord. Prospetto Sud = la facciata vista da sud. */
+  const PDIR = {pS: {n: 'Prospetto Sud'}, pN: {n: 'Prospetto Nord'}, pE: {n: 'Prospetto Est'}, pO: {n: 'Prospetto Ovest'}};
+  /* v27.4: il Nord si imposta nel cartiglio (gradi in senso orario dall'alto della pianta) */
+  const nordDeg = () => { const v = parseFloat(String((state.cart && state.cart.nord) || '0').replace(',', '.')); return isFinite(v) ? v : 0; };
+  const dirV = k => { const t = nordDeg() * Math.PI / 180, n = [Math.sin(t), Math.cos(t)], e = [Math.cos(t), -Math.sin(t)]; return k === 'pS' ? n : k === 'pN' ? [-n[0], -n[1]] : k === 'pE' ? [-e[0], -e[1]] : e; };
+  const isElev = v => !!PDIR[v], isSezP = v => /^sez:/.test(String(v || ''));
+  function elevGeom(k) {
+    const V = dirV(k), U = [V[1], -V[0]], dot = (p, a) => p.x * a[0] + p.y * a[1], W = [], RF = [];
+    state.walls.forEach(w => {
+      if (!isEntityVisible(w) || w.stato === 'demolire') return; const f = floorById(floorOf(w)); if (!f) return;
+      const ua = dot(w.p1, U), ub = dot(w.p2, U); if (Math.abs(ub - ua) < 0.03) return;
+      const z0 = f.elev || 0, z1 = z0 + getWallHeight(w), dx = w.p2.x - w.p1.x, dy = w.p2.y - w.p1.y, L = Math.hypot(dx, dy) || 1, cosU = Math.abs((dx * U[0] + dy * U[1]) / L), th = getWallThickness(w) / 2;
+      const nx = -dy / L, ny = dx / L, sgn = (nx * V[0] + ny * V[1]) > 0 ? -1 : 1, mid = {x: (w.p1.x + w.p2.x) / 2 + nx * th * sgn, y: (w.p1.y + w.p2.y) / 2 + ny * th * sgn};
+      const ops = [];
+      state.doors.concat(state.windows).forEach(o => {
+        if (o.wallId !== w.id || !isEntityVisible(o) || o.stato === 'demolire') return; const door = state.doors.includes(o), P = {x: w.p1.x + dx * o.t, y: w.p1.y + dy * o.t}, u = dot(P, U), hw = (+o.width || (door ? 0.9 : 1.2)) / 2 * cosU;
+        const b = door ? 0 : (+o.sillHeight || 0), h = +o.height || (door ? 2.1 : 1.2); ops.push({door, u0: u - hw, u1: u + hw, z0: z0 + b, z1: z0 + Math.min(getWallHeight(w), b + h), panes: o.panes || 1, kind: o.kind, o});
+      });
+      (Array.isArray(w.works) ? w.works : []).forEach(q => {   /* v27.4: fori, tagli e nicchie fatti dal prospetto */
+        if (!q || !(q.w > 0) || !(q.h > 0)) return; const vis = q.k !== 'niche' || ((q.f === 1 ? 1 : -1) * (nx * V[0] + ny * V[1]) < 0);
+        const P = {x: w.p1.x + dx / L * q.cx, y: w.p1.y + dy / L * q.cx}, u = dot(P, U), hw = q.w / 2 * cosU;
+        if (vis) ops.push({work: q.k, sh: q.sh || 'rect', u0: u - hw, u1: u + hw, z0: z0 + (+q.y || 0), z1: z0 + (+q.y || 0) + q.h});
+      });
+      W.push({u0: Math.min(ua, ub), u1: Math.max(ua, ub), z0, z1, depth: dot(mid, V), ops});
+    });
+    try {
+      (window.SCfl && SCfl.roofs ? SCfl.roofs() : []).forEach(R => {
+        if (!R || !R.res || !R.res.top) return; const base = (R.floor.elev || 0) + (SCfl.wallTopOf ? SCfl.wallTopOf(R.floor) : 2.7), T = R.res.top;
+        for (let k = 0; k + 8 < T.length; k += 9) { const P = [0, 3, 6].map(i => ({u: T[k + i] * U[0] + T[k + i + 1] * U[1], z: base + T[k + i + 2], d: T[k + i] * V[0] + T[k + i + 1] * V[1], X: T[k + i], Y: T[k + i + 1], Z: T[k + i + 2]})); const ax = P[1].X - P[0].X, ay = P[1].Y - P[0].Y, az = P[1].Z - P[0].Z, bx = P[2].X - P[0].X, by = P[2].Y - P[0].Y, bz = P[2].Z - P[0].Z, nx = ay * bz - az * by, ny = az * bx - ax * bz, nz = ax * by - ay * bx, nl = Math.hypot(nx, ny, nz) || 1; P.n = [nx / nl, ny / nl, nz / nl]; RF.push(P); }
+      });
+    } catch (_) {}
+    let u0 = Infinity, u1 = -Infinity, zt = 0; W.forEach(w => { u0 = Math.min(u0, w.u0); u1 = Math.max(u1, w.u1); zt = Math.max(zt, w.z1); }); RF.forEach(t => t.forEach(p => { u0 = Math.min(u0, p.u); u1 = Math.max(u1, p.u); zt = Math.max(zt, p.z); }));
+    if (!isFinite(u0)) { u0 = 0; u1 = 1; }
+    return {W: W.sort((a, b) => b.depth - a.depth), RF, u0, u1, z0: Math.min(0, ...sortedFloors().map(f => f.elev || 0)), z1: zt};
+  }
+  const elevCenter = k => { const G = elevGeom(k); return {x: (G.u0 + G.u1) / 2 - 0.4, y: (G.z0 + G.z1) / 2}; };
+  function renderElev(k, cx, cz, vw, vh, s, o) {
+    const R = makeRecorder(vw, vh, o.color), G = elevGeom(k), pxm = 1000 / s / 25.4 * 96, X = u => vw / 2 + (u - cx) * pxm, Y = z => vh / 2 - (z - cz) * pxm;
+    const lw = Math.max(0.6, pxm * 0.006);
+    /* terreno */
+    R.strokeStyle = '#000'; R.lineWidth = lw * 2.2; R.beginPath(); R.moveTo(X(G.u0 - 1.2), Y(0)); R.lineTo(X(G.u1 + 1.2), Y(0)); R.stroke();
+    R.lineWidth = lw * 0.6; for (let u = G.u0 - 1.2; u < G.u1 + 1.2; u += 0.35) { R.beginPath(); R.moveTo(X(u), Y(0)); R.lineTo(X(u - 0.2), Y(-0.2)); R.stroke(); }
+    /* muri dal più lontano al più vicino */
+    G.W.forEach(w => {
+      R.beginPath(); R.rect(X(w.u0), Y(w.z1), (w.u1 - w.u0) * pxm, (w.z1 - w.z0) * pxm); R.fillStyle = '__paper'; R.fill(); R.strokeStyle = '#000'; R.lineWidth = lw; R.stroke();
+      w.ops.forEach(p => {
+        if (p.work) {   /* lavorazione: contorno (tratteggiato se nicchia), con arco o cerchio */
+          const x0 = X(p.u0), x1 = X(p.u1), y0 = Y(p.z1), y1 = Y(p.z0), cxp = (x0 + x1) / 2, rw = (x1 - x0) / 2;
+          R.beginPath(); if (p.sh === 'round') R.ellipse(cxp, (y0 + y1) / 2, rw, (y1 - y0) / 2, 0, 0, Math.PI * 2); else if (p.sh === 'arch') { R.moveTo(x0, y1); R.lineTo(x0, y0 + rw); R.arc(cxp, y0 + rw, rw, Math.PI, 0); R.lineTo(x1, y1); R.closePath(); } else R.rect(x0, y0, x1 - x0, y1 - y0);
+          R.fillStyle = '__paper'; R.fill(); R.setLineDash(p.work === 'niche' ? [4, 3] : []); R.lineWidth = lw; R.strokeStyle = '#000'; R.stroke(); R.setLineDash([]); return;
+        }
+        const x0 = X(p.u0), x1 = X(p.u1), y0 = Y(p.z1), y1 = Y(p.z0), fr = Math.min(0.06 * pxm, (x1 - x0) / 5);
+        R.beginPath(); R.rect(x0, y0, x1 - x0, y1 - y0); R.fillStyle = '__paper'; R.fill(); R.lineWidth = lw; R.stroke();
+        R.beginPath(); R.rect(x0 + fr, y0 + fr, x1 - x0 - 2 * fr, y1 - y0 - (p.door ? fr : 2 * fr)); R.lineWidth = lw * 0.7; R.stroke();
+        if (!p.door) { const n = Math.max(1, Math.min(4, p.panes)); for (let i = 1; i < n; i++) { const x = x0 + fr + (x1 - x0 - 2 * fr) * i / n; R.beginPath(); R.moveTo(x, y0 + fr); R.lineTo(x, y1 - fr); R.stroke(); } R.beginPath(); R.moveTo(x0 - fr * 0.4, y1); R.lineTo(x1 + fr * 0.4, y1); R.lineWidth = lw * 1.6; R.stroke(); }
+        else { R.beginPath(); R.arc(p.o.hinge === 'R' ? x0 + fr * 2.2 : x1 - fr * 2.2, Y(p.z0 + 1.0), Math.max(1, lw * 1.5), 0, 7); R.fillStyle = '#000'; R.fill(); }
+      });
+    });
+    /* fasce dei solai (tra la cima dei muri e il piano sopra) */
+    sortedFloors().forEach(f => { const ws = G.W.filter(w => Math.abs(w.z0 - (f.elev || 0)) < 0.01); if (!ws.length) return; const top = Math.max(...ws.map(w => w.z1)), zf = (f.elev || 0) + (f.h || 3); if (zf - top < 0.02) return;
+      const u0 = Math.min(...ws.map(w => w.u0)), u1 = Math.max(...ws.map(w => w.u1)); R.beginPath(); R.rect(X(u0), Y(zf), (u1 - u0) * pxm, (zf - top) * pxm); R.fillStyle = '__paper'; R.fill(); R.strokeStyle = '#000'; R.lineWidth = lw; R.stroke(); });
+    /* tetti: falde chiare e contorno (i lati non condivisi tra triangoli) */
+    if (G.RF.length) {
+      { const pts = []; G.RF.forEach(t => t.forEach(p => pts.push([X(p.u), Y(p.z)]))); pts.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+        const cr = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]), lo = [], up = [];
+        pts.forEach(p => { while (lo.length >= 2 && cr(lo[lo.length - 2], lo[lo.length - 1], p) <= 0) lo.pop(); lo.push(p); }); pts.slice().reverse().forEach(p => { while (up.length >= 2 && cr(up[up.length - 2], up[up.length - 1], p) <= 0) up.pop(); up.push(p); });
+        const H2 = lo.slice(0, -1).concat(up.slice(0, -1)); if (H2.length > 2) { R.beginPath(); H2.forEach((p, i) => i ? R.lineTo(p[0], p[1]) : R.moveTo(p[0], p[1])); R.closePath(); R.fillStyle = '__paper'; R.fill(); } }   /* v27.4: timpano e tetto coprono quello che sta dietro */
+      R.fillStyle = 'rgba(150,150,150,0.3)'; G.RF.forEach(t => { R.beginPath(); t.forEach((p, i) => i ? R.lineTo(X(p.u), Y(p.z)) : R.moveTo(X(p.u), Y(p.z))); R.closePath(); R.fill(); });
+      /* spigoli veri del tetto (in 3D): bordi liberi e pieghe tra falde diverse (colmo, compluvi, displuvi); niente diagonali interne */
+      const pk = q => Math.round(q.X * 200) + ',' + Math.round(q.Y * 200) + ',' + Math.round(q.Z * 200), key = (a, b) => { const A = pk(a), B = pk(b); return A < B ? A + '|' + B : B + '|' + A; }, E = new Map();
+      G.RF.forEach(t => [[0, 1], [1, 2], [2, 0]].forEach(([i, j]) => { const k2 = key(t[i], t[j]); let e = E.get(k2); if (!e) E.set(k2, e = {a: t[i], b: t[j], ns: []}); e.ns.push(t.n); }));
+      R.strokeStyle = '#000'; R.lineWidth = lw;
+      E.forEach(e => { const crease = e.ns.length !== 2 || (e.ns[0][0] * e.ns[1][0] + e.ns[0][1] * e.ns[1][1] + e.ns[0][2] * e.ns[1][2]) < 0.995; if (!crease) return; R.beginPath(); R.moveTo(X(e.a.u), Y(e.a.z)); R.lineTo(X(e.b.u), Y(e.b.z)); R.stroke(); });
+    }
+    /* quote di livello a sinistra */
+    R.font = Math.max(7, 2.4 / 25.4 * 96) + 'px Arial'; R.fillStyle = '#000'; R.textAlign = 'right'; R.textBaseline = 'middle';
+    const lev = new Set([0]); sortedFloors().forEach(f => { lev.add(+(f.elev || 0).toFixed(2)); lev.add(+((f.elev || 0) + (f.h || 3)).toFixed(2)); }); lev.add(+G.z1.toFixed(2));
+    [...lev].sort((a, b) => a - b).forEach(z => { const x = X(G.u0 - 0.6), y = Y(z); R.lineWidth = lw * 0.7; R.beginPath(); R.moveTo(x - 6, y - 6); R.lineTo(x + 6, y - 6); R.lineTo(x, y); R.closePath(); R.stroke(); R.beginPath(); R.moveTo(x, y); R.lineTo(X(G.u0 - 0.1), y); R.setLineDash([3, 2]); R.stroke(); R.setLineDash([]); R.fillText((z > 0 ? '+' : z < 0 ? '' : '±') + z.toFixed(2).replace('.', ','), x - 8, y - 6); });
+    return R.result();
+  }
+  function renderSezPage(v, vw, vh, s, o) { const sid = String(v).slice(4), sec = window.SCsez ? SCsez.list().find(x => x.id === sid) : null; return renderSez({kind: 'sez', sid, s, c: sec ? sezCenter(sec, s) : {x: 0, y: 1.5}}, vw, vh, o); }
+  const vName = v => isElev(v) ? PDIR[v].n : isSezP(v) ? (() => { const sec = window.SCsez ? SCsez.list().find(x => x.id === String(v).slice(4)) : null; return sec ? 'Sezione ' + sec.name + '–' + sec.name : 'Sezione'; })() : (VNAME[v] || '');
+  function addPro() {
+    const sel = D.bg.querySelector('#prtProSel'), k = (sel && sel.value) || 'pS';
+    state.cart = CART(); if (!state.cart.det || typeof state.cart.det !== 'object') state.cart.det = {};
+    const A = state.cart.det[D.fid] || (state.cart.det[D.fid] = []), L = layout(D.o), G = elevGeom(k), sc = D.o.scale;
+    const w = Math.min(L.vw * 0.62, Math.max(60, (G.u1 - G.u0 + 2.4) * 1000 / sc + 20)), h = Math.min(L.vh, Math.max(40, (G.z1 - G.z0 + 1) * 1000 / sc + 14));
+    A.push({kind: 'pro', dir: k, x: L.vw - w - 3, y: Math.max(0, L.vh - h - 3), w, h, s: sc, sz: 'M', c: elevCenter(k), t: PDIR[k].n});
+    detList(); preview(); try { checkpoint(); } catch (_) {}
+    toast(PDIR[k].n + ' nel foglio: trascina la targhetta per spostarlo');
+  }
   function sheet(o, fl, idx, center, v) {
-    const L = layout(o), pw = mm(L.vw), ph = mm(L.vh);
-    const r = renderPlan(fl.id, center.x, center.y, pw, ph, o.scale, o, v);
+    const L = layout(o), pw = mm(L.vw), ph = mm(L.vh), EL = isElev(v), SZ = isSezP(v);
+    if (EL) center = elevCenter(v); else if (SZ) center = null;
+    const r = EL ? renderElev(v, center.x, center.y, pw, ph, o.scale, o) : SZ ? renderSezPage(v, pw, ph, o.scale, o) : renderPlan(fl.id, center.x, center.y, pw, ph, o.scale, o, v);
     const id = 'vp' + Math.random().toString(36).slice(2, 8);
     return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${L.W}mm" height="${L.H}mm" viewBox="0 0 ${mm(L.W).toFixed(2)} ${mm(L.H).toFixed(2)}">` +
       `<defs><clipPath id="${id}"><rect width="${pw.toFixed(2)}" height="${ph.toFixed(2)}"/></clipPath>${r.defs}</defs>` +
       `<rect width="${mm(L.W).toFixed(2)}" height="${mm(L.H).toFixed(2)}" fill="#fff"/>` +
       `<g transform="translate(${mm(L.vx).toFixed(2)} ${mm(L.vy).toFixed(2)})" clip-path="url(#${id})"><g class="dwg">${r.body}</g></g>` +
-      detSVG(L, o, fl, v) +
+      (EL || SZ ? '' : detSVG(L, o, fl, v)) +
+      (EL || SZ ? '' : (() => { const a = nordDeg(), x = mm(L.vx + L.vw - 12), y = mm(L.vy + 16), r = mm(7);   /* v27.4: freccia del Nord */
+        return `<g transform="translate(${x.toFixed(2)} ${y.toFixed(2)}) rotate(${a})"><circle r="${r.toFixed(2)}" fill="#fff" stroke="#000" stroke-width="${mm(0.25).toFixed(2)}"/><path d="M0 ${(-r * 0.85).toFixed(2)} L${(r * 0.35).toFixed(2)} ${(r * 0.55).toFixed(2)} L0 ${(r * 0.25).toFixed(2)} Z" fill="#000"/><path d="M0 ${(-r * 0.85).toFixed(2)} L${(-r * 0.35).toFixed(2)} ${(r * 0.55).toFixed(2)} L0 ${(r * 0.25).toFixed(2)} Z" fill="#fff" stroke="#000" stroke-width="${mm(0.2).toFixed(2)}"/><text y="${(-r - mm(1.2)).toFixed(2)}" text-anchor="middle" font-family="Arial" font-weight="bold" font-size="${mm(3).toFixed(2)}">N</text></g>`; })()) +
       Rc(L.m, L.m, L.W - 2 * L.m, L.H - 2 * L.m, 0.5) + Ln(L.m, L.by, L.W - L.m, L.by, 0.5) +
-      band(L, o, fl, v, r.rooms) + cartiglio(L, o, fl, idx, v) + `</svg>`;
+      band(L, EL || SZ ? Object.assign({}, o, {table: false, legend: false}) : o, fl, v, r.rooms || []) + cartiglio(L, o, fl, idx, v) + `</svg>`;
   }
 
   /* ================================================================ dialogo di stampa con anteprima */
   let D = null;
   const floorsToPrint = o => o.floors === 'all' ? sortedFloors().filter(f => bboxOf(f.id)) : [floorById(state.currentFloorId)];
-  const pagesOf = o => { const V = o.tav === 'tre' ? ['fatto', 'comp', 'prog'] : [o.tav || 'comp']; const P = []; floorsToPrint(o).forEach(f => V.forEach(v => P.push({fl: f, v, k: f.id + '|' + v}))); return P; };
+  const pagesOf = o => {
+    if (o.tav === 'set') {   /* v27.3: set completo: piante di tutti i piani, quattro prospetti, tutte le sezioni */
+      const P = [], F = sortedFloors().filter(f => bboxOf(f.id)), f0 = F[0] || floorById(state.currentFloorId);
+      F.forEach(f => P.push({fl: f, v: 'comp', k: f.id + '|comp'}));
+      ['pS', 'pE', 'pN', 'pO'].forEach(v => P.push({fl: f0, v, k: f0.id + '|' + v}));
+      (window.SCsez ? SCsez.list() : []).forEach(sc => P.push({fl: f0, v: 'sez:' + sc.id, k: f0.id + '|sez:' + sc.id}));
+      return P;
+    }
+    const V = o.tav === 'tre' ? ['fatto', 'comp', 'prog'] : [o.tav || 'comp']; const P = []; floorsToPrint(o).forEach(f => V.forEach(v => P.push({fl: f, v, k: f.id + '|' + v}))); return P; };
   function fits(o, fid) { const b = bboxOf(fid); if (!b) return true; const L = layout(o); return (b.x1 - b.x0) * 1000 / o.scale <= L.vw && (b.y1 - b.y0) * 1000 / o.scale <= L.vh; }
   function suggest(o, fid) { const b = bboxOf(fid); if (!b) return null; const L = layout(o); return SCALES.find(s => (b.x1 - b.x0) * 1000 / s <= L.vw && (b.y1 - b.y0) * 1000 / s <= L.vh) || null; }
   /* v22.0: la scala più grande che fa stare il disegno con 12 mm di margine per le quote */
@@ -19665,7 +19886,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
           <div class="prt-sec">Foglio</div>
           <div class="prt-row"><label>Formato<select data-o="paper"><option>A4</option><option>A3</option></select></label><label>Orientamento<select data-o="orient"><option value="L">Orizzontale</option><option value="P">Verticale</option></select></label></div>
           <div class="prt-row"><label>Scala<select data-o="scale">${SCALES.map(s => `<option value="${s}">1:${s}</option>`).join('')}</select></label><label>Piani<select data-o="floors"><option value="cur">Piano corrente</option><option value="all">Tutti (un foglio per piano)</option></select></label></div>
-          <label>Tavola<select data-o="tav"><option value="comp">Pianta (con gialli e rossi se ci sono)</option><option value="fatto">Stato di fatto</option><option value="prog">Stato di progetto</option><option value="tre">Tutte e tre: fatto · comparativa · progetto</option></select></label>
+          <label>Tavola<select data-o="tav"><option value="comp">Pianta (con gialli e rossi se ci sono)</option><option value="fatto">Stato di fatto</option><option value="prog">Stato di progetto</option><option value="tre">Tutte e tre: fatto · comparativa · progetto</option><option value="str">Pianta strutturale</option><option value="set">Set completo: piante, prospetti e sezioni</option></select></label>
           <div class="prt-row"><label>Colori<select data-o="color"><option value="bn">Bianco e nero (gialli e rossi a colori)</option><option value="col">A colori</option></select></label></div>
           <label class="cb"><input type="checkbox" data-o="table"> Tabella delle superfici</label>
           <label class="cb"><input type="checkbox" data-o="legend"> Legenda gialli / rossi</label>
@@ -19676,7 +19897,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
           <label class="cb"><input type="checkbox" data-o="wallNames"> Nomi dei muri (Muro A, B…)</label>
           <div class="prt-warn" id="prtWarn"></div>
           <div class="prt-sec">Dettagli in questo foglio <small>(altre viste, anche a scala diversa)</small></div>
-          <div id="prtDet"></div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px"><button class="wt-btn" data-x="adddet">➕ Aggiungi dettaglio</button><button class="wt-btn" data-x="addsez">➕ Aggiungi sezione</button><select id="prtSezSel" style="width:auto;flex:0 0 auto"></select></div>
+          <div id="prtDet"></div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px"><button class="wt-btn" data-x="adddet">➕ Aggiungi dettaglio</button><button class="wt-btn" data-x="addsez">➕ Aggiungi sezione</button><button class="wt-btn" data-x="addpro">➕ Aggiungi prospetto</button><select id="prtProSel" class="wt-btn"><option value="pS">Sud</option><option value="pE">Est</option><option value="pN">Nord</option><option value="pO">Ovest</option></select><select id="prtSezSel" style="width:auto;flex:0 0 auto"></select></div>
           <div class="prt-sec">Cartiglio · ditta <small>(vale per tutti i progetti)</small></div>
           <div class="prt-logo"><div id="prtLogoPrev">${LOGO ? `<img src="${LOGO}">` : '<span>nessun logo</span>'}</div><div><button data-x="logo" class="wt-btn">🖼 Carica logo…</button> <button data-x="nologo" class="wt-btn"${LOGO ? '' : ' hidden'}>Togli</button><input type="file" id="prtLogoIn" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden></div></div>
           <label>Nome ditta / studio<input data-d="n" value="${esc(Dt.n)}"></label>
@@ -19689,6 +19910,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
           <label>Titolo dell'elaborato<input data-c="titolo" value="${esc(C.titolo)}" placeholder="vuoto = Pianta + nome del piano"></label>
           <div class="prt-row"><label>Tavola n.<input data-c="tav" value="${esc(C.tav)}"></label><label>Data<input data-c="data" value="${esc(C.data)}"></label></div>
           <label>Redattore<input data-c="redattore" value="${esc(C.redattore)}"></label>
+          <label>Nord (gradi in senso orario; 0 = verso l'alto della pianta)<input data-c="nord" inputmode="decimal" value="${esc(C.nord || '0')}"></label>
         </div>
         <div class="prt-prev"><div class="prt-tabs" id="prtTabs"></div><div class="prt-sheet" id="prtSheet"></div><div class="prt-hint">Trascina il disegno nel foglio per scegliere la parte da stampare · <button class="wt-btn" data-x="center">⌖ Centra</button></div></div>
       </div>
@@ -19715,6 +19937,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       if (b.dataset.dd != null) { const A = detsOf(D.fid); A.splice(+b.dataset.dd, 1); detList(); later(true); return; }
       if (x === 'adddet') { addDet(); return; }
       if (x === 'addsez') { addSez(); return; }
+      if (x === 'addpro') { addPro(); return; }
       if (x === 'close') close();
       else if (x === 'center') { delete D.centers[D.fid]; preview(); }
       else if (x === 'logo') bg.querySelector('#prtLogoIn').click();
@@ -19753,7 +19976,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   function tabs() {
     const t = D.bg.querySelector('#prtTabs'), P = pagesOf(D.o);
     if (!P.some(p => p.k === D.pk)) { const q = P.find(p => p.fl.id === D.fid) || P[0]; D.pk = q ? q.k : D.pk; D.fid = q ? q.fl.id : D.fid; }
-    t.innerHTML = P.length > 1 ? P.map((p, i) => `<button class="wt-btn${p.k === D.pk ? ' on' : ''}" data-f="${p.k}">Tav. ${i + 1} · ${esc(p.fl.name)}${D.o.tav === 'tre' ? ' · ' + {fatto: 'fatto', comp: 'comparativa', prog: 'progetto'}[p.v] : ''}</button>`).join('') : '';
+    t.innerHTML = P.length > 1 ? P.map((p, i) => `<button class="wt-btn${p.k === D.pk ? ' on' : ''}" data-f="${p.k}">Tav. ${i + 1} · ${isElev(p.v) || isSezP(p.v) ? esc(vName(p.v)) : esc(p.fl.name)}${D.o.tav === 'tre' ? ' · ' + {fatto: 'fatto', comp: 'comparativa', prog: 'progetto'}[p.v] : ''}</button>`).join('') : '';
     if (D.bg.querySelector('#prtDet')) detList();
   }
   function preview() {
@@ -21251,8 +21474,14 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
    SC_REL.v è l'unica versione: titolo, Guida, file salvato, avvisi e riga messaggi la leggono da qui.
    ======================================================================== */
 window.SC_REL = {
-  v: '26.8', d: '29/10/2026',
+  v: '27.4', d: '29/10/2026',
   news: [
+    ['27.4', 'Tavole: il Nord si imposta nel cartiglio (gradi) e c\'è la freccia del Nord nelle piante; i prospetti Sud, Est, Nord e Ovest seguono il Nord vero. Nei prospetti compaiono anche fori, tagli (con arco o tondo) e nicchie (tratteggiate, solo dal lato in cui sono) fatti dal prospetto del muro, e il timpano sotto il tetto copre quello che sta dietro. Il pilastro è nel gruppo Strutture.'],
+    ['27.3', 'Tavole complete: prospetti dell\'edificio (Sud, Est, Nord, Ovest; in pianta l\'alto è il Nord) a linee, con porte, finestre, tetti, terreno e quote di livello, da aggiungere nel foglio come le sezioni; nuova tavola «Set completo» che stampa in sequenza le piante di tutti i piani, i quattro prospetti e tutte le sezioni, ognuna con il suo cartiglio. Arredi in stampa come blocchi CAD bianchi con contorno nero.'],
+    ['27.2', 'Preventivo per il cliente (Progetto › Preventivo, o pulsante nel computo): intestazione e logo della ditta, numero progressivo, cliente, oggetto, voci per categoria (con quantità e prezzi o solo descrizioni e totali), sconto, sicurezza, IVA e totale, pianta e vista 3D, condizioni modificabili che restano per i prossimi preventivi, firme. Si stampa o si salva in PDF.'],
+    ['27.1', 'Copie di sicurezza e sincronizzazione (File › Copie e sincronizzazione): scegli una volta una cartella (anche sincronizzata con Dropbox, OneDrive, Drive o su chiavetta), ogni 10 minuti ci va una copia del progetto (10 recenti + una al giorno per una settimana), con «Torna a una copia». «Sincronizza» confronta questo dispositivo con la cartella e prende la versione cambiata; se sono cambiate entrambe chiede quale tenere e conserva l\'altra. Dai dispositivi senza cartelle (Android): «Invia» e «Ricevi» con lo stesso confronto. Elenco dei progetti nella cartella per aprirli da un altro dispositivo.'],
+    ['27.0', 'Strutture: pianta strutturale (Vista › Pianta strutturale, e come tavola di stampa) con muri portanti campiti, arredi nascosti, travi e pilastri; orditura dei solai con doppia freccia, tipo (laterocemento, predalles, legno, acciaio, soletta) e spessore, che entrano nel computo del solaio; trave in due tocchi. «Muro portante» anche nel pannello del muro in pianta. Nel menu Strumenti › Strutture.'],
+    ['26.9', 'Stato di fatto e di progetto completo: porte e finestre hanno uno stato (esistente, nuova apertura in giallo, da chiudere in rosso) in pianta, in sezione, nelle tavole di fatto e di progetto e nel computo (apertura di vano e tamponamento al m²). In sezione i muri da demolire sono gialli e quelli nuovi rossi.'],
     ['26.8', 'Arredi più realistici: sanitari, vasca freestanding, vasi e paralumi con forme tornite e morbide; cuscini, materassi, sedute e lavabi con spigoli arrotondati. Calorifero, piano cucina, armadi e librerie si ricalcolano alle misure: più largo = più elementi, basi e ante, più alto = più ripiani. Oscuranti delle finestre anche in pianta (tapparella tratteggiata, persiane e scuri come ante). Collegamento automatico: ogni luce va prima a un interruttore della sua stanza.'],
     ['26.7', 'Finestre con oscuranti: tapparella con cassonetto, persiane a battente, scuri interni (lato esterno riconosciuto da solo, si può invertire), in 3D e nel computo al m². Nuovi oggetti: caldaia murale, scaldabagno, stufa a pellet (libreria impianti, con voce nel computo), lavatrice con asciugatrice a colonna, cassapanca, scaffale da garage; calorifero a elementi in 3D.'],
     ['26.6', 'Porte nuove: a filo muro (senza telaio né coprifili, complanare alla parete), in vetro (telaio in alluminio e maniglione), doppia asimmetrica (anta grande e anta piccola), basculante da garage (con ingombro di apertura in pianta). In pianta, 3D, computo e prezzi.'],
@@ -23190,7 +23419,9 @@ window.SC_REL = {
     /* muri tagliati (con il vano di porte e finestre) */
     G.walls.forEach(wc => {
       const x = X(wc.h0), w = Math.max(1, (wc.h1 - wc.h0) * S.view.s), parts = wc.op ? [[wc.z0, wc.op.b], [wc.op.t, wc.z1]] : [[wc.z0, wc.z1]];
-      parts.forEach(([z0, z1]) => { if (z1 - z0 < 0.005) return; const y = Y(z1), h = (z1 - z0) * S.view.s; c.fillStyle = wc.port ? o.cutP : o.cut; c.fillRect(x, y, w, h); hatch(c, x, y, w, h, o.hatch, wc.port ? 5 : 8); c.strokeStyle = o.ink; c.lineWidth = 1.4; c.strokeRect(x, y, w, h); });
+      const stc = wc.w.stato === 'demolire' ? 'rgba(250,204,21,.85)' : wc.w.stato === 'nuovo' ? 'rgba(239,68,68,.8)' : null;   /* v26.9: gialli e rossi anche in sezione */
+      parts.forEach(([z0, z1]) => { if (z1 - z0 < 0.005) return; const y = Y(z1), h = (z1 - z0) * S.view.s; c.fillStyle = wc.port ? o.cutP : o.cut; c.fillRect(x, y, w, h); hatch(c, x, y, w, h, o.hatch, wc.port ? 5 : 8); if (stc) { c.fillStyle = stc; c.fillRect(x, y, w, h); } c.strokeStyle = o.ink; c.lineWidth = 1.4; c.strokeRect(x, y, w, h); });
+      if (wc.op && wc.op.o && wc.op.o.stato) { const y = Y(wc.op.t), h = (wc.op.t - wc.op.b) * S.view.s; c.fillStyle = wc.op.o.stato === 'demolire' ? 'rgba(239,68,68,.8)' : 'rgba(250,204,21,.75)'; c.fillRect(x, y, w, h); c.strokeStyle = o.ink; c.lineWidth = 1; c.strokeRect(x, y, w, h); }
       if (wc.op && !wc.op.door) { c.strokeStyle = o.glass; c.lineWidth = 1.2; const xm = x + w / 2; c.beginPath(); c.moveTo(xm - 2, Y(wc.op.t)); c.lineTo(xm - 2, Y(wc.op.b)); c.moveTo(xm + 2, Y(wc.op.t)); c.lineTo(xm + 2, Y(wc.op.b)); c.stroke(); }
     });
     /* v22.5: scale tagliate (gradini) e tetti tagliati */
@@ -24729,10 +24960,11 @@ window.SC_REL = {
       else if (p.k === 'c') { const r = Math.max(p.r, p.r2 != null ? p.r2 : 0); ctx.ellipse(p.x * kx, -p.y * ky, Math.max(0.5, r * (p.sx || 1) * kx), Math.max(0.5, r * (p.sy || 1) * ky), 0, 0, Math.PI * 2); }
       else if (p.k === 's') ctx.ellipse(p.x * kx, -p.y * ky, Math.max(0.5, p.r * kx), Math.max(0.5, p.r * ky), 0, 0, Math.PI * 2);
       else { const L2 = p.l / 2; if (p.ax === 'x') ctx.rect((p.x - L2) * kx, (-p.y - p.r) * ky, p.l * kx, 2 * p.r * ky); else ctx.rect((p.x - p.r) * kx, (-p.y - L2) * ky, 2 * p.r * kx, p.l * ky); }
-      if (!glass) { ctx.globalAlpha = 0.95; ctx.fillStyle = em ? '#fff3c4' : shade(col, p.m === 'm' ? 0.35 : 0.12); ctx.fill(); ctx.globalAlpha = 1; }
-      ctx.setLineDash(p.dash ? [5, 3] : []); ctx.strokeStyle = sel ? '#fbbf24' : glass ? '#38bdf8' : 'rgba(17,24,39,.75)'; ctx.lineWidth = sel ? lw + 0.8 : lw; ctx.stroke(); ctx.setLineDash([]);
+      const PR = !!window.__printing;   /* in stampa: pezzi bianchi con contorno nero (come i blocchi CAD) */
+      if (!glass) { ctx.globalAlpha = PR ? 1 : 0.95; ctx.fillStyle = PR ? '__paper' : em ? '#fff3c4' : shade(col, p.m === 'm' ? 0.35 : 0.12); ctx.fill(); ctx.globalAlpha = 1; }
+      ctx.setLineDash(p.dash ? [5, 3] : []); ctx.strokeStyle = PR ? '#000000' : sel ? '#fbbf24' : glass ? '#38bdf8' : 'rgba(17,24,39,.75)'; ctx.lineWidth = PR ? Math.max(0.5, lw * 0.8) : sel ? lw + 0.8 : lw; ctx.stroke(); ctx.setLineDash([]);
     });
-    (l2 || []).forEach(l => { ctx.beginPath(); ctx.setLineDash(l[4] ? [6, 4] : []); ctx.moveTo(l[0] * kx, -l[1] * ky); ctx.lineTo(l[2] * kx, -l[3] * ky); ctx.strokeStyle = 'rgba(17,24,39,.75)'; ctx.lineWidth = lw; ctx.stroke(); }); ctx.setLineDash([]);
+    (l2 || []).forEach(l => { ctx.beginPath(); ctx.setLineDash(l[4] ? [6, 4] : []); ctx.moveTo(l[0] * kx, -l[1] * ky); ctx.lineTo(l[2] * kx, -l[3] * ky); ctx.strokeStyle = window.__printing ? '#000000' : 'rgba(17,24,39,.75)'; ctx.lineWidth = lw; ctx.stroke(); }); ctx.setLineDash([]);
     if (sel) { ctx.setLineDash([6, 4]); ctx.strokeStyle = '#22d3ee'; ctx.lineWidth = 1.6; ctx.strokeRect(-(f.w || M.w) * s / 2 - 5, -(f.d || M.d) * s / 2 - 5, (f.w || M.w) * s + 10, (f.d || M.d) * s + 10); ctx.setLineDash([]); }
     ctx.restore();
     if (sel) {
@@ -24761,6 +24993,290 @@ window.SC_REL = {
     return {x: Math.round(x * 1e4) / 1e4, y: Math.round(y * 1e4) / 1e4, rot};
   }
   window.SClib = {partsOf, snapWall, L, LUXM, LUXDEF, luxModel, build3D, draw2D, mat, count: () => Object.keys(L).filter(k => L[k] && L[k].parts).length};
+})();
+</script>
+<script>
+/* ========================================================================
+   v27.0 · STRUTTURE (SCstr)
+   - Pianta strutturale (Vista e stampa): muri portanti campiti, arredi e impianti nascosti, orditure dei solai, travi e pilastri.
+   - Orditura del solaio: simbolo con doppia freccia nel verso di orditura e tratteggio, con tipo e spessore;
+     si salva nel piano (floor.ord) e vale per il solaio sopra quel piano (copertura del piano). Il computo ne usa tipo e spessore.
+   - Trave: due tocchi, diventa l'oggetto «Trave» lungo il percorso.
+   ======================================================================== */
+(function () {
+  const TIPI = {lat: 'laterocemento', pred: 'predalles', leg: 'legno', acc: 'acciaio e lamiera grecata', cls: 'soletta piena in c.a.'};
+  const on = () => !!appSettings.strView;
+  const ords = f => (f && Array.isArray(f.ord)) ? f.ord : [];
+  const curF = () => state.floors.find(f => f.id === state.currentFloorId) || state.floors[0];
+  const r4 = v => Math.round(v * 1e4) / 1e4;
+  let tmp = null, act = null, pal = null;
+
+  /* ---------------------------------------------------------------- disegno in pianta */
+  function drawPlan() {
+    if (tmp && state.tool !== 'strord' && state.tool !== 'strbeam') tmp = null;
+    if (!on()) return;
+    /* muri portanti: campitura a tratteggio incrociato sopra il muro */
+    state.walls.forEach(w => {
+      if (!w.portante || !isEntityVisible(w) || floorOf(w) !== state.currentFloorId) return;
+      const a = worldToScreen(w.p1.x, w.p1.y), b = worldToScreen(w.p2.x, w.p2.y), th = getWallThickness(w) * viewScale, L = Math.hypot(b.x - a.x, b.y - a.y); if (L < 1) return;
+      ctx.save(); ctx.translate(a.x, a.y); ctx.rotate(Math.atan2(b.y - a.y, b.x - a.x));
+      ctx.beginPath(); ctx.rect(0, -th / 2, L, th); ctx.clip();
+      ctx.fillStyle = window.__printing ? 'rgba(0,0,0,.18)' : 'rgba(180,83,9,.45)'; ctx.fillRect(0, -th / 2, L, th);
+      ctx.strokeStyle = window.__printing ? '#000' : '#7c2d12'; ctx.lineWidth = 1;
+      for (let x = -th; x < L + th; x += 6) { ctx.beginPath(); ctx.moveTo(x, th / 2); ctx.lineTo(x + th, -th / 2); ctx.stroke(); ctx.beginPath(); ctx.moveTo(x, -th / 2); ctx.lineTo(x + th, th / 2); ctx.stroke(); }
+      ctx.restore();
+    });
+    ords(curF()).forEach(o => drawOrd(o, o === act));
+    if (tmp && state.tool === 'strord') { const a = worldToScreen(tmp.x, tmp.y); ctx.save(); ctx.fillStyle = '#f59e0b'; ctx.beginPath(); ctx.arc(a.x, a.y, 6, 0, 7); ctx.fill(); ctx.restore(); }
+  }
+  function drawOrd(o, sel) {
+    const ca = Math.cos(o.ang), sa = Math.sin(o.ang), A = worldToScreen(o.x - ca * o.L / 2, o.y - sa * o.L / 2), Bp = worldToScreen(o.x + ca * o.L / 2, o.y + sa * o.L / 2);
+    const dx = Bp.x - A.x, dy = Bp.y - A.y, L = Math.hypot(dx, dy); if (L < 4) return; const ux = dx / L, uy = dy / L, nx = -uy, ny = ux;
+    const ink = window.__printing ? '#000' : sel ? '#fbbf24' : '#f59e0b', ah = Math.min(14, L * 0.12);
+    ctx.save(); ctx.strokeStyle = ink; ctx.fillStyle = ink; ctx.lineWidth = sel ? 2.4 : 1.6; ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.lineTo(Bp.x, Bp.y); ctx.stroke();
+    [[A, 1], [Bp, -1]].forEach(([P, d]) => { ctx.beginPath(); ctx.moveTo(P.x, P.y); ctx.lineTo(P.x + d * ux * ah + nx * ah * 0.45, P.y + d * uy * ah + ny * ah * 0.45); ctx.lineTo(P.x + d * ux * ah - nx * ah * 0.45, P.y + d * uy * ah - ny * ah * 0.45); ctx.closePath(); ctx.fill(); });
+    ctx.lineWidth = 1; const step = 10, hl = 7; for (let s = ah + 4; s < L - ah - 4; s += step) { const x = A.x + ux * s, y = A.y + uy * s; ctx.beginPath(); ctx.moveTo(x - nx * hl * 0.2, y - ny * hl * 0.2); ctx.lineTo(x + nx * hl + ux * hl * 0.6, y + ny * hl + uy * hl * 0.6); ctx.stroke(); }
+    const t = 'Solaio in ' + (TIPI[o.tipo] || TIPI.lat) + (o.sp ? ' ' + o.sp : ''), mx = (A.x + Bp.x) / 2, my = (A.y + Bp.y) / 2;
+    let ang = Math.atan2(uy, ux); if (ang > Math.PI / 2) ang -= Math.PI; if (ang < -Math.PI / 2) ang += Math.PI;
+    ctx.translate(mx - nx * 12, my - ny * 12); ctx.rotate(ang); ctx.font = '600 11px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const tw = ctx.measureText(t).width + 8; ctx.fillStyle = window.__printing ? '#fff' : 'rgba(15,23,42,.85)'; ctx.fillRect(-tw / 2, -8, tw, 16); ctx.fillStyle = window.__printing ? '#000' : '#fde68a'; ctx.fillText(t, 0, 0);
+    ctx.restore();
+  }
+  /* ---------------------------------------------------------------- strumenti: orditura (2 tocchi) e trave (2 tocchi) */
+  function tap(cx, cy) {
+    if (isCurrentLayerLocked()) { toast('Livello corrente bloccato'); return true; }
+    const r = c2d.getBoundingClientRect(); let w = screenToWorld(cx - r.left, cy - r.top); try { w = snapToGrid(w, tmp); } catch (_) {}
+    if (!tmp) { tmp = {x: w.x, y: w.y}; draw2D(); toast(state.tool === 'strord' ? 'Orditura: tocca il secondo punto (il solaio va in questa direzione)' : 'Trave: tocca la fine della trave'); return true; }
+    const a = tmp, L = Math.hypot(w.x - a.x, w.y - a.y); tmp = null; if (L < 0.2) { toast('Troppo corto'); draw2D(); return true; }
+    if (state.tool === 'strord') {
+      const f = curF(); if (!Array.isArray(f.ord)) f.ord = [];
+      const o = {id: newId(), x: r4((a.x + w.x) / 2), y: r4((a.y + w.y) / 2), ang: Math.atan2(w.y - a.y, w.x - a.x), L: r4(L), tipo: appSettings.strTipo || 'lat', sp: appSettings.strSp || '20+4'};
+      f.ord.push(o); act = o; try { checkpoint(); } catch (_) {} draw2D(); openPal(o);
+    } else {
+      const sp = FURNITURE.trave || {w: 3, d: 0.3, h: 0.4, z: 2.3, color: '#8b8f98'}, top = (window.SCcs && SCcs.topOf) ? SCcs.topOf(state.currentFloorId) : 2.7, hh = sp.h || 0.4;
+      state.furniture.push(assignLayer({id: newId(), type: 'trave', x: r4((a.x + w.x) / 2), y: r4((a.y + w.y) / 2), w: r4(L), d: sp.d || 0.3, h: hh, z: Math.round((top - hh) * 100) / 100, rot: Math.atan2(w.y - a.y, w.x - a.x), color: sp.color}));
+      try { checkpoint(); } catch (_) {} refresh(); toast('Trave ' + f2(L) + ' m inserita sotto il solaio (misure e quota nel pannello dell\'oggetto)');
+    }
+    return true;
+  }
+  const f2 = v => (Math.round(v * 100) / 100).toFixed(2).replace('.', ',');
+  const _ht = handleTap;
+  handleTap = function (cx, cy) { if (state.tool === 'strord' || state.tool === 'strbeam') return tap(cx, cy); return _ht.apply(this, arguments); };
+  /* selezione delle orditure in pianta strutturale (tocco vicino alla linea) */
+  const ws = document.querySelector('.workspace');
+  if (ws) ws.addEventListener('pointerdown', e => {
+    if (e.target !== c2d || !on() || state.mode !== '2d' || state.tool !== 'select') return;
+    const r = c2d.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top, tol = e.pointerType === 'mouse' ? 8 : 16;
+    let best = null, bd = 1e9;
+    ords(curF()).forEach(o => { const ca = Math.cos(o.ang), sa = Math.sin(o.ang), A = worldToScreen(o.x - ca * o.L / 2, o.y - sa * o.L / 2), Bp = worldToScreen(o.x + ca * o.L / 2, o.y + sa * o.L / 2), dx = Bp.x - A.x, dy = Bp.y - A.y, L2 = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((x - A.x) * dx + (y - A.y) * dy) / L2)), d = Math.hypot(A.x + dx * t - x, A.y + dy * t - y); if (d < tol && d < bd) { bd = d; best = o; } });
+    if (!best) { if (act) { act = null; closePal(); draw2D(); } return; }
+    e.stopPropagation(); e.preventDefault(); act = best; draw2D(); openPal(best);
+  }, true);
+  /* ---------------------------------------------------------------- pannello dell'orditura */
+  function closePal() { if (pal) { pal.remove(); pal = null; } }
+  function openPal(o) {
+    closePal(); pal = document.createElement('div');
+    const ist = 'width:100%;box-sizing:border-box;padding:7px 8px;border-radius:6px;border:1px solid #475569;background:#12151f;color:#e5e7eb;font:14px sans-serif';
+    pal.style.cssText = 'position:fixed;z-index:9500;right:12px;top:110px;background:#1e1e2e;border:1px solid #f59e0b;border-radius:10px;padding:8px;box-shadow:0 6px 22px rgba(0,0,0,.55);font:13px sans-serif;color:#e5e7eb;display:flex;flex-direction:column;gap:6px;width:min(260px,calc(100vw - 24px))';
+    pal.innerHTML = '<div style="display:flex;gap:6px;align-items:center"><b style="flex:1;color:#f59e0b">Orditura del solaio</b><button data-x="del" style="padding:5px 9px;border-radius:7px;border:1px solid #475569;background:#1e293b;color:#fca5a5">🗑</button><button data-x="ok" style="padding:5px 11px;border-radius:7px;border:1px solid #475569;background:#1e293b;color:#e5e7eb">✔</button></div>' +
+      '<label style="font-size:12px">Tipo<select data-k="tipo" style="' + ist + '">' + Object.keys(TIPI).map(k => '<option value="' + k + '"' + (k === o.tipo ? ' selected' : '') + '>' + TIPI[k][0].toUpperCase() + TIPI[k].slice(1) + '</option>').join('') + '</select></label>' +
+      '<label style="font-size:12px">Spessore (es. 20+4)<input data-k="sp" style="' + ist + '" value="' + String(o.sp || '').replace(/"/g, '') + '"></label>' +
+      '<div style="font-size:11px;color:#9ca3b8;line-height:1.35">La freccia indica il verso dei travetti. Vale per il solaio sopra questo piano: tipo e spessore vanno nel computo.</div>';
+    ['pointerdown', 'pointerup', 'click', 'touchstart', 'wheel'].forEach(ev => pal.addEventListener(ev, e => e.stopPropagation()));
+    pal.addEventListener('change', e => { const k = e.target.dataset.k; if (!k) return; o[k] = String(e.target.value).trim(); if (k === 'tipo') appSettings.strTipo = o.tipo; if (k === 'sp') appSettings.strSp = o.sp; try { persistSettings(); } catch (_) {} try { checkpoint(); } catch (_) {} draw2D(); });
+    pal.addEventListener('click', e => { const x = e.target.closest('[data-x]'); if (!x) return; if (x.dataset.x === 'del') { const f = curF(); f.ord = ords(f).filter(q => q !== o); act = null; try { checkpoint(); } catch (_) {} toast('Orditura eliminata'); } closePal(); act = act === o && x.dataset.x === 'ok' ? null : act; draw2D(); });
+    document.body.appendChild(pal);
+  }
+  /* ---------------------------------------------------------------- computo: tipo e spessore del solaio */
+  function slabVoce(s) {
+    const fl = s.floor, below = typeof prevFloor === 'function' ? prevFloor(fl) : null, o = ords(below)[0] || ords(fl)[0];
+    if (!o) return null;
+    const sp = String(o.sp || '').trim(), k = 'solaio_' + (o.tipo || 'lat') + '_' + (sp.replace(/[^0-9+]/g, '') || Math.round(s.t * 100));
+    return {key: k, desc: 'Solaio di interpiano in ' + (TIPI[o.tipo] || TIPI.lat) + (sp ? ' ' + sp : ' sp. ' + Math.round(s.t * 100) + ' cm') + ', compresi cordoli, armature e finitura intradosso'};
+  }
+  /* pianta strutturale: arredi (tranne pilastri, colonne e travi) nascosti */
+  const _df = drawFurniture;
+  drawFurniture = function (f) { if (on() && !STRUCT_TYPES.has(f.type)) return; return _df.apply(this, arguments); };
+  /* comando dal menu Vista */
+  { const c = document.getElementById('showStr'); if (c) { c.checked = on(); c.addEventListener('change', () => { appSettings.strView = c.checked; try { persistSettings(); } catch (_) {} if (!c.checked) { act = null; closePal(); } draw2D(); toast(c.checked ? 'Pianta strutturale: muri portanti campiti, orditure, travi e pilastri' : 'Pianta normale'); }); } }
+  window.SCstr = {drawPlan, slabVoce, TIPI, on, setView(v) { appSettings.strView = !!v; const c = document.getElementById('showStr'); if (c) c.checked = !!v; draw2D(); }, busy: () => !!tmp, cancel() { tmp = null; draw2D(); }};
+})();
+</script>
+<script>
+/* ========================================================================
+   v27.1 · COPIA DI SICUREZZA IN CARTELLA E SINCRONIZZAZIONE MANUALE (SCbak)
+   Una sola cartella, scelta una volta (anche una cartella sincronizzata da Dropbox, OneDrive, Drive o una chiavetta):
+     <cartella>/SimplyCAD/<nome progetto> [codice]/ultimo.json      → l'ultima versione (serve per sincronizzare)
+                                                   /copia_AAAA-MM-GG_HH-MM.json → copie a rotazione (10 recenti + 1 al giorno per 7 giorni)
+   Copia automatica ogni 10 minuti se il progetto è cambiato, e alla chiusura. «Sincronizza» confronta questo dispositivo con la cartella:
+   prende la versione cambiata; se sono cambiate entrambe chiede quale tenere (l'altra resta tra le copie).
+   Dove il browser non permette le cartelle (Android): «Invia» scarica il file, «Ricevi» lo apre; stessa logica di confronto.
+   ======================================================================== */
+(function () {
+  const FS = typeof window.showDirectoryPicker === 'function' && window.top === window.self;
+  const KS = 'simplycad_sync_v1';
+  let dir = null, permOk = false, lastHash = '', lastBak = 0, busy = false;
+  /* ---------------------------------------------------------------- utilità */
+  const db = () => new Promise(res => { try { const q = indexedDB.open('simplycad_bak', 1); q.onupgradeneeded = () => q.result.createObjectStore('h'); q.onsuccess = () => res(q.result); q.onerror = () => res(null); } catch (_) { res(null); } });
+  const hGet = async k => { const d = await db(); if (!d) return null; return new Promise(r => { try { const t = d.transaction('h').objectStore('h').get(k); t.onsuccess = () => r(t.result || null); t.onerror = () => r(null); } catch (_) { r(null); } }); };
+  const hPut = async (k, v) => { const d = await db(); if (!d) return; return new Promise(r => { try { const t = d.transaction('h', 'readwrite'); t.objectStore('h').put(v, k); t.oncomplete = () => r(); t.onerror = () => r(); } catch (_) { r(); } }); };
+  const hash = s => { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); } return (h >>> 0).toString(36) + '-' + s.length.toString(36); };
+  const syncMap = () => { try { return JSON.parse(localStorage.getItem(KS) || '{}'); } catch (_) { return {}; } };
+  const setSync = (pid, o) => { const m = syncMap(); m[pid] = o; try { localStorage.setItem(KS, JSON.stringify(m)); } catch (_) {} };
+  const pad = n => String(n).padStart(2, '0');
+  const stamp = t => { const d = new Date(t); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + '_' + pad(d.getHours()) + '-' + pad(d.getMinutes()); };
+  const when = t => { const d = new Date(t); return pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear() + ' alle ' + pad(d.getHours()) + ':' + pad(d.getMinutes()); };
+  const device = () => { const u = navigator.userAgent || ''; return /CrOS/.test(u) ? 'Chromebook' : /Android/.test(u) ? (/Mobile/.test(u) ? 'telefono Android' : 'tablet Android') : /iPad|iPhone/.test(u) ? 'iPad/iPhone' : /Windows/.test(u) ? 'PC Windows' : /Mac/.test(u) ? 'Mac' : 'computer'; };
+  const hasWorkNow = () => !!((state.walls || []).length || (state.furniture || []).length || (state.rooms || []).length || (state.doors || []).length || (state.labels || []).length);
+  function pid() { state.cart = state.cart && typeof state.cart === 'object' ? state.cart : {}; if (!state.cart.pid) state.cart.pid = Date.now().toString(36) + Math.random().toString(36).slice(2, 7); return state.cart.pid; }
+  function pname() { let n = ''; try { const m = window.SCmeta ? SCmeta.get() : {}; n = [m.name && m.name !== 'Nuovo progetto' ? m.name : '', m.client || ''].filter(Boolean).join(' - '); } catch (_) {} return (n || 'Progetto').replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 60); }
+  /* testo del progetto: il file normale + codice, data e dispositivo; l'impronta (hash) esclude data e dispositivo */
+  async function projText() {
+    pid(); const raw = await SCfile.blob().text(), core = JSON.parse(raw); delete core.savedAt; delete core.savedOn; delete core.syncHash;
+    const h = hash(JSON.stringify(core)); core.savedAt = Date.now(); core.savedOn = device(); core.syncHash = h;
+    return {text: JSON.stringify(core), hash: h, pid: state.cart.pid};
+  }
+  function openText(text, name) {   /* apre un progetto con la stessa procedura di «Apri» (prima tiene una copia di quello attuale nella cronologia) */
+    const f = new File([text], (name || 'Progetto') + '.json', {type: 'application/json'});
+    document.getElementById('fileInput').onchange({target: {files: [f]}});
+  }
+  /* ---------------------------------------------------------------- cartella */
+  async function perm(ask) {
+    if (!dir) return false;
+    try { let p = await dir.queryPermission({mode: 'readwrite'}); if (p !== 'granted' && ask) p = await dir.requestPermission({mode: 'readwrite'}); permOk = p === 'granted'; } catch (_) { permOk = false; }
+    return permOk;
+  }
+  async function chooseFolder() {
+    if (!FS) { uiAlert('Questo dispositivo non permette di scegliere una cartella dal browser.\n\nUsa «Invia» e «Ricevi»: il file va in Download e si apre dall\'altro dispositivo.'); return false; }
+    try { const h = await window.showDirectoryPicker({id: 'simplycad', mode: 'readwrite'}); dir = h; await hPut('dir', h); permOk = true; toast('Cartella scelta: le copie vanno in «' + h.name + '/SimplyCAD»'); await backupNow(true); return true; }
+    catch (e) { if (e && e.name !== 'AbortError') uiAlert('Non posso usare questa cartella: ' + (e.message || e)); return false; }
+  }
+  const root = async () => (await dir.getDirectoryHandle('SimplyCAD', {create: true}));
+  async function projDir(create) {
+    const r = await root(), id = pid().slice(0, 8), want = pname() + ' [' + id + ']';
+    for await (const [n, h] of r.entries()) if (h.kind === 'directory' && n.endsWith('[' + id + ']')) { if (n !== want && create) { /* nome cambiato: si tiene la cartella esistente */ } return h; }
+    return create ? r.getDirectoryHandle(want, {create: true}) : null;
+  }
+  async function writeFile(d, name, text) { const fh = await d.getFileHandle(name, {create: true}), w = await fh.createWritable(); await w.write(text); await w.close(); }
+  async function readFile(d, name) { try { const fh = await d.getFileHandle(name); return await (await fh.getFile()).text(); } catch (_) { return null; } }
+  async function prune(d) {   /* tiene le 10 copie più recenti e la prima di ciascuno degli ultimi 7 giorni */
+    const L = []; for await (const [n, h] of d.entries()) if (h.kind === 'file' && /^copia_\d{4}-\d\d-\d\d_\d\d-\d\d(_altro|_qui)?\.json$/.test(n)) L.push(n);
+    L.sort().reverse(); const keep = new Set(L.slice(0, 10)), days = [...new Set(L.map(n => n.slice(6, 16)))].slice(0, 7);
+    days.forEach(day => { const first = L.filter(n => n.slice(6, 16) === day).sort()[0]; if (first) keep.add(first); });
+    for (const n of L) if (!keep.has(n)) { try { await d.removeEntry(n); } catch (_) {} }
+  }
+  async function backupNow(force) {
+    if (busy || !dir || !(await perm(false))) return false;
+    if (!(hasWorkNow())) return false;
+    busy = true;
+    try {
+      const P = await projText(); if (!force && P.hash === lastHash) return false;
+      const d = await projDir(true); await writeFile(d, 'copia_' + stamp(P.text && Date.now()) + '.json', P.text); await prune(d);
+      lastHash = P.hash; lastBak = Date.now(); status(); return true;
+    } catch (e) { console.warn('copia in cartella', e); return false; } finally { busy = false; }
+  }
+  /* ---------------------------------------------------------------- sincronizzazione */
+  async function decide(remote, local) {   /* remote/local: {text, hash, savedAt, savedOn}; ritorna 'push' | 'pull' | 'same' */
+    if (!remote) return 'push';
+    if (remote.hash === local.hash) return 'same';
+    const s = syncMap()[local.pid];
+    if (s && remote.hash === s.hash) return 'push';
+    if (s && local.hash === s.hash) return 'pull';
+    const ok = await uiConfirm('Il progetto è stato modificato sia qui sia su un altro dispositivo.\n\n• Qui: adesso\n• Altro: ' + (remote.savedOn || 'altro dispositivo') + ', ' + (remote.savedAt ? when(remote.savedAt) : 'data sconosciuta') + '\n\nOK = tieni quella dell\'altro dispositivo · Annulla = tieni questa.\nL\'altra versione resta comunque tra le copie.');
+    return ok ? 'pull' : 'push';
+  }
+  async function syncFolder() {
+    if (!dir && !(await chooseFolder())) return;
+    if (!(await perm(true))) { uiAlert('Serve il permesso di scrivere nella cartella: riprova e tocca «Consenti».'); return; }
+    const L = await projText(), d = await projDir(true), rt = await readFile(d, 'ultimo.json');
+    let R = null; if (rt) { try { const j = JSON.parse(rt); R = {text: rt, hash: j.syncHash, savedAt: j.savedAt, savedOn: j.savedOn}; } catch (_) {} }
+    const act = await decide(R, L);
+    if (act === 'same') { setSync(L.pid, {hash: L.hash, at: Date.now()}); toast('Già allineato: questo dispositivo e la cartella hanno la stessa versione'); return; }
+    if (act === 'push') { if (R) await writeFile(d, 'copia_' + stamp(R.savedAt || Date.now()) + '_altro.json', R.text); await writeFile(d, 'ultimo.json', L.text); await writeFile(d, 'copia_' + stamp(Date.now()) + '.json', L.text); await prune(d); setSync(L.pid, {hash: L.hash, at: Date.now()}); lastHash = L.hash; status(); toast('Sincronizzato: la versione di questo dispositivo è nella cartella'); return; }
+    await writeFile(d, 'copia_' + stamp(Date.now()) + '_qui.json', L.text); setSync(L.pid, {hash: R.hash, at: Date.now()}); openText(R.text, pname()); toast('Sincronizzato: caricata la versione dell\'altro dispositivo (' + (R.savedOn || '') + ')');
+  }
+  async function folderProjects() {
+    if (!dir || !(await perm(true))) return [];
+    const r = await root(), out = [];
+    for await (const [n, h] of r.entries()) { if (h.kind !== 'directory') continue; const t = await readFile(h, 'ultimo.json'); let j = null; try { j = t && JSON.parse(t); } catch (_) {} if (j) out.push({name: n.replace(/\s*\[[^\]]+\]$/, ''), dirName: n, at: j.savedAt || 0, on: j.savedOn || '', text: t, pid: j.cart && j.cart.pid}); }
+    return out.sort((a, b) => b.at - a.at);
+  }
+  async function copies() {
+    if (!dir || !(await perm(true))) return [];
+    const d = await projDir(false); if (!d) return []; const L = [];
+    for await (const [n, h] of d.entries()) if (h.kind === 'file' && /^copia_/.test(n)) L.push(n);
+    return L.sort().reverse().map(n => ({n, d}));
+  }
+  /* senza cartelle (Android): invia = scarica, ricevi = apri file con lo stesso confronto */
+  async function sendFile() {
+    const P = await projText(), a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([P.text], {type: 'application/json'}));
+    a.download = 'SimplyCAD_' + pname().replace(/\s+/g, '_') + '_' + stamp(Date.now()) + '.json'; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+    setSync(P.pid, {hash: P.hash, at: Date.now()}); toast('File pronto in Download: aprilo sull\'altro dispositivo con «Ricevi»');
+  }
+  function receiveFile() {
+    const inp = document.createElement('input'); inp.type = 'file'; inp.accept = '.json,application/json';
+    inp.onchange = async () => {
+      const f = inp.files && inp.files[0]; if (!f) return; const t = await f.text(); let j; try { j = JSON.parse(t); } catch (_) { uiAlert('Questo file non è un progetto SimplyCAD.'); return; }
+      const L = await projText(), same = j.cart && j.cart.pid && j.cart.pid === L.pid;
+      if (!same) { if (hasWorkNow() && !(await uiConfirm('Il file contiene un altro progetto («' + ((j.meta && (j.meta.name || j.meta.client)) || 'senza nome') + '»). Lo apro? Quello attuale resta nelle copie automatiche.'))) return; openText(t, (j.meta && j.meta.name) || 'Progetto'); return; }
+      const act = await decide({text: t, hash: j.syncHash, savedAt: j.savedAt, savedOn: j.savedOn}, L);
+      if (act === 'same') { toast('Già allineato'); return; }
+      if (act === 'push') { toast('Qui c\'è la versione più nuova: non cambio niente. Usa «Invia» per portarla sull\'altro dispositivo.'); return; }
+      setSync(L.pid, {hash: j.syncHash, at: Date.now()}); openText(t, pname()); toast('Caricata la versione ricevuta (' + (j.savedOn || '') + ')');
+    };
+    inp.click();
+  }
+  /* ---------------------------------------------------------------- finestra unica */
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+  async function openDlg() {
+    if (dir) await perm(false);
+    const bg = document.createElement('div'); bg.className = 'prova-modal-bg'; bg.style.zIndex = 1200;
+    const st = FS ? (dir ? (permOk ? '✅ Cartella: <b>' + esc(dir.name) + '/SimplyCAD</b>' + (lastBak ? ' · ultima copia ' + when(lastBak) : '') : '⚠ Cartella <b>' + esc(dir.name) + '</b>: tocca «Riattiva» per riprendere le copie') : '⚠ Nessuna cartella scelta: le copie restano solo in questo dispositivo') : 'ℹ Su questo dispositivo il browser non permette le cartelle: usa Invia e Ricevi.';
+    bg.innerHTML = '<div class="prova-modal" style="width:min(560px,100%)"><h3 style="margin:0 0 6px">🛟 Copie di sicurezza e sincronizzazione</h3>' +
+      '<div style="font-size:13px;color:#cbd5e1;line-height:1.5;margin-bottom:10px">Il progetto si salva da solo in questo dispositivo. ' + (FS ? 'Scegli una volta una cartella (meglio se sincronizzata con Dropbox, OneDrive, Drive o su chiavetta): ogni 10 minuti ci va una copia. Su un altro dispositivo scegli la stessa cartella e tocca «Sincronizza».' : 'Per lavorare su un altro dispositivo: qui «Invia», là «Ricevi».') + '</div>' +
+      '<div style="background:#151826;border:1px solid #2f3550;border-radius:8px;padding:8px 10px;font-size:13px;margin-bottom:10px">' + st + '</div>' +
+      '<div style="display:flex;flex-wrap:wrap;gap:8px">' +
+      (FS ? (!dir ? '<button class="wt-btn" data-b="choose" style="background:#1677a8;color:#fff">📂 Scegli la cartella</button>' : (!permOk ? '<button class="wt-btn" data-b="perm" style="background:#1677a8;color:#fff">🔓 Riattiva</button>' : '') +
+        '<button class="wt-btn" data-b="sync" style="background:#15803d;color:#fff">🔄 Sincronizza</button><button class="wt-btn" data-b="now">💾 Copia adesso</button><button class="wt-btn" data-b="choose">📂 Cambia cartella</button>') :
+        '<button class="wt-btn" data-b="send" style="background:#1677a8;color:#fff">📤 Invia (scarica file)</button><button class="wt-btn" data-b="recv" style="background:#15803d;color:#fff">📥 Ricevi (apri file)</button>') +
+      '</div><div id="bkList" style="margin-top:12px"></div>' +
+      '<div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="wt-btn" data-b="x">Chiudi</button></div></div>';
+    document.body.appendChild(bg);
+    ['pointerdown', 'touchstart', 'wheel'].forEach(ev => bg.addEventListener(ev, e => e.stopPropagation(), {passive: true}));
+    const list = async () => {
+      const box = bg.querySelector('#bkList'); if (!FS || !dir || !permOk) { box.innerHTML = ''; return; }
+      const P = await folderProjects(), C = await copies(), me = pid();
+      box.innerHTML = (P.length ? '<div style="font-weight:600;margin-bottom:4px">Progetti nella cartella</div>' + P.map((p, i) => '<div style="display:flex;gap:8px;align-items:center;padding:4px 0;border-bottom:1px solid #2f3550"><span style="flex:1">' + esc(p.name) + (p.pid === me ? ' <small style="color:#22d3ee">(quello aperto)</small>' : '') + '<br><small style="color:#9ca3b8">' + (p.at ? when(p.at) : '') + (p.on ? ' · ' + esc(p.on) : '') + '</small></span>' + (p.pid === me ? '' : '<button class="wt-btn" data-op="' + i + '">Apri</button>') + '</div>').join('') : '') +
+        (C.length ? '<div style="font-weight:600;margin:10px 0 4px">Torna a una copia di questo progetto</div><select id="bkCopy" class="wt-btn" style="width:100%">' + C.map((c, i) => '<option value="' + i + '">' + c.n.replace(/^copia_(\d{4})-(\d\d)-(\d\d)_(\d\d)-(\d\d)(.*)\.json$/, (m, y, mo, d, h, mi, x) => d + '/' + mo + '/' + y + ' ore ' + h + ':' + mi + (x === '_altro' ? ' · dall\'altro dispositivo' : x === '_qui' ? ' · prima della sincronizzazione' : '')) + '</option>').join('') + '</select><button class="wt-btn" data-b="restore" style="margin-top:6px">↩ Torna a questa copia</button>' : '');
+      box.onclick = async e => {
+        const o = e.target.closest('[data-op]'); if (o) { const p = P[+o.dataset.op]; if (hasWorkNow() && !(await uiConfirm('Apro «' + p.name + '»? Il progetto attuale resta salvato.'))) return; bg.remove(); openText(p.text, p.name); return; }
+        const r = e.target.closest('[data-b="restore"]'); if (r) { const c = C[+bg.querySelector('#bkCopy').value]; if (!c) return; if (!(await uiConfirm('Torno alla copia scelta? Lo stato attuale resta nella cronologia automatica.'))) return; const t = await readFile(c.d, c.n); if (t) { bg.remove(); openText(t, pname()); } }
+      };
+    };
+    bg.addEventListener('click', async e => {
+      const b = e.target.closest('[data-b]'); if (!b) { if (e.target === bg) bg.remove(); return; }
+      const k = b.dataset.b;
+      if (k === 'x') bg.remove();
+      else if (k === 'choose') { if (await chooseFolder()) { bg.remove(); openDlg(); } }
+      else if (k === 'perm') { if (await perm(true)) { await backupNow(true); bg.remove(); openDlg(); } }
+      else if (k === 'now') { if (await backupNow(true)) toast('Copia fatta nella cartella'); else toast('Niente da copiare (progetto vuoto) o cartella non raggiungibile'); bg.remove(); openDlg(); }
+      else if (k === 'sync') { bg.remove(); await syncFolder(); }
+      else if (k === 'send') { bg.remove(); await sendFile(); }
+      else if (k === 'recv') { bg.remove(); receiveFile(); }
+    });
+    list();
+  }
+  /* ---------------------------------------------------------------- avvio, copie automatiche, stato nel menu */
+  function status() { const s = document.querySelector('#bakRow .mi-kbd'); if (s) s.textContent = !FS ? 'invia · ricevi' : !dir ? 'scegli cartella' : !permOk ? 'da riattivare' : (lastBak ? 'copia ' + new Date(lastBak).toTimeString().slice(0, 5) : 'attiva'); }
+  (async () => { try { if (FS) { dir = await hGet('dir'); if (dir) await perm(false); } } catch (_) {} status(); })();
+  setInterval(() => { backupNow(false); }, 10 * 60 * 1000);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') backupNow(false); });
+  { const md = document.querySelector('[data-menu="file"] .menu-dropdown');
+    if (md) { const b = document.createElement('button'); b.className = 'menu-row'; b.id = 'bakRow'; b.innerHTML = '<span class="mi-icon">🛟</span><span class="mi-label">Copie e sincronizzazione…</span><span class="mi-kbd"></span>';
+      b.onclick = () => { document.querySelectorAll('.menu-dropdown').forEach(m => m.classList.remove('open')); openDlg(); };
+      const lab = md.querySelector('.menu-label'); if (lab && lab.nextSibling) md.insertBefore(b, lab.nextSibling); else md.appendChild(b); status(); } }
+  window.SCbak = {open: openDlg, sync: syncFolder, backupNow, send: sendFile, receive: receiveFile, decide, projText, fs: FS, _setDir(h) { dir = h; permOk = true; }};
 })();
 </script>
 </body>
