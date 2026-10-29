@@ -1,4 +1,4 @@
-SimplyCAD Pro - pubblicazione su GitHub Pages (v27.4)
+SimplyCAD Pro - pubblicazione su GitHub Pages (v27.5)
 
 Contenuto (vanno caricati tutti, senza rinominarli e SENZA cartelle intorno):
   index.html  sw.js  manifest.webmanifest  icon-192.png  icon-512.png  icon-maskable.png  README.md
@@ -454,3 +454,12 @@ NOVITÀ v27.4
 - Nei prospetti compaiono anche fori, tagli (con arco o tondo) e nicchie (tratteggiate, solo dal lato in cui sono) fatti dal prospetto del muro.
 - Il timpano sotto il tetto copre ciò che sta dietro.
 - Il pilastro è nel gruppo Strutture.
+
+NOVITÀ v27.5
+- Pianta: sotto il controsoffitto vince l'oggetto più piccolo (punto, luce, arredo, tubo). Toccando di nuovo nello stesso punto si passa all'oggetto sotto, fino al controsoffitto. I tubi si prendono toccando la linea, non solo l'etichetta. La finestrella delle proprietà non copre più il punto toccato.
+- Prospetto: si vedono gli arredi davanti al muro (modelli della libreria) e si spostano lungo il muro e in altezza, con misure scrivibili.
+- Prospetto: nuovo comando «Arredo» per appoggiare un arredo al muro direttamente dal prospetto.
+- Prospetto: controsoffitti e false travi in sezione; trascinandoli cambi quota del controsoffitto e altezza della trave.
+- Prospetto: i tubi tracciati in pianta si selezionano anche qui (tipo, percorso, spostamento lungo il muro).
+- Prospetto: pulsante «Nel muro»: impianti e punti sempre in vista, arredi trasparenti. Toccando di nuovo si passa all'oggetto sotto.
+- Tablet: gli strumenti del prospetto stanno su una riga che scorre, il disegno resta più grande.

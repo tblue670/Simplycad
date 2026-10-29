@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v27.4</title>
+<title>SimplyCAD Pro · v27.5</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -15327,12 +15327,14 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
      Si selezionano e si modificano come le lavorazioni: riquadro {cx, y, w, h} lungo il muro (da p1), poi si riscrive l'oggetto. */
   const isCpW = w => !!(w && window.SCcg && SCcg.isCp && SCcg.isCp(w));
   const cpsOf = w => state.walls.filter(c => isCpW(c) && c.cg.host === w.id && isEntityVisible(c));
-  const ON = {door: 'Porta', window: 'Finestra', cp: 'Controparete', riv: 'Rivestimento', pil: 'Pilastro', pit: 'Pittura', led: 'Profilo LED', lux: 'Punto a parete'};
+  const ON = {door: 'Porta', window: 'Finestra', cp: 'Controparete', riv: 'Rivestimento', pil: 'Pilastro', pit: 'Pittura', led: 'Profilo LED', lux: 'Punto a parete', fur: 'Arredo', cs: 'Linea', ceil: 'Controsoffitto'};
+  const WF = k => k === 'fur' || k === 'cs' || k === 'ceil';   /* v27.5 */
   /* v21.0: pilastri addossati a questo muro (dalla pianta): si vedono e si spostano anche nel prospetto */
   const pillarsOf = w => state.furniture.filter(f => f.type === 'pilastro' && f.pil && f.pil.wallId === w.id && isEntityVisible(f));
-  function objOf(o) { if (!o) return null; if (o.kind === 'lux') return window.SClux ? SClux.find(o.id) : null; if (o.kind === 'led') return window.SCwl ? SCwl.find(o.id) : null; if (o.kind === 'pil') return state.furniture.find(x => x.id === o.id) || null; if (o.kind === 'riv') return window.SCriv ? SCriv.find(o.id) : null; if (o.kind === 'pit') return window.SCpit ? SCpit.find(o.id) : null; return o.kind === 'cp' ? wById(o.id) : (o.kind === 'door' ? state.doors : state.windows).find(x => x.id === o.id) || null; }
+  function objOf(o) { if (!o) return null; if (WF(o.kind)) return window.SCwf ? SCwf.find(o.kind, o.id) : null; if (o.kind === 'lux') return window.SClux ? SClux.find(o.id) : null; if (o.kind === 'led') return window.SCwl ? SCwl.find(o.id) : null; if (o.kind === 'pil') return state.furniture.find(x => x.id === o.id) || null; if (o.kind === 'riv') return window.SCriv ? SCriv.find(o.id) : null; if (o.kind === 'pit') return window.SCpit ? SCpit.find(o.id) : null; return o.kind === 'cp' ? wById(o.id) : (o.kind === 'door' ? state.doors : state.windows).find(x => x.id === o.id) || null; }
   function proxy(w, o) {
     const e = objOf(o); if (!e) return null; const L = Lw(w);
+    if (WF(o.kind)) return SCwf.proxy(w, S.face, o.kind, e);
     if (o.kind === 'lux') return {sh: 'rect', cx: e.lw.dist, y: SClux.zOf(e), w: 0, h: 0};
     if (o.kind === 'led') { const b = SCwl.bbox(e); return {sh: 'rect', cx: (b.x0 + b.x1) / 2, y: b.z0, w: Math.max(0.01, b.x1 - b.x0), h: Math.max(0.01, b.z1 - b.z0)}; }
     if (o.kind === 'pil') { const s = e.pil ? (e.pil.ref === 'b' ? L - (e.pil.dist + e.w / 2) : e.pil.dist + e.w / 2) : L / 2; return {sh: 'rect', cx: s, y: 0, w: e.w, h: Math.min(e.h || wh(w), wh(w))}; }
@@ -15343,6 +15345,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   }
   function writeProxy(w, o, r) {
     const e = objOf(o); if (!e) return; const L = Lw(w), H = wh(w);
+    if (WF(o.kind)) { SCwf.write(w, S.face, o.kind, e, r, S.drag); return; }
     if (o.kind === 'lux') { SClux.write(w, e, r.cx, r.y); return; }
     if (o.kind === 'led') { SCwl.fitBox(w, e, r); return; }
     if (o.kind === 'pil') {
@@ -15361,19 +15364,23 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     if ((r.w > L + 0.005 || r.h > H + 0.005) && !S.drag) toast('Non può superare il muro: ' + f2(L) + ' × ' + f2(H) + ' m');
   }
   const lockedO = o => { const e = objOf(o); if (e && (o.kind === 'riv' || o.kind === 'pit' || o.kind === 'led')) return isEntityLocked(wById(S.wallId)); return !e || isEntityLocked(e); };
-  function hitObj(w, u, v) {
-    const L = Lw(w), x = S.face > 0 ? L - u : u, tol = 6 / S.view.s;
+  function hitAll(w, u, v) {   /* v27.5: tutti gli oggetti sotto il dito, dal più piccolo / più vicino */
+    const L = Lw(w), x = S.face > 0 ? L - u : u, tol = 6 / S.view.s, out = [], add = o => { if (o && !out.some(q => q.kind === o.kind && q.id === o.id)) out.push(o); };
     const inR = r => r && x > r.cx - r.w / 2 - tol && x < r.cx + r.w / 2 + tol && v > r.y - tol && v < r.y + r.h + tol;
-    if (window.SClux) { const q = SClux.hit(w, S.face, x, v, S.view.s); if (q) return {kind: 'lux', id: q.id}; }   /* v25.0: luci a parete */
-    if (window.SCwl) { const q = SCwl.hit(w, S.face, x, v, 10 / S.view.s); if (q) return {kind: 'led', id: q.id}; }   /* v24.9: i profili LED si toccano per primi */
-    for (const f of pillarsOf(w)) if (inR(proxy(w, {kind: 'pil', id: f.id}))) return {kind: 'pil', id: f.id};
-    for (const d of state.doors) if (d.wallId === w.id && isEntityVisible(d) && inR(proxy(w, {kind: 'door', id: d.id}))) return {kind: 'door', id: d.id};
-    for (const d of state.windows) if (d.wallId === w.id && isEntityVisible(d) && inR(proxy(w, {kind: 'window', id: d.id}))) return {kind: 'window', id: d.id};
-    for (const c of cpsOf(w)) if (c.cg.side === S.face && inR(proxy(w, {kind: 'cp', id: c.id}))) return {kind: 'cp', id: c.id};
-    for (const q of (w.riv || []).slice().reverse()) if (q.f === S.face && inR(proxy(w, {kind: 'riv', id: q.id}))) return {kind: 'riv', id: q.id};
-    if (window.SCpit) { const q = SCpit.hit(w, S.face, x, v); if (q) return {kind: 'pit', id: q.id}; }
-    return null;
+    if (window.SClux) { const q = SClux.hit(w, S.face, x, v, S.view.s); if (q) add({kind: 'lux', id: q.id}); }   /* v25.0: luci a parete */
+    if (window.SCwl) { const q = SCwl.hit(w, S.face, x, v, 10 / S.view.s); if (q) add({kind: 'led', id: q.id}); }   /* v24.9: i profili LED si toccano per primi */
+    let fur = []; if (window.SCwf) { try { SCwf.hit(w, S.face, x, v, S.view.s).forEach(o => o.kind === 'cs' ? add(o) : fur.push(o)); } catch (e) { console.warn('prospetto: arredi', e); } }
+    fur.forEach(add);
+    for (const f of pillarsOf(w)) if (inR(proxy(w, {kind: 'pil', id: f.id}))) add({kind: 'pil', id: f.id});
+    for (const d of state.doors) if (d.wallId === w.id && isEntityVisible(d) && inR(proxy(w, {kind: 'door', id: d.id}))) add({kind: 'door', id: d.id});
+    for (const d of state.windows) if (d.wallId === w.id && isEntityVisible(d) && inR(proxy(w, {kind: 'window', id: d.id}))) add({kind: 'window', id: d.id});
+    for (const c of cpsOf(w)) if (c.cg.side === S.face && inR(proxy(w, {kind: 'cp', id: c.id}))) add({kind: 'cp', id: c.id});
+    for (const q of (w.riv || []).slice().reverse()) if (q.f === S.face && inR(proxy(w, {kind: 'riv', id: q.id}))) add({kind: 'riv', id: q.id});
+    if (window.SCpit) { const q = SCpit.hit(w, S.face, x, v); if (q) add({kind: 'pit', id: q.id}); }
+    if (window.SCwf) { try { SCwf.hitCs(w, S.face, x, v, S.view.s).forEach(add); } catch (e) { console.warn('prospetto: controsoffitti', e); } }
+    return out;
   }
+  function hitObj(w, u, v) { return hitAll(w, u, v)[0] || null; }
   const selRect = w => S.oSel ? proxy(w, S.oSel) : (selWork(w) ? clampWork(w, {...selWork(w)}) : null);
   /* v12.9.4: muri che si innestano o attraversano quello in prospetto: fascia x0..x1 lungo il muro, lati (+1/−1) da cui arrivano */
   function junctions(w) {
@@ -15516,6 +15523,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   .wk-sum b{color:#e5e7eb}
   .wk-warn{color:#fbbf24}
   #sbWk{display:none}
+  @media (max-height: 860px){ #wkPanel .wk-tools{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin;-webkit-overflow-scrolling:touch} #wkPanel .wk-tools .wk-b{flex:0 0 auto} #wkPanel .wk-tools .wk-sep{flex:0 0 auto} }
   body.wk-full-on #selBar,body.wk-full-on #vkFab,body.wk-full-on #vkPad,body.wk-full-on #panHandle,body.wk-full-on #fingerCursor{display:none!important}`;
   document.head.appendChild(css);
   const P = document.createElement('div'); P.id = 'wkPanel'; P.hidden = true; P.setAttribute('role', 'dialog'); P.setAttribute('aria-label', 'Prospetto del muro');
@@ -15526,6 +15534,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       <button class="wk-b" id="wkPrev" title="Muro collegato a sinistra">◀</button>
       <button class="wk-b" id="wkPhoto" title="Foto del muro: sfondo raddrizzato del prospetto" style="display:none">📷</button>
       <button class="wk-b" id="wkFlip" title="Guarda il muro dall'altro lato">👁 Gira</button>
+      <button class="wk-b" id="wkXray" title="Nel muro: impianti e punti sempre in vista, arredi trasparenti">🔍 Nel muro</button>
       <button class="wk-b" id="wkNext" title="Muro collegato a destra">▶</button>
       <button class="wk-b" id="wkFull" title="Prospetto a tutto schermo / schermo diviso">⤢</button>
       <button class="wk-b" id="wkClose" title="Chiudi il prospetto">✕</button>
@@ -15540,6 +15549,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       <button class="wk-b" data-t="riv" title="Rivestimento con una skin sul lato che guardi: tocca due angoli">Rivestimento</button><button class="wk-b" data-t="led" title="Profilo LED: linea libera, anche in verticale, o «Segui profilo» su un oggetto">💡 LED</button><button class="wk-b" data-t="imp" title="Linea impianto a mano, solo per le eccezioni: di norma usa «Collega» o i comandi automatici del menu Impianti">✎ Linea impianto</button><button class="wk-b" data-t="lux" title="Luci e punti a parete: applique, faretto, presa, interruttore, quadro; tocca il punto sul muro">🔆 Luci e punti</button><button class="wk-b" data-t="col" title="Collega punti: tocca la partenza (quadro) e poi prese, interruttori, punti acqua…: ognuno viene collegato con tubo o cavo">🔗 Collega</button><button class="wk-b" data-t="pit" title="Pittura: superficie colorata sul lato che guardi, a rettangolo o punto per punto">🎨 Pittura</button>
       <button class="wk-b" data-t="door" title="Porta: tocca due angoli sul muro (il lato in basso va a terra)">Porta</button>
       <button class="wk-b" data-t="window" title="Finestra: tocca due angoli sul muro (il lato in basso è il davanzale)">Finestra</button>
+      <button class="wk-b" data-t="fur" title="Arredo appoggiato a questo muro: tocca il punto e scegli dalla libreria">🛋 Arredo</button>
       <span class="wk-sep"></span>
       <button class="wk-b" data-s="rect" title="Rettangolare">▭</button>
       <button class="wk-b" data-s="arch" title="Ad arco">⌒</button>
@@ -15672,7 +15682,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   const selKey = () => S.oSel ? S.oSel.kind + ':' + S.oSel.id : S.selId ? 'w:' + S.selId : '';
   const isMove = () => !!selKey();   /* v23.5: l'oggetto già selezionato si sposta e si sagoma col dito; il primo tocco seleziona soltanto */
   function handles(w, k) {
-    if (S.oSel && S.oSel.kind === 'lux') return [];   /* v25.0: la luce si sposta, non si ridimensiona */
+    if (S.oSel && (S.oSel.kind === 'lux' || S.oSel.kind === 'cs' || S.oSel.kind === 'ceil')) return [];   /* v25.0: la luce si sposta, non si ridimensiona · v27.5: linee e controsoffitti idem */
     const u = toU(w, k.cx), x0 = u - k.w / 2, x1 = u + k.w / 2, y0 = k.y, y1 = k.y + k.h;
     const H = [[x0, y0, 'bl'], [x1, y0, 'br'], [x0, y1, 'tl'], [x1, y1, 'tr']];
     if (k.sh !== 'round') H.push([u, y0, 'b'], [u, y1, 't'], [x0, (y0 + y1) / 2, 'l'], [x1, (y0 + y1) / 2, 'r']);
@@ -15752,8 +15762,13 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       }
     });
     if (window.SCriv) { try { SCriv.afterWorks(cx, w, S.face, sx, sy, S.view.s, shapePath); } catch (e) { console.warn('rivestimento nicchie', e); } }
+    const XR = window.SCwf && SCwf.xray(), FUR = () => { if (window.SCwf) { try { SCwf.drawFur(cx, w, S.face, sx, sy, S.view.s, S.oSel); } catch (e) { console.warn('arredi prospetto', e); } } };
+    if (window.SCwf) { try { SCwf.drawCs(cx, w, S.face, sx, sy, S.view.s, S.oSel); } catch (e) { console.warn('controsoffitti prospetto', e); } }   /* v27.5 */
+    if (XR) FUR();
     if (window.SCwl) { try { SCwl.draw(cx, w, S.face, sx, sy, S.view.s, S.oSel); } catch (e) { console.warn('LED prospetto', e); } }   /* v24.9 */
     if (window.SClux) { try { SClux.draw(cx, w, S.face, sx, sy, S.view.s, S.oSel); } catch (e) { console.warn('luci prospetto', e); } }   /* v25.0 */
+    if (!XR) FUR();
+    if (window.SCwf) { try { SCwf.drawImpSel(cx, w, S.face, sx, sy, S.oSel); } catch (_) {} }
     /* quote */
     const qc = '#fbbf24';
     if (selR) {
@@ -15917,6 +15932,24 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     SCcs.connect(f, g); try { SCcs.showImpOn(); } catch (_) {}
     commit('Collegato. Si vede nella pianta e anche qui, lungo il muro; tipo e posizione si cambiano toccando la linea in pianta');
   }
+  function furPoint(w, uv, ev) {   /* v27.5: arredo dal prospetto: si appoggia a questo muro, dal lato che guardi */
+    if (isEntityLocked(w)) return toast('Muro su livello bloccato');
+    const L = Lw(w), x = Math.max(0.05, Math.min(L - 0.05, S.face > 0 ? L - uv.u : uv.u)), ux = (w.p2.x - w.p1.x) / L, uy = (w.p2.y - w.p1.y) / L, off = wt(w) / 2 + 0.3;
+    const p = {x: w.p1.x + ux * x - uy * off * S.face, y: w.p1.y + uy * x + ux * off * S.face};
+    const sw = $w('furnSnapWall'); S.furWait = {n: state.furniture.length, snap: sw ? sw.checked : null, t: Date.now()}; if (sw) sw.checked = true;
+    if (typeof openFurniturePicker !== 'function') return;
+    let done = false; const cx0 = ev.clientX, cy0 = ev.clientY, go = () => { if (done) return; done = true; document.removeEventListener('click', onC, true); openFurniturePicker(cx0, cy0, p); }, onC = () => setTimeout(go, 0);   /* si apre dopo il «click» del tocco, che altrimenti sceglierebbe l'arredo sotto il dito */
+    document.addEventListener('click', onC, true); setTimeout(go, 450);
+  }
+  { const _pf = placeFurniture;
+    placeFurniture = function () {
+      const fw = S.furWait; if (fw) S.furWait = null;
+      const r = _pf.apply(this, arguments);
+      if (fw) { const sw = $w('furnSnapWall'); if (sw && fw.snap != null) sw.checked = fw.snap;
+        if (S.open && state.furniture.length > fw.n) { const f = state.furniture[state.furniture.length - 1]; S.tool = 'sel'; S.selId = null; S.oSel = {kind: 'fur', id: f.id}; commit(((FURNITURE[f.type] || {}).name || 'Arredo') + ' appoggiato al muro: trascinalo per spostarlo, anche in altezza'); } }
+      return r;
+    };
+  }
   function luxPoint(w, uv) {   /* v25.0: luce a parete dal prospetto */
     if (isEntityLocked(w)) return toast('Muro su livello bloccato');
     const L = Lw(w), x = S.face > 0 ? L - uv.u : uv.u, f = SClux.add(w, S.face, x, uv.v, S.luxT);
@@ -15976,6 +16009,14 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   const local = e => { const r = cv.getBoundingClientRect(); return {x: e.clientX - r.left, y: e.clientY - r.top}; };
   const useFinger = e => e.pointerType !== 'mouse' && appSettings.finger !== 'off';
   function startDrag(w, k, kind, uv) { S.drag = {kind, k0: {...k}, uv0: uv}; }
+  const kname = q => q.work ? (KN[q.work.k] || 'lavorazione').toLowerCase() : (() => { const e = objOf(q); return WF(q.kind) && e ? SCwf.title(q.kind, e) : (ON[q.kind] || 'oggetto'); })();
+  function cycleNext() {   /* v27.5: toccando di nuovo lo stesso oggetto si passa a quello sotto */
+    const t = S.tapHit || {}; if (!t.C || t.C.length < 2) return;
+    const n = t.C.length, i = (t.ci + 1) % n, q = t.C[i];
+    if (q.work) { S.selId = q.work.id; S.oSel = null; } else { S.oSel = {kind: q.kind, id: q.id}; S.selId = null; }
+    S.moveOn = null; S.field = null; S.buf = ''; t.ci = i;
+    toast((i + 1) + ' di ' + n + ': ' + kname(q) + ' · tocca ancora per il successivo');
+  }
   function applyDrag(w, uv) {
     const d = S.drag, k = S.oSel ? proxy(w, S.oSel) : selWork(w); if (!d || !k) return;
     const L = Lw(w), du = uv.u - d.uv0.u, dv = uv.v - d.uv0.v, o = d.k0;
@@ -16003,8 +16044,9 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       if (S.field && S.buf) applyField(w);   /* v23.4: toccando il disegno, il valore scritto si applica */
       const lk = S.oSel ? lockedO(S.oSel) : isEntityLocked(w), mv = isMove() && !lk, k = selRect(w), h = mv && k && hitHandle(w, k, p.x, p.y);
       const pr = mv && S.oSel && S.oSel.kind === 'pit' && window.SCpit ? SCpit.find(S.oSel.id) : null, hv = pr && SCpit.hitVertex(w, pr, S.face, sx, sy, p.x, p.y);
-      const hk = hitWork(w, uv.u, uv.v), ho = hk ? null : hitObj(w, uv.u, uv.v), same = (hk && hk.id === S.selId && !S.oSel) || (ho && S.oSel && ho.kind === S.oSel.kind && ho.id === S.oSel.id);
-      S.tapHit = {hk, ho};
+      const hk0 = hitWork(w, uv.u, uv.v), C = (hk0 ? [{work: hk0}] : []).concat(hitAll(w, uv.u, uv.v)), ci0 = C.findIndex(q => q.work ? (!S.oSel && S.selId === q.work.id) : (S.oSel && q.kind === S.oSel.kind && q.id === S.oSel.id)), ci = Math.max(0, ci0);
+      const hk = C[ci] && C[ci].work ? C[ci].work : null, ho = C[ci] && !C[ci].work ? C[ci] : null, same = ci0 >= 0;
+      S.tapHit = {hk, ho, C, ci, same};
       const lr = mv && S.oSel && S.oSel.kind === 'led' && window.SCwl ? SCwl.find(S.oSel.id) : null, lh = lr && SCwl.hitVertex(w, lr, S.face, sx, sy, p.x, p.y);
       if (lh) {
         if (lh.ins && appSettings.csMid === 'curve') { SCwl.setCur(lr, null); S.drag = {kind: 'lc', i: lh.i, r: lr}; }
@@ -16049,8 +16091,9 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     S.pick = null;
     if (S.drag && S.drag.kind === 'pv') { S.drag = null; S.cur = null; commit(); return; }
     if (S.drag && (S.drag.kind === 'lv' || S.drag.kind === 'lc')) { S.drag = null; S.cur = null; commit(); return; }
-    if (S.drag) { const was = S.drag.kind; S.drag = null; if (was !== 'pan' && pk.moved) commit(); else { if (was === 'pan' && !pk.moved && S.tool === 'sel') {   /* v23.4: un tocco senza trascinare seleziona l'oggetto toccato; nel vuoto deseleziona */
+    if (S.drag) { const was = S.drag.kind; S.drag = null; if (was !== 'pan' && pk.moved) commit(); else { if (was === 'move' && !pk.moved && S.tool === 'sel') cycleNext(); else if (was === 'pan' && !pk.moved && S.tool === 'sel') {   /* v23.4: un tocco senza trascinare seleziona l'oggetto toccato; nel vuoto deseleziona */
         const t = S.tapHit || {}; S.field = null; S.buf = '';
+        if (t.same && t.C && t.C.length > 1) cycleNext(); else
         if (t.hk) { if (S.selId !== t.hk.id || S.oSel) { S.selId = t.hk.id; S.oSel = null; S.moveOn = null; } }
         else if (t.ho) { if (!S.oSel || S.oSel.kind !== t.ho.kind || S.oSel.id !== t.ho.id) { S.oSel = t.ho; S.selId = null; S.moveOn = null; } }
         else { S.selId = null; S.oSel = null; S.moveOn = null; }
@@ -16061,6 +16104,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     if ((S.tool === 'led' || S.tool === 'imp') && S.cur && e.type === 'pointerup') { ledPoint(w, S.cur); S.cur = null; return; }
     if (S.tool === 'lux' && S.cur && e.type === 'pointerup') { luxPoint(w, S.cur); S.cur = null; return; }
     if (S.tool === 'col' && S.cur && e.type === 'pointerup') { colPoint(w, S.cur); S.cur = null; return; }
+    if (S.tool === 'fur' && S.cur && e.type === 'pointerup') { furPoint(w, S.cur, e); S.cur = null; return; }
     if (S.tool !== 'sel' && S.cur && e.type === 'pointerup') {
       if (!S.first) { S.first = S.cur; toast('Ora il secondo angolo'); render(); ui(); return; }
       const a = S.first; S.first = null; createWork(a, S.cur); S.cur = null; render(); return;
@@ -16080,6 +16124,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   });
   $w('wkClose').onclick = close;
   $w('wkFull').onclick = () => { S.full = !S.full; lastCv = ''; layout(); ui(); };
+  $w('wkXray').onclick = () => { appSettings.wkXray = !(window.SCwf && SCwf.xray()); try { persistSettings(); } catch (_) {} toast(appSettings.wkXray ? 'Nel muro: impianti e punti sempre in vista, arredi trasparenti' : 'Vista normale: gli arredi coprono il muro'); ui(); render(); };
   $w('wkPhoto').onclick = () => {
     const w = wById(S.wallId); if (!w || !window.SCph) return; const bg = SCph.bgOf(w), list = SCph.wallPhotos(w);
     if (bg && (bg.face == null ? defaultFace(w) : bg.face) === S.face) { S.photo = S.photo === false; ui(); return; }   /* foto già raddrizzata: mostra / nascondi */
@@ -16108,6 +16153,8 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   function fields(w, k) {
     const L = Lw(w), u = toU(w, k.cx) - k.w / 2, F = [['w', 'Larghezza', k.w]];
     if (S.oSel && S.oSel.kind === 'lux') return [['u', 'Da sinistra', u], ['y', 'Da terra', k.y]];
+    if (S.oSel && S.oSel.kind === 'ceil') return [['y', 'Quota', k.y]];
+    if (S.oSel && S.oSel.kind === 'cs') { const e = objOf(S.oSel); return e && e.imp ? [['u', 'Da sinistra', u]].concat((e.zm || 'pav') === 'lib' ? [['y', 'Da terra', k.y]] : []) : [['y', 'Da terra (sotto trave)', k.y]]; }
     if (S.oSel) { F.push(['h', 'Altezza', k.h], ['u', 'Da sinistra', u]); if (S.oSel.kind !== 'door' && S.oSel.kind !== 'pil') F.push(['y', 'Da terra', k.y]); if (S.oSel.kind === 'riv') F.push(['r', 'Da destra', L - (u + k.w)], ['t', 'Dal soffitto', wh(w) - (k.y + k.h)]); return F; }
     if (k.sh !== 'round') F.push(['h', 'Altezza', k.h]);
     F.push(['u', 'Da sinistra', u], ['y', 'Da terra', k.y]);
@@ -16122,6 +16169,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     const k = selWork(w), shapeOn = S.tool === 'hole' || S.tool === 'niche' || (k && k.k !== 'cut');
     P.querySelectorAll('[data-s]').forEach(b => { b.disabled = !shapeOn; b.classList.toggle('on', shapeOn && (k ? k.sh : S.shape) === b.dataset.s); });
     $w('wkFull').classList.toggle('on', S.full || small());
+    { const xb = $w('wkXray'); if (xb) xb.classList.toggle('on', !!(window.SCwf && SCwf.xray())); }
     { const pb = $w('wkPhoto'), n = window.SCph ? SCph.wallPhotos(w).length : 0, bg = n && SCph.bgOf(w); pb.style.display = n ? '' : 'none'; pb.classList.toggle('on', !!(bg && S.photo !== false && (bg.face == null ? defaultFace(w) : bg.face) === S.face)); pb.title = bg ? 'Foto come sfondo: mostra / nascondi' : 'Foto del muro: tocca per segnare gli angoli e usarla come sfondo'; } $w('wkFull').style.display = small() ? 'none' : '';
     const foot = $w('wkFoot'), locked = isEntityLocked(w); let h = '';
     if (S.tool !== 'sel') {
@@ -16144,6 +16192,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
         foot.innerHTML = '<div class="wk-hint"><b>Collega punti</b>: tocca la partenza (di solito il quadro) e poi le prese, gli interruttori, i punti acqua e scarico: ognuno viene collegato con la discesa e il percorso. ' + (S.colSrc ? '<b>Partenza scelta.</b>' : 'Tocca la partenza.') + '</div><div class="wk-row"><button class="wk-b sc-fine" data-a="done" style="margin-left:auto">✔ Fine</button></div>';
         render(); return;
       }
+      if (S.tool === 'fur') { foot.innerHTML = '<div class="wk-hint"><b>Arredo</b> appoggiato a questo muro, dal lato che guardi: tocca il punto sul muro e scegli l\'arredo dalla libreria. Poi lo trascini lungo il muro e in altezza (pensili, mensole, specchi).</div><div class="wk-row"><button class="wk-b sc-fine" data-a="done" style="margin-left:auto">✔ Fine</button></div>'; render(); return; }
       if (S.tool === 'lux') {
         h += '<div class="wk-hint"><b>Luci e punti a parete</b> sul lato che guardi: scegli cosa mettere, poi tocca il punto sul muro (la quota è dove tocchi). Poi cambi tipo, potenza e colore.</div>';
         h += '<div class="wk-row" style="flex-wrap:wrap">' + [['applique', 'Applique'], ['faretto_p', 'Faretto a parete'], ['presa', 'Presa'], ['interruttore', 'Interruttore'], ['quadro', 'Quadro'], ['pt_acqua', 'Punto acqua'], ['pt_scarico', 'Scarico'], ['collettore', 'Collettore'], ['split', 'Condizionatore'], ['pt_tv', 'Presa TV'], ['pt_dati', 'Presa dati']].map(([k, n]) => '<button class="wk-b' + ((S.luxT || 'applique') === k ? ' on' : '') + '" data-a="luxt" data-m="' + k + '">' + n + '</button>').join('') + '<button class="wk-b sc-fine" data-a="done" style="margin-left:auto">✔ Fine</button></div>';
@@ -16169,16 +16218,18 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     } else if (S.oSel && objOf(S.oSel)) {
       const o = S.oSel, e = objOf(o), r = proxy(w, o), F = fields(w, r), lk = lockedO(o);
       const extra = o.kind === 'cp' ? '<span class="wk-hint">' + esc((e.name || '') + ' · sp. ' + cm(wt(e)) + ' cm') + '</span>' : (o.kind === 'window' && e.kind === 'slide' ? '<span class="wk-hint">scorrevole</span>' : '');
-      h += '<div class="wk-row"><b style="color:#22d3ee">' + (o.kind === 'led' && e.imp ? 'Impianto · ' + SCwl.IMPT[e.imp][0] : ON[o.kind]) + '</b>' + extra + '<button class="wk-b" data-a="odel" style="margin-left:auto;color:#fca5a5">🗑 Elimina</button><button class="wk-b sc-fine" data-a="done" title="Fine: deseleziona e torna allo stato iniziale">✔ Fine</button></div>';
+      h += '<div class="wk-row"><b style="color:#22d3ee">' + (WF(o.kind) ? esc(SCwf.title(o.kind, e)) : o.kind === 'led' && e.imp ? 'Impianto · ' + SCwl.IMPT[e.imp][0] : ON[o.kind]) + '</b>' + extra + '<button class="wk-b" data-a="odel" style="margin-left:auto;color:#fca5a5">🗑 Elimina</button><button class="wk-b sc-fine" data-a="done" title="Fine: deseleziona e torna allo stato iniziale">✔ Fine</button></div>';
       if (lk) h += '<div class="wk-hint wk-warn">Su un livello bloccato: puoi solo guardare.</div>';
       h += '<div class="wk-row">' + F.map(([key, lab, v]) => '<button class="wk-f' + (S.field === key ? ' on' : '') + '" data-f="' + key + '"><small>' + lab + ' (m)</small><b>' + (S.field === key ? (S.buf ? esc(S.buf) : '<i>' + f2(v) + '</i>') : f2(v)) + '</b></button>').join('') + '</div>';
       if (S.field) h += keypadHTML();
       if (o.kind === 'cp') { const v = SCcg.voce(e); if (v) h += S.sumOpen ? '<div class="wk-sum" data-a="sum" style="cursor:pointer"><b>Voce di computo (a corpo) ▾</b><br>' + esc(v.desc) + '<br><span style="color:#9ca3b8">' + esc(v.det) + '</span></div>' : '<button class="wk-b" data-a="sum" style="height:30px;font-weight:400;color:#cbd5e1">Voce di computo ▸ <span style="color:#9ca3b8">' + esc(v.det) + '</span></button>'; }
       if (o.kind === 'riv' && window.SCriv) h += SCriv.panelHTML(w, e);
       if (o.kind === 'pit' && window.SCpit) h += SCpit.panelHTML(w, e);
-      if (o.kind === 'lux') h += SClux.panelHTML(e); else if (o.kind === 'led' && window.SCwl) h += SCwl.panelHTML(w, e); else h += '<div class="wk-row"><button class="wk-b" data-a="ledfollow" title="Crea un profilo LED che copia il contorno di questo oggetto">⤷ Segui profilo (LED)</button></div>';
-      if (window.SCprezzo && o.kind !== 'pil' && !(o.kind === 'led' && !e.imp)) h += SCprezzo.panelHTML(o.kind === 'cp' ? 'wall' : o.kind === 'lux' ? 'furniture' : o.kind === 'led' ? 'imp' : o.kind, e, o.kind === 'cp' ? e : w);   /* v25.1 */
-      h += '<div class="wk-row"><button class="wk-b" data-a="oprops">' + (o.kind === 'cp' ? 'Stratigrafia e prezzo' : o.kind === 'riv' || o.kind === 'pit' || o.kind === 'led' || o.kind === 'lux' ? 'Duplica' : 'Altre proprietà') + '</button></div>';
+      if (o.kind === 'cs' && e.imp && window.SCwl) { const T = SCwl.IMPT, ist = 'padding:7px 8px;border-radius:6px;border:1px solid #475569;background:#12151f;color:#e5e7eb;font:14px sans-serif;width:100%;box-sizing:border-box'; h += '<div class="wk-row" style="gap:6px"><label style="flex:1;font-size:12px;color:#cbd5e1">Tipo<select data-cst="imp" style="' + ist + '">' + Object.keys(T).filter(k => ['lux', 'pre', 'acf', 'acc', 'scn', 'tv', 'dat'].includes(k) || k === e.imp).map(k => '<option value="' + k + '"' + (k === e.imp ? ' selected' : '') + '>' + T[k][0] + '</option>').join('') + '</select></label><label style="flex:1;font-size:12px;color:#cbd5e1">Percorso<select data-cst="zm" style="' + ist + '">' + [['pav', 'A pavimento'], ['sop', 'Nel controsoffitto'], ['lib', 'A quota libera']].map(([a, n]) => '<option value="' + a + '"' + ((e.zm || 'pav') === a ? ' selected' : '') + '>' + n + '</option>').join('') + '</select></label></div><div class="wk-hint">Tracciata in pianta: trascinala per spostarla lungo questo muro (si spostano i tratti vicini al muro).</div>'; }
+      if (o.kind === 'ceil' || o.kind === 'cs') h += '<div class="wk-row"><button class="wk-b" data-a="csedit">✎ Modifica in pianta</button></div>' + (o.kind === 'ceil' ? '<div class="wk-hint">Trascina in su o in giù per cambiare la quota del controsoffitto.</div>' : !e.imp ? '<div class="wk-hint">Trascina in su o in giù per cambiare l\'altezza della falsa trave.</div>' : '');
+      else if (o.kind === 'lux') h += SClux.panelHTML(e); else if (o.kind === 'led' && window.SCwl) h += SCwl.panelHTML(w, e); else h += '<div class="wk-row"><button class="wk-b" data-a="ledfollow" title="Crea un profilo LED che copia il contorno di questo oggetto">⤷ Segui profilo (LED)</button></div>';
+      if (window.SCprezzo && o.kind !== 'pil' && o.kind !== 'cs' && o.kind !== 'ceil' && !(o.kind === 'led' && !e.imp)) h += SCprezzo.panelHTML(o.kind === 'cp' ? 'wall' : o.kind === 'lux' || o.kind === 'fur' ? 'furniture' : o.kind === 'led' ? 'imp' : o.kind, e, o.kind === 'cp' ? e : w);   /* v25.1 */
+      if (o.kind !== 'cs' && o.kind !== 'ceil') h += '<div class="wk-row"><button class="wk-b" data-a="oprops">' + (o.kind === 'cp' ? 'Stratigrafia e prezzo' : o.kind === 'riv' || o.kind === 'pit' || o.kind === 'led' || o.kind === 'lux' ? 'Duplica' : 'Altre proprietà') + '</button></div>';
       if (o.kind === 'door') h += '<div class="wk-hint">La porta parte sempre da terra.</div>';
     } else if (k) {
       const F = fields(w, k);
@@ -16234,6 +16285,8 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       if (a === 'pundo') { (S.pp || []).pop(); ui(); render(); return; }
       if (a === 'pclose') { pitClose(w); return; }
       if (a === 'plib') { if (window.SCpit) SCpit.openLib(SCpit.last(), fin => { ui(); }); return; }   /* v22.7: Fatto / Fine */
+      if (a === 'csedit' && S.oSel && window.SCcs && SCcs.edit) { const e2 = objOf(S.oSel); if (e2) { SCcs.edit(e2); toast('Selezionato in pianta: modificalo dal riquadro'); } return; }
+      if (a === 'xr') { appSettings.wkXray = !(window.SCwf && SCwf.xray()); try { persistSettings(); } catch (_) {} ui(); render(); return; }
       if (S.oSel && ['oprops', 'odel', 'desel'].includes(a)) {
         const o = S.oSel, e2 = objOf(o);
         if (a === 'desel') { S.oSel = null; S.field = null; ui(); return; }
@@ -16242,13 +16295,14 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
         if (a === 'oprops' && o.kind === 'pit') { if (lockedO(o)) return toast('Livello bloccato'); const n = SCpit.dup(w, e2); if (!n) return toast('Non c\'è spazio per duplicarla'); S.oSel = {kind: 'pit', id: n.id}; commit('Pittura duplicata'); return; }
         if (a === 'oprops' && o.kind === 'led') { if (lockedO(o)) return toast('Livello bloccato'); const n = SCwl.dup(w, e2); if (!n) return toast('Non c\'è spazio per duplicarlo'); S.oSel = {kind: 'led', id: n.id}; commit('Profilo LED duplicato'); return; }
         if (a === 'oprops' && o.kind === 'riv') { if (lockedO(o)) return toast('Livello bloccato'); const n = SCriv.dup(w, e2); if (!n) return toast('Non c\'è spazio per duplicarlo'); S.oSel = {kind: 'riv', id: n.id}; commit('Rivestimento duplicato'); return; }
-        if (a === 'oprops') { state.selected = {type: o.kind === 'cp' ? 'wall' : o.kind === 'pil' ? 'furniture' : o.kind, id: o.id}; state.sel = [state.selected]; try { updateSelectionPanel(); } catch (_) {} const sp = $w('selectionPanel'); if (sp) sp.style.display = 'block'; toast('Proprietà nel riquadro di selezione'); return; }
+        if (a === 'oprops') { state.selected = {type: o.kind === 'cp' ? 'wall' : o.kind === 'pil' || o.kind === 'fur' ? 'furniture' : o.kind, id: o.id}; state.sel = [state.selected]; try { updateSelectionPanel(); } catch (_) {} const sp = $w('selectionPanel'); if (sp) sp.style.display = 'block'; toast('Proprietà nel riquadro di selezione'); return; }
         if (lockedO(o)) return toast('Livello bloccato');
         if (o.kind === 'riv') SCriv.remove(w, e2);
         else if (o.kind === 'pit') SCpit.remove(w, e2);
         else if (o.kind === 'led') SCwl.remove(SCwl.hostOf(e2.id) || w, e2);
         else if (o.kind === 'lux') SClux.remove(e2);
         else if (o.kind === 'cp') { state.walls = state.walls.filter(x => x !== e2); try { detectRooms(); updateRoomList(); } catch (_) {} }
+        else if (WF(o.kind)) { const nm = SCwf.title(o.kind, e2); SCwf.remove(o.kind, e2); S.oSel = null; S.field = null; commit(nm + ': eliminato'); return; }
         else if (o.kind === 'pil') state.furniture = state.furniture.filter(x => x !== e2); else if (o.kind === 'door') state.doors = state.doors.filter(x => x !== e2); else state.windows = state.windows.filter(x => x !== e2);
         S.oSel = null; S.field = null; commit(ON[o.kind] + ' eliminata'); return;
       }
@@ -16260,6 +16314,13 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       if (a === 'face') { k.f = k.f === 1 ? -1 : 1; commit('Nicchia spostata sul ' + (k.f === S.face ? 'lato che guardi' : 'lato opposto')); return; }
       if (a === 'dup') { const L = Lw(w), n = {...k, id: newId()}, step = (k.w + 0.1) * (S.face > 0 ? -1 : 1); n.cx = k.cx + step; if (n.cx + n.w / 2 > L || n.cx - n.w / 2 < 0) n.cx = k.cx - step; clampWork(w, n); works(w).push(n); S.selId = n.id; commit('Lavorazione duplicata'); return; }
     }
+  });
+  $w('wkFoot').addEventListener('change', e => {   /* v27.5: tipo e percorso della linea d'impianto tracciata in pianta */
+    const t = e.target.closest && e.target.closest('[data-cst]'); if (!t || !S.oSel || S.oSel.kind !== 'cs') return; const b = objOf(S.oSel); if (!b || !b.imp) return;
+    if (lockedO(S.oSel)) return toast('Livello bloccato');
+    if (t.dataset.cst === 'imp') { b.imp = t.value; if (window.SCwl) b.d = SCwl.IMPT[b.imp][2]; }
+    else if (t.dataset.cst === 'zm') { b.zm = t.value; if (b.zm === 'lib' && b.z == null) b.z = 0.5; }
+    commit();
   });
   function applyField(w, silent) {
     const s = S.buf.replace(',', '.'), v = parseFloat(s);
@@ -17030,8 +17091,13 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       botole(active).forEach((t, i) => { if (Math.abs(w0.x - t.x) <= t.w / 2 + tol && Math.abs(w0.y - t.y) <= t.h / 2 + tol) bi = i; });
       if (bi >= 0) { e.stopPropagation(); e.preventDefault(); const t = active.bot[bi]; drag = {el: active, bot: bi, o: {x: t.x, y: t.y}, id: e.pointerId, x0: e.clientX, y0: e.clientY, moved: false, touch: e.pointerType !== 'mouse', w0}; try { c2d.setPointerCapture(e.pointerId); } catch (_) {} return; }
     }
-    const bx = h ? null : pick(x, y);
-    if (!h && !bx) { if (active) { active = null; closePal(); draw2D(); } return; }
+    let bx = null;
+    if (!h) {   /* v27.5: tubi, luci e arredi sotto il controsoffitto: vince il più piccolo; toccando di nuovo si passa al successivo */
+      const R = cyc(x, y, e);
+      if (R.man) { e.stopPropagation(); e.preventDefault(); return; }
+      bx = R.el ? {el: R.el} : null;
+      if (!bx) { if (active) { active = null; closePal(); draw2D(); } return; }
+    }
     e.stopPropagation(); e.preventDefault();
     if (bx) { active = bx.el; state.selected = null; state.sel = []; try { updateSelectionPanel(); } catch (_) {} }
     const el = active;
@@ -17076,6 +17142,50 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     else if (!d.h || d.h.k === 'm') openPal(d.el);
   };
   ws.addEventListener('pointerup', up, true); ws.addEventListener('pointercancel', up, true);
+  /* ---------------------------------------------------------------- v27.5: ciclo di selezione (oggetti sovrapposti) */
+  let CYC = null, CYCtip = false;
+  const ck = c => c.el ? 'c:' + c.el.id : c.hit.type + ':' + c.hit.id;
+  function cands(x, y, touch) {
+    const w = screenToWorld(x, y), tol = (touch ? 18 : 10) / viewScale, L = [];
+    let sp = [], def = null; try { if (window.SCsel) { sp = SCsel.candidates(w); def = SCsel.pick(w); } } catch (_) {}
+    const st = window.SCsel ? Math.max(0.02, SCsel.cfg.tol / viewScale) : tol;
+    sp.filter(c => c.pr <= 3 && c.d <= st).sort((a, b) => a.d - b.d || a.pr - b.pr).forEach(c => L.push({hit: c.hit}));
+    const ln = []; boxes.forEach(q => { const el = q.el; if (kindOf(el) !== 'b') return; const D = dense(el, false); let m = Infinity; for (let i = 0; i + 1 < D.length; i++) m = Math.min(m, segD(w, D[i], D[i + 1])); if (m <= Math.max(tol, (el.w || 0) / 2)) ln.push({el, d: m}); });
+    ln.sort((a, b) => a.d - b.d).forEach(c => L.push({el: c.el}));
+    [...boxes].reverse().forEach(q => { if (!q.hid && x >= q.x && x <= q.x + q.w && y >= q.y && y <= q.y + q.h) L.push({el: q.el}); });
+    sp.filter(c => c.pr === 4 && c.d <= st).sort((a, b) => a.d - b.d).forEach(c => L.push({hit: c.hit}));
+    const cs = []; boxes.forEach(q => { const el = q.el; if (kindOf(el) !== 'c') return; const D = dense(el, true); if (inPoly(w, D)) cs.push({el, A: Math.abs(polyArea(D))}); });
+    cs.sort((a, b) => a.A - b.A);
+    const rm = sp.filter(c => c.pr === 9).sort((a, b) => a.d - b.d).map(c => ({hit: c.hit}));
+    if (lblCsOn()) { rm.forEach(c => L.push(c)); cs.forEach(c => L.push({el: c.el})); } else { cs.forEach(c => L.push({el: c.el})); rm.forEach(c => L.push(c)); }
+    const seen = new Set(); return {L: L.filter(c => { const k = ck(c); if (seen.has(k)) return false; seen.add(k); return true; }), def};
+  }
+  const cname = c => { if (c.el) { const el = c.el; return kindOf(el) === 'c' ? (isPaint(el) ? 'soffitto dipinto' : 'controsoffitto') : el.imp ? 'impianto' + (window.SCwl && SCwl.IMPT[el.imp] ? ' · ' + SCwl.IMPT[el.imp][0].toLowerCase() : '') : el.led ? 'profilo LED' : 'falsa trave'; }
+    const h = c.hit; if (h.type === 'furniture') { const f = state.furniture.find(x => x.id === h.id); return f && FURNITURE[f.type] ? FURNITURE[f.type].name : 'arredo'; }
+    return ({wall: 'muro', room: 'locale', door: 'porta', window: 'finestra', label: 'testo', measurement: 'quota', stairs: 'scala'})[h.type] || h.type; };
+  function selHit(h) { active = null; closePal(); state.selected = {type: h.type, id: h.id}; state.sel = [state.selected]; try { updateSelectionPanel(); } catch (_) {} draw2D(); }
+  function cyc(x, y, e) {
+    window.__scTap = {x: e.clientX, y: e.clientY, t: Date.now()};
+    const touch = e.pointerType !== 'mouse', R = cands(x, y, touch), L = R.L, now = Date.now();
+    const same = !!(CYC && Math.hypot(e.clientX - CYC.x, e.clientY - CYC.y) < (touch ? 16 : 7) && now - CYC.t < 6000);
+    const cur = active ? 'c:' + active.id : state.selected ? state.selected.type + ':' + state.selected.id : null, k = cur ? L.findIndex(c => ck(c) === cur) : -1, i = k >= 0 && (same || (active && kindOf(active) === 'b')) ? k : 0;
+    CYC = {x: e.clientX, y: e.clientY, t: now, L, i, id: e.pointerId, armed: same && k >= 0 && L.length > 1, done: false};
+    const c = L[i]; if (!c) return {};
+    if (!same && L.length > 1 && !CYCtip && L.some(q => q.el) && L.some(q => !q.el || kindOf(q.el) === 'c')) { CYCtip = true; setTimeout(() => toast('Qui ci sono più oggetti: tocca di nuovo nello stesso punto per prendere quello sotto'), 0); }
+    if (c.el) return {el: c.el};
+    if (active) { active = null; closePal(); }
+    if (R.def && ck({hit: R.def}) === ck(c)) return {};
+    selHit(c.hit); return {man: true};
+  }
+  window.addEventListener('pointerup', e => {
+    if (!CYC || CYC.done || CYC.id !== e.pointerId) return; CYC.done = true;
+    if (!CYC.armed || Math.hypot(e.clientX - CYC.x, e.clientY - CYC.y) > 6) return;
+    const C = CYC, n = C.L.length, i = (C.i + 1) % n, c = C.L[i];
+    setTimeout(() => {
+      if (c.el) { active = c.el; state.selected = null; state.sel = []; try { updateSelectionPanel(); } catch (_) {} draw2D(); openPal(c.el); } else selHit(c.hit);
+      C.i = i; toast((i + 1) + ' di ' + n + ': ' + cname(c) + ' · tocca ancora per il successivo');
+    }, 0);
+  }, true);
 
   /* ---------------------------------------------------------------- pannello */
   function closePal() { if (pal) { pal.remove(); pal = null; } }
@@ -17131,6 +17241,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     const b = boxes.find(q => q.el === el), r = c2d.getBoundingClientRect(), W = pal.offsetWidth, H = pal.offsetHeight;
     let x = b ? r.left + b.x + b.w + 8 : r.left + 80, y = b ? r.top + b.y : r.top + 80;
     if (x + W > innerWidth - 6) x = b ? r.left + b.x - W - 8 : innerWidth - W - 6;
+    { const T = window.__scTap; if (T && Date.now() - T.t < 4000) { const X0 = Math.max(6, Math.min(innerWidth - W - 6, x)), Y0 = Math.max(Math.min(r.top + 4, innerHeight - H - 6), Math.min(innerHeight - H - 6, y)); if (T.x > X0 - 40 && T.x < X0 + W + 40 && T.y > Y0 - 40 && T.y < Y0 + H + 40) x = T.x - r.left > r.width / 2 ? Math.max(r.left + 6, T.x - W - 60) : Math.min(r.right - W - 6, T.x + 60); } }   /* v27.5 */
     pal.style.left = Math.max(6, Math.min(innerWidth - W - 6, x)) + 'px'; pal.style.top = Math.max(Math.min(r.top + 4, innerHeight - H - 6), Math.min(innerHeight - H - 6, y)) + 'px';
   }
   /* v25.5 · COLLEGA PUNTI: tocca la partenza (quadro) e poi i punti: ognuno viene collegato con un percorso ad angolo retto */
@@ -17285,6 +17396,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     const b = boxes.find(q => q.el === el), r = c2d.getBoundingClientRect(), W = pal.offsetWidth, H = pal.offsetHeight;
     let x = b ? r.left + b.x + b.w + 8 : r.left + 80, y = b ? r.top + b.y : r.top + 80;
     if (x + W > innerWidth - 6) x = b ? r.left + b.x - W - 8 : innerWidth - W - 6;
+    { const T = window.__scTap; if (T && Date.now() - T.t < 4000) { const X0 = Math.max(6, Math.min(innerWidth - W - 6, x)), Y0 = Math.max(Math.min(r.top + 4, innerHeight - H - 6), Math.min(innerHeight - H - 6, y)); if (T.x > X0 - 40 && T.x < X0 + W + 40 && T.y > Y0 - 40 && T.y < Y0 + H + 40) x = T.x - r.left > r.width / 2 ? Math.max(r.left + 6, T.x - W - 60) : Math.min(r.right - W - 6, T.x + 60); } }   /* v27.5 */
     pal.style.left = Math.max(6, Math.min(innerWidth - W - 6, x)) + 'px'; pal.style.top = Math.max(Math.min(r.top + 4, innerHeight - H - 6), Math.min(innerHeight - H - 6, y)) + 'px';
   }
   function openPal(el) {
@@ -17373,6 +17485,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     const b = boxes.find(q => q.el === el), r = c2d.getBoundingClientRect(), W = pal.offsetWidth, H = pal.offsetHeight;
     let x = b ? r.left + b.x + b.w + 8 : r.left + 80, y = b ? r.top + b.y : r.top + 80;
     if (x + W > innerWidth - 6) x = b ? r.left + b.x - W - 8 : innerWidth - W - 6;
+    { const T = window.__scTap; if (T && Date.now() - T.t < 4000) { const X0 = Math.max(6, Math.min(innerWidth - W - 6, x)), Y0 = Math.max(Math.min(r.top + 4, innerHeight - H - 6), Math.min(innerHeight - H - 6, y)); if (T.x > X0 - 40 && T.x < X0 + W + 40 && T.y > Y0 - 40 && T.y < Y0 + H + 40) x = T.x - r.left > r.width / 2 ? Math.max(r.left + 6, T.x - W - 60) : Math.min(r.right - W - 6, T.x + 60); } }   /* v27.5 */
     pal.style.left = Math.max(6, Math.min(innerWidth - W - 6, x)) + 'px'; pal.style.top = Math.max(Math.min(r.top + 4, innerHeight - H - 6), Math.min(innerHeight - H - 6, y)) + 'px';
   }
 
@@ -17603,7 +17716,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     setPrice: (k, v) => { const e = state.ceils.concat(state.beams).find(x => 'cs_' + x.id === k); if (e) e.price = v; },
     busy: () => isMine(state.tool) && tmp.length > 0, finish, undoPt: () => { tmp.pop(); draw2D(); }, cancel: () => { tmp = []; draw2D(); },
     count: () => tmp.length, mode, cycleMode, modeName: () => MNAME[mode()], moveSide, innerOf, velette, dense, voceC, voceB, snap: snapCs,
-    tree: treeOf, lblAt, topOf, plateT, isPaint, select: c => { active = c; draw2D(); },
+    tree: treeOf, lblAt, topOf, plateT, isPaint, select: c => { active = c; draw2D(); }, edit: c => { active = c; state.selected = null; state.sel = []; try { updateSelectionPanel(); } catch (_) {} draw2D(); openPal(c); }, active: () => active,
     /* v24.0: pittura di soffitti e controsoffitti: parte in vista (al netto delle isole) + velette, per finitura */
     paintItems() {
       const g = {}, add = (fin, a, what) => { if (!fin || !(a > 0)) return; const k = 'pcs_' + fin.type + '_' + (fin.id || fin.name); const o = g[k] || (g[k] = {key: k, fin, q: 0, L: []}); o.q += a; o.L.push(what); };
@@ -21474,8 +21587,9 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
    SC_REL.v è l'unica versione: titolo, Guida, file salvato, avvisi e riga messaggi la leggono da qui.
    ======================================================================== */
 window.SC_REL = {
-  v: '27.4', d: '29/10/2026',
+  v: '27.5', d: '29/10/2026',
   news: [
+    ['27.5', 'Selezione sotto il controsoffitto: in pianta vince l\'oggetto più piccolo (punto, luce, arredo, tubo) e toccando di nuovo nello stesso punto si passa a quello sotto, fino al controsoffitto; i tubi si prendono toccando la linea, non solo l\'etichetta. Prospetti interattivi: si vedono gli arredi davanti al muro (con i modelli della libreria) e si spostano lungo il muro e in altezza; nuovo comando «Arredo» per appoggiarne uno al muro dal prospetto; controsoffitti e false travi in sezione (trascinandoli cambi quota e altezza); i tubi tracciati in pianta si selezionano anche dal prospetto (tipo, percorso, spostamento lungo il muro); «Nel muro» tiene in vista impianti e punti con gli arredi trasparenti; anche nel prospetto toccando di nuovo si passa all\'oggetto sotto.'],
     ['27.4', 'Tavole: il Nord si imposta nel cartiglio (gradi) e c\'è la freccia del Nord nelle piante; i prospetti Sud, Est, Nord e Ovest seguono il Nord vero. Nei prospetti compaiono anche fori, tagli (con arco o tondo) e nicchie (tratteggiate, solo dal lato in cui sono) fatti dal prospetto del muro, e il timpano sotto il tetto copre quello che sta dietro. Il pilastro è nel gruppo Strutture.'],
     ['27.3', 'Tavole complete: prospetti dell\'edificio (Sud, Est, Nord, Ovest; in pianta l\'alto è il Nord) a linee, con porte, finestre, tetti, terreno e quote di livello, da aggiungere nel foglio come le sezioni; nuova tavola «Set completo» che stampa in sequenza le piante di tutti i piani, i quattro prospetti e tutte le sezioni, ognuna con il suo cartiglio. Arredi in stampa come blocchi CAD bianchi con contorno nero.'],
     ['27.2', 'Preventivo per il cliente (Progetto › Preventivo, o pulsante nel computo): intestazione e logo della ditta, numero progressivo, cliente, oggetto, voci per categoria (con quantità e prezzi o solo descrizioni e totali), sconto, sicurezza, IVA e totale, pianta e vista 3D, condizioni modificabili che restano per i prossimi preventivi, firme. Si stampa o si salva in PDF.'],
@@ -23944,6 +24058,7 @@ window.SC_REL = {
   const IMPD = {acc: d => 'Tubazione multistrato Ø' + d + ' mm per acqua calda sanitaria, in traccia, compresi isolante e raccordi', acf: d => 'Tubazione multistrato Ø' + d + ' mm per acqua fredda, in traccia, compresi raccordi', scn: d => 'Tubazione di scarico in PP/PVC Ø' + d + ' mm per acque nere e reflue, compresi pezzi speciali e staffaggi',
     fas: d => 'Conduttore di fase in tubo corrugato Ø' + d + ' mm, in traccia', neu: d => 'Conduttore di neutro in tubo corrugato Ø' + d + ' mm, in traccia', ter: d => 'Conduttore di terra in tubo corrugato Ø' + d + ' mm, in traccia', can: d => 'Canalina portacavi ' + d + ' mm, compreso fissaggio', lux: d => 'Linea luci in tubo corrugato Ø' + d + ' mm con conduttori fase, neutro e terra, in traccia', pre: d => 'Linea prese in tubo corrugato Ø' + d + ' mm con conduttori fase, neutro e terra, in traccia', tv: d => 'Linea TV/SAT in tubo corrugato Ø' + d + ' mm con cavo coassiale, in traccia', dat: d => 'Linea dati in tubo corrugato Ø' + d + ' mm con cavo UTP cat. 6, in traccia'};
   const impOn = () => !!appSettings.showImp;
+  const impW = () => impOn() || !!(window.SCwf && SCwf.xray());   /* v27.5: prospetto con «Nel muro» */
   const find = id => { for (const w of state.walls) { const r = (w.leds || []).find(x => x.id === id); if (r) return r; } return null; };
   const hostOf = id => state.walls.find(w => (w.leds || []).some(x => x.id === id));
   const D = r => SCcs.dense({pts: r.pts.map(p => ({x: p.x, y: p.z, b: p.b}))}, false);   /* punti reali, archi compresi */
@@ -23971,7 +24086,7 @@ window.SC_REL = {
     r.pts.forEach(p => { p.x = r3(x0 + (bw < 1e-6 ? 0 : (p.x - b.x0) / bw * nw)); p.z = r3(z0 + (bh < 1e-6 ? 0 : (p.z - b.z0) / bh * nh)); });
   }
   function hit(w, face, x, z, tol) {
-    const list = leds(w).filter(r => r.f === face && (!r.imp || impOn())).reverse();
+    const list = leds(w).filter(r => r.f === face && (!r.imp || impW())).reverse();
     for (const r of list) { const P = D(r); for (let i = 0; i + 1 < P.length; i++) { const a = P[i], c = P[i + 1], dx = c.x - a.x, dy = c.y - a.y, L2 = dx * dx + dy * dy || 1e-9, t = Math.max(0, Math.min(1, ((x - a.x) * dx + (z - a.y) * dy) / L2)); if (Math.hypot(a.x + dx * t - x, a.y + dy * t - z) <= tol) return r; } }
     return null;
   }
@@ -23992,7 +24107,7 @@ window.SC_REL = {
   function draw(cx, w, face, sx, sy, s, oSel) {
     try { drawPlanImp(cx, w, face, sx, sy); } catch (e) { console.warn('impianti di pianta sul prospetto', e); }
     leds(w).forEach(r => {
-      if (r.f !== face || r.pts.length < 2 || (r.imp && !impOn())) return;
+      if (r.f !== face || r.pts.length < 2 || (r.imp && !impW())) return;
       const sel = oSel && oSel.kind === 'led' && oSel.id === r.id, P = D(r);
       cx.save(); cx.lineCap = 'round'; cx.lineJoin = 'round'; cx.setLineDash([]);
       cx.beginPath(); P.forEach((p, i) => { const X = sx(toU(w, face, p.x)), Y = sy(p.y); i ? cx.lineTo(X, Y) : cx.moveTo(X, Y); });
@@ -24006,7 +24121,7 @@ window.SC_REL = {
     });
   }
   function drawPlanImp(cx, w, face, sx, sy) {   /* v25.7: tubi e cavi disegnati in pianta, proiettati sul prospetto (entro lo spessore del muro + 20 cm) */
-    if (!impOn()) return;
+    if (!impW()) return;
     const L = Lw(w); if (L < 1e-6) return; const ux = (w.p2.x - w.p1.x) / L, uy = (w.p2.y - w.p1.y) / L, th = getWallThickness(w), band = th / 2 + 0.2, fl = floorOf(w);
     impSegs().forEach(q => {
       if (q.wall || q.fl !== fl) return;
@@ -25277,6 +25392,264 @@ window.SC_REL = {
       b.onclick = () => { document.querySelectorAll('.menu-dropdown').forEach(m => m.classList.remove('open')); openDlg(); };
       const lab = md.querySelector('.menu-label'); if (lab && lab.nextSibling) md.insertBefore(b, lab.nextSibling); else md.appendChild(b); status(); } }
   window.SCbak = {open: openDlg, sync: syncFolder, backupNow, send: sendFile, receive: receiveFile, decide, projText, fs: FS, _setDir(h) { dir = h; permOk = true; }};
+})();
+</script>
+<script>
+/* ========================================================================
+   v27.5 · PROSPETTO INTERATTIVO (SCwf): arredi davanti al muro, controsoffitti e false travi in sezione,
+   tubi e cavi tracciati in pianta selezionabili. Coordinate: x lungo il muro da p1, z quota da terra,
+   nf = distanza dalla mezzeria verso chi guarda (> spessore/2 = davanti alla faccia).
+   ======================================================================== */
+(function () {
+  const BAND = 1.2;   /* arredi entro 1,2 m dalla faccia del muro */
+  const Lw = w => Math.hypot(w.p2.x - w.p1.x, w.p2.y - w.p1.y), r3 = v => Math.round(v * 1000) / 1000;
+  const fr = w => { const L = Lw(w) || 1, ux = (w.p2.x - w.p1.x) / L, uy = (w.p2.y - w.p1.y) / L; return {L, ux, uy, t: getWallThickness(w)}; };
+  const A = (F, w, x, y) => (x - w.p1.x) * F.ux + (y - w.p1.y) * F.uy, N = (F, w, x, y) => -(x - w.p1.x) * F.uy + (y - w.p1.y) * F.ux;
+  const toU = (w, face, x) => face > 0 ? Lw(w) - x : x;
+  const xray = () => appSettings.wkXray !== false;
+  const shade = (hex, k) => {
+    let h = String(hex || '#999999').replace('#', ''); if (h.length === 3) h = h.split('').map(c => c + c).join(''); h = h.slice(0, 6);
+    const n = parseInt(h, 16); if (!isFinite(n)) return hex; const f = v => Math.round(v + (255 - v) * k);
+    return 'rgb(' + f((n >> 16) & 255) + ',' + f((n >> 8) & 255) + ',' + f(n & 255) + ')';
+  };
+  const showF = () => { const e = document.getElementById('showFurniture'); return !e || e.checked; };
+  const zOf = (f, spec) => (f.type === 'rug' || f.type === 'door_arc') ? 0 : ((f.z != null ? +f.z : spec.z) || 0);
+  const SKIP = new Set(['rug', 'door_arc']);
+  function modelOf(f, spec) {
+    const lm = window.SClib && SClib.luxModel ? SClib.luxModel(f) : null;
+    if (lm && lm.parts) return {parts: lm.parts, w: lm.w, d: lm.d, h: lm.h};
+    if (spec.parts && window.SClib) { const P = SClib.partsOf(f, spec); return {parts: P.parts, w: P.w, d: P.d, h: P.h}; }
+    return null;
+  }
+  /* ---------------------------------------------------------------- arredi vicini alla faccia che si guarda */
+  function geomOf(w, face, f) {
+    const spec = FURNITURE[f.type]; if (!spec) return null;
+    const F = fr(w), c = Math.cos(f.rot || 0), s = Math.sin(f.rot || 0), hw = (f.w || spec.w) / 2, hd = (f.d || spec.d) / 2;
+    const a0 = A(F, w, f.x, f.y), n0 = N(F, w, f.x, f.y) * face;
+    const cu = F.ux * c + F.uy * s, cv = -F.ux * s + F.uy * c, cn = (-c * F.uy + s * F.ux) * face, cvn = (s * F.uy + c * F.ux) * face;
+    let a1 = Infinity, a2 = -Infinity, m1 = Infinity, m2 = -Infinity;
+    [[-hw, -hd], [hw, -hd], [hw, hd], [-hw, hd]].forEach(([lx, ly]) => { const a = a0 + lx * cu + ly * cv, n = n0 + lx * cn + ly * cvn; a1 = Math.min(a1, a); a2 = Math.max(a2, a); m1 = Math.min(m1, n); m2 = Math.max(m2, n); });
+    const z = zOf(f, spec), h = f.h || spec.h || 0.5;
+    return {f, spec, F, a0, n0, cu, cv, cn, cvn, a1, a2, m1, m2, z, h};
+  }
+  function furOf(w, face) {
+    if (!showF()) return [];
+    const F = fr(w), fl = floorOf(w), out = [];
+    for (const f of state.furniture) {
+      if (!isEntityVisible(f) || SKIP.has(f.type) || f.lw || (f.type === 'pilastro' && f.pil) || floorOf(f) !== fl) continue;
+      if (window.SCstr && appSettings.strView && !(typeof STRUCT_TYPES !== 'undefined' && STRUCT_TYPES.has(f.type))) continue;
+      const g = geomOf(w, face, f); if (!g) continue;
+      if (g.m2 < F.t / 2 - 0.03 || g.m1 > F.t / 2 + BAND || g.a2 < 0 || g.a1 > F.L) continue;
+      out.push(g);
+    }
+    return out.sort((p, q) => p.m1 - q.m1);
+  }
+  /* pezzi in vista frontale: rettangoli, ellissi e profili dei solidi di rotazione */
+  function frontParts(g) {
+    const M = modelOf(g.f, g.spec); if (!M) return null;
+    const kx = (g.f.w || M.w) / M.w, ky = (g.f.d || M.d) / M.d, kz = (g.f.h || M.h) / M.h, out = [];
+    const at = (lx, ly) => ({a: g.a0 + lx * g.cu + ly * g.cv, n: g.n0 + lx * g.cn + ly * g.cvn});
+    const half = (rx, ry) => Math.hypot(rx * g.cu, ry * g.cv);
+    M.parts.forEach(p => {
+      try {
+        const X = p.x * kx, Y = p.y * ky, o = at(X, Y), col = p.c, base = {m: p.m, col, main: p.main, n: o.n};
+        if (p.k === 'b' || p.k === 'h') {
+          let ex, ey, z0, z1;
+          if (p.k === 'b') { ex = p.w * kx / 2; ey = p.d * ky / 2; z0 = p.z * kz; z1 = (p.z + p.h) * kz; }
+          else { const L2 = p.l / 2; ex = (p.ax === 'x' ? L2 : p.r) * kx; ey = (p.ax === 'x' ? p.r : L2) * ky; z0 = (p.z - p.r) * kz; z1 = (p.z + p.r) * kz; }
+          const cr = p.ry ? Math.cos(-p.ry) : 1, sr = p.ry ? Math.sin(-p.ry) : 0; let u1 = Infinity, u2 = -Infinity;
+          [[-ex, -ey], [ex, -ey], [ex, ey], [-ex, ey]].forEach(([dx, dy]) => { const q = at(X + dx * cr - dy * sr, Y + dx * sr + dy * cr); u1 = Math.min(u1, q.a); u2 = Math.max(u2, q.a); });
+          out.push(Object.assign(base, {sh: p.k === 'h' && (p.ax === 'x' ? Math.abs(g.cu) < 0.5 : Math.abs(g.cv) < 0.5) ? 'ell' : (p.rr ? 'rr' : 'rect'), a1: u1, a2: u2, z0, z1, rr: p.rr ? p.rr * kz : 0}));
+        } else if (p.k === 'c') {
+          const r = Math.max(p.r, p.r2 != null ? p.r2 : 0), hu = half(r * (p.sx || 1) * kx, r * (p.sy || 1) * ky);
+          if (p.r2 != null && Math.abs(p.r2 - p.r) > 1e-4) { const hb = half(p.r * (p.sx || 1) * kx, p.r * (p.sy || 1) * ky), ht = half(p.r2 * (p.sx || 1) * kx, p.r2 * (p.sy || 1) * ky); out.push(Object.assign(base, {sh: 'poly', pts: [[o.a - hb, p.z * kz], [o.a + hb, p.z * kz], [o.a + ht, (p.z + p.h) * kz], [o.a - ht, (p.z + p.h) * kz]]})); }
+          else out.push(Object.assign(base, {sh: 'rect', a1: o.a - hu, a2: o.a + hu, z0: p.z * kz, z1: (p.z + p.h) * kz}));
+        } else if (p.k === 'l') {
+          const R = p.r || 1e-3, hu = half(R * (p.sx || 1) * kx, R * (p.sy || 1) * ky), P = [];
+          p.pts.forEach(q => P.push([o.a + q[0] / R * hu, (p.z + q[1]) * kz])); p.pts.slice().reverse().forEach(q => P.push([o.a - q[0] / R * hu, (p.z + q[1]) * kz]));
+          out.push(Object.assign(base, {sh: 'poly', pts: P}));
+        } else if (p.k === 's') {
+          const hu = half(p.r * kx, p.r * ky), hz = p.r * kz * (p.sz || 1);
+          out.push(Object.assign(base, {sh: 'ell', a1: o.a - hu, a2: o.a + hu, z0: p.half === 1 ? p.z * kz - hz : p.half ? p.z * kz - 0.0001 : p.z * kz - hz, z1: p.half === 1 ? p.z * kz : p.z * kz + hz, halfTop: p.half && p.half !== 1}));
+        }
+      } catch (_) {}
+    });
+    return out.sort((p, q) => p.n - q.n);
+  }
+  function drawFur(cx, w, face, sx, sy, s, oSel) {
+    const L = furOf(w, face); if (!L.length) return;
+    const PR = !!window.__printing, X = (a) => sx(toU(w, face, a));
+    L.forEach(g => {
+      const isS = oSel && oSel.kind === 'fur' && oSel.id === g.f.id, far = g.m1 - g.F.t / 2 > 0.45;
+      let uc = null; try { const c0 = getEntityColor(g.f, g.f.color || g.spec.color); if (c0 && String(c0).toLowerCase() !== String(g.spec.color || '').toLowerCase()) uc = c0; } catch (_) {}
+      cx.save(); cx.globalAlpha = isS ? 1 : (xray() ? (far ? 0.4 : 0.6) : (far ? 0.75 : 0.95)); cx.lineJoin = 'round';
+      const P = frontParts(g);
+      if (P && P.length) {
+        P.forEach(p => {
+          const glass = p.m === 'g', em = p.m === 'e', col = p.main && uc ? uc : p.col;
+          cx.beginPath();
+          if (p.sh === 'poly') p.pts.forEach((q, i) => i ? cx.lineTo(X(q[0]), sy(q[1])) : cx.moveTo(X(q[0]), sy(q[1])));
+          else {
+            const u1 = Math.min(X(p.a1), X(p.a2)), u2 = Math.max(X(p.a1), X(p.a2)), y1 = sy(p.z1), y0 = sy(p.z0), W = Math.max(0.6, u2 - u1), Hh = Math.max(0.6, y0 - y1);
+            if (p.sh === 'ell') { if (p.halfTop) cx.ellipse((u1 + u2) / 2, y0, W / 2, Hh, 0, Math.PI, 2 * Math.PI); else cx.ellipse((u1 + u2) / 2, (y0 + y1) / 2, W / 2, Hh / 2, 0, 0, 2 * Math.PI); }
+            else if (p.sh === 'rr' && cx.roundRect) cx.roundRect(u1, y1, W, Hh, Math.min(p.rr * s, W / 2, Hh / 2));
+            else cx.rect(u1, y1, W, Hh);
+          }
+          cx.closePath();
+          if (glass) { cx.fillStyle = PR ? 'rgba(0,0,0,0)' : 'rgba(191,227,240,.28)'; cx.fill(); }
+          else { cx.fillStyle = PR ? '__paper' : em ? '#fff3c4' : shade(col, p.m === 'm' ? 0.3 : 0.08); cx.fill(); }
+          cx.strokeStyle = PR ? '#000' : glass ? '#7dd3fc' : 'rgba(17,24,39,.7)'; cx.lineWidth = PR ? 0.5 : 0.9; cx.stroke();
+        });
+      } else {
+        const u1 = Math.min(X(g.a1), X(g.a2)), u2 = Math.max(X(g.a1), X(g.a2));
+        cx.fillStyle = PR ? '__paper' : shade(getEntityColor(g.f, g.f.color || g.spec.color), 0.15); cx.fillRect(u1, sy(g.z + g.h), u2 - u1, g.h * s);
+        cx.strokeStyle = PR ? '#000' : 'rgba(17,24,39,.75)'; cx.lineWidth = 1; cx.strokeRect(u1, sy(g.z + g.h), u2 - u1, g.h * s);
+      }
+      cx.restore();
+      if (!PR) {
+        const u1 = Math.min(X(g.a1), X(g.a2)), u2 = Math.max(X(g.a1), X(g.a2));
+        if (isS) { cx.save(); cx.setLineDash([6, 4]); cx.strokeStyle = '#22d3ee'; cx.lineWidth = 1.8; cx.strokeRect(u1 - 3, sy(g.z + g.h) - 3, u2 - u1 + 6, g.h * s + 6); cx.restore(); }
+        if (u2 - u1 > 54 && g.h * s > 16 && !far) { cx.save(); cx.font = '600 10px "Segoe UI",sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'bottom'; const t = g.spec.name, tw = cx.measureText(t).width + 8, xm = (u1 + u2) / 2, ym = sy(g.z + g.h) - 2; cx.fillStyle = 'rgba(15,23,42,.72)'; cx.fillRect(xm - tw / 2, ym - 13, tw, 13); cx.fillStyle = '#e5e7eb'; cx.fillText(t, xm, ym); cx.restore(); }
+      }
+    });
+  }
+  /* ---------------------------------------------------------------- controsoffitti e false travi lungo il muro */
+  function csOf(w, face) {
+    if (!window.SCcs) return [];
+    const sc = document.getElementById('showCs'); if (sc && !sc.checked) return [];
+    const F = fr(w), fl = floorOf(w), top = SCcs.topOf(fl), out = [], off = F.t / 2 + 0.06, nx = -F.uy * face, ny = F.ux * face;
+    const inP = (p, D) => { let c = false; for (let i = 0, j = D.length - 1; i < D.length; j = i++) { const a = D[i], b = D[j]; if ((a.y > p.y) !== (b.y > p.y) && p.x < (b.x - a.x) * (p.y - a.y) / (b.y - a.y) + a.x) c = !c; } return c; };
+    (state.ceils || []).forEach(c => {
+      if (!isEntityVisible(c) || floorOf(c) !== fl || !c.pts || c.pts.length < 3) return;
+      if (SCcs.isPaint && SCcs.isPaint(c)) return;
+      const D = SCcs.dense(c, true), st = 0.04; let a0 = null;
+      for (let a = 0; a <= F.L + 1e-6; a += st) {
+        const on = inP({x: w.p1.x + F.ux * a + nx * off, y: w.p1.y + F.uy * a + ny * off}, D);
+        if (on && a0 == null) a0 = a; if ((!on || a + st > F.L + 1e-6) && a0 != null) { const a1 = on ? F.L : a - st / 2; if (a1 - a0 > 0.05) out.push({kind: 'ceil', el: c, x0: Math.max(0, a0 - (a0 > 0 ? st / 2 : 0)), x1: Math.min(F.L, a1), z0: +c.h || top - 0.3, z1: top}); a0 = null; }
+      }
+    });
+    (state.beams || []).forEach(b => {
+      if (b.led || b.imp || !isEntityVisible(b) || floorOf(b) !== fl || !b.pts || b.pts.length < 2) return;
+      const D = SCcs.dense(b, false), lim = F.t / 2 + 0.03 + b.w / 2 + 0.25;
+      let x0 = Infinity, x1 = -Infinity;
+      for (let i = 0; i + 1 < D.length; i++) {
+        const p = D[i], q = D[i + 1], Ls = Math.hypot(q.x - p.x, q.y - p.y); if (Ls < 1e-4) continue;
+        const cr = Math.abs(((q.x - p.x) * nx + (q.y - p.y) * ny) / Ls), ext = b.w / 2 * cr + 0.0;
+        const n = Math.max(1, Math.ceil(Ls / 0.04));
+        for (let k = 0; k <= n; k++) { const x = p.x + (q.x - p.x) * k / n, y = p.y + (q.y - p.y) * k / n, nn = N(F, w, x, y) * face; if (nn < F.t / 2 - 0.05 || nn > lim) continue; const a = A(F, w, x, y); x0 = Math.min(x0, a - ext); x1 = Math.max(x1, a + ext); }
+      }
+      if (x1 > x0 && x1 > 0 && x0 < F.L) out.push({kind: 'cs', el: b, x0: Math.max(0, x0), x1: Math.min(F.L, x1), z0: top - (+b.hh || 0.25), z1: top});
+    });
+    return out;
+  }
+  function drawCs(cx, w, face, sx, sy, s, oSel) {
+    const PR = !!window.__printing;
+    csOf(w, face).forEach(q => {
+      const u1 = Math.min(sx(toU(w, face, q.x0)), sx(toU(w, face, q.x1))), u2 = Math.max(sx(toU(w, face, q.x0)), sx(toU(w, face, q.x1))), y1 = sy(q.z1), y0 = sy(q.z0), isS = oSel && oSel.kind === q.kind && oSel.id === q.el.id;
+      cx.save();
+      if (q.kind === 'ceil') {
+        cx.fillStyle = PR ? 'rgba(0,0,0,0)' : 'rgba(167,139,250,' + (xray() ? 0.14 : 0.32) + ')'; cx.fillRect(u1, y1, u2 - u1, y0 - y1);
+        cx.setLineDash([]); cx.strokeStyle = isS ? '#22d3ee' : PR ? '#000' : '#a78bfa'; cx.lineWidth = isS ? 4 : 3; cx.beginPath(); cx.moveTo(u1, y0); cx.lineTo(u2, y0); cx.stroke();
+        if (!PR && u2 - u1 > 90) { cx.font = '600 10.5px "Segoe UI",sans-serif'; cx.fillStyle = '#c4b5fd'; cx.textAlign = 'left'; cx.textBaseline = 'bottom'; cx.fillText('Controsoffitto h ' + String((+q.el.h).toFixed(2)).replace('.', ','), u1 + 6, y0 - 4); }
+        if (isS) { cx.setLineDash([6, 4]); cx.strokeStyle = '#22d3ee'; cx.lineWidth = 1.5; cx.strokeRect(u1, y1, u2 - u1, y0 - y1); }
+      } else {
+        cx.fillStyle = PR ? '__paper' : 'rgba(196,181,253,' + (xray() ? 0.45 : 0.75) + ')'; cx.fillRect(u1, y1, u2 - u1, y0 - y1);
+        cx.setLineDash([6, 4]); cx.strokeStyle = isS ? '#22d3ee' : PR ? '#000' : '#7c3aed'; cx.lineWidth = isS ? 2.5 : 1.4; cx.strokeRect(u1, y1, u2 - u1, y0 - y1);
+        if (!PR && u2 - u1 > 70 && y0 - y1 > 12) { cx.setLineDash([]); cx.font = '600 10px "Segoe UI",sans-serif'; cx.fillStyle = '#3b0764'; cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.fillText('Falsa trave', (u1 + u2) / 2, (y0 + y1) / 2); }
+      }
+      cx.restore();
+    });
+  }
+  /* ---------------------------------------------------------------- tubi e cavi di pianta sul prospetto (stesso calcolo del disegno) */
+  function impProj(w, face) {
+    if (!window.SCwl) return [];
+    const F = fr(w), band = F.t / 2 + 0.2, fl = floorOf(w), out = [];
+    SCwl.impSegs().forEach(q => {
+      if (q.wall || q.fl !== fl || !q.el) return;
+      const na = N(F, w, q.p.x, q.p.y), nb = N(F, w, q.q.x, q.q.y), ua = A(F, w, q.p.x, q.p.y), ub = A(F, w, q.q.x, q.q.y);
+      if (Math.max(Math.abs(na), Math.abs(nb)) > band || Math.max(ua, ub) < -0.05 || Math.min(ua, ub) > F.L + 0.05) return;
+      out.push({el: q.el, ua, ub, za: q.p.z, zb: q.q.z});
+    });
+    return out;
+  }
+  function impHit(w, face, x, z, tol) {
+    let best = null, bd = tol;
+    impProj(w, face).forEach(q => {
+      const dx = q.ub - q.ua, dz = q.zb - q.za, L2 = dx * dx + dz * dz || 1e-9, t = Math.max(0, Math.min(1, ((x - q.ua) * dx + (z - q.za) * dz) / L2)), d = Math.hypot(q.ua + dx * t - x, q.za + dz * t - z);
+      if (d <= bd) { bd = d; best = q.el; }
+    });
+    return best;
+  }
+  function impBox(w, face, b) {
+    let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+    impProj(w, face).forEach(q => { if (q.el !== b) return; x0 = Math.min(x0, q.ua, q.ub); x1 = Math.max(x1, q.ua, q.ub); z0 = Math.min(z0, q.za, q.zb); z1 = Math.max(z1, q.za, q.zb); });
+    return x1 >= x0 ? {x0, x1, z0, z1} : null;
+  }
+  function drawImpSel(cx, w, face, sx, sy, oSel) {
+    if (!oSel || oSel.kind !== 'cs') return;
+    cx.save(); cx.lineCap = 'round'; cx.strokeStyle = '#22d3ee'; cx.lineWidth = 3; cx.setLineDash([6, 5]);
+    impProj(w, face).forEach(q => { if (q.el.id !== oSel.id) return; cx.beginPath(); cx.moveTo(sx(toU(w, face, q.ua)), sy(q.za)); cx.lineTo(sx(toU(w, face, q.ub)), sy(q.zb)); cx.stroke(); });
+    cx.restore();
+  }
+  /* ---------------------------------------------------------------- hit, riquadro e scrittura (per il prospetto) */
+  function hit(w, face, x, z, pxPerM) {
+    const out = [], tol = 9 / pxPerM;
+    const b = impHit(w, face, x, z, tol); if (b) out.push({kind: 'cs', id: b.id});
+    furOf(w, face).slice().reverse().forEach(g => { if (x >= g.a1 - tol && x <= g.a2 + tol && z >= g.z - tol && z <= g.z + g.h + tol) out.push({kind: 'fur', id: g.f.id}); });
+    return out;
+  }
+  function hitCs(w, face, x, z, pxPerM) {
+    const tol = 6 / pxPerM, out = [];
+    csOf(w, face).forEach(q => { if (x >= q.x0 - tol && x <= q.x1 + tol && z >= q.z0 - tol && z <= q.z1 + tol) out.push({kind: q.kind, id: q.el.id, z0: q.z0}); });
+    return out.sort((p, q) => (p.kind === 'cs' ? 0 : 1) - (q.kind === 'cs' ? 0 : 1)).map(q => ({kind: q.kind, id: q.id}));   /* prima le false travi, poi il controsoffitto */
+  }
+  function find(kind, id) {
+    if (kind === 'fur') return state.furniture.find(f => f.id === id) || null;
+    if (kind === 'cs') return (state.beams || []).find(b => b.id === id) || null;
+    if (kind === 'ceil') return (state.ceils || []).find(c => c.id === id) || null;
+    return null;
+  }
+  function proxy(w, face, kind, e) {
+    if (kind === 'fur') { const g = geomOf(w, face, e); if (!g) return null; return {sh: 'rect', cx: (g.a1 + g.a2) / 2, y: g.z, w: Math.max(0.01, g.a2 - g.a1), h: g.h}; }
+    if (kind === 'ceil' || (kind === 'cs' && !e.imp)) { const q = csOf(w, face).find(o => o.el === e); if (!q) return null; return {sh: 'rect', cx: (q.x0 + q.x1) / 2, y: q.z0, w: Math.max(0.01, q.x1 - q.x0), h: Math.max(0.01, q.z1 - q.z0)}; }
+    if (kind === 'cs') { const b = impBox(w, face, e); if (!b) return null; return {sh: 'rect', cx: (b.x0 + b.x1) / 2, y: b.z0, w: Math.max(0.01, b.x1 - b.x0), h: Math.max(0.01, b.z1 - b.z0)}; }
+    return null;
+  }
+  function write(w, face, kind, e, r, drag) {
+    const old = proxy(w, face, kind, e); if (!old) return;
+    const F = fr(w);
+    if (kind === 'fur') {
+      const g = geomOf(w, face, e), d = r.cx - old.cx;
+      if (Math.abs(r.w - old.w) > 0.002) { const nw = Math.max(0.05, Math.min(8, r.w)); if (Math.abs(g.cu) >= Math.abs(g.cv)) e.w = r3(nw); else e.d = r3(nw); }
+      if (Math.abs(d) > 1e-6) { e.x = Math.round((e.x + F.ux * d) * 1e4) / 1e4; e.y = Math.round((e.y + F.uy * d) * 1e4) / 1e4; }
+      if (Math.abs(r.y - old.y) > 0.0005) e.z = r3(Math.max(0, r.y));
+      if (Math.abs(r.h - old.h) > 0.002) e.h = r3(Math.max(0.02, Math.min(6, r.h)));
+      return;
+    }
+    if (kind === 'ceil') { const top = SCcs.topOf(floorOf(e)); e.h = Math.round(Math.max(1.8, Math.min(top - 0.05, r.y)) * 100) / 100; return; }
+    if (kind === 'cs' && !e.imp) { const top = SCcs.topOf(floorOf(e)); e.hh = Math.round(Math.max(0.03, Math.min(2, top - r.y)) * 100) / 100; return; }
+    if (kind === 'cs') {   /* linea d'impianto: si spostano lungo il muro i vertici vicini a questo muro; in quota solo se il percorso è «a quota libera» */
+      const band = F.t / 2 + 0.2;
+      if (drag && !drag.orig) drag.orig = {pts: e.pts.map(p => ({...p})), cx: old.cx, y: old.y, z: e.z};
+      const O = drag && drag.orig ? drag.orig : {pts: e.pts.map(p => ({...p})), cx: old.cx, y: old.y, z: e.z};
+      const d = r.cx - O.cx;
+      e.pts = O.pts.map(p => Math.abs(N(F, w, p.x, p.y)) <= band ? {...p, x: Math.round((p.x + F.ux * d) * 1e4) / 1e4, y: Math.round((p.y + F.uy * d) * 1e4) / 1e4} : {...p});
+      if ((e.zm || 'pav') === 'lib') e.z = r3(Math.max(0, (O.z != null ? +O.z : 0.5) + (r.y - O.y)));
+      else if (Math.abs(r.y - O.y) > 0.05 && !(drag && drag.warned)) { if (drag) drag.warned = true; toast('Quota fissa (a pavimento o nel controsoffitto): cambia il percorso in «quota libera» per alzarla'); }
+    }
+  }
+  function title(kind, e) {
+    if (kind === 'fur') { const s = FURNITURE[e.type]; return (s ? s.icon + ' ' + s.name : 'Arredo'); }
+    if (kind === 'ceil') return 'Controsoffitto h ' + String((+e.h).toFixed(2)).replace('.', ',');
+    if (kind === 'cs') return e.imp && window.SCwl ? 'Impianto · ' + ((SCwl.IMPT[e.imp] || [''])[0]) + ' Ø' + (e.d || 20) : 'Falsa trave ' + Math.round(e.w * 100) + '×' + Math.round(e.hh * 100);
+    return '';
+  }
+  function remove(kind, e) {
+    if (kind === 'fur') state.furniture = state.furniture.filter(x => x !== e);
+    else if (kind === 'cs') state.beams = state.beams.filter(x => x !== e);
+    else if (kind === 'ceil') state.ceils = state.ceils.filter(x => x !== e);
+  }
+  window.SCwf = {furOf, drawFur, csOf, drawCs, drawImpSel, impHit, hit, hitCs, find, proxy, write, title, remove, xray, frontParts, geomOf};
 })();
 </script>
 </body>
