@@ -511,3 +511,15 @@ NOVITÀ v28.1
   (guardando il muro). L'aggancio all'angolo scatta solo entro 30 cm (prima 1,2 m).
   Avviso se la composizione supera la fine del muro. Le composizioni già posate non si spostano.
 - Manuale aggiornato (capitolo Arredi).
+
+NOVITÀ v28.2
+- Composizione arredo: la vista si sposta trascinando con un dito in una zona vuota e si ingrandisce
+  con due dita, con la rotellina del mouse o con i pulsanti ＋ － in basso; «⤢ Adatta» torna alla vista intera.
+- Composizione arredo: nuovo comando «📏 Misura». Tocchi due punti (vicino agli spigoli dei mobili si agganciano)
+  e leggi la misura orizzontale, verticale e inclinata; se la linea è quasi dritta si raddrizza da sola.
+- Composizione arredo: il riquadro «Dall'alto» ha il suo spazio a destra e non copre più i mobili.
+- Composizione arredo: sul tablet la barra in alto sta su una riga (scritte più corte, stessi comandi).
+- Composizione arredo: il top continuo passa anche sopra la lavatrice, le basi a giorno e i fianchi
+  (prima si interrompeva). Nuovo blocco «Piano di lavoro (top)» tra i Complementi per aggiungerne uno a mano,
+  con larghezza, profondità, altezza da terra e colore propri.
+- Il manuale resta quello della v28.1: sarà aggiornato alla fine.

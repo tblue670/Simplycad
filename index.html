@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v28.1</title>
+<title>SimplyCAD Pro · v28.2</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -21785,8 +21785,9 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
    SC_REL.v è l'unica versione: titolo, Guida, file salvato, avvisi e riga messaggi la leggono da qui.
    ======================================================================== */
 window.SC_REL = {
-  v: '28.1', d: '30/10/2026',
+  v: '28.2', d: '30/10/2026',
   news: [
+    ['28.2', 'Composizione arredo: la vista si sposta trascinando con un dito nel vuoto e si ingrandisce con due dita, con la rotellina o con i pulsanti ＋ － e «⤢ Adatta»; nuovo comando «📏 Misura» (due punti, si agganciano agli spigoli dei mobili: misura orizzontale, verticale e inclinata); il riquadro dall\'alto ha il suo spazio e non copre più i mobili; la barra in alto non va più a capo sul tablet; il top continuo passa anche sopra la lavatrice, le basi a giorno e i fianchi (prima si interrompeva); nuovo blocco «Piano di lavoro (top)» tra i Complementi per aggiungerne uno a mano.'],
     ['28.1', 'Composizione arredo: riquadro «🔍 Dall\'alto» con i muri A e B ad angolo e la sagoma dei blocchi (quello selezionato in arancio); la composizione in corso resta salvata nel dispositivo anche uscendo o chiudendo l\'app, e riaprendo si sceglie se riprenderla o iniziarne una nuova (si cancella solo salvando, posando o iniziandone una nuova). Posa: il punto toccato sul muro è il lato sinistro della composizione (guardando il muro); l\'aggancio all\'angolo scatta solo entro 30 cm; avviso se supera la fine del muro. Le composizioni già posate non si spostano.'],
     ['28.0', 'Manuale d\'uso completo in PDF. Corretti: toccando un elemento di una composizione a volte si prendeva solo quell\'elemento invece di tutto il gruppo; le linee dell\'impianto elettrico automatico riempivano la pianta di etichette (ora si toccano sulla linea, come l\'idraulico); sullo smartphone in modalità rilievo all\'avvio poteva comparire un errore interno.'],
     ['27.9', 'Prospetto: il pulsante «👁 Vista» sceglie cosa vedere: impianti tutti, solo elettrico, solo idraulico o nessuno (linee e punti; le luci restano), arredi trasparenti, pieni o nascosti, etichette visibili o nascoste. Corretto: nelle versioni precedenti i pensili e gli arredi alzati comparivano a terra nel prospetto e si selezionavano solo toccando la loro etichetta.'],
@@ -25934,6 +25935,7 @@ window.SC_REL = {
     mens: {g: 'Complementi', lab: 'Mensola', k: 'mens', w: 0.9, h: 0.03, d: 0.25, z: 1.6},
     fia: {g: 'Complementi', lab: 'Fianco di finitura', k: 'fia', w: 0.02, h: 0.84, d: 0.6},
     giob: {g: 'Complementi', lab: 'Base a giorno', k: 'giorno', w: 0.3, h: 0.84, d: 0.58, fr: 'giorno'},
+    topm: {g: 'Complementi', lab: 'Piano di lavoro (top)', k: 'top', w: 1.2, h: 0.04, d: 0.62, z: 0.84},
     mlav: {g: 'Bagno', lab: 'Mobile lavabo sospeso', k: 'sosp', w: 0.8, h: 0.5, d: 0.46, z: 0.35, fr: '2c', inc: 'lavabo'},
     mlavt: {g: 'Bagno', lab: 'Mobile lavabo a terra', k: 'base', w: 0.8, h: 0.82, d: 0.46, fr: '2a', inc: 'lavabo', zh: 0.08},
     spec: {g: 'Bagno', lab: 'Specchio', k: 'spec', w: 0.8, h: 0.7, d: 0.03, z: 1.1},
@@ -26029,7 +26031,7 @@ window.SC_REL = {
   /* ---------------------------------------------------------------- piani di lavoro continui sulle basi a terra */
   function tops(list, opt) {
     if (opt && opt.top === false) return [];
-    const B0 = list.filter(b => b.k === 'base' && (b.z || 0) < 0.02 && b.inc !== 'lavabo').sort((a, b) => a.x - b.x), out = [];
+    const B0 = list.filter(b => (b.k === 'base' || ((b.k === 'giorno' || b.k === 'fia') && b.h <= 1.0) || b.inc === 'lavatrice') && (b.z || 0) < 0.02 && b.inc !== 'lavabo').sort((a, b) => a.x - b.x), out = [];   /* v28.2: anche sopra lavatrice, basi a giorno e fianchi */
     let run = null;
     B0.forEach(b => { if (run && Math.abs(b.x - run.x1) < 0.012 && Math.abs(b.h - run.h) < 0.005) { run.x1 = b.x + b.w; run.d = Math.max(run.d, b.d); } else { if (run) out.push(run); run = {x0: b.x, x1: b.x + b.w, h: b.h, d: b.d}; } });
     if (run) out.push(run);
@@ -26129,7 +26131,7 @@ window.SC_REL = {
   #cmpEd .ce-b.on{background:#0e7490;border-color:#22d3ee}
   #cmpEd .ce-b.ok{background:#15803d;border-color:#22c55e}
   #cmpEd .ce-b.del{color:#fca5a5}
-  #cmpEd input.ce-name{flex:1;min-width:140px;height:34px;border-radius:8px;border:1px solid #475175;background:#12151f;color:#e5e7eb;padding:0 8px;font:600 14px sans-serif}
+  #cmpEd input.ce-name{flex:1;min-width:110px;height:34px;border-radius:8px;border:1px solid #475175;background:#12151f;color:#e5e7eb;padding:0 8px;font:600 14px sans-serif}
   #cmpEd .ce-main{flex:1;display:flex;min-height:0}
   #cmpEd .ce-pal{width:200px;overflow:auto;border-right:1px solid #3f4766;padding:6px}
   #cmpEd .ce-pal h4{margin:8px 2px 4px;font-size:11px;color:#9ca3b8;text-transform:uppercase;letter-spacing:.04em}
@@ -26144,6 +26146,8 @@ window.SC_REL = {
   #cmpEd .ce-row{display:flex;gap:5px;flex-wrap:wrap;margin:6px 0}
   #cmpEd .ce-row .ce-b{height:32px;padding:0 8px;font-size:12px}
   @media (max-width:1300px){#cmpEd .ce-tx{display:none}}
+  #cmpEd .ce-zm{position:absolute;left:8px;bottom:8px;display:flex;gap:5px;z-index:2}
+  #cmpEd .ce-zm .ce-b{height:40px;min-width:42px;font-size:14px}
   #cmpEd .ce-hint{font-size:11.5px;color:#9ca3b8;line-height:1.4;margin:6px 0}
   #cmpEd .ce-list{position:absolute;inset:8px;overflow:auto;background:#1b1e2e;border:1px solid #475175;border-radius:10px;padding:10px;z-index:3}
   #cmpEd .ce-list table{border-collapse:collapse;width:100%;font-size:12.5px}
@@ -26153,15 +26157,15 @@ window.SC_REL = {
   document.head.appendChild(css);
   const E = document.createElement('div'); E.id = 'cmpEd'; E.hidden = true; E.setAttribute('role', 'dialog'); E.setAttribute('aria-label', 'Composizione arredo');
   const groups = {}; Object.keys(T).forEach(k => { (groups[T[k].g] = groups[T[k].g] || []).push(k); });
-  E.innerHTML = `<div class="ce-head"><b style="color:#22d3ee">🧱 Composizione arredo</b><input class="ce-name" id="ceName" placeholder="Nome (es. Cucina Rossi)">
-      <button class="ce-b" data-c="tpl">📋 Modelli</button><button class="ce-b" data-c="lib">⭐ I miei arredi</button><button class="ce-b" data-c="list">🧾 Elenco elementi</button>
-      <button class="ce-b" data-c="undo" title="Annulla">↩</button><button class="ce-b" data-c="save">💾 Salva in «I miei arredi»</button><button class="ce-b ok" data-c="place" id="cePlace">📍 Posa nel disegno</button><button class="ce-b on" data-c="mini" title="Riquadro dall'alto: muri ad angolo e arredo in costruzione">🔍<span class="ce-tx"> Dall'alto</span></button><button class="ce-b" data-c="close" title="Chiudi">✕</button></div>
+  E.innerHTML = `<div class="ce-head"><b style="color:#22d3ee">🧱<span class="ce-tx"> Composizione arredo</span></b><input class="ce-name" id="ceName" placeholder="Nome (es. Cucina Rossi)">
+      <button class="ce-b" data-c="tpl">📋 Modelli</button><button class="ce-b" data-c="lib">⭐ I miei arredi</button><button class="ce-b" data-c="list">🧾 Elenco<span class="ce-tx"> elementi</span></button>
+      <button class="ce-b" data-c="undo" title="Annulla">↩</button><button class="ce-b" data-c="save">💾 Salva<span class="ce-tx"> in «I miei arredi»</span></button><button class="ce-b ok" data-c="place" id="cePlace">📍 Posa<span class="ce-tx"> nel disegno</span></button><button class="ce-b on" data-c="mini" title="Riquadro dall'alto: muri ad angolo e arredo in costruzione">🔍<span class="ce-tx"> Dall'alto</span></button><button class="ce-b" data-c="close" title="Chiudi">✕</button></div>
     <div class="ce-head" style="padding-top:4px;padding-bottom:4px"><button class="ce-b" data-c="legA" id="ceLegA">Parete A</button><button class="ce-b" data-c="legB" id="ceLegB">Parete B (ad angolo)</button>
       <span style="font-size:12px;color:#9ca3b8">Angolo a</span><button class="ce-b" data-c="cdx" id="ceCdx">destra</button><button class="ce-b" data-c="csx" id="ceCsx">sinistra</button>
       <label style="font-size:12px;color:#cbd5e1;display:flex;align-items:center;gap:4px"><input type="checkbox" id="ceTop"> top continuo</label>
       <label style="font-size:12px;color:#cbd5e1;display:flex;align-items:center;gap:4px"><input type="checkbox" id="ceElec"> prese elettrodomestici</label></div>
     <div class="ce-main"><div class="ce-pal">${Object.keys(groups).map(g => '<h4>' + esc(g) + '</h4>' + groups[g].map(k => '<button data-add="' + k + '">' + esc(T[k].lab) + '</button>').join('')).join('')}</div>
-      <div class="ce-cv"><canvas id="ceCv"></canvas><canvas id="ceMini" width="220" height="170" style="position:absolute;left:auto;right:8px;top:8px;bottom:auto;width:220px;height:170px;background:#0b0e16;border:1px solid #475175;border-radius:8px;z-index:2;pointer-events:none"></canvas></div><div class="ce-side" id="ceSide"></div></div>`;
+      <div class="ce-cv"><canvas id="ceCv"></canvas><div class="ce-zm"><button class="ce-b" data-c="zin" title="Ingrandisci">＋</button><button class="ce-b" data-c="zout" title="Riduci">－</button><button class="ce-b" data-c="zfit" title="Adatta la vista">⤢ Adatta</button><button class="ce-b" data-c="meas" id="ceMeas" title="Misura tra due punti">📏 Misura</button></div><canvas id="ceMini" width="220" height="170" style="position:absolute;left:auto;right:8px;top:8px;bottom:auto;width:220px;height:170px;background:#0b0e16;border:1px solid #475175;border-radius:8px;z-index:2;pointer-events:none"></canvas></div><div class="ce-side" id="ceSide"></div></div>`;
   document.body.appendChild(E);
   ['pointerdown', 'pointerup', 'click', 'keydown', 'wheel', 'touchstart'].forEach(ev => E.addEventListener(ev, e => e.stopPropagation()));
   const cv = E.querySelector('#ceCv'), cx = cv.getContext('2d'), side = E.querySelector('#ceSide');
@@ -26178,8 +26182,8 @@ window.SC_REL = {
   function open(def, editGrp) {
     if (!def && !editGrp) { const dr = readDraft(); if (dr) { if (confirm('C\'è una composizione non salvata' + (dr.def.name ? ' («' + dr.def.name + '»)' : '') + '.\n\nOK = riprendila · Annulla = ne inizio una nuova (la bozza viene cancellata)')) def = dr.def; else clearDraft(); } }
     S.def = def || {name: '', corner: 'dx', opt: {top: true}, A: [], B: []}; S.def.opt = S.def.opt || {}; S.def.A = S.def.A || []; S.def.B = S.def.B || [];
-    S.leg = 'A'; S.sel = null; S.hist = []; S.editGrp = editGrp || null; E.hidden = false; document.body.classList.add('cmp-on');
-    E.querySelector('#ceName').value = S.def.name || ''; E.querySelector('#cePlace').textContent = editGrp ? '✔ Aggiorna nel disegno' : '📍 Posa nel disegno';
+    S.leg = 'A'; S.sel = null; S.hist = []; S.zoom = 1; S.pan = {x: 0, y: 0}; S.meas = null; E.querySelector('#ceMeas').classList.remove('on'); S.editGrp = editGrp || null; E.hidden = false; document.body.classList.add('cmp-on');
+    E.querySelector('#ceName').value = S.def.name || ''; E.querySelector('#cePlace').innerHTML = editGrp ? '✔ Aggiorna<span class="ce-tx"> nel disegno</span>' : '📍 Posa<span class="ce-tx"> nel disegno</span>';
     try { if (window.closeFurniturePicker) closeFurniturePicker(); } catch (_) {}
     ui(); requestAnimationFrame(render);
     if (!S.def.A.length && !S.def.B.length) toast('Tocca un blocco a sinistra per aggiungerlo, oppure parti da un modello');
@@ -26211,14 +26215,21 @@ window.SC_REL = {
     push(); const b = blk(t, 0), fl = FLOOR(b.k) && !(b.z > 0.05), same = L().filter(q => (FLOOR(q.k) && !(q.z > 0.05)) === fl && q.k !== 'top');
     b.x = r3(same.reduce((a, q) => Math.max(a, q.x + q.w), 0));
     if (!fl && b.k !== 'mens' && b.k !== 'spec' && b.k !== 'sosp') { const base = L().filter(q => FLOOR(q.k)).find(q => q.x <= b.x + 0.001 && q.x + q.w > b.x + 0.001); if (!same.length && base) b.x = base.x; }
-    if (S.def.opt.cc) b.cc = S.def.opt.cc; if (S.def.opt.cf) b.cf = S.def.opt.cf; if (S.def.opt.man) b.man = S.def.opt.man;
+    if (b.k === 'top') {   /* v28.2: piano di lavoro a mano: sopra le basi presenti, del colore del piano */
+      const bs = L().filter(q => q.k === 'base' || q.k === 'giorno' || q.inc === 'lavatrice').filter(q => (q.z || 0) < 0.02 && q.h <= 1.0);
+      b.x = 0; b.z = 0.84; if (bs.length) { const x0 = Math.min(...bs.map(q => q.x)), x1 = Math.max(...bs.map(q => q.x + q.w)); b.x = r3(x0); b.w = r3(x1 - x0); b.z = r3(Math.max(...bs.map(q => q.h))); }
+      b.cf = S.def.opt.ct || DEFC.ct;
+      if (S.def.opt.top !== false && bs.length) toast('Con «top continuo» acceso il piano sopra le basi c\'è già: questo è un piano in più (per esempio per un tratto senza basi)');
+    } else { if (S.def.opt.cc) b.cc = S.def.opt.cc; if (S.def.opt.cf) b.cf = S.def.opt.cf; if (S.def.opt.man) b.man = S.def.opt.man; }
     L().push(b); S.sel = b.id; ui(); render();
   }
   /* ---------------------------------------------------------------- disegno della vista frontale */
   const shade = (hex, k) => { let h = String(hex || '#999').replace('#', ''); if (h.length === 3) h = h.split('').map(c => c + c).join(''); const n = parseInt(h.slice(0, 6), 16); if (!isFinite(n)) return hex; const f = v => Math.round(v + (255 - v) * k); return 'rgb(' + f((n >> 16) & 255) + ',' + f((n >> 8) & 255) + ',' + f(n & 255) + ')'; };
   function fitView(W, H) {
     const all = L(), X = Math.max(2.4, legW(all) + (S.leg === 'B' ? 0 : 0)), Z = Math.max(2.5, all.reduce((a, b) => Math.max(a, (b.z || 0) + b.h), 0) + 0.1);
-    const planH = 0.9, s = Math.min((W - 90) / X, (H - 70) / (Z + planH + 0.3)); return {s: Math.max(20, s), ox: 50, oy: 20 + Z * Math.max(20, s), X, Z, planH};
+    const res = (!mini.hidden && W >= 640) ? 236 : 0, Wf = W - res;   /* v28.2: spazio riservato al riquadro dall'alto */
+    const planH = 0.9, s = Math.min((Wf - 90) / X, (H - 110) / (Z + planH + 0.3)), s0 = Math.max(20, s), ox0 = 50, oy0 = 20 + Z * s0, z = S.zoom || 1, pn = S.pan || {x: 0, y: 0};
+    return {s: s0 * z, ox: ox0 * z + pn.x, oy: oy0 * z + pn.y, X, Z, planH, ox0, oy0};
   }
   function render() {
     if (E.hidden) return;
@@ -26263,15 +26274,56 @@ window.SC_REL = {
     list.concat(tp).forEach(b => { cx.fillStyle = b.k === 'top' ? 'rgba(87,83,78,.35)' : (FLOOR(b.k) ? 'rgba(217,204,176,.55)' : 'rgba(125,211,252,.25)'); cx.strokeStyle = b.id === S.sel ? '#22d3ee' : 'rgba(226,232,240,.6)'; cx.lineWidth = b.id === S.sel ? 2 : 1; cx.fillRect(X(b.x), py + 4 + (b.y || 0) * PS, b.w * V.s, b.d * PS); cx.strokeRect(X(b.x), py + 4 + (b.y || 0) * PS, b.w * V.s, b.d * PS); });
     cx.fillStyle = '#94a3b8'; cx.font = '11px sans-serif'; cx.textAlign = 'left'; cx.textBaseline = 'bottom'; cx.fillText('Pianta (muro in alto)', X(-0.3), py - 1);
     cx.textBaseline = 'alphabetic';
+    if (S.meas && S.meas.a) {   /* v28.2: misura tra due punti */
+      const a = S.meas.a, b = S.meas.b, dot = q => { cx.beginPath(); cx.arc(X(q.x), Y(q.z), 5, 0, 7); cx.fillStyle = '#f472b6'; cx.fill(); cx.strokeStyle = '#fff'; cx.lineWidth = 1.5; cx.stroke(); };
+      if (b) {
+        cx.save(); cx.strokeStyle = '#f472b6'; cx.lineWidth = 2; cx.setLineDash([6, 4]); cx.beginPath(); cx.moveTo(X(a.x), Y(a.z)); cx.lineTo(X(b.x), Y(b.z)); cx.stroke(); cx.restore();
+        const dx = Math.round(Math.abs(b.x - a.x) * 100), dz = Math.round(Math.abs(b.z - a.z) * 100), dd = Math.round(Math.hypot(b.x - a.x, b.z - a.z) * 100);
+        const t = dx && dz ? 'orizz. ' + dx + ' · vert. ' + dz + ' · incl. ' + dd + ' cm' : dd + ' cm';
+        cx.font = '600 13px sans-serif'; const tw = cx.measureText(t).width, mx = Math.max(tw / 2 + 8, Math.min(r.width - tw / 2 - 8, (X(a.x) + X(b.x)) / 2)), my = Math.max(14, Math.min(r.height - 14, (Y(a.z) + Y(b.z)) / 2 - 16));
+        cx.fillStyle = 'rgba(15,23,42,.92)'; cx.fillRect(mx - tw / 2 - 6, my - 11, tw + 12, 22); cx.strokeStyle = '#f472b6'; cx.lineWidth = 1; cx.strokeRect(mx - tw / 2 - 6, my - 11, tw + 12, 22);
+        cx.fillStyle = '#fbcfe8'; cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.fillText(t, mx, my); cx.textBaseline = 'alphabetic';
+      }
+      dot(a); if (b) dot(b);
+    }
     if (!list.length) { cx.fillStyle = '#9ca3b8'; cx.font = '14px sans-serif'; cx.textAlign = 'center'; cx.fillText('Parete ' + S.leg + ' vuota: tocca un blocco nella tavolozza', r.width / 2, Y(1.3)); }
   }
   /* ---------------------------------------------------------------- tocco e trascinamento */
   const at = e => { const r = cv.getBoundingClientRect(), V = S.view; return {x: (e.clientX - r.left - V.ox) / V.s, z: (V.oy - (e.clientY - r.top)) / V.s, px: e.clientX, py: e.clientY}; };
   const hitB = p => { const list = L().slice().reverse(); return list.find(b => p.x >= b.x && p.x <= b.x + b.w && p.z >= (b.z || 0) - 0.02 && p.z <= (b.z || 0) + b.h + 0.02 && b.k !== 'spec') || list.find(b => p.x >= b.x && p.x <= b.x + b.w && p.z >= (b.z || 0) && p.z <= (b.z || 0) + b.h) || null; };
+  const PT = new Map(); let G = null;   /* v28.2: dita appoggiate e gesto in corso (spostamento o pizzico) */
+  const rel = e => { const r = cv.getBoundingClientRect(); return {x: e.clientX - r.left, y: e.clientY - r.top}; };
+  function zoomAt(px, py, f) {
+    const V = S.view; if (!V) return; const z = S.zoom || 1, z2 = Math.max(0.4, Math.min(8, z * f)), k = z2 / z;
+    S.zoom = z2; S.pan = {x: px - (px - V.ox) * k - V.ox0 * z2, y: py - (py - V.oy) * k - V.oy0 * z2}; render();
+  }
+  function measTap(p) {
+    const V = S.view, tol = 14 / V.s, pts = [{x: 0, z: 0}]; L().concat(tops(L(), S.def.opt)).forEach(b => { const z0 = b.z || 0; [[b.x, z0], [b.x + b.w, z0], [b.x, z0 + b.h], [b.x + b.w, z0 + b.h], [b.x + b.w / 2, z0], [b.x + b.w / 2, z0 + b.h]].forEach(([x, z]) => pts.push({x, z})); });
+    let q = null, bd = tol; pts.forEach(c => { const d = Math.hypot(c.x - p.x, c.z - p.z); if (d < bd) { bd = d; q = c; } });
+    if (!q) { q = {x: Math.round(p.x * 100) / 100, z: Math.round(p.z * 100) / 100, f: 1}; if (Math.abs(q.z) < tol) q.z = 0; } else q = {x: q.x, z: q.z};
+    { const a = S.meas.a; if (a && !S.meas.b) { const lk = 10 / V.s;   /* quasi verticale o orizzontale: si raddrizza spostando il punto libero */
+      if (Math.abs(q.x - a.x) < lk) { if (q.f) q.x = a.x; else if (a.f) a.x = q.x; }
+      if (Math.abs(q.z - a.z) < lk) { if (q.f) q.z = a.z; else if (a.f) a.z = q.z; } } }
+    if (!S.meas.a || S.meas.b) { S.meas = {a: q, b: null}; toast('Misura: tocca il secondo punto'); } else S.meas.b = q;
+    render();
+  }
+  cv.addEventListener('wheel', e => { e.preventDefault(); const q = rel(e); zoomAt(q.x, q.y, e.deltaY < 0 ? 1.15 : 1 / 1.15); }, {passive: false});
   cv.addEventListener('pointerdown', e => {
-    if (!S.view) return; const p = at(e), b = hitB(p); try { cv.setPointerCapture(e.pointerId); } catch (_) {}
-    if (b) { S.sel = b.id; S.drag = {id: e.pointerId, b, x0: b.x, z0: b.z || 0, p0: p, moved: false, pushed: false}; } else { S.sel = null; S.drag = null; }
+    if (!S.view) return; try { cv.setPointerCapture(e.pointerId); } catch (_) {}
+    PT.set(e.pointerId, rel(e));
+    if (PT.size === 2) { S.drag = null; const [a, c] = [...PT.values()]; G = {k: 'pinch', d: Math.hypot(a.x - c.x, a.y - c.y), cx: (a.x + c.x) / 2, cy: (a.y + c.y) / 2}; return; }
+    if (PT.size > 2) return;
+    const p = at(e);
+    if (S.meas) { measTap(p); return; }
+    const b = hitB(p);
+    if (b) { S.sel = b.id; S.drag = {id: e.pointerId, b, x0: b.x, z0: b.z || 0, p0: p, moved: false, pushed: false}; G = null; }
+    else { S.sel = null; S.drag = null; const q = rel(e); G = {k: 'pan', id: e.pointerId, x: q.x, y: q.y}; }
     ui(); render();
+  });
+  cv.addEventListener('pointermove', e => {
+    if (PT.has(e.pointerId)) PT.set(e.pointerId, rel(e));
+    if (G && G.k === 'pinch' && PT.size >= 2) { const [a, c] = [...PT.values()], d = Math.hypot(a.x - c.x, a.y - c.y), mx = (a.x + c.x) / 2, my = (a.y + c.y) / 2, pn = S.pan || {x: 0, y: 0}; S.pan = {x: pn.x + mx - G.cx, y: pn.y + my - G.cy}; render(); if (G.d > 10) zoomAt(mx, my, d / G.d); G.d = d; G.cx = mx; G.cy = my; return; }
+    if (G && G.k === 'pan' && G.id === e.pointerId) { const q = rel(e), pn = S.pan || {x: 0, y: 0}; S.pan = {x: pn.x + q.x - G.x, y: pn.y + q.y - G.y}; G.x = q.x; G.y = q.y; render(); return; }
   });
   cv.addEventListener('pointermove', e => {
     const d = S.drag; if (!d || d.id !== e.pointerId) return; const p = at(e), b = d.b;
@@ -26282,7 +26334,7 @@ window.SC_REL = {
     if (!fl) { let z = d.z0 + (p.z - d.p0.z); const zc = [1.45, 1.1, 0.35, 1.6]; others.forEach(q => { zc.push((q.z || 0) + q.h, (q.z || 0) - b.h, q.z || 0, (q.z || 0) + q.h - b.h); }); let bz = null, bdz = snapPx; zc.forEach(c => { const dd = Math.abs(c - z); if (dd < bdz) { bdz = dd; bz = c; } }); z = bz != null ? bz : Math.round(z * 100) / 100; b.z = r3(Math.max(0, z)); }
     render(); fields();
   });
-  const up = e => { if (S.drag && S.drag.id === e.pointerId) { S.drag = null; ui(); render(); } };
+  const up = e => { PT.delete(e.pointerId); if (G && (G.k === 'pinch' ? PT.size < 2 : G.id === e.pointerId)) G = null; if (S.drag && S.drag.id === e.pointerId) { S.drag = null; ui(); render(); } };
   cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
   new ResizeObserver(() => render()).observe(cv);
   /* ---------------------------------------------------------------- pannello laterale */
@@ -26300,13 +26352,14 @@ window.SC_REL = {
       h += '<div style="display:flex;align-items:center;gap:6px"><b style="color:#22d3ee;flex:1">' + esc(b.lab || 'Elemento') + '</b><button class="ce-b del" data-c="del">🗑</button></div>';
       h += '<label>Nome</label><input id="ceLab" value="' + esc(b.lab || '') + '">';
       h += '<div class="ce-g">' + num('ceW', 'Larghezza (cm)', cm(b.w)) + num('ceH', 'Altezza (cm)', cm(b.h)) + num('ceD', 'Profondità (cm)', cm(b.d)) + num('ceZ', 'Da terra (cm)', cm(b.z || 0)) + num('ceX', 'Da sinistra (cm)', cm(b.x)) + (b.k === 'base' || b.k === 'col' ? num('ceZh', 'Zoccolo (cm)', cm(zhOf(b))) : '<div></div>') + '</div>';
-      if (b.k !== 'mens' && b.k !== 'spec' && b.k !== 'fia' && b.k !== 'giorno') {
+      if (b.k !== 'mens' && b.k !== 'spec' && b.k !== 'fia' && b.k !== 'giorno' && b.k !== 'top') {
         h += '<label>Frontale</label><div class="ce-row">' + Object.keys(FR).filter(k => k !== 'giorno' || b.inc === 'lavatrice').map(k => '<button class="ce-b' + (b.fr === k && !b.frc ? ' on' : '') + '" data-fr="' + k + '">' + esc(FR[k].n) + '</button>').join('') + '</div>';
         h += '<label>Apertura ante</label><div class="ce-row"><button class="ce-b' + (b.ap === 'sx' ? ' on' : '') + '" data-ap="sx">SX (cerniere a sinistra)</button><button class="ce-b' + (b.ap !== 'sx' ? ' on' : '') + '" data-ap="dx">DX (cerniere a destra)</button></div>';
         h += '<label>Maniglia</label><div class="ce-row">' + [['mani', 'Maniglia'], ['gola', 'Gola'], ['push', 'Push (senza)']].map(([k, n]) => '<button class="ce-b' + ((b.man || 'mani') === k ? ' on' : '') + '" data-man="' + k + '">' + n + '</button>').join('') + '</div>';
       }
       h += '<label>Incasso / elettrodomestico</label><select id="ceInc">' + Object.keys(INC).map(k => '<option value="' + k + '"' + ((b.inc || '') === k ? ' selected' : '') + '>' + INC[k] + '</option>').join('') + '</select>';
-      h += '<div class="ce-g"><div><label>Colore corpo</label><input type="color" id="ceCc" value="' + (b.cc || DEFC.cc) + '"></div><div><label>Colore frontale</label><input type="color" id="ceCf" value="' + (b.cf || DEFC.cf) + '"></div></div>';
+      if (b.k === 'top') h += '<label>Colore del piano</label><input type="color" id="ceCf" value="' + (b.cf || DEFC.ct) + '">';   /* v28.2 */
+      else h += '<div class="ce-g"><div><label>Colore corpo</label><input type="color" id="ceCc" value="' + (b.cc || DEFC.cc) + '"></div><div><label>Colore frontale</label><input type="color" id="ceCf" value="' + (b.cf || DEFC.cf) + '"></div></div>';
       h += '<label>Prezzo elemento (€)</label><input id="cePr" inputmode="decimal" value="' + (b.pr != null ? String(b.pr).replace('.', ',') : '') + '" placeholder="facoltativo">';
       h += '<div class="ce-row"><button class="ce-b" data-c="left">◀ Prima</button><button class="ce-b" data-c="right">Dopo ▶</button><button class="ce-b" data-c="dup">⧉ Duplica</button><button class="ce-b" data-c="allcol">Colori a tutti</button></div>';
       h += '<div class="ce-hint">Trascina il blocco per spostarlo: si aggancia agli altri. Le basi restano a terra, pensili, mensole e specchi si spostano anche in altezza.</div>';
@@ -26352,7 +26405,10 @@ window.SC_REL = {
     const lx = e.target.closest('[data-lx]'); if (lx) { if (!confirm('Eliminare la composizione dalla libreria?')) return; libSet(libGet().filter(x => x.id !== lx.dataset.lx)); showLib(); return; }
     const cb = e.target.closest('[data-c]'); if (!cb) return; const c = cb.dataset.c;
     if (c === 'close') close();
-    else if (c === 'mini') { mini.hidden = !mini.hidden; cb.classList.toggle('on', !mini.hidden); drawMini(); }
+    else if (c === 'mini') { mini.hidden = !mini.hidden; cb.classList.toggle('on', !mini.hidden); render(); }
+    else if (c === 'zin' || c === 'zout') { const r = cv.getBoundingClientRect(); zoomAt(r.width / 2, r.height / 2, c === 'zin' ? 1.25 : 1 / 1.25); }
+    else if (c === 'zfit') { S.zoom = 1; S.pan = {x: 0, y: 0}; render(); }
+    else if (c === 'meas') { S.meas = S.meas ? null : {a: null, b: null}; cb.classList.toggle('on', !!S.meas); toast(S.meas ? 'Misura: tocca due punti; vicino agli spigoli dei mobili si agganciano' : 'Misura chiusa'); render(); }
     else if (c === 'legA' || c === 'legB') { S.leg = c === 'legA' ? 'A' : 'B'; S.sel = null; ui(); render(); }
     else if (c === 'cdx' || c === 'csx') { S.def.corner = c === 'csx' ? 'sx' : 'dx'; ui(); render(); }
     else if (c === 'undo') { const h = S.hist.pop(); if (h) { S.def = JSON.parse(h); S.sel = null; ui(); render(); } }
