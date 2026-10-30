@@ -1,4 +1,4 @@
-SimplyCAD Pro - pubblicazione su GitHub Pages (v27.8)
+SimplyCAD Pro - pubblicazione su GitHub Pages (v27.9)
 
 Contenuto (vanno caricati tutti, senza rinominarli e SENZA cartelle intorno):
   index.html  sw.js  manifest.webmanifest  icon-192.png  icon-512.png  icon-maskable.png  README.md
@@ -485,3 +485,29 @@ NOVITÀ v27.8
 - Modelli di partenza, «Elenco elementi» stampabile con prezzi, salvataggio in «I miei arredi».
 - Posa toccando il muro: oggetti singoli raggruppati che si spostano insieme; «Modifica composizione» la riapre; «Separa» la scioglie. Voce a corpo nel computo, prese per gli elettrodomestici, acqua e scarico automatici per lavelli e lavabi.
 - Importa modello 3D (GLB, glTF, OBJ+MTL) di produttori o librerie gratuite CC0: contorno in pianta, sagoma nel prospetto, forma vera in 3D; resta sul dispositivo e viaggia nel file progetto.
+
+NOVITÀ v27.9
+- Prospetto: pulsante «👁 Vista» (al posto di «Nel muro») per scegliere cosa vedere:
+  impianti tutti, solo elettrico, solo idraulico o nessuno (linee e punti; le luci restano);
+  arredi trasparenti, pieni o nascosti; etichette di arredi, punti e controsoffitti visibili o nascoste.
+  Vale solo per i prospetti, la pianta ha le sue impostazioni.
+- Corretto: pensili e arredi alzati comparivano a terra nel prospetto e si selezionavano solo toccando l'etichetta.
+
+NOVITÀ v28.0
+- Manuale d'uso completo in PDF (manuale.pdf, 63 pagine, oltre 100 immagini): PC, tablet e smartphone.
+  Caricandolo insieme agli altri file si apre anche dall'indirizzo del sito: .../manuale.pdf
+- Corretto: toccando un elemento di una composizione a volte si prendeva solo quell'elemento e non tutto il gruppo.
+- Corretto: le linee dell'impianto elettrico automatico riempivano la pianta di etichette; ora si toccano sulla linea, come l'idraulico.
+- Corretto: sullo smartphone in modalità rilievo all'avvio poteva comparire un errore interno.
+- Corretto: le copie delle versioni precedenti dell'app restavano nella memoria del dispositivo; ora si cancellano all'aggiornamento.
+
+NOVITÀ v28.1
+- Composizione arredo: riquadro «🔍 Dall'alto» con i muri A e B ad angolo e la sagoma dei blocchi;
+  il blocco selezionato è in arancio. Il pulsante 🔍 lo nasconde o lo mostra.
+- Composizione arredo: il lavoro in corso resta salvato nel dispositivo anche uscendo dall'editor
+  o chiudendo l'app. Riaprendo «Composizione su misura» si sceglie se riprenderlo o iniziarne uno nuovo.
+  La bozza si cancella solo salvando in «I miei arredi», posando nel disegno o iniziandone una nuova.
+- Posa della composizione: il punto toccato sul muro è il lato sinistro della composizione
+  (guardando il muro). L'aggancio all'angolo scatta solo entro 30 cm (prima 1,2 m).
+  Avviso se la composizione supera la fine del muro. Le composizioni già posate non si spostano.
+- Manuale aggiornato (capitolo Arredi).

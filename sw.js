@@ -1,5 +1,5 @@
 /* SimplyCAD Pro · funzionamento senza internet. A ogni nuova versione cambia VERSIONE. */
-const VERSIONE = 'v27.8';
+const VERSIONE = 'v28.1';
 const BASE = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-maskable.png'];
 const LIBRERIE = [
   'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js',
@@ -15,12 +15,14 @@ self.addEventListener('install', e => {
   }));
 });
 self.addEventListener('activate', e => {
-  e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k.startsWith('simplycad-') && k !== VERSIONE).map(k => caches.delete(k)))).then(() => self.clients.claim()));
+  e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => (k.startsWith('simplycad-') || /^v\d/.test(k)) && k !== VERSIONE).map(k => caches.delete(k)))).then(() => self.clients.claim()));
 });
 self.addEventListener('message', e => { if (e.data === 'aggiorna') self.skipWaiting(); });
 self.addEventListener('fetch', e => {
   const req = e.request; if (req.method !== 'GET') return;
-  const url = new URL(req.url), pagina = req.mode === 'navigate' || (url.origin === location.origin && /\/(index\.html)?$/.test(url.pathname));
+  const url = new URL(req.url);
+  if (url.origin === location.origin && /\.pdf$/i.test(url.pathname)) return;   /* v28.0: il manuale si apre dalla rete, non va nella copia dell'app */
+  const pagina = url.origin === location.origin && /\/(index\.html)?$/.test(url.pathname);
   if (pagina) {   /* la pagina: prima dalla rete (versione nuova), senza rete dalla copia salvata */
     e.respondWith(fetch(req).then(r => { const k = r.clone(); caches.open(VERSIONE).then(c => c.put('./index.html', k)); return r; }).catch(() => caches.match('./index.html').then(r => r || caches.match('./'))));
     return;

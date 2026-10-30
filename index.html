@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v27.8</title>
+<title>SimplyCAD Pro · v28.1</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -10860,7 +10860,7 @@ updateRoomList();
     if (state.tool === 'zone' && zApi() && zApi().tmp().length) return 'zone';
     if (zEdit()) return 'editzone';
     if (selW()) return 'editwall';
-    if (window.SCrot && SCrot.canKeypad()) return 'editrot';   /* v16.1 */
+    if (window.SCrot && SCrot.canKeypad && SCrot.canKeypad()) return 'editrot';   /* v16.1 */
     return '';
   }
   /* muro singolo selezionato (strumento selezione, non bloccato, nessun disegno in corso) */
@@ -15542,7 +15542,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       <button class="wk-b" id="wkPrev" title="Muro collegato a sinistra">◀</button>
       <button class="wk-b" id="wkPhoto" title="Foto del muro: sfondo raddrizzato del prospetto" style="display:none">📷</button>
       <button class="wk-b" id="wkFlip" title="Guarda il muro dall'altro lato">👁 Gira</button>
-      <button class="wk-b" id="wkXray" title="Nel muro: impianti e punti sempre in vista, arredi trasparenti">🔍 Nel muro</button>
+      <button class="wk-b" id="wkXray" title="Cosa mostrare nel prospetto: impianti, arredi, etichette">👁 Vista ▾</button>
       <button class="wk-b" id="wkNext" title="Muro collegato a destra">▶</button>
       <button class="wk-b" id="wkFull" title="Prospetto a tutto schermo / schermo diviso">⤢</button>
       <button class="wk-b" id="wkClose" title="Chiudi il prospetto">✕</button>
@@ -16132,7 +16132,16 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   });
   $w('wkClose').onclick = close;
   $w('wkFull').onclick = () => { S.full = !S.full; lastCv = ''; layout(); ui(); };
-  $w('wkXray').onclick = () => { appSettings.wkXray = !(window.SCwf && SCwf.xray()); try { persistSettings(); } catch (_) {} toast(appSettings.wkXray ? 'Nel muro: impianti e punti sempre in vista, arredi trasparenti' : 'Vista normale: gli arredi coprono il muro'); ui(); render(); };
+  function visPanel() {   /* v27.9: vista del prospetto */
+    let d = $w('wkVis'); if (d) { d.remove(); return; }
+    d = document.createElement('div'); d.id = 'wkVis'; d.style.cssText = 'position:absolute;right:8px;top:48px;z-index:5;background:#1b1e2e;border:1px solid #475175;border-radius:10px;padding:8px;box-shadow:0 8px 24px rgba(0,0,0,.5);display:grid;gap:6px;max-width:min(420px,92%)';
+    const row = (lab, key, opts, cur) => '<div><div style="font-size:11.5px;color:#9ca3b8;margin-bottom:3px">' + lab + '</div><div class="wk-row" style="flex-wrap:wrap;gap:4px">' + opts.map(([v, n]) => '<button class="wk-b' + (cur === v ? ' on' : '') + '" data-vk="' + key + '" data-vv="' + v + '">' + n + '</button>').join('') + '</div></div>';
+    const draw = () => { d.innerHTML = row('Impianti (linee e punti)', 'wkImp', [['all', 'Tutti'], ['el', 'Solo elettrico'], ['idro', 'Solo idraulico'], ['none', 'Nessuno']], SCwf.impMode()) + row('Arredi', 'wkFur', [['xray', 'Trasparenti'], ['on', 'Pieni'], ['off', 'Nascosti']], SCwf.furMode()) + row('Etichette (arredi, punti, controsoffitti)', 'wkLbl', [['1', 'Visibili'], ['0', 'Nascoste']], SCwf.lblOk() ? '1' : '0') + '<div style="font-size:11px;color:#9ca3b8">Vale solo per i prospetti; la pianta ha le sue impostazioni (menu Impianti e Vista).</div>'; };
+    draw(); P.appendChild(d);
+    d.addEventListener('click', e => { const b = e.target.closest('[data-vk]'); if (!b) return; const k = b.dataset.vk, v = b.dataset.vv; appSettings[k] = k === 'wkLbl' ? v === '1' : v; if (k === 'wkFur') appSettings.wkXray = v === 'xray'; try { persistSettings(); } catch (_) {} draw(); ui(); render(); });
+    setTimeout(() => document.addEventListener('pointerdown', function off(e) { if (!d.isConnected) { document.removeEventListener('pointerdown', off, true); return; } if (!d.contains(e.target) && e.target !== $w('wkXray')) { d.remove(); document.removeEventListener('pointerdown', off, true); } }, true), 0);
+  }
+  $w('wkXray').onclick = () => { if (window.SCwf) visPanel(); };
   $w('wkPhoto').onclick = () => {
     const w = wById(S.wallId); if (!w || !window.SCph) return; const bg = SCph.bgOf(w), list = SCph.wallPhotos(w);
     if (bg && (bg.face == null ? defaultFace(w) : bg.face) === S.face) { S.photo = S.photo === false; ui(); return; }   /* foto già raddrizzata: mostra / nascondi */
@@ -16177,7 +16186,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     const k = selWork(w), shapeOn = S.tool === 'hole' || S.tool === 'niche' || (k && k.k !== 'cut');
     P.querySelectorAll('[data-s]').forEach(b => { b.disabled = !shapeOn; b.classList.toggle('on', shapeOn && (k ? k.sh : S.shape) === b.dataset.s); });
     $w('wkFull').classList.toggle('on', S.full || small());
-    { const xb = $w('wkXray'); if (xb) xb.classList.toggle('on', !!(window.SCwf && SCwf.xray())); }
+    { const xb = $w('wkXray'); if (xb && window.SCwf) xb.classList.toggle('on', SCwf.impMode() !== 'all' || SCwf.furMode() !== 'xray' || !SCwf.lblOk()); }
     { const pb = $w('wkPhoto'), n = window.SCph ? SCph.wallPhotos(w).length : 0, bg = n && SCph.bgOf(w); pb.style.display = n ? '' : 'none'; pb.classList.toggle('on', !!(bg && S.photo !== false && (bg.face == null ? defaultFace(w) : bg.face) === S.face)); pb.title = bg ? 'Foto come sfondo: mostra / nascondi' : 'Foto del muro: tocca per segnare gli angoli e usarla come sfondo'; } $w('wkFull').style.display = small() ? 'none' : '';
     const foot = $w('wkFoot'), locked = isEntityLocked(w); let h = '';
     if (S.tool !== 'sel') {
@@ -17031,7 +17040,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
           if (viewScale > 70) { ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'bottom'; const t = (q.col ? 'colonna ' : 'braga ') + q.dm + '/' + q.db; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.strokeText(t, s0.x + r + 2, s0.y - 2); ctx.fillStyle = '#111827'; ctx.fillText(t, s0.x + r + 2, s0.y - 2); }
           ctx.restore();
         });
-        if (b.net && b !== active) boxes.push({el: b, hid: true});
+        if ((b.net || b.auto) && b !== active) boxes.push({el: b, hid: true});
         else labelBox((b.name ? b.name + ' · ' : '') + T[0] + ' Ø' + b.d, f2(polyLen(D, false)) + ' ml · ' + ZMN[b.zm || 'pav'] + (b.imp === 'scn' ? ' · pend. 1,5%' : ''), D[Math.floor(D.length / 2)], T[1], b);
         continue;
       }
@@ -21776,8 +21785,11 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
    SC_REL.v è l'unica versione: titolo, Guida, file salvato, avvisi e riga messaggi la leggono da qui.
    ======================================================================== */
 window.SC_REL = {
-  v: '27.8', d: '29/10/2026',
+  v: '28.1', d: '30/10/2026',
   news: [
+    ['28.1', 'Composizione arredo: riquadro «🔍 Dall\'alto» con i muri A e B ad angolo e la sagoma dei blocchi (quello selezionato in arancio); la composizione in corso resta salvata nel dispositivo anche uscendo o chiudendo l\'app, e riaprendo si sceglie se riprenderla o iniziarne una nuova (si cancella solo salvando, posando o iniziandone una nuova). Posa: il punto toccato sul muro è il lato sinistro della composizione (guardando il muro); l\'aggancio all\'angolo scatta solo entro 30 cm; avviso se supera la fine del muro. Le composizioni già posate non si spostano.'],
+    ['28.0', 'Manuale d\'uso completo in PDF. Corretti: toccando un elemento di una composizione a volte si prendeva solo quell\'elemento invece di tutto il gruppo; le linee dell\'impianto elettrico automatico riempivano la pianta di etichette (ora si toccano sulla linea, come l\'idraulico); sullo smartphone in modalità rilievo all\'avvio poteva comparire un errore interno.'],
+    ['27.9', 'Prospetto: il pulsante «👁 Vista» sceglie cosa vedere: impianti tutti, solo elettrico, solo idraulico o nessuno (linee e punti; le luci restano), arredi trasparenti, pieni o nascosti, etichette visibili o nascoste. Corretto: nelle versioni precedenti i pensili e gli arredi alzati comparivano a terra nel prospetto e si selezionavano solo toccando la loro etichetta.'],
     ['27.8', 'Modelli 3D importati: GLB, glTF o OBJ (con MTL) di produttori o librerie gratuite diventano arredi con contorno in pianta, sagoma nel prospetto e forma vera in 3D; si salvano sul dispositivo e viaggiano nel file progetto. Composizione arredo: finestra con vista frontale e pianta per comporre cucine, bagni, armadi e pareti attrezzate a blocchi (basi, pensili, colonne, angoli, a giorno, mensole, fianchi, specchi). Frontali divisi (ante, cassetti, ribalte, vetro, forno, frigo, scorrevoli), apertura SX/DX, maniglia, gola o push, incassi (lavello, piano cottura, lavabo, lavastoviglie, forno, frigo, cappa, lavatrice), top continuo, due pareti ad angolo. Modelli di partenza, elenco elementi stampabile con prezzi, salvataggio in «I miei arredi». Si posa toccando il muro: oggetti singoli raggruppati che si spostano insieme, con voce a corpo nel computo, prese per gli elettrodomestici e acqua e scarico automatici per lavelli e lavabi. Si riapre con «Modifica composizione».'],
     ['27.7', 'Idraulico automatico senza limiti: se mancano, colonna di scarico (nell\'angolo vicino al WC) e collettore (sul muro, lontano dai sanitari e vicino alla porta) si mettono da soli e si possono spostare; anche nei locali non chiusi da muri i tubi corrono lungo le pareti; nelle reti corrette a mano le correzioni restano e i sanitari nuovi o spostati si innestano da soli con una braga; punti e pezzi automatici spostati a mano diventano manuali. Braghe visibili anche in 3D.'],
     ['27.6', 'Impianto idraulico automatico e «logico»: mettendo, spostando o togliendo un sanitario si creano da soli i punti acqua e scarico e i tubi. Lo scarico corre lungo i muri con una dorsale fino alla colonna; ogni sanitario entra con una braga a 45° nel verso dello scorrimento (Ø110 dal WC in giù, Ø50 il resto, pendenza 1,5%); le braghe si vedono in pianta e, con i tubi al metro, vanno in computo. L\'acqua va a stella dal collettore, anch\'essa lungo i muri. Le reti corrette a mano non si rigenerano più. Interruttore in Impianti › Idraulico automatico. Anche i sanitari della libreria nuova (sospesi, mobili lavabo, docce con box, vasche, lavatoio, lavello 2 vasche, lavatrice a colonna) hanno i loro punti.'],
@@ -24250,7 +24262,8 @@ window.SC_REL = {
   const IMPD = {acc: d => 'Tubazione multistrato Ø' + d + ' mm per acqua calda sanitaria, in traccia, compresi isolante e raccordi', acf: d => 'Tubazione multistrato Ø' + d + ' mm per acqua fredda, in traccia, compresi raccordi', scn: d => 'Tubazione di scarico in PP/PVC Ø' + d + ' mm per acque nere e reflue, compresi pezzi speciali e staffaggi',
     fas: d => 'Conduttore di fase in tubo corrugato Ø' + d + ' mm, in traccia', neu: d => 'Conduttore di neutro in tubo corrugato Ø' + d + ' mm, in traccia', ter: d => 'Conduttore di terra in tubo corrugato Ø' + d + ' mm, in traccia', can: d => 'Canalina portacavi ' + d + ' mm, compreso fissaggio', lux: d => 'Linea luci in tubo corrugato Ø' + d + ' mm con conduttori fase, neutro e terra, in traccia', pre: d => 'Linea prese in tubo corrugato Ø' + d + ' mm con conduttori fase, neutro e terra, in traccia', tv: d => 'Linea TV/SAT in tubo corrugato Ø' + d + ' mm con cavo coassiale, in traccia', dat: d => 'Linea dati in tubo corrugato Ø' + d + ' mm con cavo UTP cat. 6, in traccia'};
   const impOn = () => !!appSettings.showImp;
-  const impW = () => impOn() || !!(window.SCwf && SCwf.xray());   /* v27.5: prospetto con «Nel muro» */
+  const impW = () => window.SCwf ? SCwf.impMode() !== 'none' : impOn();   /* v27.9: nel prospetto decide la sua vista */
+  const impT = t => !window.SCwf || SCwf.impOk(t);
   const find = id => { for (const w of state.walls) { const r = (w.leds || []).find(x => x.id === id); if (r) return r; } return null; };
   const hostOf = id => state.walls.find(w => (w.leds || []).some(x => x.id === id));
   const D = r => SCcs.dense({pts: r.pts.map(p => ({x: p.x, y: p.z, b: p.b}))}, false);   /* punti reali, archi compresi */
@@ -24278,7 +24291,7 @@ window.SC_REL = {
     r.pts.forEach(p => { p.x = r3(x0 + (bw < 1e-6 ? 0 : (p.x - b.x0) / bw * nw)); p.z = r3(z0 + (bh < 1e-6 ? 0 : (p.z - b.z0) / bh * nh)); });
   }
   function hit(w, face, x, z, tol) {
-    const list = leds(w).filter(r => r.f === face && (!r.imp || impW())).reverse();
+    const list = leds(w).filter(r => r.f === face && (!r.imp || (impW() && impT(r.imp)))).reverse();
     for (const r of list) { const P = D(r); for (let i = 0; i + 1 < P.length; i++) { const a = P[i], c = P[i + 1], dx = c.x - a.x, dy = c.y - a.y, L2 = dx * dx + dy * dy || 1e-9, t = Math.max(0, Math.min(1, ((x - a.x) * dx + (z - a.y) * dy) / L2)); if (Math.hypot(a.x + dx * t - x, a.y + dy * t - z) <= tol) return r; } }
     return null;
   }
@@ -24299,7 +24312,7 @@ window.SC_REL = {
   function draw(cx, w, face, sx, sy, s, oSel) {
     try { drawPlanImp(cx, w, face, sx, sy); } catch (e) { console.warn('impianti di pianta sul prospetto', e); }
     leds(w).forEach(r => {
-      if (r.f !== face || r.pts.length < 2 || (r.imp && !impW())) return;
+      if (r.f !== face || r.pts.length < 2 || (r.imp && !(impW() && impT(r.imp)))) return;
       const sel = oSel && oSel.kind === 'led' && oSel.id === r.id, P = D(r);
       cx.save(); cx.lineCap = 'round'; cx.lineJoin = 'round'; cx.setLineDash([]);
       cx.beginPath(); P.forEach((p, i) => { const X = sx(toU(w, face, p.x)), Y = sy(p.y); i ? cx.lineTo(X, Y) : cx.moveTo(X, Y); });
@@ -24316,7 +24329,7 @@ window.SC_REL = {
     if (!impW()) return;
     const L = Lw(w); if (L < 1e-6) return; const ux = (w.p2.x - w.p1.x) / L, uy = (w.p2.y - w.p1.y) / L, th = getWallThickness(w), band = th / 2 + 0.2, fl = floorOf(w);
     impSegs().forEach(q => {
-      if (q.wall || q.fl !== fl) return;
+      if (q.wall || q.fl !== fl || !impT(q.imp)) return;
       const na = -(q.p.x - w.p1.x) * uy + (q.p.y - w.p1.y) * ux, nb = -(q.q.x - w.p1.x) * uy + (q.q.y - w.p1.y) * ux, ua = (q.p.x - w.p1.x) * ux + (q.p.y - w.p1.y) * uy, ub = (q.q.x - w.p1.x) * ux + (q.q.y - w.p1.y) * uy;
       if (Math.max(Math.abs(na), Math.abs(nb)) > band || Math.max(ua, ub) < -0.05 || Math.min(ua, ub) > L + 0.05) return;
       const n = (na + nb) / 2, front = Math.abs(n) < th / 2 || (n > 0 ? 1 : -1) === face, T = IMPT[q.imp] || IMPT.acf, lw = Math.max(3, Math.min(10, (q.d || 20) / 6));
@@ -24614,6 +24627,7 @@ window.SC_REL = {
   /* simbolo nel prospetto (cx: contesto, sx/sy: coordinate, s: scala) */
   function draw(cx, w, face, sx, sy, s, oSel) {
     luxOf(w).forEach(f => {
+      if (window.SCwf && !SCwf.ptOk(kindOf(f))) return;
       const front = f.lw.side === face, u = face > 0 ? Lw(w) - f.lw.dist : f.lw.dist, X = sx(u), Y = sy(zOf(f)), sel = oSel && oSel.kind === 'lux' && oSel.id === f.id, t = kindOf(f);
       cx.save(); cx.globalAlpha = front ? 1 : 0.35; if (!front) cx.setLineDash([4, 3]);
       cx.fillStyle = '#fde68a'; cx.strokeStyle = sel ? '#22d3ee' : '#a16207'; cx.lineWidth = sel ? 3 : 1.6;
@@ -24645,12 +24659,12 @@ window.SC_REL = {
         cx.strokeStyle = sel ? '#22d3ee' : '#fbbf24'; cx.setLineDash([3, 3]); cx.beginPath(); cx.moveTo(X, Y + 6); cx.lineTo(X - 14, Y + 30); cx.moveTo(X, Y + 6); cx.lineTo(X + 14, Y + 30); cx.stroke();
       }
       cx.restore();
-      if (sel || s > 70) { cx.fillStyle = '#fde68a'; cx.font = '600 10.5px "Segoe UI",sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'top'; cx.fillText(NAMES[t] + (f.type === 'punto_luce' ? ' · ' + (+(f.lt && f.lt.lm) || 800) + ' lm' : ''), X, Y + (t === 'presa' || t === 'interruttore' || t === 'pt_acqua' || t === 'pt_scarico' || t === 'pt_tv' || t === 'pt_dati' ? 14 : 34)); }
+      if (sel || (s > 70 && (!window.SCwf || SCwf.lblOk()))) { cx.fillStyle = '#fde68a'; cx.font = '600 10.5px "Segoe UI",sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'top'; cx.fillText(NAMES[t] + (f.type === 'punto_luce' ? ' · ' + (+(f.lt && f.lt.lm) || 800) + ' lm' : ''), X, Y + (t === 'presa' || t === 'interruttore' || t === 'pt_acqua' || t === 'pt_scarico' || t === 'pt_tv' || t === 'pt_dati' ? 14 : 34)); }
     });
   }
   function hit(w, face, x, v, pxPerM) {
     const tol = 18 / pxPerM; let best = null, bd = 1e9;
-    luxOf(w).forEach(f => { if (f.lw.side !== face) return; const d = Math.hypot(x - f.lw.dist, v - zOf(f)); if (d < tol && d < bd) { bd = d; best = f; } });
+    luxOf(w).forEach(f => { if (f.lw.side !== face || (window.SCwf && !SCwf.ptOk(kindOf(f)))) return; const d = Math.hypot(x - f.lw.dist, v - zOf(f)); if (d < tol && d < bd) { bd = d; best = f; } });
     return best;
   }
   function add(w, face, x, z, tipo) {
@@ -25614,7 +25628,14 @@ window.SC_REL = {
   const fr = w => { const L = Lw(w) || 1, ux = (w.p2.x - w.p1.x) / L, uy = (w.p2.y - w.p1.y) / L; return {L, ux, uy, t: getWallThickness(w)}; };
   const A = (F, w, x, y) => (x - w.p1.x) * F.ux + (y - w.p1.y) * F.uy, N = (F, w, x, y) => -(x - w.p1.x) * F.uy + (y - w.p1.y) * F.ux;
   const toU = (w, face, x) => face > 0 ? Lw(w) - x : x;
-  const xray = () => appSettings.wkXray !== false;
+  /* v27.9: vista del prospetto: impianti (tutto / elettrico / idraulico / nessuno), arredi (trasparenti / pieni / nascosti), etichette */
+  const IDRO = new Set(['acc', 'acf', 'scn']), IDROP = new Set(['pt_acqua', 'pt_scarico', 'collettore']), LUCI = new Set(['applique', 'faretto_p', 'punto_luce']);
+  const furMode = () => appSettings.wkFur || (appSettings.wkXray === false ? 'on' : 'xray');
+  const impMode = () => appSettings.wkImp || 'all';
+  const xray = () => furMode() === 'xray';
+  const impOk = t => { const m = impMode(); return m === 'all' || (m === 'idro' ? IDRO.has(t) : m === 'el' ? !IDRO.has(t) : false); };
+  const ptOk = t => { if (LUCI.has(t)) return true; const m = impMode(); return m === 'all' || (m === 'idro' ? IDROP.has(t) : m === 'el' ? !IDROP.has(t) : false); };
+  const lblOk = () => appSettings.wkLbl !== false;
   const shade = (hex, k) => {
     let h = String(hex || '#999999').replace('#', ''); if (h.length === 3) h = h.split('').map(c => c + c).join(''); h = h.slice(0, 6);
     const n = parseInt(h, 16); if (!isFinite(n)) return hex; const f = v => Math.round(v + (255 - v) * k);
@@ -25641,7 +25662,7 @@ window.SC_REL = {
     return {f, spec, F, a0, n0, cu, cv, cn, cvn, a1, a2, m1, m2, z, h};
   }
   function furOf(w, face) {
-    if (!showF()) return [];
+    if (!showF() || furMode() === 'off') return [];
     const F = fr(w), fl = floorOf(w), out = [];
     for (const f of state.furniture) {
       if (!isEntityVisible(f) || SKIP.has(f.type) || f.lw || (f.type === 'pilastro' && f.pil) || floorOf(f) !== fl) continue;
@@ -25719,7 +25740,7 @@ window.SC_REL = {
       if (!PR) {
         const u1 = Math.min(X(g.a1), X(g.a2)), u2 = Math.max(X(g.a1), X(g.a2));
         if (isS) { cx.save(); cx.setLineDash([6, 4]); cx.strokeStyle = '#22d3ee'; cx.lineWidth = 1.8; cx.strokeRect(u1 - 3, sy(g.z + g.h) - 3, u2 - u1 + 6, g.h * s + 6); cx.restore(); }
-        if (u2 - u1 > 54 && g.h * s > 16 && !far) { cx.save(); cx.font = '600 10px "Segoe UI",sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'bottom'; const t = g.f.type === 'cmod' && g.f.cm ? (g.f.cm.lab || g.spec.name) : g.spec.name, tw = cx.measureText(t).width + 8, xm = (u1 + u2) / 2, ym = sy(g.z + g.h) - 2; cx.fillStyle = 'rgba(15,23,42,.72)'; cx.fillRect(xm - tw / 2, ym - 13, tw, 13); cx.fillStyle = '#e5e7eb'; cx.fillText(t, xm, ym); cx.restore(); }
+        if (lblOk() && u2 - u1 > 54 && g.h * s > 16 && !far) { cx.save(); cx.font = '600 10px "Segoe UI",sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'bottom'; const t = g.f.type === 'cmod' && g.f.cm ? (g.f.cm.lab || g.spec.name) : g.spec.name, tw = cx.measureText(t).width + 8, xm = (u1 + u2) / 2, ym = sy(g.z + g.h) - 2; cx.fillStyle = 'rgba(15,23,42,.72)'; cx.fillRect(xm - tw / 2, ym - 13, tw, 13); cx.fillStyle = '#e5e7eb'; cx.fillText(t, xm, ym); cx.restore(); }
       }
     });
   }
@@ -25760,7 +25781,7 @@ window.SC_REL = {
       if (q.kind === 'ceil') {
         cx.fillStyle = PR ? 'rgba(0,0,0,0)' : 'rgba(167,139,250,' + (xray() ? 0.14 : 0.32) + ')'; cx.fillRect(u1, y1, u2 - u1, y0 - y1);
         cx.setLineDash([]); cx.strokeStyle = isS ? '#22d3ee' : PR ? '#000' : '#a78bfa'; cx.lineWidth = isS ? 4 : 3; cx.beginPath(); cx.moveTo(u1, y0); cx.lineTo(u2, y0); cx.stroke();
-        if (!PR && u2 - u1 > 90) { cx.font = '600 10.5px "Segoe UI",sans-serif'; cx.fillStyle = '#c4b5fd'; cx.textAlign = 'left'; cx.textBaseline = 'bottom'; cx.fillText('Controsoffitto h ' + String((+q.el.h).toFixed(2)).replace('.', ','), u1 + 6, y0 - 4); }
+        if (!PR && lblOk() && u2 - u1 > 90) { cx.font = '600 10.5px "Segoe UI",sans-serif'; cx.fillStyle = '#c4b5fd'; cx.textAlign = 'left'; cx.textBaseline = 'bottom'; cx.fillText('Controsoffitto h ' + String((+q.el.h).toFixed(2)).replace('.', ','), u1 + 6, y0 - 4); }
         if (isS) { cx.setLineDash([6, 4]); cx.strokeStyle = '#22d3ee'; cx.lineWidth = 1.5; cx.strokeRect(u1, y1, u2 - u1, y0 - y1); }
       } else {
         cx.fillStyle = PR ? '__paper' : 'rgba(196,181,253,' + (xray() ? 0.45 : 0.75) + ')'; cx.fillRect(u1, y1, u2 - u1, y0 - y1);
@@ -25775,7 +25796,7 @@ window.SC_REL = {
     if (!window.SCwl) return [];
     const F = fr(w), band = F.t / 2 + 0.2, fl = floorOf(w), out = [];
     SCwl.impSegs().forEach(q => {
-      if (q.wall || q.fl !== fl || !q.el) return;
+      if (q.wall || q.fl !== fl || !q.el || !impOk(q.imp)) return;
       const na = N(F, w, q.p.x, q.p.y), nb = N(F, w, q.q.x, q.q.y), ua = A(F, w, q.p.x, q.p.y), ub = A(F, w, q.q.x, q.q.y);
       if (Math.max(Math.abs(na), Math.abs(nb)) > band || Math.max(ua, ub) < -0.05 || Math.min(ua, ub) > F.L + 0.05) return;
       out.push({el: q.el, ua, ub, za: q.p.z, zb: q.q.z});
@@ -25859,7 +25880,7 @@ window.SC_REL = {
     else if (kind === 'cs') state.beams = state.beams.filter(x => x !== e);
     else if (kind === 'ceil') state.ceils = state.ceils.filter(x => x !== e);
   }
-  window.SCwf = {furOf, drawFur, csOf, drawCs, drawImpSel, impHit, hit, hitCs, find, proxy, write, title, remove, xray, frontParts, geomOf};
+  window.SCwf = {furMode, impMode, impOk, ptOk, lblOk, furOf, drawFur, csOf, drawCs, drawImpSel, impHit, hit, hitCs, find, proxy, write, title, remove, xray, frontParts, geomOf};
 })();
 </script>
 <script>
@@ -26046,18 +26067,19 @@ window.SC_REL = {
     return out;
   }
   const EL = {cottura: 0.3, forno: 0.3, lavast: 0.3, frigo: 0.3, lavatrice: 0.9};
-  function place(def, wall, P, grp, dlt) {
+  function place(def, wall, P, grp, dlt, old) {   /* old = composizioni posate prima della v28.1: punto toccato al centro */
     const L = Lw(wall), ux = (wall.p2.x - wall.p1.x) / L, uy = (wall.p2.y - wall.p1.y) / L;
     const side = (-(P.x - wall.p1.x) * uy + (P.y - wall.p1.y) * ux) >= 0 ? 1 : -1, dirR = side > 0 ? -1 : 1, aP = (P.x - wall.p1.x) * ux + (P.y - wall.p1.y) * uy;
     const A = def.A || [], Bl = def.B || [], opt = def.opt || {}, hasB = Bl.length > 0;
     const rightEnd = dirR > 0 ? 1 : 0, leftEnd = 1 - rightEnd;   /* estremi del muro a destra / sinistra di chi guarda */
     let end, anchorLeft, off = 0, center = false;
     if (hasB) { end = def.corner === 'sx' ? leftEnd : rightEnd; anchorLeft = def.corner === 'sx'; off = endOff(wall, end); }
-    else { const dE = Math.min(aP, L - aP); if (dE < 1.2) { end = aP < L / 2 ? 0 : 1; anchorLeft = end === leftEnd; off = endOff(wall, end); } else { center = true; end = 0; } }
+    else { const e0 = aP < L / 2 ? 0 : 1, dE = e0 ? L - aP : aP; if (old ? dE < 1.2 : dE - endOff(wall, e0) < 0.3) { end = e0; anchorLeft = end === leftEnd; off = endOff(wall, end); } else { center = true; end = 0; } }   /* v28.1: aggancio all'angolo solo entro 30 cm dalla faccia */
     grp = grp || 'g' + newId();
     const dl = dlt || {x: 0, y: 0}, meta = {leg: 'A'};
     let put;
-    if (center) { const X = legW(A), a0 = aP - dirR * X / 2; put = legPlace(wall, side, 0, A.concat(tops(A, opt)), true, dirR > 0 ? a0 : -a0, grp, dl, meta); }
+    if (center) { const X = legW(A), a0 = old ? aP - dirR * X / 2 : aP;   /* v28.1: il punto toccato è il lato sinistro della composizione (guardando il muro) */
+      if (!old) { const aR = aP + dirR * X, over = aR > L ? aR - L : aR < 0 ? -aR : 0; if (over > 0.005) setTimeout(() => toast('Attenzione: la composizione supera la fine del muro di ' + Math.round(over * 100) + ' cm'), 600); } put = legPlace(wall, side, 0, A.concat(tops(A, opt)), true, dirR > 0 ? a0 : -a0, grp, dl, meta); }
     else put = legPlace(wall, side, end, A.concat(tops(A, opt)), anchorLeft, off, grp, dl, meta);
     let wB = null;
     if (hasB) {
@@ -26071,7 +26093,7 @@ window.SC_REL = {
       }
     }
     const first = put[0] && put[0].f; if (!first) return null;
-    first.cdef = JSON.parse(JSON.stringify(def)); first.cpl = {wall: wall.id, P: {x: r3(P.x), y: r3(P.y)}}; first.p0 = [first.x, first.y];
+    first.cdef = JSON.parse(JSON.stringify(def)); first.cpl = {wall: wall.id, P: {x: r3(P.x), y: r3(P.y)}}; if (!old) first.cpl.la = 1; first.p0 = [first.x, first.y];
     put.forEach(q => { q.f.gname = def.name || 'Composizione'; });
     if (opt.elec !== false && window.SClux) put.forEach(q => {   /* prese per gli elettrodomestici, dietro al mobile */
       const inc = q.b.inc; if (!inc || !(inc in EL || inc === 'cappa')) return;
@@ -26121,6 +26143,7 @@ window.SC_REL = {
   #cmpEd .ce-g{display:grid;grid-template-columns:1fr 1fr;gap:6px}
   #cmpEd .ce-row{display:flex;gap:5px;flex-wrap:wrap;margin:6px 0}
   #cmpEd .ce-row .ce-b{height:32px;padding:0 8px;font-size:12px}
+  @media (max-width:1300px){#cmpEd .ce-tx{display:none}}
   #cmpEd .ce-hint{font-size:11.5px;color:#9ca3b8;line-height:1.4;margin:6px 0}
   #cmpEd .ce-list{position:absolute;inset:8px;overflow:auto;background:#1b1e2e;border:1px solid #475175;border-radius:10px;padding:10px;z-index:3}
   #cmpEd .ce-list table{border-collapse:collapse;width:100%;font-size:12.5px}
@@ -26132,27 +26155,55 @@ window.SC_REL = {
   const groups = {}; Object.keys(T).forEach(k => { (groups[T[k].g] = groups[T[k].g] || []).push(k); });
   E.innerHTML = `<div class="ce-head"><b style="color:#22d3ee">🧱 Composizione arredo</b><input class="ce-name" id="ceName" placeholder="Nome (es. Cucina Rossi)">
       <button class="ce-b" data-c="tpl">📋 Modelli</button><button class="ce-b" data-c="lib">⭐ I miei arredi</button><button class="ce-b" data-c="list">🧾 Elenco elementi</button>
-      <button class="ce-b" data-c="undo" title="Annulla">↩</button><button class="ce-b" data-c="save">💾 Salva in «I miei arredi»</button><button class="ce-b ok" data-c="place" id="cePlace">📍 Posa nel disegno</button><button class="ce-b" data-c="close" title="Chiudi">✕</button></div>
+      <button class="ce-b" data-c="undo" title="Annulla">↩</button><button class="ce-b" data-c="save">💾 Salva in «I miei arredi»</button><button class="ce-b ok" data-c="place" id="cePlace">📍 Posa nel disegno</button><button class="ce-b on" data-c="mini" title="Riquadro dall'alto: muri ad angolo e arredo in costruzione">🔍<span class="ce-tx"> Dall'alto</span></button><button class="ce-b" data-c="close" title="Chiudi">✕</button></div>
     <div class="ce-head" style="padding-top:4px;padding-bottom:4px"><button class="ce-b" data-c="legA" id="ceLegA">Parete A</button><button class="ce-b" data-c="legB" id="ceLegB">Parete B (ad angolo)</button>
       <span style="font-size:12px;color:#9ca3b8">Angolo a</span><button class="ce-b" data-c="cdx" id="ceCdx">destra</button><button class="ce-b" data-c="csx" id="ceCsx">sinistra</button>
       <label style="font-size:12px;color:#cbd5e1;display:flex;align-items:center;gap:4px"><input type="checkbox" id="ceTop"> top continuo</label>
       <label style="font-size:12px;color:#cbd5e1;display:flex;align-items:center;gap:4px"><input type="checkbox" id="ceElec"> prese elettrodomestici</label></div>
     <div class="ce-main"><div class="ce-pal">${Object.keys(groups).map(g => '<h4>' + esc(g) + '</h4>' + groups[g].map(k => '<button data-add="' + k + '">' + esc(T[k].lab) + '</button>').join('')).join('')}</div>
-      <div class="ce-cv"><canvas id="ceCv"></canvas></div><div class="ce-side" id="ceSide"></div></div>`;
+      <div class="ce-cv"><canvas id="ceCv"></canvas><canvas id="ceMini" width="220" height="170" style="position:absolute;left:auto;right:8px;top:8px;bottom:auto;width:220px;height:170px;background:#0b0e16;border:1px solid #475175;border-radius:8px;z-index:2;pointer-events:none"></canvas></div><div class="ce-side" id="ceSide"></div></div>`;
   document.body.appendChild(E);
   ['pointerdown', 'pointerup', 'click', 'keydown', 'wheel', 'touchstart'].forEach(ev => E.addEventListener(ev, e => e.stopPropagation()));
   const cv = E.querySelector('#ceCv'), cx = cv.getContext('2d'), side = E.querySelector('#ceSide');
+  const mini = E.querySelector('#ceMini'), mctx = mini.getContext('2d');
   const S = {def: null, leg: 'A', sel: null, view: null, drag: null, hist: [], editGrp: null};
   const L = () => S.def[S.leg] || (S.def[S.leg] = []);
   const selB = () => S.sel ? L().find(b => b.id === S.sel) : null;
   const push = () => { S.hist.push(JSON.stringify(S.def)); if (S.hist.length > 60) S.hist.shift(); };
+  /* bozza: la composizione in corso resta nel dispositivo finché non si salva, si posa o se ne inizia una nuova */
+  const BOZ = 'sc_cmp_draft', hasBlocks = d => !!d && ((d.A || []).length || (d.B || []).length);
+  function saveDraft() { if (S.editGrp || !hasBlocks(S.def)) return; try { localStorage.setItem(BOZ, JSON.stringify({def: S.def, t: Date.now()})); } catch (_) {} }
+  function readDraft() { try { const d = JSON.parse(localStorage.getItem(BOZ) || 'null'); return d && hasBlocks(d.def) ? d : null; } catch (_) { return null; } }
+  function clearDraft() { clearTimeout(S.dt); try { localStorage.removeItem(BOZ); } catch (_) {} }
   function open(def, editGrp) {
+    if (!def && !editGrp) { const dr = readDraft(); if (dr) { if (confirm('C\'è una composizione non salvata' + (dr.def.name ? ' («' + dr.def.name + '»)' : '') + '.\n\nOK = riprendila · Annulla = ne inizio una nuova (la bozza viene cancellata)')) def = dr.def; else clearDraft(); } }
     S.def = def || {name: '', corner: 'dx', opt: {top: true}, A: [], B: []}; S.def.opt = S.def.opt || {}; S.def.A = S.def.A || []; S.def.B = S.def.B || [];
     S.leg = 'A'; S.sel = null; S.hist = []; S.editGrp = editGrp || null; E.hidden = false; document.body.classList.add('cmp-on');
     E.querySelector('#ceName').value = S.def.name || ''; E.querySelector('#cePlace').textContent = editGrp ? '✔ Aggiorna nel disegno' : '📍 Posa nel disegno';
     try { if (window.closeFurniturePicker) closeFurniturePicker(); } catch (_) {}
     ui(); requestAnimationFrame(render);
     if (!S.def.A.length && !S.def.B.length) toast('Tocca un blocco a sinistra per aggiungerlo, oppure parti da un modello');
+  }
+  /* riquadro dall'alto (schema): muro A e muro B dell'angolo, blocchi a pianta, blocco selezionato in arancio */
+  function drawMini() {   /* vista dall'alto come la pianta dell'editor: muro A in alto, blocchi sotto, parete B che scende dall'angolo */
+    if (mini.hidden || E.hidden) return;
+    const W = mini.width, H = mini.height, c = mctx, A = S.def.A || [], B = S.def.B || [], sx = S.def.corner === 'sx';
+    c.fillStyle = '#0b0e16'; c.fillRect(0, 0, W, H);
+    const endA = A.reduce((m, b) => Math.max(m, b.x + b.w), 0), XB = B.reduce((m, b) => Math.max(m, b.x + b.w), 0);
+    const dA = A.reduce((m, b) => Math.max(m, b.d || 0.6), 0.6), dB = B.reduce((m, b) => Math.max(m, b.d || 0.6), 0.6);
+    const XA = Math.max(endA, 1, B.length ? dB : 0), LB = Math.max(XB, dA, 1) + 0.25;
+    const s = Math.min((W - 36) / (XA + 0.3), (H - 44) / (LB + 0.15)), x0 = (W - XA * s) / 2, oy = 26;
+    const X = x => x0 + x * s, cxr = sx ? X(0) : X(XA);
+    const hot = (b, leg) => b.id === S.sel && S.leg === leg;
+    const box = (x, y, w, h, on) => { c.fillStyle = on ? '#f59e0b' : '#3b4a66'; c.fillRect(x, y, w, h); c.strokeStyle = on ? '#fde68a' : '#64748b'; c.lineWidth = 1; c.strokeRect(x + .5, y + .5, w, h); };
+    A.forEach(b => box(X(b.x), oy, b.w * s, (b.d || 0.6) * s, hot(b, 'A')));
+    B.forEach(b => { const d = (b.d || 0.6) * s, pos = sx ? XB - b.x - b.w : b.x; box(sx ? cxr : cxr - d, oy + pos * s, d, b.w * s, hot(b, 'B')); });
+    c.lineCap = 'round'; c.strokeStyle = '#e2e8f0'; c.lineWidth = 3;
+    c.beginPath(); c.moveTo(X(0) - (sx ? 0 : 6), oy); c.lineTo(X(XA) + (sx ? 6 : 0), oy); c.moveTo(cxr, oy); c.lineTo(cxr, oy + LB * s); c.stroke();
+    c.fillStyle = '#22d3ee'; c.font = '600 11px sans-serif'; c.textAlign = 'center';
+    c.fillText('A', X(XA / 2), oy - 6); c.fillText('B', cxr + (sx ? -9 : 9), oy + LB * s * 0.55);
+    c.strokeStyle = '#22d3ee'; c.lineWidth = 1.2; c.beginPath(); c.arc(cxr, oy, 13, sx ? 0 : Math.PI / 2, sx ? Math.PI / 2 : Math.PI); c.stroke();
+    c.fillStyle = '#64748b'; c.textAlign = 'left'; c.fillText('Dall\'alto · schema', 6, 11);
   }
   function close() { E.hidden = true; document.body.classList.remove('cmp-on'); E.querySelectorAll('.ce-list').forEach(x => x.remove()); }
   /* aggiunta di un blocco: in fila dopo l'ultimo della stessa famiglia (a terra / appesi) */
@@ -26171,6 +26222,7 @@ window.SC_REL = {
   }
   function render() {
     if (E.hidden) return;
+    clearTimeout(S.dt); S.dt = setTimeout(saveDraft, 300); drawMini();
     const r = cv.getBoundingClientRect(), dpr = Math.max(1, devicePixelRatio || 1); if (r.width < 10) return;
     if (cv.width !== Math.round(r.width * dpr) || cv.height !== Math.round(r.height * dpr)) { cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr); }
     cx.setTransform(dpr, 0, 0, dpr, 0, 0); cx.fillStyle = '#151826'; cx.fillRect(0, 0, r.width, r.height);
@@ -26300,6 +26352,7 @@ window.SC_REL = {
     const lx = e.target.closest('[data-lx]'); if (lx) { if (!confirm('Eliminare la composizione dalla libreria?')) return; libSet(libGet().filter(x => x.id !== lx.dataset.lx)); showLib(); return; }
     const cb = e.target.closest('[data-c]'); if (!cb) return; const c = cb.dataset.c;
     if (c === 'close') close();
+    else if (c === 'mini') { mini.hidden = !mini.hidden; cb.classList.toggle('on', !mini.hidden); drawMini(); }
     else if (c === 'legA' || c === 'legB') { S.leg = c === 'legA' ? 'A' : 'B'; S.sel = null; ui(); render(); }
     else if (c === 'cdx' || c === 'csx') { S.def.corner = c === 'csx' ? 'sx' : 'dx'; ui(); render(); }
     else if (c === 'undo') { const h = S.hist.pop(); if (h) { S.def = JSON.parse(h); S.sel = null; ui(); render(); } }
@@ -26344,7 +26397,7 @@ window.SC_REL = {
     S.def.name = E.querySelector('#ceName').value.trim() || S.def.name || ''; if (!S.def.name) { S.def.name = 'Composizione ' + new Date().toLocaleDateString('it-IT'); E.querySelector('#ceName').value = S.def.name; }
     if (!(S.def.A || []).length && !(S.def.B || []).length) return toast('Composizione vuota');
     const a = libGet(), i = a.findIndex(x => x.name === S.def.name), it = {id: i >= 0 ? a[i].id : 'c' + Date.now().toString(36), name: S.def.name, def: JSON.parse(JSON.stringify(S.def))};
-    if (i >= 0) a[i] = it; else a.unshift(it); if (libSet(a)) toast('Salvata in «I miei arredi»: la trovi nella scelta degli arredi, sezione Composizioni');
+    if (i >= 0) a[i] = it; else a.unshift(it); if (libSet(a)) { clearDraft(); toast('Salvata in «I miei arredi»: la trovi nella scelta degli arredi, sezione Composizioni'); }
   }
   /* ---------------------------------------------------------------- posa: tocca il muro */
   let ARM = null;
@@ -26353,8 +26406,8 @@ window.SC_REL = {
     if (!(S.def.A || []).length) return toast('La parete A è vuota: aggiungi almeno un blocco');
     const def = JSON.parse(JSON.stringify(S.def));
     if (S.editGrp) { const g = S.editGrp; if (replace(g, def)) { close(); toast('Composizione aggiornata nel disegno'); } return; }
-    close(); ARM = {def};
-    toast((def.B || []).length ? 'Tocca il muro della parete A (vicino all\'angolo, dal lato della stanza)' : 'Tocca il muro: vicino a un angolo parte dall\'angolo, altrimenti si centra dove tocchi');
+    close(); clearDraft(); ARM = {def};
+    toast((def.B || []).length ? 'Tocca il muro della parete A (vicino all\'angolo, dal lato della stanza)' : 'Tocca il muro nel punto dove inizia la composizione: è il suo lato sinistro, guardando il muro. Entro 30 cm da un angolo si aggancia all\'angolo');
   }
   function placeAt(def, world) {
     if (isCurrentLayerLocked()) { toast('Livello corrente bloccato'); return null; }
@@ -26369,7 +26422,7 @@ window.SC_REL = {
     const M = membersOf(grp), h = M.find(f => f.cdef); if (!h || !h.cpl) { toast('Posizione originale non trovata: posala di nuovo'); return false; }
     const wall = state.walls.find(w => w.id === h.cpl.wall); if (!wall) { toast('Il muro della composizione non c\'è più'); return false; }
     const dlt = h.p0 ? {x: h.x - h.p0[0], y: h.y - h.p0[1]} : {x: 0, y: 0}, cpr = h.cpr;
-    removeGroup(grp); const g = place(def, wall, h.cpl.P, grp, dlt);
+    removeGroup(grp); const g = place(def, wall, h.cpl.P, grp, dlt, !h.cpl.la);
     const nh = membersOf(grp).find(f => f.cdef); if (nh) { nh.p0 = [nh.x - dlt.x, nh.y - dlt.y]; if (cpr != null) nh.cpr = cpr; }
     refresh(); try { checkpoint(); } catch (_) {} draw2D(); return !!g;
   }
@@ -26381,7 +26434,7 @@ window.SC_REL = {
     }
     if (ARM && e.target !== c2d) { ARM = null; toast('Posa annullata'); }
     /* gruppo: toccando un elemento si prende tutta la composizione (si sposta insieme) */
-    if (e.target !== c2d || state.mode !== '2d' || state.tool !== 'select' || e.defaultPrevented) return;
+    if (e.target !== c2d || state.mode !== '2d' || state.tool !== 'select' || (e.defaultPrevented && window.SCcs && SCcs.active && SCcs.active())) return;
     const mul = document.getElementById('multiSel'); if (mul && mul.checked) return;
     try {
       const r = c2d.getBoundingClientRect(), w = screenToWorld(e.clientX - r.left, e.clientY - r.top), f = typeof findFurnitureAt === 'function' ? findFurnitureAt(w) : null;
