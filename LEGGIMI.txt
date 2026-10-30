@@ -523,3 +523,13 @@ NOVITÀ v28.2
   (prima si interrompeva). Nuovo blocco «Piano di lavoro (top)» tra i Complementi per aggiungerne uno a mano,
   con larghezza, profondità, altezza da terra e colore propri.
 - Il manuale resta quello della v28.1: sarà aggiornato alla fine.
+
+NOVITÀ v28.3
+- Pilastro a forma libera (Disegna › Strutture): si disegna toccando uno dopo l'altro i suoi angoli,
+  che si agganciano agli spigoli e alle facce dei muri anche quando non sono squadrati.
+  Trapezi, pilastri a L e qualsiasi forma: in pianta, in 3D e tolti dalla superficie netta dei locali.
+  Si sposta e si ruota come gli altri pilastri; cambiando larghezza o profondità la forma si allarga in proporzione.
+  Gli angoli si modificano trascinando i quadratini bianchi; i pallini a metà lato aggiungono un angolo;
+  un angolo portato sopra quello vicino si toglie.
+  Segue il muro su cui appoggia quando il muro si sposta o ruota.
+- Corretto: l'aggancio agli spigoli dei pilastri ruotati cadeva nei punti sbagliati.

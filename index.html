@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v28.2</title>
+<title>SimplyCAD Pro · v28.3</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -1938,6 +1938,11 @@ function createLayer(name, activate) {
    ======================================================================== */
 /* elementi strutturali: si vedono sempre, anche con «Mostra arredi» spento */
 const STRUCT_TYPES = new Set(['pilastro', 'colonna', 'trave']);
+function pilPolyW(f) {   /* v28.2: pilastro a forma libera -> punti in pianta */
+  if (!f || f.shape !== 'poly' || !Array.isArray(f.pts) || f.pts.length < 3) return null;
+  const sx = f.pw ? f.w / f.pw : 1, sy = f.pd ? f.d / f.pd : 1, c = Math.cos(f.rot || 0), s = Math.sin(f.rot || 0);
+  return f.pts.map(q => { const u = q.u * sx, v = q.v * sy; return {x: f.x + u * c - v * s, y: f.y + u * s + v * c}; });
+}
 const FURNITURE = {
   bed_double:{name:'Letto matrimoniale',w:1.6,d:2.0,h:0.55,color:'#c8a882',icon:'🛏️'},
   bed_single:{name:'Letto singolo',w:0.9,d:2.0,h:0.55,color:'#c8a882',icon:'🛏️'},
@@ -3117,12 +3122,14 @@ function drawFurniture(f) {
   ctx.globalAlpha = (f.type === 'rug' || f.type === 'door_arc') ? 0.55 : 0.9;
   const round = (f.shape || spec.shape) === 'round';
   if (spec.beam) ctx.globalAlpha = 0.35;
-  if (round) { ctx.beginPath(); ctx.ellipse(0, 0, sw/2, sd/2, 0, 0, Math.PI * 2); ctx.fill(); } else ctx.fillRect(-sw/2, -sd/2, sw, sd);
+  const _pp = f.shape === 'poly' && Array.isArray(f.pts) && f.pts.length > 2 ? f.pts.map(q => [q.u * (f.pw ? f.w / f.pw : 1) * viewScale, -q.v * (f.pd ? f.d / f.pd : 1) * viewScale]) : null;   /* v28.2: pilastro a forma libera */
+  const _ppath = () => { ctx.beginPath(); _pp.forEach(([a, b], i) => i ? ctx.lineTo(a, b) : ctx.moveTo(a, b)); ctx.closePath(); };
+  if (_pp) { _ppath(); ctx.fill(); } else if (round) { ctx.beginPath(); ctx.ellipse(0, 0, sw/2, sd/2, 0, 0, Math.PI * 2); ctx.fill(); } else ctx.fillRect(-sw/2, -sd/2, sw, sd);
   ctx.globalAlpha = 1;
   ctx.strokeStyle = sel ? '#fbbf24' : 'rgba(0,0,0,0.55)';
   ctx.lineWidth = sel ? 2.5 : 1.2;
   if (spec.beam) ctx.setLineDash([7, 4]);
-  if (round) { ctx.beginPath(); ctx.ellipse(0, 0, sw/2, sd/2, 0, 0, Math.PI * 2); ctx.stroke(); } else ctx.strokeRect(-sw/2, -sd/2, sw, sd);
+  if (_pp) { _ppath(); ctx.stroke(); } else if (round) { ctx.beginPath(); ctx.ellipse(0, 0, sw/2, sd/2, 0, 0, Math.PI * 2); ctx.stroke(); } else ctx.strokeRect(-sw/2, -sd/2, sw, sd);
   ctx.setLineDash([]);
   if (f.type === 'camino') {   /* canna sul retro, focolare e piano davanti (lato in basso con rotazione 0) */
     ctx.strokeStyle = 'rgba(0,0,0,0.55)'; ctx.lineWidth = 1.2;
@@ -4061,7 +4068,7 @@ function updateSelectionPanel() {
       <input type="number" id="fZ" value="${((f.z != null ? +f.z : (+spec.z || 0)) || 0).toFixed(2)}" min="0" max="10" step="0.05" title="Dal pavimento finito del piano alla base dell'oggetto">
       ${rotationControlsHTML(rotDeg, 'furnRot')}
       <label>Colore</label>
-      ${colorPickerHTML('fC', f.color, false)}${(f.type === 'pilastro' || f.type === 'colonna') ? '<label>Forma</label><select id="fShape"><option value="sq"' + ((f.shape || spec.shape) === 'round' ? '' : ' selected') + '>Quadrata / rettangolare</option><option value="round"' + ((f.shape || spec.shape) === 'round' ? ' selected' : '') + '>Tonda</option></select>' : ''}${spec.custom ? '<button class="action" id="fEditShape" style="margin-top:6px;width:100%;font-size:12px">✏️ Modifica forma</button>' : ''}`;
+      ${colorPickerHTML('fC', f.color, false)}${(f.type === 'pilastro' || f.type === 'colonna') ? '<label>Forma</label><select id="fShape"><option value="sq"' + ((f.shape || spec.shape) === 'round' ? '' : ' selected') + '>Quadrata / rettangolare</option><option value="round"' + ((f.shape || spec.shape) === 'round' ? ' selected' : '') + '>Tonda</option>' + (Array.isArray(f.pts) ? '<option value="poly"' + (f.shape === 'poly' ? ' selected' : '') + '>A forma libera (disegnata)</option>' : '') + '</select>' : ''}${spec.custom ? '<button class="action" id="fEditShape" style="margin-top:6px;width:100%;font-size:12px">✏️ Modifica forma</button>' : ''}`;
     { const fs = document.getElementById('fShape'); if (fs) fs.onchange = e => { if (isEntityLocked(f)) return; f.shape = e.target.value; draw2D(); if (state.mode === '3d') build3D(); }; }
     { const eb = document.getElementById('fEditShape'); if (eb) eb.onclick = () => SCcf.open(f.type); }
     document.getElementById('fW').oninput = e => { if (isEntityLocked(f)) return; f.w = Math.max(0.05, parseFloat(e.target.value)||0.1); draw2D(); if (state.mode === '3d') build3D(); };
@@ -5332,8 +5339,10 @@ function build3D() {
         }
       } else {
         const zz = (f.z != null ? f.z : spec.z) || 0;
-        const g = (f.shape || spec.shape) === 'round' ? new THREE.Mesh(new THREE.CylinderGeometry(f.w/2, f.d/2, h, 28), mat) : new THREE.Mesh(new THREE.BoxGeometry(f.w, h, f.d), mat);
-        g.position.set(f.x, zz + h/2 + (zz ? 0 : 0.02), -f.y); g.rotation.y = rz;
+        const _pw = pilPolyW(f); let g;   /* v28.2: pilastro a forma libera */
+        if (_pw) { const sh = new THREE.Shape(); _pw.forEach((q, i) => i ? sh.lineTo(q.x, q.y) : sh.moveTo(q.x, q.y)); g = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, {depth: h, bevelEnabled: false}), mat); g.rotation.x = -Math.PI / 2; g.position.set(0, zz + (zz ? 0 : 0.02), 0); }
+        else { g = (f.shape || spec.shape) === 'round' ? new THREE.Mesh(new THREE.CylinderGeometry(f.w/2, f.d/2, h, 28), mat) : new THREE.Mesh(new THREE.BoxGeometry(f.w, h, f.d), mat);
+        g.position.set(f.x, zz + h/2 + (zz ? 0 : 0.02), -f.y); g.rotation.y = rz; }
         g.castShadow = true; g.receiveShadow = true; scene.add(g); _zDone = true;
       }
       if (_zz && !_zDone) for (let _i = _zn0; _i < scene.children.length; _i++) scene.children[_i].position.y += _zz;
@@ -10219,6 +10228,7 @@ updateRoomList();
   /* v21.0: il pilastro si aggancia al muro vicino (entro 25 cm dalla faccia) nel punto dove lo lasci; lontano dai muri resta libero */
   const SNAP_PIL = 0.25;
   function attach(f) {
+    if (f && f.shape === 'poly') { if (window.SCpilPoly) SCpilPoly.link(f); return false; }
     if (!f || f.type !== 'pilastro') return false;
     let best = null, bd = 1e9;
     for (const w of state.walls) {
@@ -10545,7 +10555,7 @@ updateRoomList();
     }
   }
   const _d = SCdraw.inner('Aree');
-  draw2D = function () { _d.apply(this, arguments); if (state.mode !== '2d') return; if (state.tool !== 'zone' && tmpZ.length) tmpZ = []; if (activeZ && !(state.tool === 'select' || state.tool === 'box' || !state.zones.includes(activeZ))) activeZ = null; if (activeZ && !state.zones.includes(activeZ)) activeZ = null; drawZones(); };
+  draw2D = function () { _d.apply(this, arguments); if (state.mode !== '2d') return; if (state.tool !== 'zone') { if (tmpZ.length) tmpZ = []; if (window.SCpilPoly) SCpilPoly.disarm(); } if (activeZ && !(state.tool === 'select' || state.tool === 'box' || !state.zones.includes(activeZ))) activeZ = null; if (activeZ && !state.zones.includes(activeZ)) activeZ = null; drawZones(); };
 
   const _ht = handleTap;
   handleTap = function (cx, cy) {
@@ -10560,6 +10570,7 @@ updateRoomList();
 
   function finish() {
     if (tmpZ.length < 3) { const n = tmpZ.length; tmpZ = []; if (n) toast('Area annullata: servono almeno 3 punti'); draw2D(); return; }
+    if (window.SCpilPoly && SCpilPoly.armed()) { const P = tmpZ.slice(); tmpZ = []; SCpilPoly.make(P); return; }   /* v28.2 */
     const z = assignLayer({id: newId(), pts: tmpZ.map(p => ({x: r6(p.x), y: r6(p.y)})), color: lastColor});
     state.zones.push(z); tmpZ = []; draw2D(); checkpoint();
     const b = boxes.find(x => x.z === z); openPalette(z, b);
@@ -11287,6 +11298,7 @@ updateRoomList();
       if ((f.type !== 'pilastro' && f.type !== 'colonna') || floorOf(f) !== floorOf(r) || !isEntityVisible(f)) continue;
       const hw = f.w / 2, hd = f.d / 2;
       if (f.type === 'colonna') { if (pointInPolygon({x: f.x, y: f.y}, poly)) tot += Math.PI * hw * hd; continue; }
+      { const P = pilPolyW(f); if (P) { const gx = P.reduce((a, q) => a + q.x, 0) / P.length, gy = P.reduce((a, q) => a + q.y, 0) / P.length; if (pointInPolygon({x: gx, y: gy}, poly)) { let A = 0; P.forEach((q, i) => { const n = P[(i + 1) % P.length]; A += q.x * n.y - n.x * q.y; }); tot += Math.abs(A) / 2; } continue; } }   /* v28.2 */
       const c = Math.cos(f.rot || 0), s = Math.sin(f.rot || 0);
       const R = [[-hw, -hd], [hw, -hd], [hw, hd], [-hw, hd]].map(([a, b]) => ({x: f.x + a * c - b * s, y: f.y + a * s + b * c}));
       let out = poly;
@@ -17947,6 +17959,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     strord: 'M3 12h18M3 12l4-3M3 12l4 3M21 12l-4-3M21 12l-4 3M8 16l3-5M12 16l3-5',
     strbeam: 'M3 9h18v6H3zM3 12h18',
     strview: 'M4 4h16v16H4zM4 4l16 16M20 4L4 20',
+    pilpoly: 'M5 19l3-14h11l-4 14z',
     comp: 'M4 4h16v7H4zM4 13h7v7H4zM13 13h7v7h-7z'
   };
   const closeMenus = () => document.querySelectorAll('.menu-dropdown').forEach(m => m.classList.remove('open'));
@@ -17968,6 +17981,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   const colb = mkTool('cgcol', 'Collega punti', 'Collega punti: tocca la partenza (quadro) e poi le prese, le luci e gli interruttori: ognuno viene collegato con un percorso ad angolo retto', 'cgcol', () => { pickTool('cgcol'); SCcs.colArm(); });
   const stOrd = mkTool('strord', 'Orditura solaio', 'Orditura del solaio: tocca due punti nel verso dei travetti; poi scegli tipo e spessore (vale per il solaio sopra questo piano)', 'strord', () => { SCstr.setView(true); pickTool('strord', 'Orditura: tocca il primo punto'); });
   const stBeam = mkTool('strbeam', 'Trave', 'Trave: tocca inizio e fine, si mette sotto il solaio', 'strbeam', () => { SCstr.setView(true); pickTool('strbeam', 'Trave: tocca l\'inizio'); });
+  const stPoly = mkTool(null, 'Pilastro a forma libera', 'Pilastro con la forma vera: tocchi i suoi angoli uno dopo l\'altro, che si agganciano agli spigoli e alle facce dei muri (anche non squadrati)', 'pilpoly', () => { closeMenus(); if (window.SCpilPoly) SCpilPoly.start(); });
   const stView = mkTool(null, 'Pianta strutturale', 'Mostra o nasconde la pianta strutturale: muri portanti campiti, orditure, travi e pilastri; arredi nascosti', 'strview', () => { closeMenus(); SCstr.setView(!SCstr.on()); toast(SCstr.on() ? 'Pianta strutturale' : 'Pianta normale'); });
   const autoe = mkTool(null, 'Collega impianto elettrico', 'Collega da solo luci agli interruttori e interruttori e prese al quadro (percorsi ad angolo retto, con le discese). Rifacendo il comando i collegamenti automatici vengono rigenerati', 'cgcol', () => { closeMenus(); SCcs.autoElec(); });
   const ledf = mkTool(null, 'Segui profilo', 'Segui profilo: la striscia LED copia il contorno dell\'oggetto selezionato (muro, controparete, controsoffitto, disegno)', 'cgled', () => { closeMenus(); SCcs.follow(); });
@@ -17992,7 +18006,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   const groups = [
     ['Muri e aperture', ['wall', 'door', 'window', 'stairs', 'hole']],
     ['Cartongesso', [cgw, cgcp, ceil, beam, led, ledf]],
-    ['Strutture', ['pillar', stOrd, stBeam, stView]],
+    ['Strutture', ['pillar', stPoly, stOrd, stBeam, stView]],
     ['Locali e superfici', ['room', 'zone']],
     ['Quote e annotazioni', ['dim', 'measure', 'text', 'line', 'circle', 'arc']],
     ['Arredi', ['furniture', mkTool(null, 'Composizione su misura', 'Composizione arredo: cucine, bagni, armadi, pareti attrezzate a blocchi (vista frontale), poi si posa sul muro', 'comp', () => { closeMenus(); if (window.SCcomp) SCcomp.open(); }), mkTool(null, 'Importa modello 3D', 'Importa un modello 3D (GLB, glTF, OBJ) di un produttore o di una libreria gratuita come arredo', 'comp', () => { closeMenus(); if (window.SCm3d) SCm3d.pick(); })]]
@@ -19159,7 +19173,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   }
   function lineX(A, B) { const den = crs(A.u, B.u); if (Math.abs(den) < 1e-9) return null; const t = crs(sub(B.a, A.a), B.u) / den; return {p: add(A.a, A.u, t), t, s: crs(sub(B.a, A.a), A.u) / den}; }
   function arcEnd(m) { const r = shapeRad(m), a0 = Math.atan2(m.p2.y - m.p1.y, m.p2.x - m.p1.x) + (m.sweep || 0); return {x: m.p1.x + Math.cos(a0) * r, y: m.p1.y + Math.sin(a0) * r}; }
-  function pilCorners(f) { const ca = Math.cos(-(f.rot || 0)), sa = Math.sin(-(f.rot || 0)); return [[-f.w / 2, -f.d / 2], [f.w / 2, -f.d / 2], [f.w / 2, f.d / 2], [-f.w / 2, f.d / 2]].map(([x, y]) => ({x: f.x + x * ca - y * sa, y: f.y + x * sa + y * ca})); }
+  function pilCorners(f) { { const P = pilPolyW(f); if (P) return P; } const ca = Math.cos(f.rot || 0), sa = Math.sin(f.rot || 0); return [[-f.w / 2, -f.d / 2], [f.w / 2, -f.d / 2], [f.w / 2, f.d / 2], [-f.w / 2, f.d / 2]].map(([x, y]) => ({x: f.x + x * ca - y * sa, y: f.y + x * sa + y * ca})); }
 
   /* ---------------------------------------------------------------- ancoraggi: dal riferimento al punto */
   function resolve(A) {
@@ -21785,8 +21799,9 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
    SC_REL.v è l'unica versione: titolo, Guida, file salvato, avvisi e riga messaggi la leggono da qui.
    ======================================================================== */
 window.SC_REL = {
-  v: '28.2', d: '30/10/2026',
+  v: '28.3', d: '30/10/2026',
   news: [
+    ['28.3', 'Pilastro a forma libera (Disegna › Strutture): si disegna toccando i suoi angoli, che si agganciano agli spigoli e alle facce dei muri anche quando non sono squadrati; trapezi, L e qualsiasi forma, in pianta, in 3D e nella superficie netta dei locali; gli angoli si modificano trascinando i quadratini (i pallini a metà lato aggiungono un angolo, un angolo portato sopra quello vicino si toglie); segue il muro su cui appoggia quando il muro si sposta o ruota. Corretto: l\'aggancio agli spigoli dei pilastri ruotati cadeva nei punti sbagliati.'],
     ['28.2', 'Composizione arredo: la vista si sposta trascinando con un dito nel vuoto e si ingrandisce con due dita, con la rotellina o con i pulsanti ＋ － e «⤢ Adatta»; nuovo comando «📏 Misura» (due punti, si agganciano agli spigoli dei mobili: misura orizzontale, verticale e inclinata); il riquadro dall\'alto ha il suo spazio e non copre più i mobili; la barra in alto non va più a capo sul tablet; il top continuo passa anche sopra la lavatrice, le basi a giorno e i fianchi (prima si interrompeva); nuovo blocco «Piano di lavoro (top)» tra i Complementi per aggiungerne uno a mano.'],
     ['28.1', 'Composizione arredo: riquadro «🔍 Dall\'alto» con i muri A e B ad angolo e la sagoma dei blocchi (quello selezionato in arancio); la composizione in corso resta salvata nel dispositivo anche uscendo o chiudendo l\'app, e riaprendo si sceglie se riprenderla o iniziarne una nuova (si cancella solo salvando, posando o iniziandone una nuova). Posa: il punto toccato sul muro è il lato sinistro della composizione (guardando il muro); l\'aggancio all\'angolo scatta solo entro 30 cm; avviso se supera la fine del muro. Le composizioni già posate non si spostano.'],
     ['28.0', 'Manuale d\'uso completo in PDF. Corretti: toccando un elemento di una composizione a volte si prendeva solo quell\'elemento invece di tutto il gruppo; le linee dell\'impianto elettrico automatico riempivano la pianta di etichette (ora si toccano sulla linea, come l\'idraulico); sullo smartphone in modalità rilievo all\'avvio poteva comparire un errore interno.'],
@@ -26741,6 +26756,107 @@ window.SC_REL = {
   /* all'avvio: i modelli salvati sul dispositivo */
   db().then(() => tx('readonly', s => s.getAll())).then(list => { (list || []).forEach(m => { try { register(m); } catch (_) {} }); if ((list || []).length) { try { refresh(); } catch (_) {} } }).catch(() => {});
   window.SCm3d = {geom, hull, front, pick, readFiles, normalize, dialog, register, exportUsed, ingest, remove, list: () => [...MODELS.values()].map(m => ({key: m.key, name: m.name})), fromOBJ, fromGLB, place: placeM};
+})();
+</script>
+<script>
+/* v28.3 · PILASTRO A FORMA LIBERA: si disegna toccando i suoi angoli (con lo strumento delle Aree, che si aggancia a spigoli e facce dei muri);
+   gli angoli si modificano trascinando i quadratini (i pallini a metà lato aggiungono un angolo, un angolo portato sopra il vicino si toglie);
+   segue il muro su cui appoggia quando il muro si sposta o ruota */
+(function () {
+  let armed = false;
+  const poly = f => f && f.type === 'pilastro' && f.shape === 'poly' && Array.isArray(f.pts) && f.pts.length > 2;
+  function setWorld(f, P) {   /* ricalcola centro, ingombro e punti locali mantenendo la rotazione */
+    const c = Math.cos(f.rot || 0), s = Math.sin(f.rot || 0), o = P[0];
+    const loc = P.map(p => { const dx = p.x - o.x, dy = p.y - o.y; return {u: dx * c + dy * s, v: -dx * s + dy * c}; });
+    const us = loc.map(q => q.u), vs = loc.map(q => q.v), u0 = Math.min(...us), u1 = Math.max(...us), v0 = Math.min(...vs), v1 = Math.max(...vs), uc = (u0 + u1) / 2, vc = (v0 + v1) / 2;
+    f.x = r6(o.x + uc * c - vc * s); f.y = r6(o.y + uc * s + vc * c); f.w = f.pw = r6(Math.max(0.01, u1 - u0)); f.d = f.pd = r6(Math.max(0.01, v1 - v0));
+    f.pts = loc.map(q => ({u: r6(q.u - uc), v: r6(q.v - vc)}));
+  }
+  function start() {
+    const b = document.querySelector('.tool[data-tool="zone"]'); if (!b) return toast('Strumento non disponibile');
+    b.click(); armed = true;
+    toast('Pilastro a forma libera: tocca uno dopo l\'altro gli angoli del pilastro (si agganciano agli spigoli e alle facce dei muri). Per chiudere tocca il primo punto o ✔ Fine');
+  }
+  function make(P) {
+    armed = false;
+    if (P.length < 3) { toast('Pilastro annullato: servono almeno 3 punti'); draw2D(); return; }
+    let best = 0, rot = 0;   /* il lato più lungo dà la direzione del pilastro (larghezza e profondità del pannello) */
+    P.forEach((p, i) => { const q = P[(i + 1) % P.length], L = Math.hypot(q.x - p.x, q.y - p.y); if (L > best) { best = L; rot = Math.atan2(q.y - p.y, q.x - p.x); } });
+    const sp = FURNITURE.pilastro, f = assignLayer({id: newId(), type: 'pilastro', x: 0, y: 0, w: 1, d: 1, h: getDefaultWallHeight(), color: sp.color, rot: r6(rot), shape: 'poly', pts: []});
+    setWorld(f, P);
+    if (f.w < 0.03 || f.d < 0.03) { toast('Pilastro troppo sottile: ridisegnalo'); draw2D(); return; }
+    link(f); state.furniture.push(f); refresh(); checkpoint();
+    document.querySelector('.tool[data-tool="select"]').click();
+    state.sel = [{type: 'furniture', id: f.id}]; state.selected = state.sel[0]; updateSelectionPanel(); if (window.SCselbar) SCselbar.open();
+    toast('Pilastro inserito. Per cambiare la forma trascina i quadratini sugli angoli; i pallini a metà lato aggiungono un angolo');
+  }
+  /* --- legame con il muro: quello su cui appoggiano più angoli (entro 4 cm dalla faccia) */
+  function link(f) {
+    const P = pilPolyW(f); if (!P) return; let best = null;
+    for (const w of state.walls) {
+      if (!isEntityVisible(w) || floorOf(w) !== floorOf(f)) continue;
+      const th = getWallThickness(w) / 2; let n = 0, dm = 0;
+      P.forEach(q => { const d = Math.abs(distancePointToSegment(q, w.p1, w.p2) - th); if (d <= 0.04) { n++; dm += d; } });
+      if (n && (!best || n > best.n || (n === best.n && dm < best.dm))) best = {w, n, dm};
+    }
+    if (best) f.lnk = {wallId: best.w.id, p1: {x: best.w.p1.x, y: best.w.p1.y}, p2: {x: best.w.p2.x, y: best.w.p2.y}}; else delete f.lnk;
+  }
+  function follow(f) {   /* il muro si è spostato o ruotato: il pilastro lo segue dall'estremo più vicino */
+    const k = f.lnk, w = k && state.walls.find(x => x.id === k.wallId); if (!w) { if (k) delete f.lnk; return; }
+    if (Math.abs(w.p1.x - k.p1.x) + Math.abs(w.p1.y - k.p1.y) + Math.abs(w.p2.x - k.p2.x) + Math.abs(w.p2.y - k.p2.y) < 1e-7) return;
+    const P = pilPolyW(f); if (!P) return;
+    const g = {x: P.reduce((a, q) => a + q.x, 0) / P.length, y: P.reduce((a, q) => a + q.y, 0) / P.length};
+    const nearB = Math.hypot(g.x - k.p2.x, g.y - k.p2.y) < Math.hypot(g.x - k.p1.x, g.y - k.p1.y), A0 = nearB ? k.p2 : k.p1, A1 = nearB ? w.p2 : w.p1;
+    const dt = Math.atan2(w.p2.y - w.p1.y, w.p2.x - w.p1.x) - Math.atan2(k.p2.y - k.p1.y, k.p2.x - k.p1.x), c = Math.cos(dt), s = Math.sin(dt);
+    const Q = P.map(q => { const dx = q.x - A0.x, dy = q.y - A0.y; return {x: A1.x + dx * c - dy * s, y: A1.y + dx * s + dy * c}; });
+    f.rot = r6((f.rot || 0) + dt); setWorld(f, Q);
+    k.p1 = {x: w.p1.x, y: w.p1.y}; k.p2 = {x: w.p2.x, y: w.p2.y};
+  }
+  /* --- maniglie sugli angoli del pilastro selezionato */
+  const selPil = () => { if (state.mode !== '2d' || state.sel.length !== 1 || !state.selected || state.selected.type !== 'furniture') return null; const f = state.furniture.find(x => x.id === state.selected.id); return poly(f) && !isEntityLocked(f) ? f : null; };
+  let VD = null;   /* angolo in trascinamento */
+  const _d = SCdraw.inner('Pilastri a forma libera');
+  draw2D = function () {
+    for (const f of state.furniture) if (f.lnk && poly(f)) follow(f);
+    const r = _d.apply(this, arguments);
+    try {
+      const f = selPil(); if (f) {
+        const S = pilPolyW(f).map(q => worldToScreen(q.x, q.y));
+        ctx.save();
+        S.forEach((a, i) => { const b = S[(i + 1) % S.length]; ctx.beginPath(); ctx.arc((a.x + b.x) / 2, (a.y + b.y) / 2, 5, 0, 7); ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.fill(); ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 1.5; ctx.stroke(); });
+        S.forEach((a, i) => { ctx.fillStyle = VD && VD.i === i ? '#fbbf24' : '#fff'; ctx.strokeStyle = '#b45309'; ctx.lineWidth = 2; ctx.fillRect(a.x - 6, a.y - 6, 12, 12); ctx.strokeRect(a.x - 6, a.y - 6, 12, 12); });
+        ctx.restore();
+      }
+    } catch (_) {}
+    return r;
+  };
+  const scr = e => { const r = c2d.getBoundingClientRect(); return {x: e.clientX - r.left, y: e.clientY - r.top}; };
+  window.addEventListener('pointerdown', e => {
+    if (e.target !== c2d || (e.button != null && e.button > 0)) return; const f = selPil(); if (!f) return;
+    const m = scr(e), P = pilPolyW(f), S = P.map(q => worldToScreen(q.x, q.y)), tol = e.pointerType === 'mouse' ? 9 : 18;
+    let i = S.findIndex(a => Math.hypot(a.x - m.x, a.y - m.y) <= tol), add = false;
+    if (i < 0) { const j = S.findIndex((a, k) => { const b = S[(k + 1) % S.length]; return Math.hypot((a.x + b.x) / 2 - m.x, (a.y + b.y) / 2 - m.y) <= tol * 0.8; }); if (j < 0) return; P.splice(j + 1, 0, {x: (P[j].x + P[(j + 1) % P.length].x) / 2, y: (P[j].y + P[(j + 1) % P.length].y) / 2}); i = j + 1; add = true; }
+    e.preventDefault(); e.stopImmediatePropagation();
+    VD = {f, i, P, id: e.pointerId, moved: add}; if (add) { setWorld(f, P); draw2D(); }
+    try { c2d.setPointerCapture(e.pointerId); } catch (_) {}
+  }, true);
+  window.addEventListener('pointermove', e => {
+    if (!VD || e.pointerId !== VD.id) return; e.preventDefault(); e.stopImmediatePropagation();
+    const m = scr(e), w = screenToWorld(m.x, m.y), prev = VD.P[(VD.i - 1 + VD.P.length) % VD.P.length];
+    const q = window.SCcs && SCcs.snap ? SCcs.snap(w, prev) : w; VD.P[VD.i] = {x: q.x, y: q.y}; VD.moved = true;
+    setWorld(VD.f, VD.P); draw2D();
+  }, true);
+  const up = e => {
+    if (!VD || e.pointerId !== VD.id) return; e.preventDefault(); e.stopImmediatePropagation();
+    const {f, P, i, moved} = VD; VD = null;
+    if (moved) {
+      if (P.length > 3) { const a = P[i], n = [P[(i + 1) % P.length], P[(i - 1 + P.length) % P.length]]; if (n.some(b => Math.hypot(a.x - b.x, a.y - b.y) < 0.02)) { P.splice(i, 1); toast('Angolo tolto'); } }
+      setWorld(f, P); link(f); refresh(); checkpoint(); updateSelectionPanel();
+    }
+    draw2D();
+  };
+  window.addEventListener('pointerup', up, true); window.addEventListener('pointercancel', up, true);
+  window.SCpilPoly = {start, make, link, armed: () => armed, disarm: () => { armed = false; }};
 })();
 </script>
 </body>
