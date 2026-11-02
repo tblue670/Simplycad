@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v28.4</title>
+<title>SimplyCAD Pro · v28.5</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -13554,7 +13554,8 @@ updateRoomList();
   window.addEventListener('orientationchange', () => { clearTimeout(rt); rt = setTimeout(apply, 250); });
 
   /* ---------------------------------------------------------------- vista dello schizzo */
-  function fitSketch() {
+  function fitSketch() { fitSketch0(); if (S) S.fitVS = viewScale; }   /* v28.5: si ricorda lo zoom automatico */
+  function fitSketch0() {
     if (!on) return; const s = sk(), cw = c2d.clientWidth || innerWidth, ch = c2d.clientHeight || innerHeight;
     if (!s.n.length) { viewScale = 40; viewOffset = {x: 20, y: 0}; return draw2D(); }
     const xs = s.n.map(n => n.x), ys = s.n.map(n => n.y), mnx = Math.min(...xs), mxx = Math.max(...xs), mny = Math.min(...ys), mxy = Math.max(...ys);
@@ -13735,7 +13736,7 @@ updateRoomList();
     s.e.push(e); S.to = null; S.from = t === 'close' ? null : {node: b, x: nodeOf(b).x, y: nodeOf(b).y};
     if (t === 'close') setTimeout(() => openEdit({type: 'edge', id: e.id}), 0);
     checkpoint();
-    { const p = scr(nodeOf(b)), cw = c2d.clientWidth, ch = c2d.clientHeight; if (p.x < 80 || p.y < 70 || p.x > cw - 20 || p.y > ch - 90) fitSketch(); }   /* si riadatta solo se il punto esce dallo schermo */
+    showPt(nodeOf(b));   /* v28.5: scorre senza cambiare zoom */   /* si riadatta solo se il punto esce dallo schermo */
     syncUI();
   }
   /* ---------------------------------------------------------------- scheda con i campi (in alto) */
@@ -13875,7 +13876,7 @@ updateRoomList();
     else e.name = 'Linea di chiusura';
     s.e.push(e); S.from = {node: b, x: nodeOf(b).x, y: nodeOf(b).y}; S.to = null; S.card = null;
     if (c.kind === 'close') S.from = null;   // la linea di chiusura non prosegue
-    checkpoint(); fitSketch(); syncUI();
+    checkpoint(); showPt(nodeOf(b)); syncUI();
   }
   function confirmOp(w, sill, dist, later) {
     const c = S.card, s = sk(), hh = num(($('f4') || {value: ''}).value), setH = o => { if (hh > 0.3 && c.kind !== 'pillar') o.h = hh; };
@@ -13893,6 +13894,12 @@ updateRoomList();
   }
 
   /* ---------------------------------------------------------------- v28.4: schizzo in scala e trascinamento */
+  const userZoomed = () => S && S.fitVS != null && Math.abs(viewScale - S.fitVS) > 1e-6;   /* lo zoom è stato cambiato con le dita */
+  function showPt(n) {   /* scorre la vista (senza cambiare zoom) solo quanto basta per mostrare il punto */
+    if (!n) return; const q = scr(n), cw = c2d.clientWidth, ch = c2d.clientHeight, L = 80, T = 70, Rm = 24, B = 100; let dx = 0, dy = 0;
+    if (q.x < L) dx = L - q.x; else if (q.x > cw - Rm) dx = cw - Rm - q.x; if (q.y < T) dy = T - q.y; else if (q.y > ch - B) dy = ch - B - q.y;
+    if (dx || dy) { if (!userZoomed()) return fitSketch(); viewOffset.x += dx; viewOffset.y += dy; draw2D(); }
+  }
   function toScale() {   /* dopo le misure lo schizzo si ridisegna con le misure vere (i muri non misurati in proporzione) */
     const ws = wallEdges(); if (!ws.some(e => e.L > 0)) return;
     ws.forEach(e => { if (!(e.L > 0) && !(e.skL > 0)) e.skL = Math.round(Lof(e) * 100) / 100; });
@@ -13900,9 +13907,12 @@ updateRoomList();
     const s0 = sk(), anc = s0.n.find(n => R.pos.has(n.id)); if (!anc) return;
     const bb = () => { const xs = s0.n.map(n => n.x), ys = s0.n.map(n => n.y); return Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)) || 1; };
     const b0 = bb(), p0 = R.pos.get(anc.id), dx = anc.x - p0.x, dy = anc.y - p0.y;
+    const cw0 = c2d.clientWidth / 2, ch0 = c2d.clientHeight / 2; let ref = null, rd = 1e9; s0.n.forEach(n => { const q = scr(n), d = Math.hypot(q.x - cw0, q.y - ch0); if (d < rd) { rd = d; ref = n; } });
+    const S0 = ref ? scr(ref) : null;
     s0.n.forEach(n => { const q = R.pos.get(n.id); if (q) { n.x = q.x + dx; n.y = q.y + dy; } });
     if (S.from && S.from.node != null) { const n = nodeOf(S.from.node); if (n) { S.from.x = n.x; S.from.y = n.y; } }
-    const r = bb() / b0, cw = c2d.clientWidth, ch = c2d.clientHeight, out = s0.n.some(n => { const q = scr(n); return q.x < 60 || q.x > cw - 10 || q.y < 50 || q.y > ch - 10; }); if (r > 1.25 || r < 0.8 || out) fitSketch();
+    if (!userZoomed()) { const cw = c2d.clientWidth, ch = c2d.clientHeight; if (s0.n.some(n => { const q = scr(n); return q.x < 60 || q.x > cw - 10 || q.y < 50 || q.y > ch - 10; }) || bb() / b0 > 1.25 || bb() / b0 < 0.8) return fitSketch(); }
+    if (S0) { const S1 = scr(ref); viewOffset.x += S0.x - S1.x; viewOffset.y += S0.y - S1.y; }   /* zoom scelto con le dita: resta, il punto al centro non si sposta */
   }
   let DR = null;
   const relP = e => { const r = c2d.getBoundingClientRect(); return {x: e.clientX - r.left, y: e.clientY - r.top}; };
@@ -21891,8 +21901,9 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
    SC_REL.v è l'unica versione: titolo, Guida, file salvato, avvisi e riga messaggi la leggono da qui.
    ======================================================================== */
 window.SC_REL = {
-  v: '28.4', d: '02/11/2026',
+  v: '28.5', d: '02/11/2026',
   news: [
+    ['28.5', 'Rilievo: lo zoom scelto con le dita non cambia più da solo. Prima, a ogni misura scritta o muro confermato, il programma riadattava zoom e posizione; ora lo schizzo si aggiorna tenendo fermo il punto che guardi, e la vista scorre (senza cambiare zoom) solo se il punto nuovo esce dallo schermo. ⌖ Adatta resta per vedere tutto.'],
     ['28.4', 'Rilievo: lo schizzo si ridisegna in scala appena i muri hanno la misura; toccando un muro lo selezioni (la scheda si apre toccando la misura o il «?»); trascinando un estremo del muro selezionato, con il cursore sfalsato come nel CAD, cambi lunghezza e angolo di quel muro soltanto (si stacca dal muro vicino e si riaggancia vicino a un punto); trascinando il muro lo sposti e i muri collegati si allungano o accorciano. Porte e finestre hanno la loro altezza. «🧱 Chiudi con muro»: la chiusura diventa un muro vero con la misura calcolata dagli altri muri.'],
     ['28.3', 'Pilastro a forma libera (Disegna › Strutture): si disegna toccando i suoi angoli, che si agganciano agli spigoli e alle facce dei muri anche quando non sono squadrati; trapezi, L e qualsiasi forma, in pianta, in 3D e nella superficie netta dei locali; gli angoli si modificano trascinando i quadratini (i pallini a metà lato aggiungono un angolo, un angolo portato sopra quello vicino si toglie); segue il muro su cui appoggia quando il muro si sposta o ruota. Corretto: l\'aggancio agli spigoli dei pilastri ruotati cadeva nei punti sbagliati.'],
     ['28.2', 'Composizione arredo: la vista si sposta trascinando con un dito nel vuoto e si ingrandisce con due dita, con la rotellina o con i pulsanti ＋ － e «⤢ Adatta»; nuovo comando «📏 Misura» (due punti, si agganciano agli spigoli dei mobili: misura orizzontale, verticale e inclinata); il riquadro dall\'alto ha il suo spazio e non copre più i mobili; la barra in alto non va più a capo sul tablet; il top continuo passa anche sopra la lavatrice, le basi a giorno e i fianchi (prima si interrompeva); nuovo blocco «Piano di lavoro (top)» tra i Complementi per aggiungerne uno a mano.'],
