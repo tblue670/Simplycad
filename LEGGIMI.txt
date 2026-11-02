@@ -1,3 +1,19 @@
+SimplyCAD Pro v28.4 - pacchetto per NETLIFY
+
+AGGIORNARE IL SITO SU NETLIFY (da PC o Chromebook)
+ 1. Estrai lo ZIP: ottieni la cartella "simplycad".
+ 2. Vai su app.netlify.com, accedi e apri il tuo sito.
+ 3. Scheda "Deploys": in fondo c'è il riquadro "Drag and drop your project folder here".
+    Trascinaci la cartella "simplycad" intera (non i singoli file, non rinominarli).
+ 4. Dopo pochi secondi la nuova versione è online allo stesso indirizzo.
+ 5. Sui dispositivi: apri l'app con internet e rispondi sì a "È pronta una versione nuova: aggiornare?".
+    Controllo: il titolo della scheda di Chrome deve dire v28.4.
+
+Il manuale PDF non è in questo pacchetto (è pesante): lo trovi nel pacchetto GitHub o come file a parte.
+Il sito Netlify e quello GitHub sono due app diverse: ognuna ha il suo salvataggio automatico.
+Per passare un progetto dall'una all'altra: File -> Salva progetto, poi nell'altra File -> Carica progetto.
+
+------------------------------------------------------------------------------------------
 SimplyCAD Pro - pubblicazione su GitHub Pages (v27.9)
 
 Contenuto (vanno caricati tutti, senza rinominarli e SENZA cartelle intorno):
@@ -533,3 +549,15 @@ NOVITÀ v28.3
   un angolo portato sopra quello vicino si toglie.
   Segue il muro su cui appoggia quando il muro si sposta o ruota.
 - Corretto: l'aggancio agli spigoli dei pilastri ruotati cadeva nei punti sbagliati.
+
+NOVITÀ v28.4 (rilievo)
+- Lo schizzo si ridisegna in scala appena i muri hanno la misura (quelli da misurare restano in proporzione).
+- Toccando un muro lo selezioni (si colora di azzurro); la scheda delle misure si apre toccando la misura o il «?».
+- Muro selezionato: trascinando un estremo, con il cursore sfalsato come nel CAD, cambi lunghezza e angolo
+  di quel muro soltanto: si stacca dal muro vicino e, se lo lasci vicino a un punto, si riaggancia.
+  Mentre trascini vedi misura e angolo.
+- Muro selezionato: trascinandolo lo sposti; i muri collegati si allungano o accorciano e la stanza resta chiusa.
+  Le misure cambiate trascinando sono segnate come modificate a mano.
+- Porte e finestre hanno la loro altezza (prima era uguale per tutte).
+- Linea di chiusura: si apre subito la sua scheda con la misura calcolata e il pulsante
+  «🧱 Chiudi con muro»: la chiusura diventa un muro vero con quella misura (controllala con una diagonale).
