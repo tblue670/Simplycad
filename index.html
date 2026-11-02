@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v29.1</title>
+<title>SimplyCAD Pro · v29.2</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -621,7 +621,8 @@
   .sv-cf{display:flex;gap:8px}.sv-cf label{flex:1;display:grid;gap:3px;font-size:11px;color:#9ca3b8;min-width:0}
   .sv-cf input{background:#11151f;border:1px solid #3c4260;border-radius:9px;color:#fff;padding:8px 10px;font:600 18px 'Segoe UI',sans-serif;min-height:46px;box-sizing:border-box;width:100%;min-width:0}.sv-cf input:focus{border-color:#38bdf8;outline:none}
   .sv-ca{display:flex;gap:8px;margin-top:8px}.sv-ca button{flex:1;min-height:46px;border-radius:10px;border:1px solid #526080;background:#343955;color:#eee;font:700 15px 'Segoe UI',sans-serif;cursor:pointer}.sv-ca .pri{background:#1677a8;border-color:#38bdf8;flex:3}.sv-ca .dng{background:#5b2330;border-color:#a33}
-  .sv-hint{position:fixed;left:72px;right:8px;bottom:10px;z-index:2040;background:#1d2134ee;border:1px solid #3c4260;border-radius:10px;padding:9px 12px;font:13px 'Segoe UI',sans-serif;color:#cbd5e1;text-align:center;display:none}
+  .sv-unpt{display:block;margin:0 auto 7px;padding:10px 18px;min-height:44px;border-radius:10px;border:1px solid #f87171;background:#7f1d1d;color:#fff;font:600 15px 'Segoe UI',sans-serif;cursor:pointer}.sv-unpt:active{background:#991b1b}
+.sv-hint{position:fixed;left:72px;right:8px;bottom:10px;z-index:2040;background:#1d2134ee;border:1px solid #3c4260;border-radius:10px;padding:9px 12px;font:13px 'Segoe UI',sans-serif;color:#cbd5e1;text-align:center;display:none}
   .sv-over{position:fixed;inset:0;z-index:3000;background:#161a2b;display:none;flex-direction:column;color:#e5e7eb;font-family:'Segoe UI',sans-serif}
   .sv-th{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:#2a2a3e;border-bottom:1px solid #3a3a5e;font-size:15px}.sv-th span{display:flex;gap:6px}
   .sv-th button{min-width:44px;min-height:40px;border-radius:8px;border:1px solid #3c4260;background:#262b42;color:#e5e7eb;font-size:14px;cursor:pointer}
@@ -13612,6 +13613,8 @@ updateRoomList();
     document.body.appendChild(root);
     ui = {root, top: $('svTop'), tools: $('svTools'), card: $('svCard'), hint: $('svHint'), table: $('svTable'), menu: $('svMenu')};
     ['pointerdown', 'pointerup', 'touchstart', 'touchmove', 'wheel', 'contextmenu'].forEach(ev => ['top', 'tools', 'card', 'table', 'menu'].forEach(k => ui[k].addEventListener(ev, e => e.stopPropagation(), {passive: true})));
+    ['pointerdown', 'pointerup', 'touchstart', 'touchmove'].forEach(ev => ui.hint.addEventListener(ev, e => e.stopPropagation(), {passive: true}));
+    ui.hint.addEventListener('click', e => { if (e.target.closest('[data-a="unpt"]')) unPoint(); });
     ui.top.addEventListener('click', onTop); ui.tools.addEventListener('click', onTools); ui.card.addEventListener('click', onCard);
     ui.card.addEventListener('keydown', e => {
       e.stopPropagation(); if (e.key !== 'Enter' || e.target.id === 'fn') return; e.preventDefault(); const c = S.card;
@@ -13631,9 +13634,41 @@ updateRoomList();
       : `<button type="button" data-a="undo" title="Annulla">↩</button><button type="button" data-a="home" title="Adatta">⌖</button><span class="sv-fl"><button type="button" data-a="fdn">▼</button><b>${esc(fl().name)}</b><i class="sv-dot" id="svDot" title="Salvataggio automatico">●</i><button type="button" data-a="fup">▲</button></span><button type="button" data-a="table" class="sv-tab">📋</button>${todoN() ? `<button type="button" data-a="todo" class="sv-tab" style="background:#7c2d12;border-color:#fb923c;color:#fed7aa" title="Vai alle misure mancanti">⚠ ${todoN()}</button>` : ''}<button type="button" data-a="fine" class="sv-tab sv-fine">✔ Fine</button><button type="button" data-a="menu">⋮</button>`;
     const T = [['wall', '▬', 'Muro'], ['close', '┄', 'Chiudi'], ['door', '🚪', 'Porta'], ['window', '🪟', 'Finestra'], ['pillar', '▣', 'Pilastro'], ['room', '🏠', 'Stanza +'], ['link', '🔗', 'Collega']];
     ui.tools.style.display = res ? 'none' : 'flex'; ui.tools.innerHTML = T.map(([k, ic, lb]) => `<button type="button" data-t="${k}" class="${S.tool === k ? 'on' : ''}"><i>${ic}</i><span>${lb}</span></button>`).join('');
-    ui.hint.textContent = res ? 'Pianta ricostruita in scala 1:100 · la tabella usa le misure rilevate' : hintText();
+    if (res) ui.hint.textContent = 'Pianta ricostruita in scala 1:100 · la tabella usa le misure rilevate';
+    else ui.hint.innerHTML = (canUnPoint() ? '<button type="button" class="sv-unpt" data-a="unpt">⌫ Togli ultimo punto</button>' : '') + '<span>' + esc(hintText()) + '</span>';
     ui.hint.style.display = (S.card || S.over) ? 'none' : 'block';
     renderCard(); draw2D();
+  }
+  /* v29.2: «Togli ultimo punto» = torna allo schizzo com'era prima dell'ultimo tratto. Se nel frattempo hai scritto misure
+     o aggiunto altro, toglie solo quel tratto e lascia il resto */
+  function uhPush() { (S.uh = S.uh || []).push({snap: JSON.stringify(sk()), from: S.from ? Object.assign({}, S.from) : null}); if (S.uh.length > 60) S.uh.shift(); }
+  function uhDone(e, from) { const h = (S.uh || [])[S.uh.length - 1]; if (!h || h.after) return; h.after = JSON.stringify(sk()); h.id = e ? e.id : null; h.k = e ? e.k : null; h.name = e ? e.name : ''; if (from) S.from = from; h.res = S.from ? Object.assign({}, S.from) : null; }
+  function canUnPoint() { if (S.tool !== 'wall' && S.tool !== 'close') return false; S.uh = (S.uh || []).filter(h => h.after); return S.uh.length > 0 || !!S.from; }
+  function unPoint() {
+    const s0 = sk(); S.uh = (S.uh || []).filter(h => h.after); S.to = null; S.card = null;
+    const h = S.uh[S.uh.length - 1], cur = JSON.stringify(s0);
+    if (!h || (S.from && !(h.res && S.from.node != null && S.from.node === h.res.node))) {   /* il punto di partenza non viene dall'ultimo tratto: si toglie solo quello */
+      if (S.from) { S.from = null; toast('Punto di partenza tolto'); } syncUI(); draw2D(); return;
+    }
+    S.uh.pop();
+    if (cur === h.after) {   /* nulla è cambiato dopo: si torna esattamente a prima */
+      const o = JSON.parse(h.snap); Object.keys(s0).forEach(k => { delete s0[k]; }); Object.assign(s0, o);
+      S.from = h.from;
+    } else if (h.id != null) {   /* misure scritte nel frattempo: si toglie solo il tratto */
+      const e = s0.e.find(x => x.id === h.id); if (!e) { syncUI(); draw2D(); return; }
+      s0.e = s0.e.filter(x => x !== e);
+      const gone = new Set(s0.o.filter(o => o.e === e.id).map(o => o.id));
+      s0.o = s0.o.filter(o => o.e !== e.id);
+      if (s0.links) s0.links = s0.links.filter(l => !gone.has(l.o) && !gone.has(l.to));
+      const used = n => s0.e.some(x => x.a === n || x.b === n) || (s0.d || []).some(d => d.a === n || d.b === n);
+      if (!used(e.b)) s0.n = s0.n.filter(n => n.id !== e.b);
+      const a = nodeOf(e.a);
+      S.from = e.k === 'close' || !a ? null : {node: a.id, x: a.x, y: a.y};
+      if (a && !used(a.id)) { s0.n = s0.n.filter(n => n.id !== a.id); if (S.from) S.from = {node: null, x: a.x, y: a.y}; }
+    } else { S.from = h.from; }
+    if (S.from && S.from.node != null) S.focusN = S.from.node;
+    checkpoint(); syncUI(); draw2D();
+    toast(h.id == null ? 'Partenza dal muro in comune tolta' : h.k === 'close' ? 'Linea di chiusura tolta' : (h.name || 'Muro') + ' tolto: riprendi dal punto precedente');
   }
   function hintText() {
     const t = S.tool;
@@ -13645,9 +13680,9 @@ updateRoomList();
   }
   function onTop(e) {
     const b = e.target.closest('[data-a]'); if (!b) return; const a = b.dataset.a;
-    if (a === 'undo') { $('undoBtn').click(); setTimeout(() => { S.from = S.to = S.card = null; syncUI(); }, 30); }
+    if (a === 'undo') { if (canUnPoint() && (S.from || (S.uh || []).length)) return unPoint(); $('undoBtn').click(); setTimeout(() => { S.from = S.to = S.card = null; S.uh = []; syncUI(); }, 30); }
     else if (a === 'home') { if (S.view !== 'result') { S.focusN = null; S.newRoom = false; S.selE = null; } (S.view === 'result' ? fitReal : fitSketch)(); draw2D(); }   /* ⌖ = vista d'insieme di tutte le stanze */
-    else if (a === 'fup' || a === 'fdn') { const s = sortedFloors(), i = s.findIndex(f => f.id === state.currentFloorId), j = i + (a === 'fup' ? 1 : -1); if (j >= 0 && j < s.length) { S.from = S.to = S.card = null; SCfl.setFloor(s[j].id, {quiet: true}); FLOORFILTER.over = HIDE; fitSketch(); syncUI(); } else toast(a === 'fup' ? 'Sei al piano più alto' : 'Sei al piano più basso'); }
+    else if (a === 'fup' || a === 'fdn') { const s = sortedFloors(), i = s.findIndex(f => f.id === state.currentFloorId), j = i + (a === 'fup' ? 1 : -1); if (j >= 0 && j < s.length) { S.from = S.to = S.card = null; S.uh = []; SCfl.setFloor(s[j].id, {quiet: true}); FLOORFILTER.over = HIDE; fitSketch(); syncUI(); } else toast(a === 'fup' ? 'Sei al piano più alto' : 'Sei al piano più basso'); }
     else if (a === 'table') openTable(); else if (a === 'menu') openMenu(); else if (a === 'fine') finish(); else if (a === 'todo') { S.skip = new Set(); S.tool = null; S.from = S.to = null; nextTodo(); }
     else if (a === 'back') setView('sketch'); else if (a === 'print') { const p = $('printBtn'); if (p) p.click(); }
   }
@@ -13655,7 +13690,7 @@ updateRoomList();
     const b = e.target.closest('[data-t]'); if (!b) return; const t = b.dataset.t;
     if (t === 'room') { S.card = null; S.to = null; S.from = null; S.selE = null; S.newRoom = true; S.focusN = null; S.tool = 'wall'; syncUI(); draw2D(); toast('Nuova stanza: disegnala in uno spazio libero, le altre restano in grigio. Quando è misurata, «🔗 Collega» la attacca dalla porta'); return; }
     if (t === 'link') { S.card = null; S.to = null; S.from = null; S.linkA = null; S.tool = S.tool === 'link' ? null : 'link'; syncUI(); draw2D(); return; }
-    S.card = null; S.to = null; S.from = null; S.op = null; S.tool = S.tool === t ? null : t; syncUI();
+    S.card = null; S.to = null; S.from = null; S.op = null; S.uh = []; S.tool = S.tool === t ? null : t; syncUI();
   }
   function setView(v) {
     S.view = v; S.card = null; S.from = S.to = null; S.tool = null; S.over = null;
@@ -13758,7 +13793,7 @@ updateRoomList();
         if (hit && t === 'wall' && !S.from) {   /* v29.0: la misura apre la scheda; il muro diventa il muro in comune e la nuova stanza parte da qui */
           const lb = labelNear(sp); if (lb) return openEdit({type: 'edge', id: lb.id});
           if (hit.e.k !== 'wall') return openEdit({type: 'edge', id: hit.e.id});
-          const m = splitEdge(hit.e, hit.t); if (!m) return; checkpoint();
+          uhPush(); const m = splitEdge(hit.e, hit.t); if (!m) { S.uh.pop(); return; } checkpoint(); uhDone(null, {node: m.id, x: m.x, y: m.y});
           S.from = {node: m.id, x: m.x, y: m.y}; toast('Muro in comune: la nuova stanza parte da qui. Disegna i suoi muri; per finire tocca di nuovo il muro in comune o un suo angolo'); return syncUI();
         }
         S.from = nn ? {node: nn.id, x: nn.x, y: nn.y} : {node: null, x: w.x, y: w.y}; return syncUI();
@@ -13768,7 +13803,7 @@ updateRoomList();
         if (lw) return openEdit({type: 'edge', id: lw.id}); return;
       }
       if (t === 'close' && !nn) return toast('Tocca un punto già disegnato');
-      if (t === 'wall' && !nn) { const hit = edgeNear(sp, ['wall']); if (hit && hit.e.a !== S.from.node && hit.e.b !== S.from.node) { const m = splitEdge(hit.e, hit.t); if (m) { S.to = {node: m.id, x: m.x, y: m.y}; return quickEdge(); } } }   /* v29.0: finisce sul muro in comune */
+      if (t === 'wall' && !nn) { const hit = edgeNear(sp, ['wall']); if (hit && hit.e.a !== S.from.node && hit.e.b !== S.from.node) { uhPush(); const m = splitEdge(hit.e, hit.t); if (m) { S.to = {node: m.id, x: m.x, y: m.y}; S.uhSkip = true; return quickEdge(); } S.uh.pop(); } }   /* v29.0: finisce sul muro in comune */
       S.to = nn ? {node: nn.id, x: nn.x, y: nn.y} : {node: null, x: w.x, y: w.y}; return quickEdge();
     }
     if (t === 'link') {   /* v29.1: porta della stanza nuova, poi la stessa porta nella stanza già rilevata */
@@ -13795,6 +13830,7 @@ updateRoomList();
   function quickEdge() {
     const t = S.tool, s = sk();
     if (t === 'close' && !(S.from.node != null && S.to.node != null && connected(S.from.node, S.to.node))) { S.to = null; return toast('Questi due punti non sono collegati da muri: la linea di chiusura serve tra punti della stessa stanza'); }
+    if (S.uhSkip) S.uhSkip = false; else uhPush();
     const addNode = p => { const n = {id: s.seq++, x: p.x, y: p.y}; s.n.push(n); return n.id; };
     const dir = inferDir(S.from, S.to), len = Math.hypot(S.to.x - S.from.x, S.to.y - S.from.y);
     let to = S.to; if (t === 'wall' && to.node == null) to = {node: null, x: S.from.x + Math.cos(dir * D2R) * len, y: S.from.y + Math.sin(dir * D2R) * len};   /* punto raddrizzato sul verso scelto */
@@ -13803,7 +13839,7 @@ updateRoomList();
     const e = {id: s.seq++, k: t, a, b, L: t === 'close' ? 0 : null}; if (t === 'close') { e.auto = true; e.name = 'Linea di chiusura'; } else { e.name = 'Muro ' + letters(wallEdges().length); e.h = hDef(); e.dir = dir; }
     s.e.push(e); S.to = null; S.from = t === 'close' ? null : {node: b, x: nodeOf(b).x, y: nodeOf(b).y}; S.focusN = b; S.newRoom = false;
     if (t === 'close') setTimeout(() => openEdit({type: 'edge', id: e.id}), 0);
-    checkpoint();
+    checkpoint(); uhDone(e);
     showPt(nodeOf(b));   /* v28.5: scorre senza cambiare zoom */   /* si riadatta solo se il punto esce dallo schermo */
     syncUI();
   }
@@ -13948,6 +13984,8 @@ updateRoomList();
     if (!auto && !(L > 0) && !later) { toast('Scrivi la dimensione (oppure «Misura dopo»)'); return; }
     if (auto && !(S.from.node != null && S.to.node != null && connected(S.from.node, S.to.node))) { toast('I due punti non sono collegati da muri: scrivi la misura'); return; }
     const addNode = p => { const n = {id: s.seq++, x: p.x, y: p.y}; s.n.push(n); return n.id; };
+    if (S.from.node != null && S.from.node === S.to.node) return toast('Scegli un punto diverso');
+    uhPush();
     const a = S.from.node != null ? S.from.node : addNode(S.from), b = S.to.node != null ? S.to.node : addNode(S.to);
     if (a === b) return toast('Scegli un punto diverso');
     const id = s.seq++, e = {id, k: c.kind, a, b, L: auto ? 0 : (L > 0 ? L : null)}; if (auto) e.auto = true;
@@ -13955,7 +13993,7 @@ updateRoomList();
     else e.name = 'Linea di chiusura';
     s.e.push(e); S.from = {node: b, x: nodeOf(b).x, y: nodeOf(b).y}; S.to = null; S.card = null; S.focusN = b; S.newRoom = false;
     if (c.kind === 'close') S.from = null;   // la linea di chiusura non prosegue
-    checkpoint(); showPt(nodeOf(b)); syncUI();
+    checkpoint(); uhDone(e); showPt(nodeOf(b)); syncUI();
   }
   function confirmOp(w, sill, dist, later) {
     const c = S.card, s = sk(), hh = num(($('f4') || {value: ''}).value), setH = o => { if (hh > 0.3 && c.kind !== 'pillar') o.h = hh; };
@@ -21999,8 +22037,9 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
    SC_REL.v è l'unica versione: titolo, Guida, file salvato, avvisi e riga messaggi la leggono da qui.
    ======================================================================== */
 window.SC_REL = {
-  v: '29.1', d: '02/11/2026',
+  v: '29.2', d: '02/11/2026',
   news: [
+    ['29.2', 'Rilievo: pulsante «⌫ Togli ultimo punto» in basso mentre disegni muri o linee di chiusura: toglie l’ultimo tratto e riprendi dal punto precedente, anche più volte di seguito. Anche ↩ in alto, durante il disegno, fa lo stesso invece di interrompere tutto.'],
     ['29.1', 'Rilievo una stanza alla volta: «🏠 Stanza +» inizia una stanza nuova mentre le altre restano in grigio (o spente, dal menu ⋮); «🔗 Collega» la attacca dalla porta: tocchi la porta della stanza nuova, poi la stessa porta nella stanza già rilevata e scrivi lo spessore del muro alla spalletta; la stanza va al suo posto e nella pianta il muro in comune non si raddoppia. ⌖ mostra tutte le stanze insieme. Schizzo più pulito: muri sottili, una sola scritta per muro, porte e finestre con la sigla (P1, F2: i dettagli nella scheda), scritte sovrapposte nascoste finché non ingrandisci. Zoom a due dita senza salti (prima, alzando un dito, la vista tornava indietro).'],
     ['29.0', 'Cursore sfalsato per tutto ciò che si trascina col dito: anche linee impianto, controsoffitti, false travi, LED e aree spostati interi, gli angoli dei pilastri a forma libera e ogni altro oggetto che prima seguiva il dito. Rilievo stanza per stanza: con «Muro» tocchi un muro già rilevato e la nuova stanza parte da lì (muro in comune, anche solo un tratto); per finire tocchi di nuovo il muro in comune: il muro si divide e i tratti si misurano a parte (finché non li misuri sono stimati «≈» e la loro somma resta la misura del muro intero). Finestre e pannelli: tutti con la maniglia ⠿⠿⠿ e lo stesso aspetto, si riaprono nell\'ultima posizione e, se coprirebbero il punto appena toccato, si aprono dall\'altra parte dello schermo.'],
     ['28.5', 'Rilievo: lo zoom scelto con le dita non cambia più da solo. Prima, a ogni misura scritta o muro confermato, il programma riadattava zoom e posizione; ora lo schizzo si aggiorna tenendo fermo il punto che guardi, e la vista scorre (senza cambiare zoom) solo se il punto nuovo esce dallo schermo. ⌖ Adatta resta per vedere tutto.'],

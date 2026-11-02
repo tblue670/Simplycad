@@ -566,6 +566,13 @@ NOVITÀ v29.0
   in cui li hai lasciati e, se coprirebbero il punto appena toccato, si aprono dall'altra parte dello schermo.
   Doppio tocco sulla maniglia: posizione iniziale.
 
+NOVITÀ v29.2 (rilievo)
+- Pulsante rosso «⌫ Togli ultimo punto» in basso mentre disegni muri o linee di chiusura:
+  toglie l'ultimo tratto e riprendi dal punto precedente; si può premere più volte di seguito.
+  Se avevi iniziato da un muro esistente (muro in comune), il muro torna intero.
+  Se nel frattempo hai scritto misure, toglie solo il tratto e le misure restano.
+- Anche ↩ in alto, mentre disegni, fa lo stesso (prima interrompeva il disegno).
+
 NOVITÀ v29.1 (rilievo)
 - Una stanza alla volta: «🏠 Stanza +» inizia una stanza nuova; le altre restano in grigio
   (oppure spente: menu ⋮ › «Le altre stanze, mentre ne rilevi una»). ⌖ mostra tutte le stanze insieme.
