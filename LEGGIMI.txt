@@ -566,6 +566,26 @@ NOVITÀ v29.0
   in cui li hai lasciati e, se coprirebbero il punto appena toccato, si aprono dall'altra parte dello schermo.
   Doppio tocco sulla maniglia: posizione iniziale.
 
+NOVITÀ v29.4 (rilievo)
+- «🔗 Collega» funziona anche dal MURO, per stanze senza porta in comune:
+  1. tocca il muro della stanza nuova che confina (o che guarda il corridoio);
+  2. tocca il muro della stanza già rilevata (in grigio) che gli sta accanto o di fronte;
+  3. scrivi la distanza tra le due facce: lo spessore del muro se le stanze si toccano,
+     oppure muro + corridoio + muro se in mezzo c'è un corridoio che non rilevi;
+  4. scrivi lo scostamento: dall'angolo segnato in azzurro al primo angolo della stanza nuova
+     (0 se allineati; ⇄ per misurare dall'altro angolo).
+  La stanza va al suo posto. Se si toccano, nella pianta il muro in comune è uno solo.
+- Mentre disegni i muri, se tocchi la scritta di un muro (es. «B ?») si apre la sua misura;
+  dopo «Conferma» (o ✕) riprendi a disegnare dallo stesso punto.
+
+NOVITÀ v29.3 (rilievo)
+- ↩ in alto annulla QUALSIASI operazione del rilievo, un passo alla volta: muri disegnati,
+  misure scritte, punti e muri spostati, porte, finestre, pilastri, linee di chiusura,
+  collegamenti tra stanze, cancellazioni. Durante il disegno torni anche al punto da cui ripartire.
+- ↪ (compare accanto a ↩ solo quando serve) ripete quello che hai annullato.
+- Tastiera (Chromebook/PC): Ctrl+Z annulla, Ctrl+Y ripete.
+- La cronologia è separata per ogni piano e si azzera quando chiudi l'app.
+
 NOVITÀ v29.2 (rilievo)
 - Pulsante rosso «⌫ Togli ultimo punto» in basso mentre disegni muri o linee di chiusura:
   toglie l'ultimo tratto e riprendi dal punto precedente; si può premere più volte di seguito.

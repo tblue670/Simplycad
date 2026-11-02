@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v29.2</title>
+<title>SimplyCAD Pro · v29.4</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -621,7 +621,8 @@
   .sv-cf{display:flex;gap:8px}.sv-cf label{flex:1;display:grid;gap:3px;font-size:11px;color:#9ca3b8;min-width:0}
   .sv-cf input{background:#11151f;border:1px solid #3c4260;border-radius:9px;color:#fff;padding:8px 10px;font:600 18px 'Segoe UI',sans-serif;min-height:46px;box-sizing:border-box;width:100%;min-width:0}.sv-cf input:focus{border-color:#38bdf8;outline:none}
   .sv-ca{display:flex;gap:8px;margin-top:8px}.sv-ca button{flex:1;min-height:46px;border-radius:10px;border:1px solid #526080;background:#343955;color:#eee;font:700 15px 'Segoe UI',sans-serif;cursor:pointer}.sv-ca .pri{background:#1677a8;border-color:#38bdf8;flex:3}.sv-ca .dng{background:#5b2330;border-color:#a33}
-  .sv-unpt{display:block;margin:0 auto 7px;padding:10px 18px;min-height:44px;border-radius:10px;border:1px solid #f87171;background:#7f1d1d;color:#fff;font:600 15px 'Segoe UI',sans-serif;cursor:pointer}.sv-unpt:active{background:#991b1b}
+  .sv-top .sv-undo{min-width:46px;font-size:21px;font-weight:700;background:#1e3a5f;border-color:#3b82f6}.sv-top .sv-undo.sv-off{opacity:.45}@media (max-width:480px){.sv-top{gap:2px!important;padding:0 3px!important}.sv-top button{min-width:32px!important;padding:0 4px!important;font-size:14px!important}.sv-top .sv-undo{min-width:38px!important;font-size:19px!important}.sv-fl b{min-width:40px;max-width:62px!important;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sv-fl button{min-width:22px!important}.sv-top .sv-tab{padding:0 5px!important;font-size:13px!important}}
+.sv-unpt{display:block;margin:0 auto 7px;padding:10px 18px;min-height:44px;border-radius:10px;border:1px solid #f87171;background:#7f1d1d;color:#fff;font:600 15px 'Segoe UI',sans-serif;cursor:pointer}.sv-unpt:active{background:#991b1b}
 .sv-hint{position:fixed;left:72px;right:8px;bottom:10px;z-index:2040;background:#1d2134ee;border:1px solid #3c4260;border-radius:10px;padding:9px 12px;font:13px 'Segoe UI',sans-serif;color:#cbd5e1;text-align:center;display:none}
   .sv-over{position:fixed;inset:0;z-index:3000;background:#161a2b;display:none;flex-direction:column;color:#e5e7eb;font-family:'Segoe UI',sans-serif}
   .sv-th{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:#2a2a3e;border-bottom:1px solid #3a3a5e;font-size:15px}.sv-th span{display:flex;gap:6px}
@@ -13461,15 +13462,28 @@ updateRoomList();
     let ox = 0, k = 0; const placed = new Map();
     comps.forEach(list => { const xs = list.map(i => pos.get(i).x), mn = Math.min(...xs); const dx = k ? ox - mn : 0; list.forEach(i => placed.set(i, {x: pos.get(i).x + dx, y: pos.get(i).y})); ox = Math.max(...list.map(i => placed.get(i).x)) + 3; k++; });
     /* v29.1: stanze collegate da una porta: ruotate e spostate in modo che le due porte coincidano, ai due lati del muro */
-    const LK = (s.links || []).filter(l => { const a = s.o.find(o => o.id === l.o), b = s.o.find(o => o.id === l.to); return a && b && edgeOf(a.e) && edgeOf(b.e); });
+    const LK = (s.links || []).filter(l => { if (l.k === 'wall') return edgeOf(l.eN) && edgeOf(l.eO); const a = s.o.find(o => o.id === l.o), b = s.o.find(o => o.id === l.to); return a && b && edgeOf(a.e) && edgeOf(b.e); });
     if (LK.length && comps.size > 1) {
-      const done = new Set([[...comps.keys()][0]]);
+      const l0 = LK[0], r0 = l0.k === 'wall' ? fd(edgeOf(l0.eO).a) : fd(edgeOf(s.o.find(o => o.id === l0.to).e).a);
+      const done = new Set([comps.has(r0) ? r0 : [...comps.keys()][0]]);
       const doorAt = (o, P) => { const e = edgeOf(o.e), A = P(e.a), B = P(e.b), L = Math.hypot(B.x - A.x, B.y - A.y) || 1, u = {x: (B.x - A.x) / L, y: (B.y - A.y) / L}, cA = sr() * cOf(e, e.a), cB = sr() * cOf(e, e.b);
         const s0 = o.d != null ? (o.ref === 'b' ? L - (cB + o.d + o.w / 2) : cA + o.d + o.w / 2) : (o.t != null ? o.t : 0.5) * L; return {p: {x: A.x + u.x * s0, y: A.y + u.y * s0}, u, e}; };
       const nrm = (D, list, P) => { const g = list.reduce((a, i) => ({x: a.x + P(i).x / list.length, y: a.y + P(i).y / list.length}), {x: 0, y: 0}); let n = {x: -D.u.y, y: D.u.x}; if ((g.x - D.p.x) * n.x + (g.y - D.p.y) * n.y < 0) n = {x: -n.x, y: -n.y}; return n; };
       for (let it = 0; it <= LK.length; it++) {
         let prog = false;
         LK.forEach(l => {
+          if (l.k === 'wall') {   /* v29.4: muro della stanza nuova parallelo al muro della stanza già rilevata, a distanza D tra le facce, scostato di d dall'angolo scelto */
+            const eO = edgeOf(l.eO), eN = edgeOf(l.eN), rO = fd(eO.a), rN = fd(eN.a); if (rN === rO || !done.has(rO) || done.has(rN)) return;
+            const Pp = i => placed.get(i), Pl = i => pos.get(i), ref = l.ref === eO.b ? eO.b : eO.a, oth = ref === eO.a ? eO.b : eO.a;
+            const Po = Pp(ref), Qo = Pp(oth), Lo = Math.hypot(Qo.x - Po.x, Qo.y - Po.y) || 1, u = {x: (Qo.x - Po.x) / Lo, y: (Qo.y - Po.y) / Lo}, n1 = nrm({p: Po, u}, comps.get(rO), Pp);
+            const A = Pl(eN.a), B = Pl(eN.b), LN = Math.hypot(B.x - A.x, B.y - A.y) || 1, n2 = nrm({p: A, u: {x: (B.x - A.x) / LN, y: (B.y - A.y) / LN}}, comps.get(rN), Pl);
+            const phi = Math.atan2(-n1.y, -n1.x) - Math.atan2(n2.y, n2.x), c = Math.cos(phi), sn = Math.sin(phi), rot = q => ({x: (q.x - A.x) * c - (q.y - A.y) * sn, y: (q.x - A.x) * sn + (q.y - A.y) * c});
+            const b2 = rot(B), st = b2.x * u.x + b2.y * u.y >= 0 ? eN.a : eN.b, s0 = st === eN.a ? {x: 0, y: 0} : b2;
+            const cO = sr() * cOf(eO, ref), cN = sr() * cOf(eN, st), t1 = eO.t > 0 ? eO.t : t, t2 = eN.t > 0 ? eN.t : t, off = t1 / 2 + t2 / 2 - (l.D > 0 ? l.D : t), along = cO + (l.d || 0) - cN;
+            const tg = {x: Po.x + u.x * along + n1.x * off, y: Po.y + u.y * along + n1.y * off};
+            comps.get(rN).forEach(i => { const r = rot(Pl(i)); placed.set(i, {x: tg.x + r.x - s0.x, y: tg.y + r.y - s0.y}); });
+            done.add(rN); prog = true; return;
+          }
           const oN = s.o.find(o => o.id === l.o), oO = s.o.find(o => o.id === l.to), rN = fd(edgeOf(oN.e).a), rO = fd(edgeOf(oO.e).a); if (rN === rO) return;
           let fix, mov, of, om; if (done.has(rO) && !done.has(rN)) { fix = rO; mov = rN; of = oO; om = oN; } else if (done.has(rN) && !done.has(rO)) { fix = rN; mov = rO; of = oN; om = oO; } else return;
           const Pp = i => placed.get(i), Pl = i => pos.get(i), D1 = doorAt(of, Pp), D2 = doorAt(om, Pl), n1 = nrm(D1, comps.get(fix), Pp), n2 = nrm(D2, comps.get(mov), Pl);
@@ -13519,7 +13533,7 @@ updateRoomList();
       const real = new Map(), t = tDef();
       /* v29.1: il muro della stanza collegata che sta sul muro dell'altra stanza non si duplica (resta solo la parte che sporge) e la sua porta è la stessa */
       const LKs = (s.links || []).map(l => ({oN: s.o.find(o => o.id === l.o), oO: s.o.find(o => o.id === l.to)})).filter(x => x.oN && x.oO && edgeOf(x.oN.e) && edgeOf(x.oO.e));
-      const skipE = new Map(LKs.map(x => [x.oN.e, x.oO.e])), skipO = new Set(LKs.map(x => x.oN.id));
+      const skipE = new Map(LKs.map(x => [x.oN.e, x.oO.e]).concat((s.links || []).filter(l => l.k === 'wall' && l.D < 0.7 && edgeOf(l.eN) && edgeOf(l.eO)).map(l => [l.eN, l.eO]))), skipO = new Set(LKs.map(x => x.oN.id));
       s.e.forEach(e => {
         const A = R.pos.get(e.a), B = R.pos.get(e.b); if (!A || !B || Math.hypot(B.x - A.x, B.y - A.y) < 1e-4) return;
         if (skipE.has(e.id)) {
@@ -13576,7 +13590,7 @@ updateRoomList();
     if (state.mode === '3d') { const t = document.querySelector('.tab[data-mode="2d"]'); if (t) t.click(); }
     document.querySelectorAll('.tool').forEach(b => b.classList.remove('active')); state.tool = 'sv'; state.sel = []; state.selected = null; state.pendingPoint = null;
     FLOORFILTER.over = HIDE; const sd = $('showDimensions'); if (sd) { S.prevDim = sd.checked; sd.checked = false; }
-    setTimeout(() => { try { resize(); } catch (_) {} if (!sk().e.length && state.walls.some(w => floorOf(w) === state.currentFloorId)) setView('result'); else fitSketch(); syncUI(); }, 30);
+    setTimeout(() => { try { resize(); } catch (_) {} if (!sk().e.length && state.walls.some(w => floorOf(w) === state.currentFloorId)) setView('result'); else fitSketch(); syncUI(); try { hRec(); } catch (_) {} }, 30);
   }
   function leave() {
     const sd = $('showDimensions'); if (sd && S && S.prevDim !== undefined) sd.checked = S.prevDim;
@@ -13585,6 +13599,11 @@ updateRoomList();
     const s = document.querySelector('.tool[data-tool="select"]'); if (s) s.click();
     setTimeout(() => { try { resize(); fit(); } catch (_) {} draw2D(); }, 30);
   }
+  document.addEventListener('keydown', e => {
+    if (!on || !S || S.view === 'result' || !(e.ctrlKey || e.metaKey)) return; const t = e.target; if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT')) return;
+    const k = e.key.toLowerCase(); if (k !== 'z' && k !== 'y') return; e.preventDefault(); e.stopImmediatePropagation();
+    if (k === 'y' || e.shiftKey) svRedo(); else svUndo();
+  }, true);
   window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(apply, 120); });
   window.addEventListener('orientationchange', () => { clearTimeout(rt); rt = setTimeout(apply, 250); });
 
@@ -13628,10 +13647,10 @@ updateRoomList();
     ui.table.addEventListener('click', onTable); ui.table.addEventListener('change', onTableChange); ui.menu.addEventListener('click', onMenu); ui.menu.addEventListener('change', onMenuChange);
   }
   function syncUI() {
-    if (!on || !ui) return; const res = S.view === 'result';
+    if (!on || !ui) return; const res = S.view === 'result'; if (!res && !(HU[hKey()] || []).length) hRec();
     ui.top.innerHTML = res
       ? `<button type="button" data-a="back" class="sv-tab">← Rilievo</button><span class="sv-fl"><b>Scala 1:100</b></span><button type="button" data-a="table" class="sv-tab">📋 Tabella</button><button type="button" data-a="print" class="sv-tab">🖨 Stampa</button><button type="button" data-a="menu">⋮</button>`
-      : `<button type="button" data-a="undo" title="Annulla">↩</button><button type="button" data-a="home" title="Adatta">⌖</button><span class="sv-fl"><button type="button" data-a="fdn">▼</button><b>${esc(fl().name)}</b><i class="sv-dot" id="svDot" title="Salvataggio automatico">●</i><button type="button" data-a="fup">▲</button></span><button type="button" data-a="table" class="sv-tab">📋</button>${todoN() ? `<button type="button" data-a="todo" class="sv-tab" style="background:#7c2d12;border-color:#fb923c;color:#fed7aa" title="Vai alle misure mancanti">⚠ ${todoN()}</button>` : ''}<button type="button" data-a="fine" class="sv-tab sv-fine">✔ Fine</button><button type="button" data-a="menu">⋮</button>`;
+      : `<button type="button" data-a="undo" class="sv-undo" title="Annulla l'ultima operazione del rilievo">↩</button><button type="button" data-a="redo" class="sv-undo" title="Ripeti" style="${(HR[hKey()] || []).length ? '' : 'display:none'}">↪</button><button type="button" data-a="home" title="Adatta">⌖</button><span class="sv-fl"><button type="button" data-a="fdn">▼</button><b>${esc(fl().name)}</b><i class="sv-dot" id="svDot" title="Salvataggio automatico">●</i><button type="button" data-a="fup">▲</button></span><button type="button" data-a="table" class="sv-tab">📋</button>${todoN() ? `<button type="button" data-a="todo" class="sv-tab" style="background:#7c2d12;border-color:#fb923c;color:#fed7aa" title="Vai alle misure mancanti">⚠ ${todoN()}</button>` : ''}<button type="button" data-a="fine" class="sv-tab sv-fine">✔ Fine</button><button type="button" data-a="menu">⋮</button>`;
     const T = [['wall', '▬', 'Muro'], ['close', '┄', 'Chiudi'], ['door', '🚪', 'Porta'], ['window', '🪟', 'Finestra'], ['pillar', '▣', 'Pilastro'], ['room', '🏠', 'Stanza +'], ['link', '🔗', 'Collega']];
     ui.tools.style.display = res ? 'none' : 'flex'; ui.tools.innerHTML = T.map(([k, ic, lb]) => `<button type="button" data-t="${k}" class="${S.tool === k ? 'on' : ''}"><i>${ic}</i><span>${lb}</span></button>`).join('');
     if (res) ui.hint.textContent = 'Pianta ricostruita in scala 1:100 · la tabella usa le misure rilevate';
@@ -13639,12 +13658,53 @@ updateRoomList();
     ui.hint.style.display = (S.card || S.over) ? 'none' : 'block';
     renderCard(); draw2D();
   }
+  /* v29.3: cronologia del rilievo */
+  const HU = {}, HR = {};   /* per piano: passi da annullare / da ripetere */
+  const fromOf = () => S && S.from && S.from.node != null ? {node: S.from.node, x: S.from.x, y: S.from.y} : null;
+  function hKey() { return state.currentFloorId; }
+  function hRec(coalesce) {
+    if (!on || !S || S.view === 'result' || DR) return;
+    const k = hKey(), u = HU[k] || (HU[k] = []), j = JSON.stringify(sk());
+    if (!u.length) { u.push({j, from: fromOf(), t: Date.now()}); return; }
+    const top = u[u.length - 1];
+    if (top.j === j) { top.from = fromOf(); return; }   /* stesso schizzo: si aggiorna solo il punto da cui si disegna */
+    if (coalesce && u.length > 1 && Date.now() - top.t < 900 && top.inp) { top.j = j; top.from = fromOf(); top.t = Date.now(); return; }   /* scrittura in un campo: un passo solo */
+    u.push({j, from: fromOf(), t: Date.now(), inp: !!coalesce}); if (u.length > 150) u.splice(1, 1);
+    HR[k] = []; hBtns();
+  }
+  function hLoad(h) {
+    const s0 = sk(), o = JSON.parse(h.j); Object.keys(s0).forEach(k => { delete s0[k]; }); Object.assign(s0, o);
+    const has = id => s0.n.some(n => n.id === id);
+    S.from = h.from && has(h.from.node) && (S.tool === 'wall' || S.tool === 'close') ? Object.assign({}, h.from) : null;
+    if (S.from) S.focusN = S.from.node; else if (S.focusN != null && !has(S.focusN)) S.focusN = null;
+    if (S.selE != null && !s0.e.some(e => e.id === S.selE)) S.selE = null;
+    if (S.linkA != null && !s0.o.some(o => o.id === S.linkA)) S.linkA = null;
+    S.to = null; S.card = null; S.over = null; if (ui) { ui.table.style.display = 'none'; ui.menu.style.display = 'none'; }
+    if (S.uh) S.uh = [];
+    try { checkpoint(); } catch (_) {}
+    syncUI(); draw2D();
+  }
+  function svUndo() {
+    hRec(); const k = hKey(), u = HU[k] || [];
+    const top = u[u.length - 1];
+    if (S.from && !(top && top.from && top.from.node === S.from.node)) { S.from = null; S.to = null; syncUI(); draw2D(); return toast('Punto di partenza tolto'); }
+    if (u.length < 2) { if (S.card) { S.card = null; syncUI(); } return toast('Niente da annullare nel rilievo'); }
+    (HR[k] = HR[k] || []).push(u.pop()); hLoad(u[u.length - 1]); toast('Annullato');
+  }
+  function svRedo() {
+    const k = hKey(), r = HR[k] || []; if (!r.length) return toast('Niente da ripetere');
+    const h = r.pop(); (HU[k] = HU[k] || []).push(h); hLoad(h); toast('Ripetuto');
+  }
+  function hBtns() { if (!ui || !on || !S) return; const b = ui.top.querySelector('[data-a="redo"]'), r = (HR[hKey()] || []).length; if (b) b.style.display = r ? '' : 'none'; const a = ui.top.querySelector('[data-a="undo"]'); if (a) a.classList.toggle('sv-off', (HU[hKey()] || []).length < 2 && !S.from); }
+  ['pointerup', 'click', 'change', 'keyup', 'touchend'].forEach(ev => document.addEventListener(ev, () => setTimeout(() => { try { hRec(false); hBtns(); } catch (_) {} }, 0), true));
+  document.addEventListener('input', () => setTimeout(() => { try { hRec(true); } catch (_) {} }, 0), true);
   /* v29.2: «Togli ultimo punto» = torna allo schizzo com'era prima dell'ultimo tratto. Se nel frattempo hai scritto misure
      o aggiunto altro, toglie solo quel tratto e lascia il resto */
   function uhPush() { (S.uh = S.uh || []).push({snap: JSON.stringify(sk()), from: S.from ? Object.assign({}, S.from) : null}); if (S.uh.length > 60) S.uh.shift(); }
   function uhDone(e, from) { const h = (S.uh || [])[S.uh.length - 1]; if (!h || h.after) return; h.after = JSON.stringify(sk()); h.id = e ? e.id : null; h.k = e ? e.k : null; h.name = e ? e.name : ''; if (from) S.from = from; h.res = S.from ? Object.assign({}, S.from) : null; }
-  function canUnPoint() { if (S.tool !== 'wall' && S.tool !== 'close') return false; S.uh = (S.uh || []).filter(h => h.after); return S.uh.length > 0 || !!S.from; }
-  function unPoint() {
+  function canUnPoint() { if (S.tool !== 'wall' && S.tool !== 'close') return false; return (HU[hKey()] || []).length > 1 || !!S.from; }
+  function unPoint() { return svUndo(); }
+  function unPointOld() {
     const s0 = sk(); S.uh = (S.uh || []).filter(h => h.after); S.to = null; S.card = null;
     const h = S.uh[S.uh.length - 1], cur = JSON.stringify(s0);
     if (!h || (S.from && !(h.res && S.from.node != null && S.from.node === h.res.node))) {   /* il punto di partenza non viene dall'ultimo tratto: si toglie solo quello */
@@ -13672,15 +13732,16 @@ updateRoomList();
   }
   function hintText() {
     const t = S.tool;
-    if (t === 'link') return S.linkA != null ? 'Collega: ora tocca la stessa porta nella stanza già rilevata (in grigio)' : 'Collega: tocca la porta della stanza nuova';
+    if (t === 'link') return S.linkA != null ? 'Collega: ora tocca la stessa porta nella stanza già rilevata (in grigio)' : S.linkW != null ? 'Collega: ora tocca il muro della stanza già rilevata (in grigio) che sta di fronte o dall\'altra parte' : 'Collega: tocca una porta o un muro della stanza nuova';
     if (!t) return sk().e.length ? (S.selE != null && edgeOf(S.selE) ? 'Muro selezionato: trascina un estremo (si stacca dal muro vicino, vicino a un punto si riaggancia) o il muro intero · tocca la misura per scriverla' : 'Tocca la misura o il «?» per scriverla · tocca un muro per selezionarlo e trascinarlo · Porta, Finestra, Pilastro: scegli e tocca il muro') : 'Scegli ▬ Muro a sinistra, poi tocca i punti: i muri si disegnano uno dopo l\'altro';
-    if (t === 'wall') return S.from ? 'Tocca il punto successivo · tocca un muro o il punto dove sei per scrivere la misura · ▬ di nuovo per interrompere' : 'Muro: tocca il punto di inizio (o un punto già disegnato) · tocca un muro già rilevato per partire da lì con una nuova stanza (muro in comune) · tocca la misura per scriverla';
+    if (t === 'wall') return S.from ? 'Tocca il punto successivo · tocca la scritta di un muro o il punto dove sei per scrivere la misura (poi riprendi da qui) · ▬ di nuovo per interrompere' : 'Muro: tocca il punto di inizio (o un punto già disegnato) · tocca un muro già rilevato per partire da lì con una nuova stanza (muro in comune) · tocca la misura per scriverla';
     if (t === 'close') return S.from ? 'Tocca il secondo punto da collegare' : 'Linea di chiusura: tocca il primo punto, poi il secondo (due punti dei muri)';
     return (t === 'door' ? 'Porta' : t === 'pillar' ? 'Pilastro' : 'Finestra') + ': tocca il muro dove si trova';
   }
   function onTop(e) {
     const b = e.target.closest('[data-a]'); if (!b) return; const a = b.dataset.a;
-    if (a === 'undo') { if (canUnPoint() && (S.from || (S.uh || []).length)) return unPoint(); $('undoBtn').click(); setTimeout(() => { S.from = S.to = S.card = null; S.uh = []; syncUI(); }, 30); }
+    if (a === 'undo') { if (S.view !== 'result') return svUndo(); $('undoBtn').click(); setTimeout(() => { S.from = S.to = S.card = null; syncUI(); }, 30); }
+    else if (a === 'redo') svRedo();
     else if (a === 'home') { if (S.view !== 'result') { S.focusN = null; S.newRoom = false; S.selE = null; } (S.view === 'result' ? fitReal : fitSketch)(); draw2D(); }   /* ⌖ = vista d'insieme di tutte le stanze */
     else if (a === 'fup' || a === 'fdn') { const s = sortedFloors(), i = s.findIndex(f => f.id === state.currentFloorId), j = i + (a === 'fup' ? 1 : -1); if (j >= 0 && j < s.length) { S.from = S.to = S.card = null; S.uh = []; SCfl.setFloor(s[j].id, {quiet: true}); FLOORFILTER.over = HIDE; fitSketch(); syncUI(); } else toast(a === 'fup' ? 'Sei al piano più alto' : 'Sei al piano più basso'); }
     else if (a === 'table') openTable(); else if (a === 'menu') openMenu(); else if (a === 'fine') finish(); else if (a === 'todo') { S.skip = new Set(); S.tool = null; S.from = S.to = null; nextTodo(); }
@@ -13689,7 +13750,7 @@ updateRoomList();
   function onTools(e) {
     const b = e.target.closest('[data-t]'); if (!b) return; const t = b.dataset.t;
     if (t === 'room') { S.card = null; S.to = null; S.from = null; S.selE = null; S.newRoom = true; S.focusN = null; S.tool = 'wall'; syncUI(); draw2D(); toast('Nuova stanza: disegnala in uno spazio libero, le altre restano in grigio. Quando è misurata, «🔗 Collega» la attacca dalla porta'); return; }
-    if (t === 'link') { S.card = null; S.to = null; S.from = null; S.linkA = null; S.tool = S.tool === 'link' ? null : 'link'; syncUI(); draw2D(); return; }
+    if (t === 'link') { S.card = null; S.to = null; S.from = null; S.linkA = null; S.linkW = null; S.tool = S.tool === 'link' ? null : 'link'; syncUI(); draw2D(); return; }
     S.card = null; S.to = null; S.from = null; S.op = null; S.uh = []; S.tool = S.tool === t ? null : t; syncUI();
   }
   function setView(v) {
@@ -13771,8 +13832,8 @@ updateRoomList();
     return best;
   }
   function labelAt(e) { const A = scr(nodeOf(e.a)), B = scr(nodeOf(e.b)), dx = B.x - A.x, dy = B.y - A.y, l = Math.hypot(dx, dy) || 1; return {x: (A.x + B.x) / 2 + dy / l * 16, y: (A.y + B.y) / 2 - dx / l * 16}; }
-  function labelNear(sp) {   /* la scritta della misura sta a 16 px dal muro: vale solo se il tocco è più vicino alla scritta che alla linea del muro */
-    let best = null, bd = 22; const hd = hidF(); sk().e.forEach(e => { const nA = nodeOf(e.a), nB = nodeOf(e.b); if (!nA || !nB || hd(e.a)) return; const q = labelAt(e), d = Math.hypot(q.x - sp.x, (q.y - sp.y) * 1.3);
+  function labelNear(sp, thr) {   /* la scritta della misura sta a 16 px dal muro: vale solo se il tocco è più vicino alla scritta che alla linea del muro */
+    let best = null, bd = thr || 22; const hd = hidF(); sk().e.forEach(e => { const nA = nodeOf(e.a), nB = nodeOf(e.b); if (!nA || !nB || hd(e.a)) return; const q = labelAt(e), d = Math.hypot(q.x - sp.x, (q.y - sp.y) * 1.3);
       const A = scr(nA), B = scr(nB), dx = B.x - A.x, dy = B.y - A.y, l2 = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((sp.x - A.x) * dx + (sp.y - A.y) * dy) / l2)), dl = Math.hypot(sp.x - A.x - dx * t, sp.y - A.y - dy * t);
       if (d < bd && d < dl) { bd = d; best = e; } }); return best; }
   function opMark(o) { const e = edgeOf(o.e); if (!e) return null; const A = scr(nodeOf(e.a)), B = scr(nodeOf(e.b)), t = visT(o); return {x: A.x + (B.x - A.x) * t, y: A.y + (B.y - A.y) * t}; }
@@ -13798,6 +13859,8 @@ updateRoomList();
         }
         S.from = nn ? {node: nn.id, x: nn.x, y: nn.y} : {node: null, x: w.x, y: w.y}; return syncUI();
       }
+      if (S.from.node != null && nodeOf(S.from.node)) { const q = nodeOf(S.from.node); S.from.x = q.x; S.from.y = q.y; }   /* dopo una misura lo schizzo si ridisegna in scala */
+      if (!nn && pxd(sp, scr(S.from)) >= 18) { const lb = labelNear(sp, 15); if (lb) return openEdit({type: 'edge', id: lb.id}); }   /* v29.4: scritta di un muro = sua misura; il disegno resta in pausa */
       if ((nn && S.from.node === nn.id) || (!nn && pxd(sp, scr(S.from)) < 18)) {   /* tocco sul punto dove sei arrivato: scheda dell'ultimo muro */
         const lw = S.from.node != null ? wallEdges().filter(e => e.b === S.from.node || e.a === S.from.node).sort((a, b) => b.id - a.id)[0] : null;
         if (lw) return openEdit({type: 'edge', id: lw.id}); return;
@@ -13807,7 +13870,19 @@ updateRoomList();
       S.to = nn ? {node: nn.id, x: nn.x, y: nn.y} : {node: null, x: w.x, y: w.y}; return quickEdge();
     }
     if (t === 'link') {   /* v29.1: porta della stanza nuova, poi la stessa porta nella stanza già rilevata */
-      const o = opNear(sp); if (!o || o.k !== 'door') return toast('Tocca una porta');
+      const o0 = opNear(sp), o = o0 && o0.k === 'door' ? o0 : null;
+      if (S.linkW != null || (!o && S.linkA == null)) {   /* v29.4: collegamento da muro */
+        const h = edgeNear(sp, ['wall']); if (!h) return toast(S.linkW != null ? 'Tocca il muro della stanza già rilevata' : 'Tocca una porta o un muro della stanza nuova');
+        if (S.linkW == null) { S.linkW = h.e.id; S.focusN = h.e.a; syncUI(); return draw2D(); }
+        const eN = edgeOf(S.linkW); if (!eN || eN.id === h.e.id) { S.linkW = null; syncUI(); return draw2D(); }
+        const RT = rootMap(); if (RT(eN.a) === RT(h.e.a)) return toast('È la stessa stanza: tocca il muro della stanza già rilevata (in grigio)');
+        const tv = eN.t > 0 ? eN.t : (h.e.t > 0 ? h.e.t : tDef()), old = (sk().links || []).find(l => l.k === 'wall' && l.eN === eN.id && l.eO === h.e.id);
+        S.card = {type: 'new', kind: 'wlink', title: 'Collega le stanze dal muro', eN: eN.id, eO: h.e.id, refO: old && old.ref != null ? old.ref : h.e.a, fields: [
+          {id: 'f1', label: 'Distanza tra le due facce (m) · se le stanze si toccano è lo spessore del muro; se c\'è un corridoio: muro + corridoio + muro', value: f2(old ? old.D : tv)},
+          {id: 'f2', label: 'Scostamento lungo il muro (m) · dall\'angolo segnato in azzurro al primo angolo della stanza nuova (0 = allineati, negativo se la stanza nuova sporge)', value: f2(old ? old.d : 0)}]};
+        S.linkW = null; syncUI(); return draw2D();
+      }
+      if (!o) return toast('Tocca una porta');
       if (S.linkA == null) { S.linkA = o.id; S.focusN = edgeOf(o.e).a; syncUI(); return draw2D(); }
       const oA = sk().o.find(x => x.id === S.linkA); if (!oA || oA.id === o.id) { S.linkA = null; syncUI(); return draw2D(); }
       const RT = rootMap(); if (RT(edgeOf(o.e).a) === RT(edgeOf(oA.e).a)) return toast('È la stessa stanza: tocca la porta nella stanza già rilevata (in grigio)');
@@ -13904,7 +13979,7 @@ updateRoomList();
     if (c.type === 'diag' || c.type === 'recheck') {
       const dg = c.type === 'diag'; ui.card.innerHTML = `<div class="sv-ct"><b>${esc(c.title)}</b><button type="button" data-a="cx">✕</button></div><div class="sv-lead">${esc(c.text)}</div><div class="sv-list">${c.fields.map(f => `<label>${esc(f.label)}<input id="${f.id}" inputmode="decimal" autocomplete="off" placeholder="${esc(f.ph || '')}" value="${esc(f.value)}"></label>`).join('')}</div><div class="sv-ca"><button type="button" class="pri" data-a="${dg ? 'dgo' : 'rgo'}">✓ ${dg ? 'Calcola' : 'Ricalcola'}</button><button type="button" data-a="${dg ? 'dskip' : 'rcont'}">${dg ? 'Salta' : 'Continua comunque'}</button></div>`; return;
     }
-    const isOp = c.kind === 'door' || c.kind === 'window' || c.kind === 'pillar' || c.kind === 'op', refRow = isOp ? `<div class="sv-ref"><span>Misura dall'<b id="svRefName"></b></span><button type="button" data-a="cswap">⇄ altro angolo</button></div><div class="sv-rh" id="svRefHint"></div>` : '';
+    const isOp = c.kind === 'door' || c.kind === 'window' || c.kind === 'pillar' || c.kind === 'op', refRow = c.kind === 'wlink' ? `<div class="sv-ref"><span>Angolo di partenza: <b style="color:#22d3ee">● azzurro</b></span><button type="button" data-a="clref">⇄ altro angolo</button></div>` : isOp ? `<div class="sv-ref"><span>Misura dall'<b id="svRefName"></b></span><button type="button" data-a="cswap">⇄ altro angolo</button></div><div class="sv-rh" id="svRefHint"></div>` : '';
     const lab = f => `<label>${esc(f.label)}<input id="${f.id}" inputmode="decimal" autocomplete="off" placeholder="${esc(f.ph || '')}" value="${esc(f.value)}"></label>`;
     const dirRow = c.dirs ? `<div class="sv-dir"><span>Direzione</span>${[[180, '←'], [90, '↑'], [270, '↓'], [0, '→']].map(([d, ar]) => `<button type="button" data-a="cdir" data-d="${d}" class="${sameDir(d, c.dir) ? 'on' : ''}">${ar}</button>`).join('')}</div>` : '';
     const tr = triRef(c), triRow = tr ? `<button type="button" class="sv-tribtn" data-a="ctri">📐 Angolo con il metro${c.tri && c.tri.open ? ' ▴' : ' ▾'}</button>` + (c.tri && c.tri.open ? `<div class="sv-tri"><div class="sv-rh">Angolo tra <b>${esc(tr.ref.name || 'il muro precedente')}</b> e questo muro: segna sui due muri, dal vertice, la stessa distanza e misura la corda tra i due punti.</div><div class="sv-cf"><label>Distanza dal vertice (m)<input id="tD" inputmode="decimal" autocomplete="off" value="${esc(c.tri.d)}"></label><label>Corda misurata (m)<input id="tC" inputmode="decimal" autocomplete="off" placeholder="corda" value="${esc(c.tri.c)}"></label></div><div class="sv-rh sv-res" id="tRes">${esc(triCalc(c).text)}</div></div>` : '') : '';
@@ -13946,13 +14021,14 @@ updateRoomList();
     if (c.type === 'new' && S.to && S.to.node == null && S.from) S.to = {node: null, x: S.from.x + Math.cos(c.dir * D2R) * c.len, y: S.from.y + Math.sin(c.dir * D2R) * c.len};
     draw2D();
   }
-  function onCard(e) { const b = e.target.closest('[data-a]'); if (!b) return; const a = b.dataset.a; if (a === 'ctri') { S.card.fields.forEach(f => { const i = $(f.id); if (i) f.value = i.value; }); const fn = $('fn'); if (fn) S.card.note = fn.value; S.card.tri = S.card.tri ? {...S.card.tri, open: !S.card.tri.open} : {open: true, d: '1,00', c: ''}; renderCard(); const ic = $(S.card.tri.open ? 'tC' : 'f1'); if (ic) ic.focus({preventScroll: true}); return; } if (a === 'dgo') return applyDiag(); if (a === 'dskip') return skipDiag(); if (a === 'rgo') return applyRecheck(); if (a === 'rcont') { S.card = null; return finalize(reconstruct()); } if (a === 'cdir') return setCardDir(+b.dataset.d); if (a === 'cswap') { S.card.fields.forEach(f => { const i = $(f.id); if (i) f.value = i.value; }); S.card.ref = S.card.ref === 'a' ? 'b' : 'a'; renderCard(); const i = $('f3'); if (i) i.focus({preventScroll: true}); draw2D(); return; } if (a === 'cx') { S.card = null; S.to = null; if (S.tool === 'door' || S.tool === 'window') S.from = null; syncUI(); } else if (a === 'cok') cardOk(); else if (a === 'cdel') cardDel();
+  function onCard(e) { const b = e.target.closest('[data-a]'); if (!b) return; const a = b.dataset.a; if (a === 'clref' && S.card && S.card.kind === 'wlink') { const e = edgeOf(S.card.eO); S.card.fields.forEach(f => { const i = $(f.id); if (i) f.value = i.value; }); if (e) S.card.refO = S.card.refO === e.a ? e.b : e.a; renderCard(); draw2D(); return; } if (a === 'ctri') { S.card.fields.forEach(f => { const i = $(f.id); if (i) f.value = i.value; }); const fn = $('fn'); if (fn) S.card.note = fn.value; S.card.tri = S.card.tri ? {...S.card.tri, open: !S.card.tri.open} : {open: true, d: '1,00', c: ''}; renderCard(); const ic = $(S.card.tri.open ? 'tC' : 'f1'); if (ic) ic.focus({preventScroll: true}); return; } if (a === 'dgo') return applyDiag(); if (a === 'dskip') return skipDiag(); if (a === 'rgo') return applyRecheck(); if (a === 'rcont') { S.card = null; return finalize(reconstruct()); } if (a === 'cdir') return setCardDir(+b.dataset.d); if (a === 'cswap') { S.card.fields.forEach(f => { const i = $(f.id); if (i) f.value = i.value; }); S.card.ref = S.card.ref === 'a' ? 'b' : 'a'; renderCard(); const i = $('f3'); if (i) i.focus({preventScroll: true}); draw2D(); return; } if (a === 'cx') { S.card = null; S.to = null; if (S.tool === 'door' || S.tool === 'window') S.from = null; syncUI(); } else if (a === 'cok') cardOk(); else if (a === 'cdel') cardDel();
     else if (a === 'clater') { const c = S.card, v = id => { const i = $(id); return i ? num(i.value) : null; }; if (c.kind === 'wall') { const L = v('f1'); return confirmEdge(L > 0 ? L : null, true); } return confirmOp(v('f1'), c.kind === 'window' || c.kind === 'pillar' ? v('f2') : null, v('f3'), true); }
     else if (a === 'c2wall') toWall();
     else if (a === 'cskip') { const c = S.card; (S.skip || (S.skip = new Set())).add((c.kind === 'edge' ? 'e' : 'o') + c.id); nextTodo(); } }
   function cardOk() {
     const c = S.card; if (!c) return; if (c.type === 'diag') return applyDiag(); if (c.type === 'recheck') return applyRecheck(); const v = id => { const i = $(id); return i ? num(i.value) : null; };
     if (c.kind === 'link') return confirmLink(v('f1'));
+    if (c.kind === 'wlink') return confirmWLink(v('f1'), v('f2'));
     if (c.type === 'new') return c.kind === 'wall' || c.kind === 'close' ? confirmEdge(v('f1')) : confirmOp(v('f1'), c.kind === 'window' || c.kind === 'pillar' ? v('f2') : null, v('f3'));
     if (c.kind === 'edge') {
       const e = edgeOf(c.id); if (!e) return; const L = v('f1'), a = v('f2'), h = v('f3');
@@ -13971,6 +14047,14 @@ updateRoomList();
     if (c.kind === 'edge') { s.o = s.o.filter(o => o.e !== c.id); s.e = s.e.filter(e => e.id !== c.id); s.n = s.n.filter(n => s.e.some(e => e.a === n.id || e.b === n.id) || (S.from && S.from.node === n.id)); }
     else { s.o = s.o.filter(o => o.id !== c.id); if (s.links) s.links = s.links.filter(l => l.o !== c.id && l.to !== c.id); }
     S.card = null; checkpoint(); syncUI();
+  }
+  function confirmWLink(D, d) {   /* v29.4 */
+    const c = S.card, s0 = sk(); if (!(D > 0.02 && D < 30)) return toast('Scrivi la distanza tra le due facce (es. 0,30)'); if (d == null || Math.abs(d) > 100) return toast('Scrivi lo scostamento (0 se gli angoli sono allineati)');
+    D = Math.round(D * 100) / 100; d = Math.round(d * 100) / 100;
+    s0.links = (s0.links || []).filter(l => !(l.k === 'wall' && (l.eN === c.eN || (l.eN === c.eO && l.eO === c.eN)))); s0.links.push({k: 'wall', eN: c.eN, eO: c.eO, D, d, ref: c.refO});
+    if (D < 0.7) [c.eN, c.eO].forEach(id => { const e = edgeOf(id); if (e) e.t = D; });   /* muro in comune: stesso spessore */
+    S.card = null; S.tool = null; S.focusN = null; S.newRoom = false; checkpoint(); toScale(); fitSketch(); syncUI(); draw2D();
+    toast(D < 0.7 ? 'Stanze collegate dal muro in comune' : 'Stanze collegate attraverso il corridoio');
   }
   function confirmLink(T) {   /* v29.1 */
     const c = S.card, s0 = sk(); if (!(T > 0.02 && T < 1.5)) return toast('Scrivi lo spessore del muro (es. 0,30)');
@@ -14148,6 +14232,9 @@ updateRoomList();
     if (DR && DR.live) { const t = DR.live, tw = cx.measureText(t).width + 16, q = DR.at; cx.fillStyle = 'rgba(15,23,42,.94)'; cx.fillRect(q.x - tw / 2, q.y - 52, tw, 26); cx.strokeStyle = '#22d3ee'; cx.lineWidth = 1.5; cx.strokeRect(q.x - tw / 2, q.y - 52, tw, 26); cx.fillStyle = '#e0f2fe'; cx.fillText(t, q.x, q.y - 39); }
     if (S.card && S.card.ref && opEdge()) { const e = opEdge(), p = scr(nodeOf(S.card.ref === 'b' ? e.b : e.a)); cx.beginPath(); cx.arc(p.x, p.y, 14, 0, Math.PI * 2); cx.lineWidth = 3; cx.strokeStyle = '#fbbf24'; cx.stroke(); }
     if (S.from && S.from.edge) { const e = edgeOf(S.from.edge); if (e) { const A = scr(nodeOf(e.a)), B = scr(nodeOf(e.b)); [S.from, S.to].filter(Boolean).forEach(q => { const x = A.x + (B.x - A.x) * q.t, y = A.y + (B.y - A.y) * q.t; cx.beginPath(); cx.arc(x, y, 8, 0, Math.PI * 2); cx.fillStyle = S.tool === 'door' ? '#fb923c' : S.tool === 'pillar' ? '#a78bfa' : '#38bdf8'; cx.fill(); cx.lineWidth = 2; cx.strokeStyle = '#fff'; cx.stroke(); }); } }
+    { const hl = []; if (S.tool === 'link' && S.linkW != null) hl.push(S.linkW); if (S.card && S.card.kind === 'wlink') hl.push(S.card.eN, S.card.eO);
+      hl.forEach(id => { const e = edgeOf(id); if (!e) return; const A = scr(nodeOf(e.a)), B = scr(nodeOf(e.b)); cx.beginPath(); cx.moveTo(A.x, A.y); cx.lineTo(B.x, B.y); cx.lineWidth = 7; cx.strokeStyle = 'rgba(125,211,252,.55)'; cx.stroke(); });
+      if (S.card && S.card.kind === 'wlink' && nodeOf(S.card.refO)) { const p = scr(nodeOf(S.card.refO)); cx.beginPath(); cx.arc(p.x, p.y, 13, 0, Math.PI * 2); cx.fillStyle = 'rgba(34,211,238,.45)'; cx.fill(); cx.lineWidth = 3; cx.strokeStyle = '#22d3ee'; cx.stroke(); } }
     if (S.tool === 'link' && S.linkA != null) { const oo = s.o.find(x => x.id === S.linkA), mk = oo && opMark(oo); if (mk) { cx.beginPath(); cx.arc(mk.x, mk.y, 15, 0, Math.PI * 2); cx.lineWidth = 3; cx.strokeStyle = '#7dd3fc'; cx.stroke(); } }
     cx.restore();
   };
@@ -22037,8 +22124,10 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
    SC_REL.v è l'unica versione: titolo, Guida, file salvato, avvisi e riga messaggi la leggono da qui.
    ======================================================================== */
 window.SC_REL = {
-  v: '29.2', d: '02/11/2026',
+  v: '29.4', d: '02/11/2026',
   news: [
+    ['29.4', 'Rilievo: «🔗 Collega» anche dal muro. Tocchi un muro della stanza nuova, poi il muro della stanza già rilevata che le sta accanto (o di fronte, oltre un corridoio che non rilevi); scrivi la distanza tra le due facce (spessore del muro, oppure muro + corridoio + muro) e lo scostamento dall’angolo segnato in azzurro. La stanza va al suo posto; se si toccano, nella pianta il muro in comune è uno solo. Mentre disegni, se tocchi la scritta di un muro si apre la sua misura; dopo «Conferma» riprendi a disegnare dallo stesso punto.'],
+    ['29.3', 'Rilievo: ↩ in alto annulla qualsiasi operazione del rilievo (muri, misure scritte, spostamenti di punti e muri, porte, finestre, pilastri, chiusure, collegamenti, cancellazioni), un passo alla volta; ↪ ripete quello annullato. Durante il disegno il punto da cui riprendi torna al suo posto. Sulla tastiera: Ctrl+Z e Ctrl+Y.'],
     ['29.2', 'Rilievo: pulsante «⌫ Togli ultimo punto» in basso mentre disegni muri o linee di chiusura: toglie l’ultimo tratto e riprendi dal punto precedente, anche più volte di seguito. Anche ↩ in alto, durante il disegno, fa lo stesso invece di interrompere tutto.'],
     ['29.1', 'Rilievo una stanza alla volta: «🏠 Stanza +» inizia una stanza nuova mentre le altre restano in grigio (o spente, dal menu ⋮); «🔗 Collega» la attacca dalla porta: tocchi la porta della stanza nuova, poi la stessa porta nella stanza già rilevata e scrivi lo spessore del muro alla spalletta; la stanza va al suo posto e nella pianta il muro in comune non si raddoppia. ⌖ mostra tutte le stanze insieme. Schizzo più pulito: muri sottili, una sola scritta per muro, porte e finestre con la sigla (P1, F2: i dettagli nella scheda), scritte sovrapposte nascoste finché non ingrandisci. Zoom a due dita senza salti (prima, alzando un dito, la vista tornava indietro).'],
     ['29.0', 'Cursore sfalsato per tutto ciò che si trascina col dito: anche linee impianto, controsoffitti, false travi, LED e aree spostati interi, gli angoli dei pilastri a forma libera e ogni altro oggetto che prima seguiva il dito. Rilievo stanza per stanza: con «Muro» tocchi un muro già rilevato e la nuova stanza parte da lì (muro in comune, anche solo un tratto); per finire tocchi di nuovo il muro in comune: il muro si divide e i tratti si misurano a parte (finché non li misuri sono stimati «≈» e la loro somma resta la misura del muro intero). Finestre e pannelli: tutti con la maniglia ⠿⠿⠿ e lo stesso aspetto, si riaprono nell\'ultima posizione e, se coprirebbero il punto appena toccato, si aprono dall\'altra parte dello schermo.'],
