@@ -552,3 +552,27 @@ NOVITÀ v28.5 (rilievo)
   e, se un punto nuovo esce dallo schermo, la vista scorre senza cambiare zoom.
 - Se non hai toccato lo zoom, il disegno continua ad adattarsi da solo per restare tutto visibile.
   «⌖ Adatta» riporta a questa modalità automatica.
+
+NOVITÀ v29.0
+- Cursore sfalsato per tutto ciò che si trascina col dito: ora anche linee impianto (acqua, scarico, elettrico),
+  controsoffitti, false travi, LED e aree spostati interi, gli angoli dei pilastri a forma libera e ogni altro
+  oggetto che prima seguiva il dito. Il dito non copre più né il punto di partenza né quello d'arrivo.
+- Rilievo stanza per stanza: con «Muro» tocca un muro già rilevato e la nuova stanza parte da lì (muro in comune,
+  anche solo un tratto). Per finire tocca di nuovo il muro in comune. Il muro si divide nel punto toccato:
+  i tratti mostrano «≈» finché non li misuri; misurandone uno, gli altri si ricalcolano
+  in modo che la somma resti la misura del muro intero. Lo schizzo in scala mostra tutto il piano.
+- Corretto: nel rilievo, due muri che continuano dritti venivano allungati dello spessore del muro.
+- Finestre e pannelli: tutti con la maniglia ⠿⠿⠿ in cima e lo stesso aspetto; si riaprono nell'ultima posizione
+  in cui li hai lasciati e, se coprirebbero il punto appena toccato, si aprono dall'altra parte dello schermo.
+  Doppio tocco sulla maniglia: posizione iniziale.
+
+NOVITÀ v29.1 (rilievo)
+- Una stanza alla volta: «🏠 Stanza +» inizia una stanza nuova; le altre restano in grigio
+  (oppure spente: menu ⋮ › «Le altre stanze, mentre ne rilevi una»). ⌖ mostra tutte le stanze insieme.
+- «🔗 Collega»: tocca la porta della stanza nuova, poi la stessa porta nella stanza già rilevata,
+  e scrivi lo spessore del muro misurato sulla spalletta. La stanza nuova va al suo posto;
+  nella pianta il muro in comune e la porta non si raddoppiano.
+- Schizzo più pulito: muri sottili, una sola scritta per muro (lettera con «?» o misura),
+  porte e finestre con la sigla (P1, F2: i dettagli si vedono toccandole), scritte sovrapposte nascoste
+  finché non ingrandisci.
+- Zoom a due dita senza salti: prima, alzando un dito dopo il pizzico, la vista tornava indietro.
