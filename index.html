@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v29.5</title>
+<title>SimplyCAD Pro · v30.0</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -612,7 +612,7 @@
   .sv-top button{min-width:40px;height:38px;border-radius:8px;border:1px solid #3c4260;background:#262b42;color:#e5e7eb;font-size:16px;cursor:pointer;padding:0 8px;flex:0 0 auto}
   .sv-top .sv-tab{font-size:13px;font-weight:600;color:#7dd3fc}.sv-top .sv-fine{background:#1677a8;border-color:#38bdf8;color:#fff}
   .sv-fl{display:flex;align-items:center;gap:2px;flex:1 1 auto;justify-content:center;min-width:0}.sv-fl b{font-size:12px;color:#7dd3fc;padding:0 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:110px}.sv-fl button{min-width:30px;padding:0 4px;font-size:12px}
-  .sv-tools{position:fixed;left:6px;top:58px;z-index:2000;display:none;flex-direction:column;gap:8px;font-family:'Segoe UI',sans-serif}
+  .sv-tools{position:fixed;left:6px;top:58px;z-index:2000;display:none;flex-direction:column;gap:8px;max-height:calc(100dvh - 66px);overflow-y:auto;scrollbar-width:none;font-family:'Segoe UI',sans-serif}
   .sv-tools button{width:58px;height:58px;border-radius:14px;border:2px solid #3c4260;background:#202337f2;color:#cbd5e1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;cursor:pointer;padding:0;box-shadow:0 4px 12px #0007}
   .sv-tools button i{font-style:normal;font-size:22px;line-height:1.1}.sv-tools button span{font-size:10.5px;font-weight:600}
   .sv-tools button.on{background:#1677a8;border-color:#38bdf8;color:#fff}
@@ -622,6 +622,7 @@
   .sv-cf input{background:#11151f;border:1px solid #3c4260;border-radius:9px;color:#fff;padding:8px 10px;font:600 18px 'Segoe UI',sans-serif;min-height:46px;box-sizing:border-box;width:100%;min-width:0}.sv-cf input:focus{border-color:#38bdf8;outline:none}
   .sv-ca{display:flex;gap:8px;margin-top:8px}.sv-ca button{flex:1;min-height:46px;border-radius:10px;border:1px solid #526080;background:#343955;color:#eee;font:700 15px 'Segoe UI',sans-serif;cursor:pointer}.sv-ca .pri{background:#1677a8;border-color:#38bdf8;flex:3}.sv-ca .dng{background:#5b2330;border-color:#a33}
   .sv-top .sv-undo{min-width:46px;font-size:21px;font-weight:700;background:#1e3a5f;border-color:#3b82f6}.sv-top .sv-undo.sv-off{opacity:.45}@media (max-width:480px){.sv-top{gap:2px!important;padding:0 3px!important}.sv-top button{min-width:32px!important;padding:0 4px!important;font-size:14px!important}.sv-top .sv-undo{min-width:38px!important;font-size:19px!important}.sv-fl b{min-width:40px;max-width:62px!important;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sv-fl button{min-width:22px!important}.sv-top .sv-tab{padding:0 5px!important;font-size:13px!important}}
+.sv-rot{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;margin:0 0 7px}.sv-rot button{min-width:42px;min-height:42px;padding:0 5px;border-radius:9px;border:1px solid #facc15;background:#3f3a12;color:#fef9c3;font:600 13px 'Segoe UI',sans-serif;cursor:pointer}
 .sv-unpt{display:block;margin:0 auto 7px;padding:10px 18px;min-height:44px;border-radius:10px;border:1px solid #f87171;background:#7f1d1d;color:#fff;font:600 15px 'Segoe UI',sans-serif;cursor:pointer}.sv-unpt:active{background:#991b1b}
 .sv-hint{position:fixed;left:72px;right:8px;bottom:10px;z-index:2040;background:#1d2134ee;border:1px solid #3c4260;border-radius:10px;padding:9px 12px;font:13px 'Segoe UI',sans-serif;color:#cbd5e1;text-align:center;display:none}
   .sv-over{position:fixed;inset:0;z-index:3000;background:#161a2b;display:none;flex-direction:column;color:#e5e7eb;font-family:'Segoe UI',sans-serif}
@@ -7018,299 +7019,17 @@ last = snap();
 /* ========================================================================
    28) VETTORIZZAZIONE IMMAGINI (Hough transform)
    ======================================================================== */
-function vectorizeImageFile(file, callback) {
-  const img = new Image();
-  img.onload = () => {
-    try {
-      const result = houghVectorize(img);
-      callback(null, result);
-    } catch (err) { callback(err); }
-  };
-  img.onerror = () => callback(new Error('Impossibile leggere l\'immagine'));
-  img.src = URL.createObjectURL(file);
-}
 
-function houghVectorize(img) {
-  // 1. Prepara canvas di lavoro
-  const MAXDIM = 1600;
-  const scale = Math.min(1, MAXDIM / Math.max(img.width, img.height));
-  const W = Math.round(img.width * scale);
-  const H = Math.round(img.height * scale);
-  const canvas = document.createElement('canvas');
-  canvas.width = W; canvas.height = H;
-  const g = canvas.getContext('2d');
-  g.drawImage(img, 0, 0, W, H);
-  const imgData = g.getImageData(0, 0, W, H).data;
 
-  // 2. Grayscale
-  const gray = new Uint8Array(W * H);
-  for (let i = 0, j = 0; i < imgData.length; i += 4, j++) {
-    gray[j] = (imgData[i]*0.299 + imgData[i+1]*0.587 + imgData[i+2]*0.114);
-  }
-
-  // 3. Edge detection (Sobel)
-  const edges = new Uint8Array(W * H);
-  const edgePts = [];
-  for (let y = 1; y < H - 1; y++) {
-    for (let x = 1; x < W - 1; x++) {
-      const i = y * W + x;
-      const gx = -gray[i-W-1] - 2*gray[i-1] - gray[i+W-1] + gray[i-W+1] + 2*gray[i+1] + gray[i+W+1];
-      const gy = -gray[i-W-1] - 2*gray[i-W] - gray[i-W+1] + gray[i+W-1] + 2*gray[i+W] + gray[i+W+1];
-      const mag = Math.sqrt(gx*gx + gy*gy);
-      if (mag > 120) { edges[i] = 1; edgePts.push(x, y); }
-    }
-  }
-  if (edgePts.length < 50) throw new Error('Nessun bordo rilevato: l\'immagine è troppo chiara o uniforme.');
-
-  // 4. Hough transform
-  const thetaSteps = 180;
-  const rhoMax = Math.ceil(Math.sqrt(W*W + H*H));
-  const rhoOffset = rhoMax;
-  const accum = new Int32Array(thetaSteps * (rhoMax * 2));
-  const cosT = new Float32Array(thetaSteps);
-  const sinT = new Float32Array(thetaSteps);
-  for (let t = 0; t < thetaSteps; t++) {
-    const theta = t * Math.PI / thetaSteps;
-    cosT[t] = Math.cos(theta);
-    sinT[t] = Math.sin(theta);
-  }
-  for (let k = 0; k < edgePts.length; k += 2) {
-    const x = edgePts[k], y = edgePts[k + 1];
-    for (let t = 0; t < thetaSteps; t++) {
-      const rho = Math.round(x * cosT[t] + y * sinT[t]) + rhoOffset;
-      accum[t * (rhoMax * 2) + rho]++;
-    }
-  }
-
-  // 5. Estrai picchi con non-max suppression
-  const minVotes = Math.max(30, Math.round(Math.min(W, H) / 8));
-  const lines = [];
-  for (let t = 0; t < thetaSteps; t++) {
-    for (let r = 1; r < rhoMax * 2 - 1; r++) {
-      const val = accum[t * (rhoMax * 2) + r];
-      if (val < minVotes) continue;
-      let isMax = true;
-      const tRange = 3;
-      const rRange = 3;
-      for (let dt = -tRange; dt <= tRange && isMax; dt++) {
-        for (let dr = -rRange; dr <= rRange; dr++) {
-          if (dt === 0 && dr === 0) continue;
-          const tt = t + dt, rr = r + dr;
-          if (tt < 0 || tt >= thetaSteps || rr < 0 || rr >= rhoMax * 2) continue;
-          if (accum[tt * (rhoMax * 2) + rr] > val) { isMax = false; break; }
-        }
-      }
-      if (!isMax) continue;
-      lines.push({ t, rho: r - rhoOffset, votes: val });
-    }
-  }
-
-  if (!lines.length) throw new Error('Nessuna linea rilevata. Prova con un\'immagine con più contrasto.');
-
-  // 6. Per ogni linea, trova l'estensione (segmento)
-  // Proietta tutti gli edge points vicini sulla linea
-  const eps = 2.5;
-  const segments = [];
-  for (const line of lines) {
-    const theta = line.t * Math.PI / thetaSteps;
-    const ct = Math.cos(theta), st = Math.sin(theta);
-    // Direzione della linea (perpendicolare a normale)
-    const dx = -st, dy = ct;
-    let minP = Infinity, maxP = -Infinity;
-    let count = 0;
-    for (let k = 0; k < edgePts.length; k += 2) {
-      const x = edgePts[k], y = edgePts[k + 1];
-      const dist = Math.abs(x * ct + y * st - line.rho);
-      if (dist > eps) continue;
-      const proj = x * dx + y * dy;
-      if (proj < minP) minP = proj;
-      if (proj > maxP) maxP = proj;
-      count++;
-    }
-    if (maxP - minP > 8) {
-      // Calcola i due punti estremi nel sistema (x,y)
-      const x1 = ct * line.rho + dx * minP;
-      const y1 = st * line.rho + dy * minP;
-      const x2 = ct * line.rho + dx * maxP;
-      const y2 = st * line.rho + dy * maxP;
-      segments.push({ x1, y1, x2, y2, length: maxP - minP });
-    }
-  }
-
-  // 7. Unisci segmenti collineari vicini
-  const merged = mergeSegments(segments, 4);
-
-  // 8. Filtra segmenti troppo corti
-  const finalSegs = merged.filter(s => s.length > 15);
-
-  // 9. Scala il fattore di ridimensionamento (torna a coordinate immagine originali)
-  // e opzionalmente ridimensiona per l'importazione
-  const unitScale = parseFloat(document.getElementById('importScale').value);
-  const userScale = (!isNaN(unitScale) && unitScale > 0) ? unitScale : (1 / 100); // default 1px = 1cm = 0.01m
-  // Immagine in coordinate Y crescente verso il basso → invertiamo Y
-  const result = { walls: [], labels: [] };
-  for (const s of finalSegs) {
-    const p1 = { x: s.x1 / scale * userScale, y: -(s.y1 / scale * userScale) };
-    const p2 = { x: s.x2 / scale * userScale, y: -(s.y2 / scale * userScale) };
-    result.walls.push({
-      id: newId(),
-      p1: { x: r6(p1.x), y: r6(p1.y) },
-      p2: { x: r6(p2.x), y: r6(p2.y) },
-      layerId: state.currentLayerId
-    });
-  }
-  return result;
-}
-
-function mergeSegments(segs, angleTolDeg) {
-  // Semplice merge: se due segmenti sono quasi collineari e vicini, uniscili
-  const angleTol = angleTolDeg * Math.PI / 180;
-  const used = new Array(segs.length).fill(false);
-  const out = [];
-  for (let i = 0; i < segs.length; i++) {
-    if (used[i]) continue;
-    const a = segs[i];
-    let ax1 = a.x1, ay1 = a.y1, ax2 = a.x2, ay2 = a.y2;
-    const angA = Math.atan2(ay2 - ay1, ax2 - ax1);
-    used[i] = true;
-    for (let j = i + 1; j < segs.length; j++) {
-      if (used[j]) continue;
-      const b = segs[j];
-      const angB = Math.atan2(b.y2 - b.y1, b.x2 - b.x1);
-      let dA = Math.abs(angA - angB);
-      while (dA > Math.PI) dA = Math.abs(dA - 2*Math.PI);
-      if (Math.min(dA, Math.PI - dA) > angleTol) continue;
-      // Controlla distanza perpendicolare dal centro di b alla linea a
-      const cx = (b.x1 + b.x2) / 2, cy = (b.y1 + b.y2) / 2;
-      const distLine = Math.abs((ax2 - ax1) * (ay1 - cy) - (ax1 - cx) * (ay2 - ay1)) / Math.max(1, Math.hypot(ax2 - ax1, ay2 - ay1));
-      if (distLine > 5) continue;
-      // Unisci estendendo il range
-      const proj = (x, y) => (x - ax1) * Math.cos(angA) + (y - ay1) * Math.sin(angA);
-      const pMin = Math.min(proj(ax1, ay1), proj(ax2, ay2), proj(b.x1, b.y1), proj(b.x2, b.y2));
-      const pMax = Math.max(proj(ax1, ay1), proj(ax2, ay2), proj(b.x1, b.y1), proj(b.x2, b.y2));
-      ax1 = ax1 + Math.cos(angA) * (pMin - proj(ax1, ay1));
-      ay1 = ay1 + Math.sin(angA) * (pMin - proj(ax1, ay1));
-      ax2 = ax1 + Math.cos(angA) * (pMax - pMin);
-      ay2 = ay1 + Math.sin(angA) * (pMax - pMin);
-      used[j] = true;
-    }
-    out.push({ x1: ax1, y1: ay1, x2: ax2, y2: ay2, length: Math.hypot(ax2 - ax1, ay2 - ay1) });
-  }
-  return out;
-}
 
 /* v11.28: «Importa & vettorizza JPEG/PNG» tolto dal menu (sostituito da Riconosci planimetria).
-   Il motore (vectorizeImageFile / houghVectorize) resta qui sopra per poterlo ricollegare. */
+   v30.0: il vecchio motore (vectorizeImageFile / houghVectorize) è stato tolto: non era più collegato a nulla. */
 
 /* ========================================================================
    28b) PLANIMETRIA RASTER → MURI (con spessore), PORTE, FINESTRE, TESTI
    ======================================================================== */
-function ppDilate(M, W, H, d) {
-  const A = new Uint8Array(W * H), B = new Uint8Array(W * H);
-  for (let y = 0; y < H; y++) {
-    let c = 0; const r = y * W;
-    for (let x = -d; x < W + d; x++) {
-      if (x + d >= 0 && x + d < W) c += M[r + x + d];
-      if (x - d - 1 >= 0 && x - d - 1 < W) c -= M[r + x - d - 1];
-      if (x >= 0 && x < W) A[r + x] = c > 0 ? 1 : 0;
-    }
-  }
-  for (let x = 0; x < W; x++) {
-    let c = 0;
-    for (let y = -d; y < H + d; y++) {
-      if (y + d >= 0 && y + d < H) c += A[(y + d) * W + x];
-      if (y - d - 1 >= 0 && y - d - 1 < H) c -= A[(y - d - 1) * W + x];
-      if (y >= 0 && y < H) B[y * W + x] = c > 0 ? 1 : 0;
-    }
-  }
-  return B;
-}
 
 /* Analisi pura (px): binarizza, isola i tratti spessi ortogonali, li converte in segmenti */
-function ppAnalyze(gray, W, H, o) {
-  const I = new Float64Array((W + 1) * (H + 1));
-  for (let y = 0; y < H; y++) {
-    let s = 0;
-    for (let x = 0; x < W; x++) { s += gray[y * W + x]; I[(y + 1) * (W + 1) + x + 1] = I[y * (W + 1) + x + 1] + s; }
-  }
-  const r = Math.max(12, Math.round(Math.max(W, H) / 50));
-  let M = new Uint8Array(W * H);
-  for (let y = 0; y < H; y++) {
-    const y0 = Math.max(0, y - r), y1 = Math.min(H, y + r + 1);
-    for (let x = 0; x < W; x++) {
-      const x0 = Math.max(0, x - r), x1 = Math.min(W, x + r + 1);
-      const m = (I[y1 * (W + 1) + x1] - I[y0 * (W + 1) + x1] - I[y1 * (W + 1) + x0] + I[y0 * (W + 1) + x0]) / ((x1 - x0) * (y1 - y0));
-      const g = gray[y * W + x];
-      if (g < m * 0.82 && g < 190) M[y * W + x] = 1;
-    }
-  }
-  const dil = o.dil | 0;
-  if (dil > 0) M = ppDilate(M, W, H, dil);
-  const N = W * H, Hr = new Uint16Array(N), Vr = new Uint16Array(N);
-  for (let y = 0; y < H; y++) {
-    let x = 0;
-    while (x < W) {
-      if (!M[y * W + x]) { x++; continue; }
-      let e = x; while (e < W && M[y * W + e]) e++;
-      for (let k = x; k < e; k++) Hr[y * W + k] = Math.min(e - x, 65535);
-      x = e;
-    }
-  }
-  for (let x = 0; x < W; x++) {
-    let y = 0;
-    while (y < H) {
-      if (!M[y * W + x]) { y++; continue; }
-      let e = y; while (e < H && M[e * W + x]) e++;
-      for (let k = y; k < e; k++) Vr[k * W + x] = Math.min(e - y, 65535);
-      y = e;
-    }
-  }
-  const L0 = Math.max(20, Math.round(Math.max(W, H) / 60));
-  const hist = new Float64Array(256);
-  for (let i = 0; i < N; i++) {
-    if (!M[i]) continue;
-    if (Hr[i] >= 2 * L0 && Vr[i] >= 3 && Vr[i] < 256 && Vr[i] * 3 <= Hr[i]) hist[Vr[i]]++;
-    if (Vr[i] >= 2 * L0 && Hr[i] >= 3 && Hr[i] < 256 && Hr[i] * 3 <= Vr[i]) hist[Hr[i]]++;
-  }
-  let tw = 0, hb = 0;
-  for (let t = 3; t < 256; t++) if (hist[t] > hb) { hb = hist[t]; tw = t; }
-  if (!tw) throw new Error('Nessun muro spesso rilevato: prova "Unisci doppia linea" > 0 oppure un\'immagine con più contrasto.');
-  const tmin = o.tmin > 0 ? o.tmin : Math.max(3, Math.round(tw * 0.5));
-  const tmax = Math.round(Math.max(tw, tmin) * 2.2);
-  const Lmin = Math.max(14, Math.round(tw * 2.5));
-  const segs = [], vis = new Uint8Array(N), stack = new Int32Array(N);
-  for (const hz of [1, 0]) {
-    vis.fill(0);
-    const ok = i => M[i] && (hz ? (Vr[i] >= tmin && Vr[i] <= tmax && Hr[i] >= Lmin) : (Hr[i] >= tmin && Hr[i] <= tmax && Vr[i] >= Lmin));
-    for (let s = 0; s < N; s++) {
-      if (vis[s] || !ok(s)) continue;
-      let sp = 0, n = 0, x0 = W, x1 = 0, y0 = H, y1 = 0;
-      stack[sp++] = s; vis[s] = 1;
-      while (sp) {
-        const i = stack[--sp], x = i % W, y = (i - x) / W;
-        n++; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
-        if (x > 0 && !vis[i - 1] && ok(i - 1)) { vis[i - 1] = 1; stack[sp++] = i - 1; }
-        if (x < W - 1 && !vis[i + 1] && ok(i + 1)) { vis[i + 1] = 1; stack[sp++] = i + 1; }
-        if (y > 0 && !vis[i - W] && ok(i - W)) { vis[i - W] = 1; stack[sp++] = i - W; }
-        if (y < H - 1 && !vis[i + W] && ok(i + W)) { vis[i + W] = 1; stack[sp++] = i + W; }
-      }
-      const L = hz ? x1 - x0 + 1 : y1 - y0 + 1, P = hz ? y1 - y0 + 1 : x1 - x0 + 1;
-      if (L < Lmin || P > tmax * 1.3) continue;
-      segs.push(hz ? { h: 1, c: (y0 + y1 + 1) / 2, a: x0 + dil, b: x1 + 1 - dil, t: n / L } : { h: 0, c: (x0 + x1 + 1) / 2, a: y0 + dil, b: y1 + 1 - dil, t: n / L });
-    }
-  }
-  const tol = tw * 1.3;
-  for (const s of segs) for (const e of ['a', 'b']) {
-    const p = s[e]; let best = null, bd = 1e9;
-    for (const q of segs) {
-      if (q.h === s.h) continue;
-      const d = Math.abs(q.c - p);
-      if (d < tol && s.c >= q.a - tol && s.c <= q.b + tol && d < bd) { bd = d; best = q; }
-    }
-    if (best) s[e] = best.c;
-  }
-  return { segs, tw, M, W, H, dil };
-}
 
 /* Scala (m/px) dalle quote lette dall'OCR: cluster dei rapporti valore/lunghezza dei muri orizzontali vicini */
 function ppScaleFromWords(words, res) {
@@ -8401,52 +8120,6 @@ function parseSVG(text) {
     labels.forEach(l => { l.x = r6(l.x/1000); l.y = r6(l.y/1000); });
   }
   return { walls, labels };
-}
-async function parsePDFVec(arrayBuffer) {
-  const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
-  const page = await pdf.getPage(1);
-  const opList = await page.getOperatorList();
-  const OPS = pdfjsLib.OPS;
-  const walls = [];
-  let ctm = [1, 0, 0, 1, 0, 0];
-  const stack = [];
-  const mul = (a, b) => [
-    a[0]*b[0] + a[2]*b[1], a[1]*b[0] + a[3]*b[1],
-    a[0]*b[2] + a[2]*b[3], a[1]*b[2] + a[3]*b[3],
-    a[0]*b[4] + a[2]*b[5] + a[4], a[1]*b[4] + a[3]*b[5] + a[5]
-  ];
-  const ap = (x, y, m) => ({ x: m[0]*x + m[2]*y + m[4], y: m[1]*x + m[3]*y + m[5] });
-  for (let i = 0; i < opList.fnArray.length; i++) {
-    const fn = opList.fnArray[i];
-    const args = opList.argsArray[i];
-    if (fn === OPS.save) stack.push([...ctm]);
-    else if (fn === OPS.restore) ctm = stack.pop() || [1, 0, 0, 1, 0, 0];
-    else if (fn === OPS.transform) ctm = mul(ctm, args);
-    else if (fn === OPS.constructPath) {
-      const ops = args[0], coords = args[1];
-      let ci = 0, cur = null, start = null;
-      for (const op of ops) {
-        if (op === OPS.moveTo) { cur = ap(coords[ci], coords[ci+1], ctm); ci += 2; start = cur; }
-        else if (op === OPS.lineTo) {
-          const p = ap(coords[ci], coords[ci+1], ctm); ci += 2;
-          if (cur) walls.push({ id: newId(), p1: cur, p2: p, layerId: state.currentLayerId });
-          cur = p;
-        }
-        else if (op === OPS.curveTo) ci += 6;
-        else if (op === OPS.curveTo2 || op === OPS.curveTo3) ci += 4;
-        else if (op === OPS.closePath) {
-          if (cur && start) walls.push({ id: newId(), p1: cur, p2: start, layerId: state.currentLayerId });
-          cur = start;
-        }
-        else if (op === OPS.rectangle) {
-          const x = coords[ci], y = coords[ci+1], w = coords[ci+2], h = coords[ci+3]; ci += 4;
-          const c = [ap(x,y,ctm), ap(x+w,y,ctm), ap(x+w,y+h,ctm), ap(x,y+h,ctm)];
-          for (let k = 0; k < 4; k++) walls.push({ id: newId(), p1: c[k], p2: c[(k+1)%4], layerId: state.currentLayerId });
-        }
-      }
-    }
-  }
-  return { walls, labels: [] };
 }
 function moveImportToNewLayer(model, name) {
   const cur = state.currentLayerId;
@@ -13462,9 +13135,9 @@ updateRoomList();
     let ox = 0, k = 0; const placed = new Map();
     comps.forEach(list => { const xs = list.map(i => pos.get(i).x), mn = Math.min(...xs); const dx = k ? ox - mn : 0; list.forEach(i => placed.set(i, {x: pos.get(i).x + dx, y: pos.get(i).y})); ox = Math.max(...list.map(i => placed.get(i).x)) + 3; k++; });
     /* v29.1: stanze collegate da una porta: ruotate e spostate in modo che le due porte coincidano, ai due lati del muro */
-    const LK = (s.links || []).filter(l => { if (l.k === 'wall') return edgeOf(l.eN) && edgeOf(l.eO); const a = s.o.find(o => o.id === l.o), b = s.o.find(o => o.id === l.to); return a && b && edgeOf(a.e) && edgeOf(b.e); });
+    const LK = (s.links || []).filter(l => { if (l.k === 'man') return nodeOf(l.a) && nodeOf(l.b) && pos.has(l.a) && pos.has(l.b); if (l.k === 'wall') return edgeOf(l.eN) && edgeOf(l.eO); const a = s.o.find(o => o.id === l.o), b = s.o.find(o => o.id === l.to); return a && b && edgeOf(a.e) && edgeOf(b.e); });
     if (LK.length && comps.size > 1) {
-      const l0 = LK[0], r0 = l0.k === 'wall' ? fd(edgeOf(l0.eO).a) : fd(edgeOf(s.o.find(o => o.id === l0.to).e).a);
+      const l0 = LK.find(l => l.k !== 'man') || LK[0], r0 = l0.k === 'man' ? fd(l0.b) : l0.k === 'wall' ? fd(edgeOf(l0.eO).a) : fd(edgeOf(s.o.find(o => o.id === l0.to).e).a);
       const done = new Set([comps.has(r0) ? r0 : [...comps.keys()][0]]);
       const doorAt = (o, P) => { const e = edgeOf(o.e), A = P(e.a), B = P(e.b), L = Math.hypot(B.x - A.x, B.y - A.y) || 1, u = {x: (B.x - A.x) / L, y: (B.y - A.y) / L}, cA = sr() * cOf(e, e.a), cB = sr() * cOf(e, e.b);
         const s0 = o.d != null ? (o.ref === 'b' ? L - (cB + o.d + o.w / 2) : cA + o.d + o.w / 2) : (o.t != null ? o.t : 0.5) * L; return {p: {x: A.x + u.x * s0, y: A.y + u.y * s0}, u, e}; };
@@ -13472,6 +13145,14 @@ updateRoomList();
       for (let it = 0; it <= LK.length; it++) {
         let prog = false;
         LK.forEach(l => {
+          if (l.k === 'man') {   /* v29.6: posizione a mano, solo spostamento */
+            const ra = fd(l.a), rb = fd(l.b); if (ra === rb) return; let mov, an, tg;
+            if (done.has(rb) && !done.has(ra)) { mov = ra; an = l.a; tg = {x: placed.get(l.b).x + l.dx, y: placed.get(l.b).y + l.dy}; }
+            else if (done.has(ra) && !done.has(rb)) { mov = rb; an = l.b; tg = {x: placed.get(l.a).x - l.dx, y: placed.get(l.a).y - l.dy}; }
+            else return;
+            const q0 = pos.get(an); comps.get(mov).forEach(i => { const q = pos.get(i); placed.set(i, {x: tg.x + q.x - q0.x, y: tg.y + q.y - q0.y}); });
+            done.add(mov); prog = true; return;
+          }
           if (l.k === 'wall') {   /* v29.4: muro della stanza nuova parallelo al muro della stanza già rilevata, a distanza D tra le facce, scostato di d dall'angolo scelto */
             const eO = edgeOf(l.eO), eN = edgeOf(l.eN), rO = fd(eO.a), rN = fd(eN.a); if (rN === rO || !done.has(rO) || done.has(rN)) return;
             const Pp = i => placed.get(i), Pl = i => pos.get(i), ref = l.ref === eO.b ? eO.b : eO.a, oth = ref === eO.a ? eO.b : eO.a;
@@ -13633,7 +13314,7 @@ updateRoomList();
     ui = {root, top: $('svTop'), tools: $('svTools'), card: $('svCard'), hint: $('svHint'), table: $('svTable'), menu: $('svMenu')};
     ['pointerdown', 'pointerup', 'touchstart', 'touchmove', 'wheel', 'contextmenu'].forEach(ev => ['top', 'tools', 'card', 'table', 'menu'].forEach(k => ui[k].addEventListener(ev, e => e.stopPropagation(), {passive: true})));
     ['pointerdown', 'pointerup', 'touchstart', 'touchmove'].forEach(ev => ui.hint.addEventListener(ev, e => e.stopPropagation(), {passive: true}));
-    ui.hint.addEventListener('click', e => { if (e.target.closest('[data-a="unpt"]')) unPoint(); });
+    ui.hint.addEventListener('click', e => { if (e.target.closest('[data-a="unpt"]')) unPoint(); const r = e.target.closest('[data-rot]'); if (r) mvRotate(+r.dataset.rot); });
     ui.top.addEventListener('click', onTop); ui.tools.addEventListener('click', onTools); ui.card.addEventListener('click', onCard);
     ui.card.addEventListener('keydown', e => {
       e.stopPropagation(); if (e.key !== 'Enter' || e.target.id === 'fn') return; e.preventDefault(); const c = S.card;
@@ -13651,10 +13332,10 @@ updateRoomList();
     ui.top.innerHTML = res
       ? `<button type="button" data-a="back" class="sv-tab">← Rilievo</button><span class="sv-fl"><b>Scala 1:100</b></span><button type="button" data-a="table" class="sv-tab">📋 Tabella</button><button type="button" data-a="print" class="sv-tab">🖨 Stampa</button><button type="button" data-a="menu">⋮</button>`
       : `<button type="button" data-a="undo" class="sv-undo" title="Annulla l'ultima operazione del rilievo">↩</button><button type="button" data-a="redo" class="sv-undo" title="Ripeti" style="${(HR[hKey()] || []).length ? '' : 'display:none'}">↪</button><button type="button" data-a="home" title="Adatta">⌖</button><span class="sv-fl"><button type="button" data-a="fdn">▼</button><b>${esc(fl().name)}</b><i class="sv-dot" id="svDot" title="Salvataggio automatico">●</i><button type="button" data-a="fup">▲</button></span><button type="button" data-a="table" class="sv-tab">📋</button>${todoN() ? `<button type="button" data-a="todo" class="sv-tab" style="background:#7c2d12;border-color:#fb923c;color:#fed7aa" title="Vai alle misure mancanti">⚠ ${todoN()}</button>` : ''}<button type="button" data-a="fine" class="sv-tab sv-fine">✔ Fine</button><button type="button" data-a="menu">⋮</button>`;
-    const T = [['wall', '▬', 'Muro'], ['close', '┄', 'Chiudi'], ['door', '🚪', 'Porta'], ['window', '🪟', 'Finestra'], ['pillar', '▣', 'Pilastro'], ['room', '🏠', 'Stanza +'], ['link', '🔗', 'Collega']];
+    const T = [['wall', '▬', 'Muro'], ['close', '┄', 'Chiudi'], ['door', '🚪', 'Porta'], ['window', '🪟', 'Finestra'], ['pillar', '▣', 'Pilastro'], ['room', '🏠', 'Stanza +'], ['link', '🔗', 'Collega'], ['move', '✋', 'Sposta']];
     ui.tools.style.display = res ? 'none' : 'flex'; ui.tools.innerHTML = T.map(([k, ic, lb]) => `<button type="button" data-t="${k}" class="${S.tool === k ? 'on' : ''}"><i>${ic}</i><span>${lb}</span></button>`).join('');
     if (res) ui.hint.textContent = 'Pianta ricostruita in scala 1:100 · la tabella usa le misure rilevate';
-    else ui.hint.innerHTML = (canUnPoint() ? '<button type="button" class="sv-unpt" data-a="unpt">⌫ Togli ultimo punto</button>' : '') + '<span>' + esc(hintText()) + '</span>';
+    else ui.hint.innerHTML = (canUnPoint() ? '<button type="button" class="sv-unpt" data-a="unpt">⌫ Togli ultimo punto</button>' : '') + (S.tool === 'move' && S.mv ? '<div class="sv-rot">' + [[-90, '⟲ 90°'], [-15, '⟲ 15°'], [-1, '⟲ 1°'], [1, '⟳ 1°'], [15, '⟳ 15°'], [90, '⟳ 90°']].map(([g, l]) => `<button type="button" data-rot="${g}">${l}</button>`).join('') + '</div>' : '') + '<span>' + esc(hintText()) + '</span>';
     ui.hint.style.display = (S.card || S.over) ? 'none' : 'block';
     renderCard(); draw2D();
   }
@@ -13680,7 +13361,6 @@ updateRoomList();
     if (S.selE != null && !s0.e.some(e => e.id === S.selE)) S.selE = null;
     if (S.linkA != null && !s0.o.some(o => o.id === S.linkA)) S.linkA = null;
     S.to = null; S.card = null; S.over = null; if (ui) { ui.table.style.display = 'none'; ui.menu.style.display = 'none'; }
-    if (S.uh) S.uh = [];
     try { checkpoint(); } catch (_) {}
     syncUI(); draw2D();
   }
@@ -13700,38 +13380,11 @@ updateRoomList();
   document.addEventListener('input', () => setTimeout(() => { try { hRec(true); } catch (_) {} }, 0), true);
   /* v29.2: «Togli ultimo punto» = torna allo schizzo com'era prima dell'ultimo tratto. Se nel frattempo hai scritto misure
      o aggiunto altro, toglie solo quel tratto e lascia il resto */
-  function uhPush() { (S.uh = S.uh || []).push({snap: JSON.stringify(sk()), from: S.from ? Object.assign({}, S.from) : null}); if (S.uh.length > 60) S.uh.shift(); }
-  function uhDone(e, from) { const h = (S.uh || [])[S.uh.length - 1]; if (!h || h.after) return; h.after = JSON.stringify(sk()); h.id = e ? e.id : null; h.k = e ? e.k : null; h.name = e ? e.name : ''; if (from) S.from = from; h.res = S.from ? Object.assign({}, S.from) : null; }
   function canUnPoint() { if (S.tool !== 'wall' && S.tool !== 'close') return false; return (HU[hKey()] || []).length > 1 || !!S.from; }
   function unPoint() { return svUndo(); }
-  function unPointOld() {
-    const s0 = sk(); S.uh = (S.uh || []).filter(h => h.after); S.to = null; S.card = null;
-    const h = S.uh[S.uh.length - 1], cur = JSON.stringify(s0);
-    if (!h || (S.from && !(h.res && S.from.node != null && S.from.node === h.res.node))) {   /* il punto di partenza non viene dall'ultimo tratto: si toglie solo quello */
-      if (S.from) { S.from = null; toast('Punto di partenza tolto'); } syncUI(); draw2D(); return;
-    }
-    S.uh.pop();
-    if (cur === h.after) {   /* nulla è cambiato dopo: si torna esattamente a prima */
-      const o = JSON.parse(h.snap); Object.keys(s0).forEach(k => { delete s0[k]; }); Object.assign(s0, o);
-      S.from = h.from;
-    } else if (h.id != null) {   /* misure scritte nel frattempo: si toglie solo il tratto */
-      const e = s0.e.find(x => x.id === h.id); if (!e) { syncUI(); draw2D(); return; }
-      s0.e = s0.e.filter(x => x !== e);
-      const gone = new Set(s0.o.filter(o => o.e === e.id).map(o => o.id));
-      s0.o = s0.o.filter(o => o.e !== e.id);
-      if (s0.links) s0.links = s0.links.filter(l => !gone.has(l.o) && !gone.has(l.to));
-      const used = n => s0.e.some(x => x.a === n || x.b === n) || (s0.d || []).some(d => d.a === n || d.b === n);
-      if (!used(e.b)) s0.n = s0.n.filter(n => n.id !== e.b);
-      const a = nodeOf(e.a);
-      S.from = e.k === 'close' || !a ? null : {node: a.id, x: a.x, y: a.y};
-      if (a && !used(a.id)) { s0.n = s0.n.filter(n => n.id !== a.id); if (S.from) S.from = {node: null, x: a.x, y: a.y}; }
-    } else { S.from = h.from; }
-    if (S.from && S.from.node != null) S.focusN = S.from.node;
-    checkpoint(); syncUI(); draw2D();
-    toast(h.id == null ? 'Partenza dal muro in comune tolta' : h.k === 'close' ? 'Linea di chiusura tolta' : (h.name || 'Muro') + ' tolto: riprendi dal punto precedente');
-  }
   function hintText() {
     const t = S.tool;
+    if (t === 'move') return S.mv ? 'Stanza scelta: trascinala col dito oppure ruotala con i pulsanti · posizione indicativa (≈), per la posizione esatta usa «Collega»' : 'Sposta: trascina una stanza col dito per metterla al suo posto · toccala per ruotarla';
     if (t === 'link') return S.linkA != null ? 'Collega: ora tocca la stessa porta nella stanza già rilevata (in grigio)' : S.linkW != null ? 'Collega: ora tocca il muro della stanza già rilevata (in grigio) che sta di fronte o dall\'altra parte' : 'Collega: tocca una porta o un muro della stanza nuova';
     if (!t) return sk().e.length ? (S.selE != null && edgeOf(S.selE) ? 'Muro selezionato: trascina un estremo (si stacca dal muro vicino, vicino a un punto si riaggancia) o il muro intero · tocca la misura per scriverla' : 'Tocca la misura o il «?» per scriverla · tocca un muro per selezionarlo e trascinarlo · Porta, Finestra, Pilastro: scegli e tocca il muro') : 'Scegli ▬ Muro a sinistra, poi tocca i punti: i muri si disegnano uno dopo l\'altro';
     if (t === 'wall') return S.from ? 'Tocca il punto successivo · tocca la scritta di un muro o il punto dove sei per scrivere la misura (poi riprendi da qui) · ▬ di nuovo per interrompere' : 'Muro: tocca il punto di inizio (o un punto già disegnato) · tocca un muro già rilevato per partire da lì con una nuova stanza (muro in comune) · tocca la misura per scriverla';
@@ -13743,15 +13396,16 @@ updateRoomList();
     if (a === 'undo') { if (S.view !== 'result') return svUndo(); $('undoBtn').click(); setTimeout(() => { S.from = S.to = S.card = null; syncUI(); }, 30); }
     else if (a === 'redo') svRedo();
     else if (a === 'home') { if (S.view !== 'result') { S.focusN = null; S.newRoom = false; S.selE = null; } (S.view === 'result' ? fitReal : fitSketch)(); draw2D(); }   /* ⌖ = vista d'insieme di tutte le stanze */
-    else if (a === 'fup' || a === 'fdn') { const s = sortedFloors(), i = s.findIndex(f => f.id === state.currentFloorId), j = i + (a === 'fup' ? 1 : -1); if (j >= 0 && j < s.length) { S.from = S.to = S.card = null; S.uh = []; SCfl.setFloor(s[j].id, {quiet: true}); FLOORFILTER.over = HIDE; fitSketch(); syncUI(); } else toast(a === 'fup' ? 'Sei al piano più alto' : 'Sei al piano più basso'); }
+    else if (a === 'fup' || a === 'fdn') { const s = sortedFloors(), i = s.findIndex(f => f.id === state.currentFloorId), j = i + (a === 'fup' ? 1 : -1); if (j >= 0 && j < s.length) { S.from = S.to = S.card = null; SCfl.setFloor(s[j].id, {quiet: true}); FLOORFILTER.over = HIDE; fitSketch(); syncUI(); } else toast(a === 'fup' ? 'Sei al piano più alto' : 'Sei al piano più basso'); }
     else if (a === 'table') openTable(); else if (a === 'menu') openMenu(); else if (a === 'fine') finish(); else if (a === 'todo') { S.skip = new Set(); S.tool = null; S.from = S.to = null; nextTodo(); }
     else if (a === 'back') setView('sketch'); else if (a === 'print') { const p = $('printBtn'); if (p) p.click(); }
   }
   function onTools(e) {
     const b = e.target.closest('[data-t]'); if (!b) return; const t = b.dataset.t;
     if (t === 'room') { S.card = null; S.to = null; S.from = null; S.selE = null; S.newRoom = true; S.focusN = null; S.tool = 'wall'; syncUI(); draw2D(); toast('Nuova stanza: disegnala in uno spazio libero, le altre restano in grigio. Quando è misurata, «🔗 Collega» la attacca dalla porta'); return; }
+    if (t === 'move') { S.card = null; S.to = null; S.from = null; S.selE = null; S.mv = null; S.tool = S.tool === 'move' ? null : 'move'; syncUI(); draw2D(); return; }
     if (t === 'link') { S.card = null; S.to = null; S.from = null; S.linkA = null; S.linkW = null; S.tool = S.tool === 'link' ? null : 'link'; syncUI(); draw2D(); return; }
-    S.card = null; S.to = null; S.from = null; S.op = null; S.uh = []; S.tool = S.tool === t ? null : t; syncUI();
+    S.card = null; S.to = null; S.from = null; S.op = null; S.tool = S.tool === t ? null : t; syncUI();
   }
   function setView(v) {
     S.view = v; S.card = null; S.from = S.to = null; S.tool = null; S.over = null;
@@ -13823,8 +13477,8 @@ updateRoomList();
     else if (S.focusN != null && nodeOf(S.focusN)) n = S.focusN;
     return n == null ? null : RT(n);
   }
-  function dimF() { const RT = rootMap(), F = focusRoot(RT); return id => F == null || RT(id) === F ? null : ((cfg.other === 'off' && S.tool !== 'link') ? 'off' : 'gray'); }
-  function hidF() { if (cfg.other !== 'off' || S.tool === 'link') return () => false; const RT = rootMap(), F = focusRoot(RT); return id => F != null && RT(id) !== F; }
+  function dimF() { if (S.tool === 'move') return () => null; const RT = rootMap(), F = focusRoot(RT); return id => F == null || RT(id) === F ? null : ((cfg.other === 'off' && S.tool !== 'link') ? 'off' : 'gray'); }
+  function hidF() { if (cfg.other !== 'off' || S.tool === 'link' || S.tool === 'move') return () => false; const RT = rootMap(), F = focusRoot(RT); return id => F != null && RT(id) !== F; }
   function nodeNear(sp) { let best = null, bd = SNAP; const hd = hidF(); sk().n.forEach(n => { if (hd(n.id)) return; const d = pxd(scr(n), sp); if (d < bd) { bd = d; best = n; } }); return best; }
   function edgeNear(sp, kinds) {
     let best = null, bd = HIT; const hd = hidF();
@@ -13854,7 +13508,7 @@ updateRoomList();
         if (hit && t === 'wall' && !S.from) {   /* v29.0: la misura apre la scheda; il muro diventa il muro in comune e la nuova stanza parte da qui */
           const lb = labelNear(sp); if (lb) return openEdit({type: 'edge', id: lb.id});
           if (hit.e.k !== 'wall') return openEdit({type: 'edge', id: hit.e.id});
-          uhPush(); const m = splitEdge(hit.e, hit.t); if (!m) { S.uh.pop(); return; } checkpoint(); uhDone(null, {node: m.id, x: m.x, y: m.y});
+          const m = splitEdge(hit.e, hit.t); if (!m) return; checkpoint();
           S.from = {node: m.id, x: m.x, y: m.y}; toast('Muro in comune: la nuova stanza parte da qui. Disegna i suoi muri; per finire tocca di nuovo il muro in comune o un suo angolo'); return syncUI();
         }
         S.from = nn ? {node: nn.id, x: nn.x, y: nn.y} : {node: null, x: w.x, y: w.y}; return syncUI();
@@ -13866,9 +13520,10 @@ updateRoomList();
         if (lw) return openEdit({type: 'edge', id: lw.id}); return;
       }
       if (t === 'close' && !nn) return toast('Tocca un punto già disegnato');
-      if (t === 'wall' && !nn) { const hit = edgeNear(sp, ['wall']); if (hit && hit.e.a !== S.from.node && hit.e.b !== S.from.node) { uhPush(); const m = splitEdge(hit.e, hit.t); if (m) { S.to = {node: m.id, x: m.x, y: m.y}; S.uhSkip = true; return quickEdge(); } S.uh.pop(); } }   /* v29.0: finisce sul muro in comune */
+      if (t === 'wall' && !nn) { const hit = edgeNear(sp, ['wall']); if (hit && hit.e.a !== S.from.node && hit.e.b !== S.from.node) { const m = splitEdge(hit.e, hit.t); if (m) { S.to = {node: m.id, x: m.x, y: m.y}; return quickEdge(); } } }   /* v29.0: finisce sul muro in comune */
       S.to = nn ? {node: nn.id, x: nn.x, y: nn.y} : {node: null, x: w.x, y: w.y}; return quickEdge();
     }
+    if (t === 'move') return;
     if (t === 'link') {   /* v29.1: porta della stanza nuova, poi la stessa porta nella stanza già rilevata */
       const o0 = opNear(sp), o = o0 && o0.k === 'door' ? o0 : null;
       if (S.linkW != null || (!o && S.linkA == null)) {   /* v29.4: collegamento da muro */
@@ -13905,7 +13560,6 @@ updateRoomList();
   function quickEdge() {
     const t = S.tool, s = sk();
     if (t === 'close' && !(S.from.node != null && S.to.node != null && connected(S.from.node, S.to.node))) { S.to = null; return toast('Questi due punti non sono collegati da muri: la linea di chiusura serve tra punti della stessa stanza'); }
-    if (S.uhSkip) S.uhSkip = false; else uhPush();
     const addNode = p => { const n = {id: s.seq++, x: p.x, y: p.y}; s.n.push(n); return n.id; };
     const dir = inferDir(S.from, S.to), len = Math.hypot(S.to.x - S.from.x, S.to.y - S.from.y);
     let to = S.to; if (t === 'wall' && to.node == null) to = {node: null, x: S.from.x + Math.cos(dir * D2R) * len, y: S.from.y + Math.sin(dir * D2R) * len};   /* punto raddrizzato sul verso scelto */
@@ -13914,7 +13568,7 @@ updateRoomList();
     const e = {id: s.seq++, k: t, a, b, L: t === 'close' ? 0 : null}; if (t === 'close') { e.auto = true; e.name = 'Linea di chiusura'; } else { e.name = 'Muro ' + letters(wallEdges().length); e.h = hDef(); e.dir = dir; }
     s.e.push(e); S.to = null; S.from = t === 'close' ? null : {node: b, x: nodeOf(b).x, y: nodeOf(b).y}; S.focusN = b; S.newRoom = false;
     if (t === 'close') setTimeout(() => openEdit({type: 'edge', id: e.id}), 0);
-    checkpoint(); uhDone(e);
+    checkpoint();
     showPt(nodeOf(b));   /* v28.5: scorre senza cambiare zoom */   /* si riadatta solo se il punto esce dallo schermo */
     syncUI();
   }
@@ -14050,7 +13704,7 @@ updateRoomList();
   }
   function confirmWLink(D, d) {   /* v29.4 */
     const c = S.card, s0 = sk(); if (!(D > 0.02 && D < 30)) return toast('Scrivi la distanza tra le due facce (es. 0,30)'); if (d == null || Math.abs(d) > 100) return toast('Scrivi lo scostamento (0 se gli angoli sono allineati)');
-    D = Math.round(D * 100) / 100; d = Math.round(d * 100) / 100;
+    D = Math.round(D * 100) / 100; d = Math.round(d * 100) / 100; { const RT = rootMap(), rn = RT(edgeOf(c.eN).a); s0.links = (s0.links || []).filter(l => !(l.k === 'man' && nodeOf(l.a) && RT(l.a) === rn)); }
     s0.links = (s0.links || []).filter(l => !(l.k === 'wall' && (l.eN === c.eN || (l.eN === c.eO && l.eO === c.eN)))); s0.links.push({k: 'wall', eN: c.eN, eO: c.eO, D, d, ref: c.refO});
     if (D < 0.7) [c.eN, c.eO].forEach(id => { const e = edgeOf(id); if (e) e.t = D; });   /* muro in comune: stesso spessore */
     S.card = null; S.tool = null; S.focusN = null; S.newRoom = false; checkpoint(); toScale(); fitSketch(); syncUI(); draw2D();
@@ -14058,6 +13712,7 @@ updateRoomList();
   }
   function confirmLink(T) {   /* v29.1 */
     const c = S.card, s0 = sk(); if (!(T > 0.02 && T < 1.5)) return toast('Scrivi lo spessore del muro (es. 0,30)');
+    { const RT = rootMap(), oo = s0.o.find(x => x.id === c.oN), rn = oo && edgeOf(oo.e) ? RT(edgeOf(oo.e).a) : null; if (rn != null) s0.links = (s0.links || []).filter(l => !(l.k === 'man' && nodeOf(l.a) && RT(l.a) === rn)); }
     s0.links = (s0.links || []).filter(l => l.o !== c.oN && l.to !== c.oN); s0.links.push({o: c.oN, to: c.oO, T: Math.round(T * 100) / 100});
     [c.oN, c.oO].forEach(id => { const o = s0.o.find(x => x.id === id), e = o && edgeOf(o.e); if (e) e.t = Math.round(T * 100) / 100; });
     S.card = null; S.tool = null; S.focusN = null; S.newRoom = false; checkpoint(); toScale(); fitSketch(); syncUI(); draw2D();
@@ -14069,7 +13724,6 @@ updateRoomList();
     if (auto && !(S.from.node != null && S.to.node != null && connected(S.from.node, S.to.node))) { toast('I due punti non sono collegati da muri: scrivi la misura'); return; }
     const addNode = p => { const n = {id: s.seq++, x: p.x, y: p.y}; s.n.push(n); return n.id; };
     if (S.from.node != null && S.from.node === S.to.node) return toast('Scegli un punto diverso');
-    uhPush();
     const a = S.from.node != null ? S.from.node : addNode(S.from), b = S.to.node != null ? S.to.node : addNode(S.to);
     if (a === b) return toast('Scegli un punto diverso');
     const id = s.seq++, e = {id, k: c.kind, a, b, L: auto ? 0 : (L > 0 ? L : null)}; if (auto) e.auto = true;
@@ -14077,7 +13731,7 @@ updateRoomList();
     else e.name = 'Linea di chiusura';
     s.e.push(e); S.from = {node: b, x: nodeOf(b).x, y: nodeOf(b).y}; S.to = null; S.card = null; S.focusN = b; S.newRoom = false;
     if (c.kind === 'close') S.from = null;   // la linea di chiusura non prosegue
-    checkpoint(); uhDone(e); showPt(nodeOf(b)); syncUI();
+    checkpoint(); showPt(nodeOf(b)); syncUI();
   }
   function confirmOp(w, sill, dist, later) {
     const c = S.card, s = sk(), hh = num(($('f4') || {value: ''}).value), setH = o => { if (hh > 0.3 && c.kind !== 'pillar') o.h = hh; };
@@ -14130,6 +13784,66 @@ updateRoomList();
     if (!userZoomed()) { const cw = c2d.clientWidth, ch = c2d.clientHeight; if (s0.n.some(n => { const q = scr(n); return q.x < 60 || q.x > cw - 10 || q.y < 50 || q.y > ch - 10; }) || bb() / b0 > 1.25 || bb() / b0 < 0.8) return fitSketch(); }
     if (S0) { const S1 = scr(ref); viewOffset.x += S0.x - S1.x; viewOffset.y += S0.y - S1.y; }   /* zoom scelto con le dita: resta, il punto al centro non si sposta */
   }
+  /* v29.6: «✋ Sposta». Una stanza (con quelle collegate a lei da porte o muri) si trascina e si ruota a mano.
+     La posizione resta legata alla stanza più vicina: collegamento «a mano» {k:'man', a: punto della stanza, b: punto dell'altra, dx, dy} */
+  function grpOf() {   /* stanze unite da collegamenti con porta o muro: si muovono insieme */
+    const RT = rootMap(), s0 = sk(), par = new Map(), f = i => { while (par.has(i) && par.get(i) !== i) i = par.get(i); return i; }, un = (a, b) => { a = f(a); b = f(b); if (a !== b) par.set(a, b); };
+    (s0.links || []).forEach(l => { let a = null, b = null;
+      if (l.k === 'wall') { const x = edgeOf(l.eN), y = edgeOf(l.eO); if (x && y) { a = x.a; b = y.a; } }
+      else if (l.k !== 'man') { const o1 = s0.o.find(o => o.id === l.o), o2 = s0.o.find(o => o.id === l.to), x = o1 && edgeOf(o1.e), y = o2 && edgeOf(o2.e); if (x && y) { a = x.a; b = y.a; } }
+      if (a != null && b != null) un(RT(a), RT(b)); });
+    return id => f(RT(id));
+  }
+  function mvSet(id) {   /* nodi che si muovono: la stanza toccata, quelle unite a lei e quelle appoggiate a mano su di loro */
+    const G = grpOf(), s0 = sk(), roots = new Set([G(id)]); let grow = true;
+    while (grow) { grow = false; (s0.links || []).forEach(l => { if (l.k !== 'man' || !nodeOf(l.a) || !nodeOf(l.b)) return; if (roots.has(G(l.b)) && !roots.has(G(l.a))) { roots.add(G(l.a)); grow = true; } }); }
+    const used = new Set(); s0.e.forEach(e => { used.add(e.a); used.add(e.b); });
+    return {own: G(id), ids: new Set(s0.n.filter(n => used.has(n.id) && roots.has(G(n.id))).map(n => n.id))};
+  }
+  function mvPick(sp) {   /* la stanza sotto il dito: il muro più vicino, altrimenti la stanza che contiene il punto */
+    const h = edgeNear(sp); if (h) return h.e.a;
+    const G = grpOf(), box = new Map(); sk().e.forEach(e => [e.a, e.b].forEach(id => { const n = nodeOf(id); if (!n) return; const q = scr(n), g = G(id), b = box.get(g) || {l: 1e9, r: -1e9, t: 1e9, b: -1e9, id}; b.l = Math.min(b.l, q.x); b.r = Math.max(b.r, q.x); b.t = Math.min(b.t, q.y); b.b = Math.max(b.b, q.y); box.set(g, b); }));
+    let best = null, ba = 1e18; box.forEach(b => { if (sp.x >= b.l - 10 && sp.x <= b.r + 10 && sp.y >= b.t - 10 && sp.y <= b.b + 10) { const a = (b.r - b.l) * (b.b - b.t); if (a < ba) { ba = a; best = b.id; } } }); return best;
+  }
+  function mvFinish() {   /* dopo lo spostamento: la stanza si lega alla stanza più vicina che non si è mossa */
+    const s0 = sk(), m = S.mv; if (!m) return; const G = grpOf(), ids = mvSet(m.anchor).ids;
+    s0.links = (s0.links || []).filter(l => !(l.k === 'man' && ids.has(l.a) && G(l.a) === G(m.anchor)));
+    let best = null, bd = 1e18, bn = null; const mine = [...ids].filter(i => G(i) === G(m.anchor)).map(nodeOf).filter(Boolean);
+    s0.n.forEach(n => { if (ids.has(n.id) || !s0.e.some(e => e.a === n.id || e.b === n.id)) return; mine.forEach(q => { const d = Math.hypot(q.x - n.x, q.y - n.y); if (d < bd) { bd = d; best = n; bn = q; } }); });
+    if (best) s0.links.push({k: 'man', a: bn.id, b: best.id, dx: bn.x - best.x, dy: bn.y - best.y});
+    s0.links.forEach(l => { if (l.k === 'man' && ids.has(l.a) && nodeOf(l.a) && nodeOf(l.b)) { l.dx = nodeOf(l.a).x - nodeOf(l.b).x; l.dy = nodeOf(l.a).y - nodeOf(l.b).y; } });
+    checkpoint(); toScale(); syncUI(); draw2D();
+    if (!best) toast('C\'è una sola stanza: non c\'è nulla a cui avvicinarla');
+  }
+  function mvRotate(g) {
+    const m = S.mv; if (!m) return; const ids = mvSet(m.anchor).ids, s0 = sk(), pts = [...ids].map(nodeOf).filter(Boolean); if (!pts.length) return;
+    const cx0 = pts.reduce((a, q) => a + q.x, 0) / pts.length, cy0 = pts.reduce((a, q) => a + q.y, 0) / pts.length, c = Math.cos(g * D2R), sn = Math.sin(g * D2R);
+    pts.forEach(q => { const dx = q.x - cx0, dy = q.y - cy0; q.x = cx0 + dx * c - dy * sn; q.y = cy0 + dx * sn + dy * c; });
+    s0.e.forEach(e => { if (ids.has(e.a) && ids.has(e.b) && e.dir != null) e.dir = normDir(Math.round((e.dir + g) * 10) / 10); });
+    mvFinish();
+  }
+  let MV = null;
+  window.addEventListener('pointerdown', ev => {
+    if (MV || !on || !S || S.view !== 'sketch' || S.over || S.tool !== 'move' || ev.target !== c2d || (ev.button != null && ev.button > 0)) return;
+    const sp = relP(ev), id = mvPick(sp); if (id == null) { if (S.mv) { S.mv = null; syncUI(); draw2D(); } return; }
+    ev.preventDefault(); ev.stopImmediatePropagation(); try { c2d.setPointerCapture(ev.pointerId); } catch (_) {}
+    const st = mvSet(id), P0 = new Map([...st.ids].map(i => [i, {x: nodeOf(i).x, y: nodeOf(i).y}]));
+    S.mv = {anchor: id}; MV = {id: ev.pointerId, ids: st.ids, P0, w0: screenToWorld(sp.x, sp.y), run: 0, fx: ev.clientX, fy: ev.clientY, moved: false, snap: JSON.stringify(sk())};
+    syncUI(); draw2D();
+  }, true);
+  window.addEventListener('pointermove', ev => {
+    if (!MV || ev.pointerId !== MV.id) return; ev.preventDefault(); ev.stopImmediatePropagation();
+    MV.run += Math.hypot(ev.clientX - MV.fx, ev.clientY - MV.fy); MV.fx = ev.clientX; MV.fy = ev.clientY; if (!MV.moved && MV.run < 6) return;
+    const sp = relP(ev), w = screenToWorld(sp.x, sp.y), dx = w.x - MV.w0.x, dy = w.y - MV.w0.y;
+    MV.ids.forEach(i => { const n = nodeOf(i), q = MV.P0.get(i); if (n && q) { n.x = q.x + dx; n.y = q.y + dy; } });
+    MV.moved = true; draw2D();
+  }, true);
+  const upMV = ev => {
+    if (!MV || ev.pointerId !== MV.id) return; ev.preventDefault(); ev.stopImmediatePropagation(); const d = MV; MV = null;
+    if (ev.type === 'pointercancel') { if (d.moved) { const s1 = sk(), o = JSON.parse(d.snap); Object.keys(s1).forEach(k => { delete s1[k]; }); Object.assign(s1, o); } draw2D(); return; }
+    if (d.moved) mvFinish(); else { syncUI(); draw2D(); }
+  };
+  window.addEventListener('pointerup', upMV, true); window.addEventListener('pointercancel', upMV, true);
   let DR = null;
   const relP = e => { const r = c2d.getBoundingClientRect(); return {x: e.clientX - r.left, y: e.clientY - r.top}; };
   const usesNode = (id, except) => sk().e.some(x => x !== except && (x.a === id || x.b === id)) || (sk().d || []).some(d => d.a === id || d.b === id);
@@ -14232,6 +13946,7 @@ updateRoomList();
     if (DR && DR.live) { const t = DR.live, tw = cx.measureText(t).width + 16, q = DR.at; cx.fillStyle = 'rgba(15,23,42,.94)'; cx.fillRect(q.x - tw / 2, q.y - 52, tw, 26); cx.strokeStyle = '#22d3ee'; cx.lineWidth = 1.5; cx.strokeRect(q.x - tw / 2, q.y - 52, tw, 26); cx.fillStyle = '#e0f2fe'; cx.fillText(t, q.x, q.y - 39); }
     if (S.card && S.card.ref && opEdge()) { const e = opEdge(), p = scr(nodeOf(S.card.ref === 'b' ? e.b : e.a)); cx.beginPath(); cx.arc(p.x, p.y, 14, 0, Math.PI * 2); cx.lineWidth = 3; cx.strokeStyle = '#fbbf24'; cx.stroke(); }
     if (S.from && S.from.edge) { const e = edgeOf(S.from.edge); if (e) { const A = scr(nodeOf(e.a)), B = scr(nodeOf(e.b)); [S.from, S.to].filter(Boolean).forEach(q => { const x = A.x + (B.x - A.x) * q.t, y = A.y + (B.y - A.y) * q.t; cx.beginPath(); cx.arc(x, y, 8, 0, Math.PI * 2); cx.fillStyle = S.tool === 'door' ? '#fb923c' : S.tool === 'pillar' ? '#a78bfa' : '#38bdf8'; cx.fill(); cx.lineWidth = 2; cx.strokeStyle = '#fff'; cx.stroke(); }); } }
+    if (S.tool === 'move' && S.mv && nodeOf(S.mv.anchor)) { const ids = mvSet(S.mv.anchor).ids; sk().e.forEach(e => { if (!ids.has(e.a) || !ids.has(e.b)) return; const A = scr(nodeOf(e.a)), B = scr(nodeOf(e.b)); cx.beginPath(); cx.moveTo(A.x, A.y); cx.lineTo(B.x, B.y); cx.lineWidth = 6; cx.strokeStyle = 'rgba(250,204,21,.5)'; cx.stroke(); }); }
     { const hl = []; if (S.tool === 'link' && S.linkW != null) hl.push(S.linkW); if (S.card && S.card.kind === 'wlink') hl.push(S.card.eN, S.card.eO);
       hl.forEach(id => { const e = edgeOf(id); if (!e) return; const A = scr(nodeOf(e.a)), B = scr(nodeOf(e.b)); cx.beginPath(); cx.moveTo(A.x, A.y); cx.lineTo(B.x, B.y); cx.lineWidth = 7; cx.strokeStyle = 'rgba(125,211,252,.55)'; cx.stroke(); });
       if (S.card && S.card.kind === 'wlink' && nodeOf(S.card.refO)) { const p = scr(nodeOf(S.card.refO)); cx.beginPath(); cx.arc(p.x, p.y, 13, 0, Math.PI * 2); cx.fillStyle = 'rgba(34,211,238,.45)'; cx.fill(); cx.lineWidth = 3; cx.strokeStyle = '#22d3ee'; cx.stroke(); } }
@@ -17193,21 +16908,6 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     }
     return out;
   }
-  function veletteOld(c) {
-    const D = dense(c, true), top = topOf(floorOf(c)), ccw = (() => { let s = 0; D.forEach((p, i) => { const q = D[(i + 1) % D.length]; s += p.x * q.y - q.x * p.y; }); return s > 0; })();
-    const walls = state.walls.filter(w => floorOf(w) === floorOf(c) && isEntityVisible(w));
-    const others = state.ceils.filter(o => o !== c && floorOf(o) === floorOf(c) && isEntityVisible(o) && o.pts.length >= 3).map(o => ({o, D: dense(o, true)}));
-    const out = [];
-    for (let i = 0; i < D.length; i++) {
-      const a = D[i], b = D[(i + 1) % D.length], L = Math.hypot(b.x - a.x, b.y - a.y); if (L < 1e-4) continue;
-      const m = {x: (a.x + b.x) / 2, y: (a.y + b.y) / 2}, nx = (ccw ? 1 : -1) * (b.y - a.y) / L, ny = (ccw ? 1 : -1) * -(b.x - a.x) / L;   // normale verso l'esterno
-      if (walls.some(w => segD(m, w.p1, w.p2) <= getWallThickness(w) / 2 + 0.06)) continue;
-      const q = {x: m.x + nx * 0.05, y: m.y + ny * 0.05};
-      let hUp = top; for (const o of others) if (inPoly(q, o.D)) hUp = Math.min(hUp, o.o.h);
-      const hh = hUp - c.h; if (hh > 0.005) out.push({a, b, L, h: hh});
-    }
-    return out;
-  }
   function stratTxt(cg, what) {
     return (cg.strati === 2 ? 'doppia lastra ' : 'lastra ') + (LASTRE[cg.lastra] || LASTRE.std) + ' da ' + mm(cg.sp) + ' mm su orditura metallica' + (what === 'c' ? ' pendinata' : '') + (cg.iso ? ', isolante in lana minerale' : '');
   }
@@ -19610,9 +19310,6 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   let SN = null;   /* ultimo aggancio: {p, k, A, g:[guide], t} */
   const prevSnap = snapToVertex;
 
-  function polarOf(p, from) {   /* punto polare/griglia come l'originale, con il passo scelto */
-    const r = snapToGrid(p, from); return r;
-  }
   function engine(p, from) {
     SN = null;
     if (!$('snapPts').checked) return prevSnap(p, from);
@@ -21708,7 +21405,6 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     render();
   }
   function close() { if (DL) { DL.bg.remove(); DL = null; } }
-  const refreshDraw = () => { try { draw2D(); } catch (_) {} };
   function render() {
     if (!DL) return;
     DL.bg.querySelectorAll('.vf-tab').forEach(b => b.classList.toggle('on', b.dataset.t === DL.tab));
@@ -22124,8 +21820,10 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
    SC_REL.v è l'unica versione: titolo, Guida, file salvato, avvisi e riga messaggi la leggono da qui.
    ======================================================================== */
 window.SC_REL = {
-  v: '29.5', d: '03/11/2026',
+  v: '30.0', d: '03/11/2026',
   news: [
+    ['30.0', 'Pulizia interna: tolte le parti di programma non più usate (vecchio motore per le immagini, vecchio import PDF, vecchie funzioni del rilievo) e controllato tutto il codice con un analizzatore automatico. Nessun cambiamento nell’uso.'],
+    ['29.6', 'Rilievo: «✋ Sposta» per mettere a mano una stanza al suo posto quando non hai le misure di collegamento: la trascini col dito e la ruoti con i pulsanti (90°, 15°, 1°). La posizione resta legata alla stanza più vicina; un collegamento con «🔗 Collega» la sostituisce con quella esatta.'],
     ['29.5', 'Rilievo: le misure si possono scrivere senza lo zero davanti (,80 oppure .80 = 0,80 m), anche con spazi o con cm/mm (80 cm). Menu del rilievo: «Carica progetto» come nel menu CAD.'],
     ['29.4', 'Rilievo: «🔗 Collega» anche dal muro. Tocchi un muro della stanza nuova, poi il muro della stanza già rilevata che le sta accanto (o di fronte, oltre un corridoio che non rilevi); scrivi la distanza tra le due facce (spessore del muro, oppure muro + corridoio + muro) e lo scostamento dall’angolo segnato in azzurro. La stanza va al suo posto; se si toccano, nella pianta il muro in comune è uno solo. Mentre disegni, se tocchi la scritta di un muro si apre la sua misura; dopo «Conferma» riprendi a disegnare dallo stesso punto.'],
     ['29.3', 'Rilievo: ↩ in alto annulla qualsiasi operazione del rilievo (muri, misure scritte, spostamenti di punti e muri, porte, finestre, pilastri, chiusure, collegamenti, cancellazioni), un passo alla volta; ↪ ripete quello annullato. Durante il disegno il punto da cui riprendi torna al suo posto. Sulla tastiera: Ctrl+Z e Ctrl+Y.'],
@@ -23450,8 +23148,6 @@ window.SC_REL = {
     const wrap = (x, y, r, fn) => { for (const dx of [-N, 0, N]) for (const dy of [-N, 0, N]) { if (x + dx + r < 0 || x + dx - r > N || y + dy + r < 0 || y + dy - r > N) continue; fn(x + dx, y + dy); } };
     const blob = (x, y, r, col, al) => wrap(x, y, r, (X, Y) => { const gr = g.createRadialGradient(X, Y, 0, X, Y, r); gr.addColorStop(0, rgb(col, al)); gr.addColorStop(1, rgb(col, 0)); g.fillStyle = gr; g.fillRect(X - r, Y - r, 2 * r, 2 * r); });
     const noise = amt => { const d = g.getImageData(0, 0, N, N), p = d.data; for (let i = 0; i < p.length; i += 4) { const n = (R() - 0.5) * amt; p[i] += n; p[i + 1] += n; p[i + 2] += n; } g.putImageData(d, 0, 0); };
-    const strokeW = (pts, lw, col) => { const xs = pts.map(q => q[0]), ys = pts.map(q => q[1]), cx = (Math.min(...xs) + Math.max(...xs)) / 2, cy = (Math.min(...ys) + Math.max(...ys)) / 2, r = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)) / 2 + lw;
-      wrap(cx, cy, r, (X, Y) => { const dx = X - cx, dy = Y - cy; g.strokeStyle = col; g.lineWidth = lw; g.lineCap = 'round'; g.beginPath(); g.moveTo(pts[0][0] + dx, pts[0][1] + dy); g.quadraticCurveTo(pts[1][0] + dx, pts[1][1] + dy, pts[2][0] + dx, pts[2][1] + dy); g.stroke(); }); };
     const T = f.type;
     if (T === 'velatura' || T === 'cemento') {
       for (let i = 0; i < 70; i++) blob(R() * N, R() * N, N * (0.06 + R() * 0.22), R() < 0.65 ? B : lit(A, 0.25), (0.05 + R() * 0.14) * k);
