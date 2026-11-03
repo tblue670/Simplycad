@@ -566,6 +566,11 @@ NOVITÀ v29.0
   in cui li hai lasciati e, se coprirebbero il punto appena toccato, si aprono dall'altra parte dello schermo.
   Doppio tocco sulla maniglia: posizione iniziale.
 
+NOVITÀ v29.5
+- Rilievo: le misure si scrivono anche senza lo zero davanti: ,80 oppure .80 = 0,80 m.
+  Accettati anche gli spazi (0, 80) e le unità (80 cm, 800 mm). Vale anche nella riga dei comandi del CAD.
+- Menu del rilievo: «📂 Carica progetto», con lo stesso nome del menu CAD.
+
 NOVITÀ v29.4 (rilievo)
 - «🔗 Collega» funziona anche dal MURO, per stanze senza porta in comune:
   1. tocca il muro della stanza nuova che confina (o che guarda il corridoio);

@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v29.4</title>
+<title>SimplyCAD Pro · v29.5</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -9869,7 +9869,7 @@ function msgCommand(raw) {
   const m = s.match(/^([a-z?]+)\s*[:=]?\s*(.*)$/);
   if (!m) return msgLog('Comando non riconosciuto. Scrivi ? per l\'elenco', 'err');
   const k = m[1], v = m[2];
-  const len = str => { const q = str.match(/^(-?\d+(?:\.\d+)?)\s*(mm|cm|m)?$/); if (!q) return null; let n = parseFloat(q[1]); if (q[2] === 'cm') n /= 100; else if (q[2] === 'mm') n /= 1000; return n; };
+  const len = str => { const q = str.match(/^(-?(?:\d+(?:\.\d*)?|\.\d+))\s*(mm|cm|m)?$/); if (!q) return null; let n = parseFloat(q[1]); if (q[2] === 'cm') n /= 100; else if (q[2] === 'mm') n /= 1000; return n; };
   const fire = el => { el.dispatchEvent(new Event('input', {bubbles: true})); el.dispatchEvent(new Event('change', {bubbles: true})); };
   const setNum = (id, label) => {
     const el = $(id), n = len(v);
@@ -12937,11 +12937,11 @@ updateRoomList();
   const lock = () => { if (typeof isCurrentLayerLocked === 'function' && isCurrentLayerLocked()) fail('Il livello corrente è bloccato'); };
 
   /* ---------- numeri, punti, angoli ---------- */
-  const lenOf = t => { const m = String(t).match(/^(-?\d+(?:[.,]\d+)?)(mm|cm|m)?$/); if (!m) return null; let n = parseFloat(m[1].replace(',', '.')); if (m[2] === 'cm') n /= 100; else if (m[2] === 'mm') n /= 1000; return n; };
-  const numOf = t => { const m = String(t).match(/^-?\d+(?:[.,]\d+)?$/); return m ? parseFloat(String(t).replace(',', '.')) : null; };
+  const lenOf = t => { const m = String(t).match(/^(-?(?:\d+(?:[.,]\d*)?|[.,]\d+))(mm|cm|m)?$/); if (!m) return null; let n = parseFloat(m[1].replace(',', '.')); if (m[2] === 'cm') n /= 100; else if (m[2] === 'mm') n /= 1000; return n; };
+  const numOf = t => { const m = String(t).match(/^-?(?:\d+(?:[.,]\d*)?|[.,]\d+)$/); return m ? parseFloat(String(t).replace(',', '.')) : null; };
   function ptTok(tok) {
     const rel = tok[0] === '@', t = rel ? tok.slice(1) : tok;
-    const pol = t.match(/^(-?\d+(?:[.,]\d+)?(?:mm|cm|m)?)<(-?\d+(?:[.,]\d+)?)$/);
+    const pol = t.match(/^(-?(?:\d+(?:[.,]\d*)?|[.,]\d+)(?:mm|cm|m)?)<(-?(?:\d+(?:[.,]\d*)?|[.,]\d+))$/);
     if (pol) return {k: 'polar', L: lenOf(pol[1]), a: parseFloat(pol[2].replace(',', '.')) * D2R};
     const parts = t.includes(';') ? t.split(';') : t.split(',');
     if (parts.length !== 2) return null;
@@ -13275,7 +13275,7 @@ updateRoomList();
   const $ = id => document.getElementById(id);
   const esc = v => String(v ?? '').replace(/[&<>"']/g, m => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[m]));
   const f2 = (v, d = 2) => (Math.round(v * 10 ** d) / 10 ** d).toFixed(d).replace('.', ',');
-  const num = s => { const m = String(s ?? '').trim().replace(',', '.').match(/^(-?\d+(?:\.\d+)?)(mm|cm|m)?$/); if (!m) return null; let n = parseFloat(m[1]); if (m[2] === 'cm') n /= 100; else if (m[2] === 'mm') n /= 1000; return n; };
+  const num = s => { const m = String(s ?? '').replace(/\s+/g, '').replace(',', '.').match(/^(-?(?:\d+(?:\.\d*)?|\.\d+))(mm|cm|m)?$/); if (!m) return null; let n = parseFloat(m[1]); if (m[2] === 'cm') n /= 100; else if (m[2] === 'mm') n /= 1000; return n; };
   const hDef = () => cfg.h > 0 ? cfg.h : getDefaultWallHeight();
   const tDef = () => cfg.t > 0 ? cfg.t : (parseFloat(($('wallThickness') || {}).value) || 0.2);
   const letters = i => { let s = ''; i++; while (i > 0) { const r = (i - 1) % 26; s = String.fromCharCode(65 + r) + s; i = Math.floor((i - 1) / 26); } return s; };
@@ -14315,7 +14315,7 @@ updateRoomList();
       <div class="sv-set"><label>Altezza muri (m)<input id="mH" inputmode="decimal" value="${f2(hDef())}"></label><label>Spessore muri (m)<input id="mT" inputmode="decimal" value="${f2(tDef())}"></label></div>
       <div class="sv-set"><label>Limite dello scarto (cm)<input id="mTol" inputmode="decimal" value="${f2(tol() * 100, 1)}"></label><div class="sv-rh">Oltre questo scarto, dopo le diagonali, l'app chiede di rimisurare i muri. 2 cm per un progetto, 5 cm per un rilievo di massima.</div></div>
       <label class="sv-chk" style="flex-direction:column;align-items:flex-start">Riferimento delle misure dei muri<select id="mRef" style="width:100%;min-height:36px;margin-top:4px"><option value="int"${refNow() === 'int' ? ' selected' : ''}>Interno (da muro a muro, lato stanza)</option><option value="ext"${refNow() === 'ext' ? ' selected' : ''}>Esterno (lato esterno del muro)</option><option value="cen"${refNow() === 'cen' ? ' selected' : ''}>Centro del muro (asse)</option></select></label>
-      <label class="sv-chk" style="flex-direction:column;align-items:flex-start">Le altre stanze, mentre ne rilevi una<select id="mOther" style="width:100%;min-height:36px;margin-top:4px"><option value="gray"${cfg.other !== 'off' ? ' selected' : ''}>In grigio</option><option value="off"${cfg.other === 'off' ? ' selected' : ''}>Spente (non si vedono)</option></select></label><button type="button" data-a="msave">💾 Salva progetto</button><button type="button" data-a="mshare">📤 Condividi progetto</button><button type="button" data-a="mload">📂 Apri progetto</button><button type="button" data-a="mcsv">📊 Esporta tabella (CSV)</button>
+      <label class="sv-chk" style="flex-direction:column;align-items:flex-start">Le altre stanze, mentre ne rilevi una<select id="mOther" style="width:100%;min-height:36px;margin-top:4px"><option value="gray"${cfg.other !== 'off' ? ' selected' : ''}>In grigio</option><option value="off"${cfg.other === 'off' ? ' selected' : ''}>Spente (non si vedono)</option></select></label><button type="button" data-a="msave">💾 Salva progetto</button><button type="button" data-a="mshare">📤 Condividi progetto</button><button type="button" data-a="mload">📂 Carica progetto</button><button type="button" data-a="mcsv">📊 Esporta tabella (CSV)</button>
       <button type="button" data-a="madd">🏢 Nuovo piano in cima</button><button type="button" data-a="mfs">⛶ Schermo intero</button>
       <button type="button" data-a="mnew" class="dng">🆕 Nuovo rilievo (cancella lo schizzo del piano)</button></div>`;
     ui.menu.style.display = 'flex'; document.body.classList.add('sv-over-open'); syncUI();
@@ -22124,8 +22124,9 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
    SC_REL.v è l'unica versione: titolo, Guida, file salvato, avvisi e riga messaggi la leggono da qui.
    ======================================================================== */
 window.SC_REL = {
-  v: '29.4', d: '02/11/2026',
+  v: '29.5', d: '03/11/2026',
   news: [
+    ['29.5', 'Rilievo: le misure si possono scrivere senza lo zero davanti (,80 oppure .80 = 0,80 m), anche con spazi o con cm/mm (80 cm). Menu del rilievo: «Carica progetto» come nel menu CAD.'],
     ['29.4', 'Rilievo: «🔗 Collega» anche dal muro. Tocchi un muro della stanza nuova, poi il muro della stanza già rilevata che le sta accanto (o di fronte, oltre un corridoio che non rilevi); scrivi la distanza tra le due facce (spessore del muro, oppure muro + corridoio + muro) e lo scostamento dall’angolo segnato in azzurro. La stanza va al suo posto; se si toccano, nella pianta il muro in comune è uno solo. Mentre disegni, se tocchi la scritta di un muro si apre la sua misura; dopo «Conferma» riprendi a disegnare dallo stesso punto.'],
     ['29.3', 'Rilievo: ↩ in alto annulla qualsiasi operazione del rilievo (muri, misure scritte, spostamenti di punti e muri, porte, finestre, pilastri, chiusure, collegamenti, cancellazioni), un passo alla volta; ↪ ripete quello annullato. Durante il disegno il punto da cui riprendi torna al suo posto. Sulla tastiera: Ctrl+Z e Ctrl+Y.'],
     ['29.2', 'Rilievo: pulsante «⌫ Togli ultimo punto» in basso mentre disegni muri o linee di chiusura: toglie l’ultimo tratto e riprendi dal punto precedente, anche più volte di seguito. Anche ↩ in alto, durante il disegno, fa lo stesso invece di interrompere tutto.'],
