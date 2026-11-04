@@ -566,6 +566,23 @@ NOVITÀ v29.0
   in cui li hai lasciati e, se coprirebbero il punto appena toccato, si aprono dall'altra parte dello schermo.
   Doppio tocco sulla maniglia: posizione iniziale.
 
+NOVITÀ v30.4 — CREA ARREDO RIORGANIZZATO
+- Barra a menu: ➤ (scegli e sposta) · ➕ Forme ▾ · ✏️ Modifica ▾ · ☰ Scegli più · Tutti · 💾 Salva ▾ ·
+  ↩ ↪ ⤢ · ? (aiuto e passo griglia) · ✕. Le istruzioni sono sotto «?».
+- ☰ Scegli più funziona come nei muri: acceso, ogni tocco aggiunge o toglie un pezzo.
+- 🔗 RAGGRUPPA (Modifica): anta + maniglia diventano un gruppo; un tocco li sceglie tutti e
+  si spostano insieme. «Separa» li divide.
+- Allinea (sinistra, centro, destra, davanti, dietro, sotto, sopra), Specchia (destra/sinistra,
+  avanti/dietro, sopra/sotto), Ruota 90° anche di più pezzi insieme.
+- TORSIONE A VITE: la sezione del pezzo gira lungo l'altezza (+90°, −90° dal menu, oppure
+  il valore esatto nella scheda del pezzo). Vale per scatola, cilindro, cono e sagoma.
+- Più pezzi scelti o un gruppo: misure d'insieme (larghezza, profondità, altezza) modificabili.
+- Le maniglie gialle allungano anche i pezzi ruotati e più pezzi insieme.
+- Un pezzo nuovo disegnato sopra altri si appoggia da solo: davanti nella frontale (es. la maniglia
+  sull'anta), a destra nella laterale, sopra nella vista dall'alto.
+- Nome e tipo (arredo, porta, finestra) si scrivono al salvataggio (💾 Salva › Salva oggetto).
+- Sagome e pezzi a vite si vedono con le loro facce anche in pianta e nel prospetto.
+
 NOVITÀ v30.3 — ARREDO: PRIMA SCEGLI, POI POSI
 - Tocchi 🪑 Arredo e si apre subito il pannello: scegli l'arredo, una composizione o «Crea un nuovo
   arredo» (dopo il salvataggio passi direttamente a posarlo).

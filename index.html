@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v30.3</title>
+<title>SimplyCAD Pro · v30.4</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -21826,8 +21826,9 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
    SC_REL.v è l'unica versione: titolo, Guida, file salvato, avvisi e riga messaggi la leggono da qui.
    ======================================================================== */
 window.SC_REL = {
-  v: '30.3', d: '04/11/2026',
+  v: '30.4', d: '04/11/2026',
   news: [
+    ['30.4', 'Crea arredo riorganizzato: barra con menu ➕ Forme, ✏️ Modifica, ☰ Scegli più (come nei muri), Tutti, 💾 Salva, e ↩ ↪ ⤢ ?; le istruzioni sono sotto «?». Nuovo: Raggruppa/Separa (anta + maniglia si scelgono e si spostano con un tocco), Allinea, Specchia, Torsione a vite, Ruota 90° anche di più pezzi insieme, misure d’insieme della scelta, maniglie per allungare anche pezzi ruotati e più pezzi. Nome e tipo (arredo, porta, finestra) si chiedono al salvataggio. Le sagome e i pezzi a vite si vedono con le loro facce anche in pianta e nel prospetto.'],
     ['30.3', 'Arredo: prima si sceglie, poi si posa. Lo strumento Arredo apre subito il pannello; scelto l’oggetto (o creato un arredo nuovo) la sua sagoma segue il dito o il mouse e un tocco lo posa. Si resta pronti a posarne altri uguali; barra in basso con rotazione 90° e 15°, «Al muro», «Cambia» e «Fine». Due dita fanno sempre lo zoom.'],
     ['30.2', 'Modelli di porta e finestra: in «Crea arredo» scegli «Porta» o «Finestra (va nel muro)» e salvi. Poi la inserisci con lo strumento Porta o Finestra e nella sua scheda scegli il Modello: il foro nel muro si apre con le misure del modello, in 3D e nel prospetto si vede il tuo modello, in pianta resta il simbolo di apertura e nel computo la voce porta il nome del modello. Posizione nello spessore del muro: centrato o a filo di un lato.'],
     ['30.1', 'Crea arredo rifatto: l’arredo si compone a pezzi (scatola anche con spigoli arrotondati, cilindro, cono, sfera, sagoma disegnata), ognuno con misure, quota da terra, posizione, rotazione su tutti gli assi, colore da una tavolozza con sfumature e finitura. Quattro viste (dall’alto, frontale, laterale, 3D): una grande e tre piccole, tocchi una piccola e diventa la grande. Pezzi selezionabili, spostabili col dito e allungabili dalle maniglie; duplica, elimina, annulla. Misure d’insieme che ridimensionano tutto. Blocchi: gruppi di pezzi salvati e riusati in altri arredi. Gli arredi creati si vedono in pianta, in 3D e ora anche nel prospetto; quelli vecchi si aprono convertiti in pezzi.'],
@@ -27011,8 +27012,30 @@ window.SC_REL = {
     const [U, V] = plAx(p.pl || 'xy'); return (p.pts || []).map(q => [(q[0] - 0.5) * p[U], (q[1] - 0.5) * p[V]]);
   }
   const fromPl = (pl, u, v, e) => pl === 'xz' ? [u, e, v] : pl === 'yz' ? [e, u, v] : [u, v, e];
+  /* v30.4: sezione del pezzo (scatola, cilindro, cono, sagoma) estrusa lungo il suo asse, con torsione «a vite» tw (gradi) */
+  function section(p) {
+    if (p.k === 'prof') { const pl = p.pl || 'xy'; return {pl, sec: profLocal(p), E: p[plAx(pl)[2]], t: 1}; }
+    if (p.k === 'box') return {pl: 'xy', sec: [[-p.w / 2, -p.d / 2], [p.w / 2, -p.d / 2], [p.w / 2, p.d / 2], [-p.w / 2, p.d / 2]], E: p.h, t: 1};
+    const N = 28, sec = []; for (let i = 0; i < N; i++) { const a = i / N * Math.PI * 2; sec.push([Math.cos(a) * p.w / 2, Math.sin(a) * p.d / 2]); }
+    return {pl: 'xy', sec, E: p.h, t: p.k === 'cone' ? Math.max(0.001, p.top != null ? p.top : 0) : 1};
+  }
+  const twisted = p => !!(p.tw && Math.abs(p.tw) > 0.01 && p.k !== 'sph');
+  function slices(p) {
+    const S = section(p), tw = twisted(p) ? p.tw * D2R : 0, n = tw ? Math.max(2, Math.ceil(Math.abs(p.tw) / 6) + 1) : 2, out = [];
+    for (let i = 0; i < n; i++) { const f = i / (n - 1), a = tw * f, c = Math.cos(a), sn = Math.sin(a), k = 1 + (S.t - 1) * f, e = -S.E / 2 + S.E * f;
+      out.push(S.sec.map(([u, v]) => fromPl(S.pl, (u * c - v * sn) * k, (u * sn + v * c) * k, e))); }
+    return out;
+  }
+  /* facce del pezzo proiettate con prj(vertice) -> [u, v, profondità]: servono per sagome concave e pezzi a vite */
+  function facesP(p, prj) {
+    const R = rot(p), L = slices(p).map(sl => sl.map(v => prj(R(v)))), n = L.length, m = L[0].length, F = [L[0], L[n - 1]];
+    for (let i = 0; i < n - 1; i++) for (let j = 0; j < m; j++) F.push([L[i][j], L[i][(j + 1) % m], L[i + 1][(j + 1) % m], L[i + 1][j]]);
+    return F.map(f => ({pts: f.map(q => [q[0], q[1]]), dep: f.reduce((a, q) => a + q[2], 0) / f.length})).sort((a, b) => a.dep - b.dep);
+  }
+  const needFaces = p => twisted(p) || p.k === 'prof';
   function localV(p) {   /* vertici del pezzo centrato (prima della rotazione) */
     const w = p.w / 2, d = p.d / 2, h = p.h / 2, V = [];
+    if (twisted(p)) { slices(p).forEach(sl => sl.forEach(v => V.push(v))); return V; }
     if (p.k === 'box') { [-h, h].forEach(z => [[-w, -d], [w, -d], [w, d], [-w, d]].forEach(([x, y]) => V.push([x, y, z]))); return V; }
     if (p.k === 'cyl' || p.k === 'cone') { const t = p.k === 'cone' ? (p.top != null ? p.top : 0) : 1, N = 28; for (let i = 0; i < N; i++) { const a = i / N * Math.PI * 2, cx = Math.cos(a), sy = Math.sin(a); V.push([cx * w, sy * d, -h]); V.push([cx * w * t, sy * d * t, h]); } return V; }
     if (p.k === 'sph') { for (let i = 0; i <= 8; i++) { const la = -Math.PI / 2 + i / 8 * Math.PI, cl = Math.cos(la), sl = Math.sin(la); for (let j = 0; j < 16; j++) { const lo = j / 16 * Math.PI * 2; V.push([Math.cos(lo) * cl * w, Math.sin(lo) * cl * d, sl * h]); } } return V; }
@@ -27034,10 +27057,12 @@ window.SC_REL = {
     const flat = !(p.rx || 0) && !(p.ry || 0) && (view === 'top' || !(p.rz || 0));
     const pl = p.pl || 'xy';
     if (p.k === 'prof' && flat && ((view === 'top' && pl === 'xy') || (view === 'front' && pl === 'xz') || (view === 'side' && pl === 'yz'))) {
-      const R = rot(p), E = 0; return {pts: profLocal(p).map(q => pr(R(fromPl(pl, q[0], q[1], E)))), dep};
+      if (!twisted(p)) { const R = rot(p), E = 0; return {pts: profLocal(p).map(q => pr(R(fromPl(pl, q[0], q[1], E)))), dep, exact: true}; }
     }
     return {pts: hull(V), dep};
   }
+  /* poligoni da disegnare in una vista: il contorno, oppure le facce per sagome e pezzi a vite */
+  function polys(p, view) { const o = outline(p, view); if (o.exact || !needFaces(p)) return [o]; return facesP(p, PRJ[view]); }
   function bounds(parts) {
     let a = [1e9, 1e9, 1e9], b = [-1e9, -1e9, -1e9]; parts.forEach(p => meshV(p).forEach(v => { for (let i = 0; i < 3; i++) { a[i] = Math.min(a[i], v[i]); b[i] = Math.max(b[i], v[i]); } }));
     return parts.length ? {x0: a[0], y0: a[1], z0: a[2], x1: b[0], y1: b[1], z1: b[2]} : {x0: -0.5, y0: -0.3, z0: 0, x1: 0.5, y1: 0.3, z1: 0.8};
@@ -27081,7 +27106,15 @@ window.SC_REL = {
   }
   function geoOf(p) {   /* geometria nel sistema X,Y,Z (Z in alto), centrata */
     let g;
-    if (p.k === 'box') {
+    if (twisted(p)) {   /* v30.4: solido a vite costruito a fette */
+      const S = section(p), L = slices(p), n = L.length, m = L[0].length, pos = [], idx = [];
+      L.forEach(sl => sl.forEach(v => pos.push(v[0], v[1], v[2])));
+      for (let i = 0; i < n - 1; i++) for (let j = 0; j < m; j++) { const a = i * m + j, b = i * m + (j + 1) % m, c = (i + 1) * m + (j + 1) % m, d = (i + 1) * m + j; idx.push(a, b, c, a, c, d); }
+      let tri = []; try { tri = THREE.ShapeUtils.triangulateShape(S.sec.map(q => new THREE.Vector2(q[0], q[1])), []); } catch (_) {}
+      tri.forEach(t => { idx.push(t[2], t[1], t[0]); idx.push((n - 1) * m + t[0], (n - 1) * m + t[1], (n - 1) * m + t[2]); });
+      g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g = g.toNonIndexed();
+    }
+    else if (p.k === 'box') {
       const rr = Math.min(p.rr || 0, p.w / 2 - 0.001, p.d / 2 - 0.001);
       if (rr > 0.002) { const s = new THREE.Shape(), w = p.w / 2, d = p.d / 2; s.moveTo(-w + rr, -d); s.lineTo(w - rr, -d); s.quadraticCurveTo(w, -d, w, -d + rr); s.lineTo(w, d - rr); s.quadraticCurveTo(w, d, w - rr, d); s.lineTo(-w + rr, d); s.quadraticCurveTo(-w, d, -w, d - rr); s.lineTo(-w, -d + rr); s.quadraticCurveTo(-w, -d, -w + rr, -d);
         g = new THREE.ExtrudeGeometry(s, {depth: p.h, bevelEnabled: false, curveSegments: 6}); g.translate(0, 0, -p.h / 2); }
@@ -27120,8 +27153,9 @@ window.SC_REL = {
     let uc = null; try { const c0 = getEntityColor(f, f.color || spec.color); if (c0 && String(c0).toLowerCase() !== main) uc = c0; } catch (_) {}
     const L = spec.cp.map(p => ({p, o: outline(p, 'top')})).sort((a, b) => a.o.dep - b.o.dep);
     ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(-(f.rot || 0)); ctx.lineJoin = 'round';
-    L.forEach(({p, o}) => { if (o.pts.length < 2) return; ctx.beginPath(); o.pts.forEach((q, i) => { const X = q[0] * sx, Y = -q[1] * sy; i ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); }); ctx.closePath();
-      const col = uc && String(p.c).toLowerCase() === main ? uc : p.c; ctx.globalAlpha = p.m === 'g' ? 0.45 : 0.92; ctx.fillStyle = col; ctx.fill(); ctx.globalAlpha = 1; ctx.strokeStyle = sel ? '#fbbf24' : 'rgba(0,0,0,0.55)'; ctx.lineWidth = sel ? 2 : 1.1; ctx.stroke(); });
+    L.forEach(({p}) => { const col = uc && String(p.c).toLowerCase() === main ? uc : p.c;
+      polys(p, 'top').forEach(o => { if (o.pts.length < 2) return; ctx.beginPath(); o.pts.forEach((q, i) => { const X = q[0] * sx, Y = -q[1] * sy; i ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); }); ctx.closePath();
+        ctx.globalAlpha = p.m === 'g' ? 0.45 : 0.92; ctx.fillStyle = col; ctx.fill(); ctx.globalAlpha = 1; ctx.strokeStyle = sel ? '#fbbf24' : 'rgba(0,0,0,0.55)'; ctx.lineWidth = sel ? 2 : 1.1; ctx.stroke(); }); });
     if (sel) { ctx.setLineDash([5, 4]); ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 1; ctx.strokeRect(-f.w * viewScale / 2, -f.d * viewScale / 2, f.w * viewScale, f.d * viewScale); ctx.setLineDash([]); }
     ctx.restore();
   }
@@ -27129,8 +27163,9 @@ window.SC_REL = {
   function front(g) {
     const sp = g.spec, kx = (g.f.w || sp.w) / sp.w, ky = (g.f.d || sp.d) / sp.d, kz = (g.f.h || sp.h) / sp.h, Z0 = g.z || 0, out = [], main = (sp.color || '').toLowerCase();
     sp.cp.forEach(p => { try {
-      const V = meshV(p).map(v => { const lx = v[0] * kx, ly = v[1] * ky; return [g.a0 + lx * g.cu + ly * g.cv, v[2] * kz + Z0, g.n0 + lx * g.cn + ly * g.cvn]; });
-      const n = V.reduce((a, q) => a + q[2], 0) / V.length; out.push({sh: 'poly', pts: hull(V), col: p.c, m: p.m === 'g' ? 'g' : undefined, main: String(p.c).toLowerCase() === main, n});
+      const prj = v => { const lx = v[0] * kx, ly = v[1] * ky; return [g.a0 + lx * g.cu + ly * g.cv, v[2] * kz + Z0, g.n0 + lx * g.cn + ly * g.cvn]; }, V = meshV(p).map(prj), n = V.reduce((a, q) => a + q[2], 0) / V.length, base = {col: p.c, m: p.m === 'g' ? 'g' : undefined, main: String(p.c).toLowerCase() === main};
+      if (needFaces(p)) facesP(p, prj).forEach((f, i) => out.push(Object.assign({sh: 'poly', pts: f.pts, n: f.dep + i * 1e-7}, base)));
+      else out.push(Object.assign({sh: 'poly', pts: hull(V), n}, base));
     } catch (_) {} });
     return out.sort((a, b) => a.n - b.n);
   }
@@ -27146,7 +27181,7 @@ window.SC_REL = {
   }
   function elev(cx, o, sx, sy, u0, u1, y0, y1, flip) {   /* modello nel prospetto, dentro il riquadro dell'apertura */
     const sp = modelOf(o); if (!sp) return false; const main = (sp.color || '').toLowerCase(), uc = o.cu && o.color ? o.color : null, mir = !!flip !== ((o.side === -1) || (o.mSide === -1));
-    const L = sp.cp.map(p => ({p, o: outline(p, 'front')})).sort((a, b) => a.o.dep - b.o.dep);
+    const L = []; sp.cp.forEach(p => polys(p, 'front').forEach(o => L.push({p, o}))); L.sort((a, b) => a.o.dep - b.o.dep);
     cx.save(); cx.lineJoin = 'round';
     L.forEach(({p, o: q}) => { if (q.pts.length < 2) return; cx.beginPath(); q.pts.forEach((v, i) => { const f = v[0] / sp.w + 0.5, u = mir ? u1 - f * (u1 - u0) : u0 + f * (u1 - u0), y = y0 + v[1] / sp.h * (y1 - y0); i ? cx.lineTo(sx(u), sy(y)) : cx.moveTo(sx(u), sy(y)); }); cx.closePath();
       cx.globalAlpha = p.m === 'g' ? 0.45 : 1; cx.fillStyle = uc && String(p.c).toLowerCase() === main ? uc : p.c; cx.fill(); cx.globalAlpha = 1; cx.strokeStyle = 'rgba(0,0,0,.55)'; cx.lineWidth = 1; cx.stroke(); });
@@ -27169,7 +27204,14 @@ window.SC_REL = {
       #cf2 input,#cf2 select{font:inherit;background:#0f1424;color:#e5e7eb;border:1px solid #475569;border-radius:7px;min-height:34px;padding:0 6px;box-sizing:border-box}
       #cf2 .hd{display:flex;align-items:center;gap:6px;padding:6px 8px;border-bottom:1px solid #2c3350;flex-wrap:wrap}
       #cf2 .tb{display:flex;gap:4px;padding:5px 8px;overflow-x:auto;border-bottom:1px solid #2c3350;scrollbar-width:thin}
-      #cf2 .tb i{font-style:normal;width:1px;background:#3a4262;margin:0 3px;flex:0 0 1px}
+      #cf2 .tb .ttl{align-self:center;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px;margin-right:2px}
+      #cf2 .tb .sv{background:#15803d;border-color:#4ade80;font-weight:700}
+      #cf2 .mnu{position:absolute;z-index:8;background:#1b2033;border:1px solid #475569;border-radius:10px;padding:5px;box-shadow:0 12px 30px #000c;display:flex;flex-direction:column;gap:3px;min-width:200px;max-height:calc(100vh - 70px);overflow:auto}
+      #cf2 .mnu button{text-align:left;min-height:38px}
+      #cf2 .mnu .sp{height:1px;background:#3a4262;margin:3px 0}
+      #cf2 .mnu .gr{display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px}
+      #cf2 .mnu .gr button{text-align:center;padding:0 4px;font-size:12px}
+      #cf2 .mnu small{color:#9ca3af;padding:2px 4px}
       #cf2 .bd{flex:1;min-height:0;display:flex}
       #cf2 .vw{flex:1;min-width:0;min-height:0;display:grid;grid-template-columns:1fr 168px;grid-template-rows:repeat(3,1fr);gap:5px;padding:5px}
       #cf2 .vb{position:relative;background:#151a2c;border:1px solid #2c3350;border-radius:9px;overflow:hidden;min-height:0}
@@ -27195,23 +27237,24 @@ window.SC_REL = {
         #cf2 .vw{flex:0 0 auto;height:min(62vh,560px);grid-template-columns:repeat(3,1fr);grid-template-rows:1fr 92px}
         #cf2 .vb.mn{grid-row:1;grid-column:1 / span 3}
         #cf2 .pn{width:auto;border-left:0;border-top:1px solid #2c3350;flex:1;min-height:0}
-        #cf2 .hd{flex-wrap:nowrap}#cf2 .lg{display:none}
+        #cf2 .tb{flex-wrap:wrap;overflow:visible;gap:3px;padding:4px 5px}#cf2 .tb .ttl{display:none}#cf2 .tb button{padding:0 7px;min-height:34px}
       }
     </style>
-    <div class="hd"><b style="font-size:15px">🧩<span class="lg"> ${old ? 'Modifica arredo' : 'Crea arredo'}</span></b>
-      <input id="c2Name" placeholder="Nome dell'arredo" maxlength="40" style="flex:1;min-width:60px">
-      <select id="c2Role" title="Che cosa stai creando"><option value="">Arredo</option><option value="door">Porta (va nel muro)</option><option value="window">Finestra (va nel muro)</option></select>
-      <button id="c2Save" style="background:#15803d;border-color:#4ade80;font-weight:700">✓ Salva<span class="lg"> arredo</span></button><button id="c2X" title="Chiudi senza salvare">✕</button></div>
     <div class="tb" id="c2Tb">
-      <button data-t="sel">➤ Seleziona</button><button data-t="box">▭ Scatola</button><button data-t="cyl">◯ Cilindro</button><button data-t="cone">△ Cono</button><button data-t="sph">● Sfera</button><button data-t="prof">✎ Sagoma</button><i></i>
-      <button data-a="multi" title="Tocca più pezzi per selezionarli insieme">☰ Più pezzi</button><button data-a="all">Tutti</button><button data-a="dup">⧉ Duplica</button><button data-a="del">🗑 Elimina</button><button data-a="undo">↩</button><button data-a="redo">↪</button><i></i>
-      <button data-a="blk">▦ Blocchi</button><button data-a="fit">⤢ Adatta</button><select id="c2Grid" title="Passo della griglia"><option value="0.01">Passo 1 cm</option><option value="0.05">Passo 5 cm</option><option value="0.1">Passo 10 cm</option></select></div>
+      <b id="c2Ttl" class="ttl">🧩</b>
+      <button data-t="sel" title="Scegli e sposta i pezzi">➤</button>
+      <button data-m="forme" id="c2Mf">➕ Forme ▾</button>
+      <button data-m="mod">✏️ Modifica ▾</button>
+      <button data-a="multi" title="Come nei muri: ogni tocco aggiunge o toglie un pezzo dalla scelta">☰ Scegli più</button>
+      <button data-a="all">Tutti</button>
+      <button data-m="salva" class="sv">💾 Salva ▾</button>
+      <span style="flex:1"></span>
+      <button data-a="undo" title="Annulla">↩</button><button data-a="redo" title="Ripeti">↪</button><button data-a="fit" title="Adatta le viste">⤢</button><button data-m="help" title="Aiuto e impostazioni">?</button><button id="c2X" title="Chiudi">✕</button></div>
     <div class="bd"><div class="vw" id="c2Vw"></div><div class="pn" id="c2Pn"></div></div>`;
     document.body.appendChild(ov);
     const $ = id => ov.querySelector('#' + id);
     ['pointerdown', 'keydown', 'keyup', 'wheel', 'touchstart', 'touchmove', 'click', 'contextmenu'].forEach(ev => ov.addEventListener(ev, e => e.stopPropagation()));
-    $('c2Name').value = E.name; $('c2Grid').value = String(E.grid); $('c2Role').value = (old && old.role) || '';
-    $('c2Role').onchange = e => { if (e.target.value) toast(e.target.value === 'door' ? 'Porta: disegnala vista di fronte, larga e alta come il vano. Si inserisce con lo strumento Porta (scheda della porta › Modello)' : 'Finestra: disegnala vista di fronte, larga e alta come il vano. Si inserisce con lo strumento Finestra (scheda › Modello)'); };
+    E.role = (old && old.role) || ''; const ttl = () => { $('c2Ttl').textContent = '🧩 ' + (E.name || (old ? 'Modifica arredo' : 'Nuovo arredo')); }; ttl();
     const VN = {top: 'Dall\'alto', front: 'Frontale', side: 'Laterale (da destra)', '3d': '3D (gira col dito)'};
     const VB = {};
     ['top', 'front', 'side', '3d'].forEach(k => { const d = document.createElement('div'); d.className = 'vb'; d.dataset.v = k; d.innerHTML = `<canvas></canvas><b>${VN[k]}</b>`; VB[k] = d; });
@@ -27242,8 +27285,11 @@ window.SC_REL = {
       for (let v = Math.floor(v0 / g) * g; v <= v1; v += g) { const Y = toS(k, 0, v)[1]; x.strokeStyle = Math.abs(v / 0.5 - Math.round(v / 0.5)) < 1e-6 ? '#283050' : '#1b2138'; x.beginPath(); x.moveTo(0, Y); x.lineTo(W, Y); x.stroke(); }
       if (k !== 'top') { const Y = toS(k, 0, 0)[1]; x.strokeStyle = '#64748b'; x.lineWidth = 2; x.beginPath(); x.moveTo(0, Y); x.lineTo(W, Y); x.stroke(); x.fillStyle = '#64748b'; x.font = '10px sans-serif'; x.fillText('pavimento', 6, Y + 12); }
       const L = E.parts.map((p, i) => ({p, i, o: outline(p, k)})).sort((a, b) => a.o.dep - b.o.dep), sh = k === 'top' ? 0.12 : k === 'side' ? -0.18 : 0;
-      L.forEach(({p, i, o}) => { if (o.pts.length < 2) return; x.beginPath(); o.pts.forEach((q, j) => { const s = toS(k, q[0], q[1]); j ? x.lineTo(s[0], s[1]) : x.moveTo(s[0], s[1]); }); x.closePath();
-        x.globalAlpha = p.m === 'g' ? 0.45 : 1; x.fillStyle = shade(p.c, sh); x.fill(); x.globalAlpha = 1; const on = E.sel.has(i); x.strokeStyle = on ? '#fbbf24' : '#0b0d18'; x.lineWidth = on ? 2.4 : 1.1; x.stroke(); });
+      const path = P => { x.beginPath(); P.forEach((q, j) => { const s = toS(k, q[0], q[1]); j ? x.lineTo(s[0], s[1]) : x.moveTo(s[0], s[1]); }); x.closePath(); };
+      L.forEach(({p, i, o}) => { if (o.pts.length < 2) return; const on = E.sel.has(i), F = polys(p, k);
+        F.forEach((f, j) => { path(f.pts); x.globalAlpha = p.m === 'g' ? 0.45 : 1; x.fillStyle = shade(p.c, F.length > 1 ? sh + (j % 2 ? -0.06 : 0.04) : sh); x.fill(); x.globalAlpha = 1; x.strokeStyle = F.length > 1 ? 'rgba(0,0,0,.25)' : '#0b0d18'; x.lineWidth = F.length > 1 ? 0.6 : 1.1; x.stroke(); });
+        if (on || F.length > 1) { path(o.pts); x.strokeStyle = on ? '#fbbf24' : '#0b0d18'; x.lineWidth = on ? 2.4 : 1.1; x.stroke(); }
+        if (p.g != null && on) { x.setLineDash([3, 3]); x.strokeStyle = '#a78bfa'; x.lineWidth = 1; path(o.pts); x.stroke(); x.setLineDash([]); } });
       /* misure d'insieme */
       if (E.parts.length) { const b = bounds(E.parts), q0 = PRJ[k]([b.x0, b.y0, b.z0]), q1 = PRJ[k]([b.x1, b.y1, b.z1]), ua = Math.min(q0[0], q1[0]), ub = Math.max(q0[0], q1[0]), va = Math.min(q0[1], q1[1]), vb = Math.max(q0[1], q1[1]);
         const A = toS(k, ua, va), B = toS(k, ub, vb); x.strokeStyle = '#7dd3fc'; x.fillStyle = '#7dd3fc'; x.lineWidth = 1; x.font = (isM ? 12 : 10) + 'px sans-serif'; x.textAlign = 'center';
@@ -27251,16 +27297,16 @@ window.SC_REL = {
         const xr = Math.min(W - 4, B[0] + (isM ? 16 : 10)); x.beginPath(); x.moveTo(xr, A[1]); x.lineTo(xr, B[1]); x.stroke(); x.save(); x.translate(xr - 3, (A[1] + B[1]) / 2); x.rotate(-Math.PI / 2); x.fillText(fm(vb - va), 0, 0); x.restore(); x.textAlign = 'start'; }
       /* maniglie del pezzo scelto */
       if (isM) { const hd = handles(k); hd.forEach(h => { x.fillStyle = '#fbbf24'; x.strokeStyle = '#111'; x.lineWidth = 1; x.beginPath(); x.rect(h.X - 6, h.Y - 6, 12, 12); x.fill(); x.stroke(); });
-        if (E.sel.size === 1) { const p = E.parts[[...E.sel][0]], [a, b] = AX[k], dims = {x: 'w', y: 'd', z: 'h'}; x.fillStyle = '#fde68a'; x.font = 'bold 12px sans-serif'; x.fillText(KIND[p.k] + ' ' + fm(p[dims[a]]) + ' × ' + fm(p[dims[b]]) + ' m', 8, H - 8); } }
+        if (E.sel.size) { const S = selParts(), bb = bounds(S), q0 = PRJ[k]([bb.x0, bb.y0, bb.z0]), q1 = PRJ[k]([bb.x1, bb.y1, bb.z1]); x.fillStyle = '#fde68a'; x.font = 'bold 12px sans-serif'; x.fillText((S.length === 1 ? KIND[S[0].k] : S.length + ' pezzi') + ' ' + fm(Math.abs(q1[0] - q0[0])) + ' × ' + fm(Math.abs(q1[1] - q0[1])) + ' m', 8, H - 8); } }
       if (E.poly && E.poly.v === k) { x.strokeStyle = '#22d3ee'; x.lineWidth = 2; x.beginPath(); E.poly.pts.forEach((q, j) => { const s = toS(k, q[0], q[1]); j ? x.lineTo(s[0], s[1]) : x.moveTo(s[0], s[1]); }); if (E.poly.cur) { const s = toS(k, E.poly.cur[0], E.poly.cur[1]); x.lineTo(s[0], s[1]); } x.stroke();
         E.poly.pts.forEach((q, j) => { const s = toS(k, q[0], q[1]); x.fillStyle = j ? '#22d3ee' : '#fbbf24'; x.beginPath(); x.arc(s[0], s[1], j ? 4 : 7, 0, 7); x.fill(); }); }
       if (DRG && DRG.k === k && DRG.ghost) { const g2 = DRG.ghost, A = toS(k, g2[0], g2[1]), B = toS(k, g2[2], g2[3]); x.strokeStyle = '#22d3ee'; x.setLineDash([5, 4]); x.lineWidth = 1.6; x.strokeRect(Math.min(A[0], B[0]), Math.min(A[1], B[1]), Math.abs(B[0] - A[0]), Math.abs(B[1] - A[1])); x.setLineDash([]);
         x.fillStyle = '#fff'; x.font = 'bold 12px sans-serif'; x.fillText(fm(Math.abs(g2[2] - g2[0])) + ' × ' + fm(Math.abs(g2[3] - g2[1])) + ' m', Math.max(A[0], B[0]) + 8, Math.min(A[1], B[1]) - 6); }
       if (FC && FC.k === k) { const q = FC; x.strokeStyle = '#fbbf24'; x.lineWidth = 2; x.beginPath(); x.moveTo(q.X - 24, q.Y); x.lineTo(q.X - 6, q.Y); x.moveTo(q.X + 6, q.Y); x.lineTo(q.X + 24, q.Y); x.moveTo(q.X, q.Y - 24); x.lineTo(q.X, q.Y - 6); x.moveTo(q.X, q.Y + 6); x.lineTo(q.X, q.Y + 24); x.stroke(); x.beginPath(); x.arc(q.X, q.Y, 6, 0, 7); x.stroke(); }
     }
-    function handles(k) {   /* maniglie solo per un pezzo non ruotato (in pianta la rotazione in pianta è ammessa solo se nulla) */
-      if (E.sel.size !== 1 || E.tool !== 'sel') return []; const i = [...E.sel][0], p = E.parts[i]; if ((p.rx || 0) || (p.ry || 0) || (p.rz || 0)) return [];
-      const o = outline(p, k), us = o.pts.map(q => q[0]), vs = o.pts.map(q => q[1]), u0 = Math.min(...us), u1 = Math.max(...us), v0 = Math.min(...vs), v1 = Math.max(...vs), out = [];
+    function selBox(k) { const S = selParts(); if (!S.length) return null; const us = [], vs = []; S.forEach(p => meshV(p).map(PRJ[k]).forEach(q => { us.push(q[0]); vs.push(q[1]); })); return {u0: Math.min(...us), u1: Math.max(...us), v0: Math.min(...vs), v1: Math.max(...vs)}; }
+    function handles(k) {   /* v30.4: maniglie sul riquadro della scelta (un pezzo, anche ruotato, o più pezzi) */
+      if (!E.sel.size || E.tool !== 'sel') return []; const B = selBox(k); if (!B) return []; const {u0, u1, v0, v1} = B, out = [];
       [[u0, v0, -1, -1], [u1, v0, 1, -1], [u1, v1, 1, 1], [u0, v1, -1, 1], [(u0 + u1) / 2, v0, 0, -1], [(u0 + u1) / 2, v1, 0, 1], [u0, (v0 + v1) / 2, -1, 0], [u1, (v0 + v1) / 2, 1, 0]].forEach(([u, v, su, sv]) => { const s = toS(k, u, v); out.push({X: s[0], Y: s[1], su, sv, u0, u1, v0, v1}); });
       return out;
     }
@@ -27311,27 +27357,29 @@ window.SC_REL = {
           <h4>Misure (m)</h4><div class="g3"><label>Larghezza<input data-f="w" inputmode="decimal" value="${f(p.w)}"></label><label>Profondità<input data-f="d" inputmode="decimal" value="${f(p.d)}"></label><label>Altezza<input data-f="h" inputmode="decimal" value="${f(p.h)}"></label></div>
           ${p.k === 'box' ? `<div class="g2" style="margin-top:5px"><label>Spigoli arrotondati (m)<input data-f="rr" inputmode="decimal" value="${f(p.rr || 0)}"></label></div>` : ''}
           ${p.k === 'cone' ? `<div class="g2" style="margin-top:5px"><label>Cima (% della base)<input data-f="top" inputmode="decimal" value="${Math.round((p.top || 0) * 100)}"></label></div>` : ''}
+          ${p.k !== 'sph' ? `<div class="g2" style="margin-top:5px"><label>Torsione a vite (gradi)<input data-f="tw" inputmode="decimal" value="${fm(p.tw || 0, 0)}"></label><span class="hint" style="align-self:end">Gira la sezione lungo l'altezza, come una vite (es. 90, 180, 360)</span></div>` : ''}
           <h4>Posizione (m)</h4><div class="g3"><label>Destra / sinistra<input data-f="x" inputmode="decimal" value="${f(p.x)}"></label><label>Avanti / dietro<input data-f="y" inputmode="decimal" value="${f(p.y)}"></label><label>Da terra<input data-f="z" inputmode="decimal" value="${f(p.z)}"></label></div>
           <div class="row"><button data-a="onfl">Appoggia a terra</button><button data-a="ontop">Sopra al pezzo sotto</button></div>
           <h4>Rotazione (gradi)</h4><div class="g3"><label>In pianta<input data-f="rz" inputmode="decimal" value="${fm(p.rz || 0, 0)}"></label><label>Avanti/indietro<input data-f="rx" inputmode="decimal" value="${fm(p.rx || 0, 0)}"></label><label>Di lato<input data-f="ry" inputmode="decimal" value="${fm(p.ry || 0, 0)}"></label></div>
           <div class="row"><button data-r="rz">⟳ 90° in pianta</button><button data-r="rx">⟳ 90° avanti</button><button data-r="ry">⟳ 90° di lato</button><button data-a="r0">Raddrizza</button></div>
-          <h4>Colore e finitura</h4>${palHTML(p.c)}
-          <div class="hint">Trascina il pezzo in una vista per spostarlo; dai quadratini gialli lo allunghi (pezzi non ruotati). Le misure accettano anche «cm» (es. 45 cm).</div>`;
+          <h4>Colore e finitura</h4>${palHTML(p.c)}`;
         P.querySelector('#c2Fin').value = p.m || 'o';
       } else if (S.length > 1) {
-        P.innerHTML = `<h4>${S.length} pezzi scelti</h4><div class="row"><button data-a="dup">⧉ Duplica</button><button data-a="del">🗑 Elimina</button><button data-a="saveblk">▦ Salva come blocco</button></div>
+        const bs = bounds(S), gid = S[0].g, isG = gid != null && S.every(q => q.g === gid) && E.parts.filter(q => q.g === gid).length === S.length;
+        P.innerHTML = `<h4>${isG ? '🔗 Gruppo di ' + S.length + ' pezzi' : S.length + ' pezzi scelti'}</h4><div class="row">${isG ? '<button data-a="ungrp">Separa</button>' : '<button data-a="grp">🔗 Raggruppa</button>'}<button data-a="dup">⧉ Duplica</button><button data-a="del">🗑 Elimina</button><button data-a="saveblk">▦ Salva come blocco</button></div>
+          <h4>Misure d'insieme (m)</h4><div class="g3"><label>Larghezza<input data-s="w" inputmode="decimal" value="${fm(bs.x1 - bs.x0)}"></label><label>Profondità<input data-s="d" inputmode="decimal" value="${fm(bs.y1 - bs.y0)}"></label><label>Altezza<input data-s="h" inputmode="decimal" value="${fm(bs.z1 - bs.z0)}"></label></div>
           <h4>Sposta insieme (m)</h4><div class="g3"><label>Destra/sinistra<input data-g="x" inputmode="decimal" value="0"></label><label>Avanti/dietro<input data-g="y" inputmode="decimal" value="0"></label><label>Su/giù<input data-g="z" inputmode="decimal" value="0"></label></div><div class="row"><button data-a="mvg">Sposta</button></div>
-          <h4>Colore per tutti</h4>${palHTML(S[0].c)}<div class="hint">Trascinando uno dei pezzi scelti si spostano tutti insieme.</div>`;
+          <h4>Colore per tutti</h4>${palHTML(S[0].c)}`;
         P.querySelector('#c2Fin').value = S[0].m || 'o';
       } else {
         P.innerHTML = `<h4>Arredo intero</h4>${E.parts.length ? `<div class="g3"><label>Larghezza<input data-o="w" inputmode="decimal" value="${fm(b.x1 - b.x0)}"></label><label>Profondità<input data-o="d" inputmode="decimal" value="${fm(b.y1 - b.y0)}"></label><label>Altezza<input data-o="h" inputmode="decimal" value="${fm(b.z1 - b.z0)}"></label></div>
-          <div class="hint">Cambiando una misura d'insieme tutti i pezzi si allungano o si accorciano in proporzione.</div><div class="hint">${E.parts.length} pezzi</div>` : ''}
-          <h4>Come si usa</h4><div class="hint">1. Scegli un pezzo (Scatola, Cilindro…) e trascina nella vista grande: nella <b>frontale</b> decidi larghezza e altezza, <b>dall'alto</b> larghezza e profondità.<br>2. Con <b>➤ Seleziona</b> tocca un pezzo: a destra trovi misure, posizione, rotazione e colore.<br>3. Tocca una vista piccola per portarla in grande.<br>4. <b>▦ Blocchi</b>: salva pezzi da riusare (un'anta, una maniglia) o inseriscili.<br>5. Dai un nome e premi <b>✓ Salva arredo</b>.</div>
+<div class="hint">${E.parts.length} pezzi · tocca un pezzo per modificarlo · «?» per l'aiuto</div>` : '<div class="hint">Scegli una forma da «➕ Forme» e trascina nella vista grande. «?» per l\'aiuto.</div>'}
           <h4>Misure dei pezzi nuovi</h4><div class="g2"><label>Altezza se disegni dall'alto<input id="c2DH" inputmode="decimal" value="${fm(E.defH)}"></label><label>Profondità se disegni di fronte/lato<input id="c2DD" inputmode="decimal" value="${fm(E.defD)}"></label></div>
           <h4>Colore dei pezzi nuovi</h4>${palHTML(E.col)}`;
         P.querySelector('#c2Fin').value = E.fin;
       }
       ov.querySelectorAll('#c2Tb [data-t]').forEach(b => b.classList.toggle('on', b.dataset.t === E.tool));
+      { const mf = $('c2Mf'); if (mf) { mf.textContent = E.tool !== 'sel' ? '➕ ' + KIND[E.tool] + ' ▾' : '➕ Forme ▾'; mf.classList.toggle('on', E.tool !== 'sel'); } }
       const mb = ov.querySelector('#c2Tb [data-a="multi"]'); if (mb) mb.classList.toggle('on', E.multi);
     }
     function setCol(c) { pushRecent(c); const S = selParts(); if (S.length) { S.forEach(p => { p.c = c; }); commit(); } else { E.col = c; panel(); } }
@@ -27354,17 +27402,37 @@ window.SC_REL = {
         if ('wdh'.includes(f) && !(v >= 0.002 && v <= 20)) { toast('Misura da 0,002 a 20 m'); return panel(); }
         if (f === 'rr') v = Math.max(0, Math.min(v, Math.min(p.w, p.d) / 2));
         if (f === 'rx' || f === 'ry' || f === 'rz') v = ((v % 360) + 360) % 360;
+        if (f === 'tw') v = Math.max(-3600, Math.min(3600, v));
         p[f] = v; return commit(); }
-      if (t.dataset.o) { const v = numIn(t.value); const b = bounds(E.parts), cur = {w: b.x1 - b.x0, d: b.y1 - b.y0, h: b.z1 - b.z0}[t.dataset.o]; if (!(v > 0.01 && v <= 20) || !(cur > 0)) { toast('Misura non valida'); return panel(); } scaleAll(t.dataset.o, v / cur, b); return commit(); }
+      if (t.dataset.o || t.dataset.s) { const S = t.dataset.s ? selParts() : E.parts, ax = t.dataset.o || t.dataset.s, v = numIn(t.value), b = bounds(S), cur = {w: b.x1 - b.x0, d: b.y1 - b.y0, h: b.z1 - b.z0}[ax];
+        if (!(v > 0.005 && v <= 20) || !(cur > 0)) { toast('Misura non valida'); return panel(); } const k = v / cur; scaleParts(S, [ax === 'w' ? k : 1, ax === 'd' ? k : 1, ax === 'h' ? k : 1], [b.x0, b.y0, b.z0]); return commit(); }
+      if (t.id === 'c2Grid') { E.grid = +t.value || 0.01; return; }
     });
-    function scaleAll(ax, k, b) {
-      E.parts.forEach(p => {
-        if (ax === 'w') { p.x = b.x0 + (p.x - b.x0) * k; } else if (ax === 'd') { p.y = b.y0 + (p.y - b.y0) * k; } else { p.z = b.z0 + (p.z - b.z0) * k; }
-        const flat = !(p.rx || 0) && !(p.ry || 0), c = Math.abs(Math.cos((p.rz || 0) * D2R)) > 0.7;
-        if (ax === 'h') { if (flat) p.h *= k; else { p.w *= Math.sqrt(k); p.d *= Math.sqrt(k); p.h *= Math.sqrt(k); } }
-        else if (!flat) { p.w *= Math.sqrt(k); p.d *= Math.sqrt(k); p.h *= Math.sqrt(k); }
-        else if ((ax === 'w') === c) p.w *= k; else p.d *= k;
+    /* v30.4: allunga o accorcia i pezzi lungo gli assi X (larghezza), Y (profondità), Z (altezza) attorno a un punto fisso */
+    function scaleParts(S, f, o) {
+      S.forEach(p => {
+        const R = rot(p), c0 = R([0, 0, 0]), dir = v => { const q = R(v); return [q[0] - c0[0], q[1] - c0[1], q[2] - c0[2]]; }, U = [dir([1, 0, 0]), dir([0, 1, 0]), dir([0, 0, 1])];
+        const k = U.map(u => Math.sqrt((u[0] * f[0]) ** 2 + (u[1] * f[1]) ** 2 + (u[2] * f[2]) ** 2));
+        const C = [o[0] + (c0[0] - o[0]) * f[0], o[1] + (c0[1] - o[1]) * f[1], o[2] + (c0[2] - o[2]) * f[2]];
+        p.w = Math.max(0.002, p.w * k[0]); p.d = Math.max(0.002, p.d * k[1]); p.h = Math.max(0.002, p.h * k[2]); if (p.rr) p.rr = Math.min(p.rr, p.w / 2, p.d / 2);
+        p.x = C[0]; p.y = C[1]; p.z = C[2] - p.h / 2;
       });
+    }
+    const units = S => { const m = new Map(); S.forEach(p => { const key = p.g != null ? 'g' + p.g : p; if (!m.has(key)) m.set(key, []); m.get(key).push(p); }); return [...m.values()]; };
+    function mirror(S, ax) {   /* specchia la scelta rispetto al suo centro */
+      const b = bounds(S), c = ax === 'x' ? (b.x0 + b.x1) / 2 : ax === 'y' ? (b.y0 + b.y1) / 2 : (b.z0 + b.z1) / 2;
+      S.forEach(p => {
+        if (ax === 'x') { p.x = 2 * c - p.x; p.rz = (360 - (p.rz || 0)) % 360; p.ry = (360 - (p.ry || 0)) % 360; }
+        else if (ax === 'y') { p.y = 2 * c - p.y; p.rz = (360 - (p.rz || 0)) % 360; p.rx = (360 - (p.rx || 0)) % 360; }
+        else { const zc = p.z + p.h / 2; p.z = 2 * c - zc - p.h / 2; p.rx = (360 - (p.rx || 0)) % 360; p.ry = (360 - (p.ry || 0)) % 360; if (p.k === 'cone') p.rx = (p.rx + 180) % 360; }
+        if (p.tw) p.tw = -p.tw;
+        if (p.k === 'prof') { const pl = p.pl || 'xy', iu = (ax === 'x' && pl !== 'yz') || (ax === 'y' && pl === 'yz'), iv = (ax === 'y' && pl === 'xy') || (ax === 'z' && pl !== 'xy'); p.pts = p.pts.map(q => [iu ? 1 - q[0] : q[0], iv ? 1 - q[1] : q[1]]); }
+      });
+    }
+    function align(S, how) {   /* allinea pezzi (o gruppi) al riquadro della scelta */
+      const B = bounds(S), ax = how[0], side = how[1];
+      units(S).forEach(U => { const b = bounds(U), lo = ax === 'x' ? b.x0 : ax === 'y' ? b.y0 : b.z0, hi = ax === 'x' ? b.x1 : ax === 'y' ? b.y1 : b.z1, L0 = ax === 'x' ? B.x0 : ax === 'y' ? B.y0 : B.z0, L1 = ax === 'x' ? B.x1 : ax === 'y' ? B.y1 : B.z1;
+        const d = side === '0' ? L0 - lo : side === '1' ? L1 - hi : (L0 + L1) / 2 - (lo + hi) / 2; U.forEach(p => { if (ax === 'z') p.z += d; else p[ax] += d; }); });
     }
     function act(a) {
       const S = selParts();
@@ -27372,7 +27440,7 @@ window.SC_REL = {
       if (a === 'multi') { E.multi = !E.multi; panel(); return toast(E.multi ? 'Tocca i pezzi da aggiungere o togliere dalla scelta' : 'Scelta singola'); }
       if (a === 'all') { E.sel = new Set(E.parts.map((_, i) => i)); E.tool = 'sel'; drawAll(); return panel(); }
       if (a === 'fit') { E.vz = {}; drawAll(true); return; }
-      if (a === 'dup') { if (!S.length) return toast('Scegli prima un pezzo'); const n = S.map(p => { const q = clone(p); q.x += 0.05; q.y -= 0.05; return q; }); const i0 = E.parts.length; E.parts.push(...n); E.sel = new Set(n.map((_, j) => i0 + j)); return commit(); }
+      if (a === 'dup') { if (!S.length) return toast('Scegli prima un pezzo'); const gm = new Map(), n = S.map(p => { const q = clone(p); q.x += 0.05; q.y -= 0.05; if (q.g != null) { if (!gm.has(q.g)) gm.set(q.g, Date.now() % 1e9 + Math.floor(Math.random() * 1e6)); q.g = gm.get(q.g); } return q; }); const i0 = E.parts.length; E.parts.push(...n); E.sel = new Set(n.map((_, j) => i0 + j)); return commit(); }
       if (a === 'del') { if (!S.length) return toast('Scegli prima un pezzo'); E.parts = E.parts.filter((_, i) => !E.sel.has(i)); E.sel = new Set(); return commit(); }
       if (a === 'onfl') { S.forEach(p => { const z0 = Math.min(...meshV(p).map(v => v[2])); p.z -= z0; }); return commit(); }
       if (a === 'ontop') { S.forEach(p => { const me = outline(p, 'top').pts; let top = 0; E.parts.forEach(q => { if (q === p || S.includes(q)) return; const o = outline(q, 'top').pts; if (me.some(v => inPoly(o, v[0], v[1])) || o.some(v => inPoly(me, v[0], v[1]))) top = Math.max(top, Math.max(...meshV(q).map(v => v[2]))); }); const z0 = Math.min(...meshV(p).map(v => v[2])); p.z += top - z0; }); return commit(); }
@@ -27380,6 +27448,56 @@ window.SC_REL = {
       if (a === 'mvg') { const g = k => numIn((ov.querySelector('[data-g="' + k + '"]') || {}).value) || 0, dx = g('x'), dy = g('y'), dz = g('z'); S.forEach(p => { p.x += dx; p.y += dy; p.z += dz; }); return commit(); }
       if (a === 'blk') return blkDlg();
       if (a === 'saveblk') return saveBlk();
+      if (a === 'save') return saveDlg();
+      if (a.startsWith('t:')) { E.tool = a.slice(2); E.poly = null; if (E.tool !== 'sel') E.sel = new Set(); drawAll(); panel(); return hintTool(); }
+      const need = n => { if (S.length < n) { toast(n > 1 ? 'Scegli almeno ' + n + ' pezzi (☰ Scegli più)' : 'Scegli prima un pezzo'); return true; } return false; };
+      if (a === 'grp') { if (need(2)) return; const g = Date.now() % 1e9 + Math.floor(Math.random() * 1000); S.forEach(p => { p.g = g; }); toast('Raggruppati: ora si scelgono e si spostano insieme'); return commit(); }
+      if (a === 'ungrp') { if (need(1)) return; S.forEach(p => { delete p.g; }); toast('Gruppo separato'); return commit(); }
+      if (a.startsWith('rot:')) { if (need(1)) return; const ax = a.slice(4), b = bounds(S), c = [(b.x0 + b.x1) / 2, (b.y0 + b.y1) / 2, (b.z0 + b.z1) / 2];
+        S.forEach(p => { p[ax] = ((p[ax] || 0) + 90) % 360; if (S.length > 1) { const zc = p.z + p.h / 2; let x = p.x - c[0], y = p.y - c[1], z = zc - c[2], t;
+          if (ax === 'rz') { t = -y; y = x; x = t; } else if (ax === 'rx') { t = -z; z = y; y = t; } else { t = z; z = -x; x = t; } p.x = c[0] + x; p.y = c[1] + y; p.z = c[2] + z - p.h / 2; } }); return commit(); }
+      if (a.startsWith('mir:')) { if (need(1)) return; mirror(S, a.slice(4)); return commit(); }
+      if (a.startsWith('al:')) { if (need(2)) return; align(S, a.slice(3)); return commit(); }
+      if (a.startsWith('tw:')) { if (need(1)) return; const v = +a.slice(3); S.forEach(p => { if (p.k !== 'sph') p.tw = v ? (p.tw || 0) + v : 0; }); return commit(); }
+    }
+    /* ---- menu della barra */
+    function menu(btn, kind) {
+      const old = ov.querySelector('.mnu'); if (old) { const same = old.dataset.k === kind; old.remove(); if (same) return; }
+      const m = document.createElement('div'); m.className = 'mnu'; m.dataset.k = kind; const B = (a, t, x) => `<button data-a="${a}"${x || ''}>${t}</button>`, sp = '<div class="sp"></div>';
+      if (kind === 'forme') m.innerHTML = B('t:box', '▭ Scatola') + B('t:cyl', '◯ Cilindro') + B('t:cone', '△ Cono') + B('t:sph', '● Sfera') + B('t:prof', '✎ Sagoma (contorno a tocchi)') + sp + B('blk', '▦ Inserisci un blocco…');
+      else if (kind === 'mod') m.innerHTML = B('dup', '⧉ Duplica') + B('del', '🗑 Elimina') + B('grp', '🔗 Raggruppa (es. anta + maniglia)') + B('ungrp', 'Separa il gruppo') + sp
+        + '<small>Ruota di 90°</small><div class="gr">' + B('rot:rz', '⟳ in pianta') + B('rot:rx', '⟳ avanti') + B('rot:ry', '⟳ di lato') + '</div>' + B('r0', 'Raddrizza')
+        + '<small>Torsione a vite</small><div class="gr">' + B('tw:90', '+90°') + B('tw:-90', '−90°') + B('tw:0', 'Togli') + '</div>'
+        + '<small>Specchia</small><div class="gr">' + B('mir:x', '↔ destra/sin.') + B('mir:y', '⇅ avanti/dietro') + B('mir:z', '↕ sopra/sotto') + '</div>'
+        + '<small>Allinea (2 o più pezzi)</small><div class="gr">' + B('al:x0', '⇤ sinistra') + B('al:xc', '↔ centro') + B('al:x1', '⇥ destra') + B('al:y0', 'davanti') + B('al:yc', 'centro') + B('al:y1', 'dietro') + B('al:z0', '⤓ sotto') + B('al:zc', 'centro') + B('al:z1', '⤒ sopra') + '</div>'
+        + sp + B('onfl', 'Appoggia a terra') + B('ontop', 'Metti sopra al pezzo sotto');
+      else if (kind === 'salva') m.innerHTML = B('save', '💾 Salva oggetto…') + B('saveblk', '▦ Salva i pezzi scelti come blocco…') + B('blk', 'Gestisci i blocchi…');
+      else if (kind === 'help') m.innerHTML = `<div class="hint" style="max-width:340px;line-height:1.45;margin:2px 4px">
+          <b>Disegnare</b>: «➕ Forme», poi trascina nella vista grande. Nella <b>frontale</b> decidi larghezza e altezza, <b>dall'alto</b> larghezza e profondità, di <b>lato</b> profondità e altezza. La sagoma si disegna a tocchi e si chiude toccando il primo punto (giallo).<br>
+          <b>Scegliere</b>: con ➤ tocca un pezzo. Con «☰ Scegli più» ogni tocco aggiunge o toglie un pezzo, come nei muri. Un <b>gruppo</b> si sceglie tutto con un tocco.<br>
+          <b>Spostare</b>: trascina il pezzo; dai quadratini gialli lo allunghi (anche più pezzi insieme). Le misure si scrivono anche in cm (es. 45 cm).<br>
+          <b>Viste</b>: tocca una vista piccola per portarla in grande; due dita = zoom, trascinare il vuoto = spostare la vista.<br>
+          <b>Blocchi</b>: pezzi salvati (un'anta, una maniglia) da inserire in altri arredi.</div>${sp}
+          <label class="row" style="margin:2px 4px">Passo della griglia <select id="c2Grid"><option value="0.01">1 cm</option><option value="0.05">5 cm</option><option value="0.1">10 cm</option></select></label>`;
+      ov.appendChild(m); const r0 = btn.getBoundingClientRect(), W = m.offsetWidth; m.style.left = Math.max(4, Math.min(innerWidth - W - 4, r0.left)) + 'px'; m.style.top = (r0.bottom + 4) + 'px';
+      const g = m.querySelector('#c2Grid'); if (g) { g.value = String(E.grid); g.onchange = () => { E.grid = +g.value || 0.01; }; }
+      m.addEventListener('click', e => { const b = e.target.closest('[data-a]'); if (!b) return; m.remove(); act(b.dataset.a); });
+    }
+    ov.addEventListener('pointerdown', e => { const m = ov.querySelector('.mnu'); if (m && !m.contains(e.target) && !e.target.closest('[data-m]')) m.remove(); }, true);
+    /* ---- salvataggio: nome e tipo si chiedono qui */
+    function saveDlg() {
+      if (E.poly && E.poly.pts.length >= 3) polyClose(); if (!E.parts.length) return toast('Aggiungi almeno un pezzo');
+      const d = document.createElement('div'); d.className = 'blk';
+      d.innerHTML = `<div><b style="font-size:15px">💾 Salva oggetto</b>
+        <div class="g2" style="margin-top:8px;grid-template-columns:1fr"><label>Nome<input id="c2Name" maxlength="40" placeholder="es. Mobile bagno 80" value="${escH(E.name)}"></label>
+        <label>Che cos'è<select id="c2Role"><option value="">Arredo (si posa sul pavimento o al muro)</option><option value="door">Porta (va nel muro, si sceglie nella scheda della porta)</option><option value="window">Finestra (va nel muro, si sceglie nella scheda della finestra)</option></select></label></div>
+        <div class="hint" id="c2RH"></div>
+        <div class="row" style="justify-content:flex-end;margin-top:8px"><button data-x>Annulla</button><button data-ok style="background:#15803d;border-color:#4ade80;font-weight:700">✓ Salva</button></div></div>`;
+      ov.appendChild(d); const rl = d.querySelector('#c2Role'), rh = d.querySelector('#c2RH'); rl.value = E.role || '';
+      const hint = () => { rh.textContent = rl.value ? 'Disegnala vista di fronte, larga e alta come il vano: il muro si apre con queste misure.' : ''; }; hint(); rl.onchange = hint;
+      setTimeout(() => d.querySelector('#c2Name').focus(), 50);
+      d.addEventListener('click', e => { if (e.target === d || e.target.closest('[data-x]')) return d.remove(); if (e.target.closest('[data-ok]')) { const n = d.querySelector('#c2Name').value.trim(); if (!n) { toast('Scrivi il nome'); return; } E.name = n; E.role = rl.value; d.remove(); ttl(); doSave(); } });
+      d.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); d.querySelector('[data-ok]').click(); } });
     }
     async function saveBlk() {
       const S = selParts(); if (!S.length) return toast('Scegli i pezzi del blocco (☰ Più pezzi oppure Tutti)');
@@ -27396,12 +27514,11 @@ window.SC_REL = {
       d.addEventListener('click', async e => {
         if (e.target === d || e.target.closest('[data-x]')) return d.remove();
         if (e.target.closest('[data-s]')) { d.remove(); return saveBlk(); }
-        const i = e.target.closest('[data-i]'); if (i) { const P = clone(o[i.dataset.i].parts), b = bounds(E.parts), dx = E.parts.length ? b.x1 + 0.05 - Math.min(...P.map(p => p.x - p.w / 2)) : 0, i0 = E.parts.length; P.forEach(p => { p.x += dx; }); E.parts.push(...P); E.sel = new Set(P.map((_, j) => i0 + j)); E.tool = 'sel'; d.remove(); E.vz = {}; commit(); drawAll(true); return toast('Blocco inserito: spostalo dove serve'); }
+        const i = e.target.closest('[data-i]'); if (i) { const gm = new Map(), P = clone(o[i.dataset.i].parts).map(q => { if (q.g != null) { if (!gm.has(q.g)) gm.set(q.g, Date.now() % 1e9 + Math.floor(Math.random() * 1e6)); q.g = gm.get(q.g); } return q; }), b = bounds(E.parts), dx = E.parts.length ? b.x1 + 0.05 - Math.min(...P.map(p => p.x - p.w / 2)) : 0, i0 = E.parts.length; P.forEach(p => { p.x += dx; }); E.parts.push(...P); E.sel = new Set(P.map((_, j) => i0 + j)); E.tool = 'sel'; d.remove(); E.vz = {}; commit(); drawAll(true); return toast('Blocco inserito: spostalo dove serve'); }
         const dl = e.target.closest('[data-d]'); if (dl && await uiConfirm('Eliminare il blocco «' + o[dl.dataset.d].name + '»?')) { delete o[dl.dataset.d]; saveBlocks(o); d.remove(); blkDlg(); }
       });
     }
-    ov.querySelector('#c2Tb').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; if (b.dataset.t) { E.tool = b.dataset.t; E.poly = null; if (E.tool !== 'sel') { E.sel = new Set(); } drawAll(); panel(); hintTool(); } else if (b.dataset.a) act(b.dataset.a); });
-    $('c2Grid').onchange = e => { E.grid = +e.target.value || 0.01; };
+    ov.querySelector('#c2Tb').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; if (b.dataset.m) return menu(b, b.dataset.m); if (b.dataset.t) { E.tool = b.dataset.t; E.poly = null; drawAll(); panel(); hintTool(); } else if (b.dataset.a) act(b.dataset.a); });
     function hintTool() { const H = {box: 'Scatola: trascina nella vista grande da un angolo all\'angolo opposto', cyl: 'Cilindro: trascina il rettangolo che lo contiene', cone: 'Cono: trascina il rettangolo che lo contiene', sph: 'Sfera: trascina il rettangolo che la contiene', prof: 'Sagoma: tocca i punti del contorno, poi tocca il primo punto (giallo) per chiuderla', sel: 'Tocca un pezzo per sceglierlo'}; toast(H[E.tool]); }
 
     /* ---- tocchi nelle viste */
@@ -27419,6 +27536,12 @@ window.SC_REL = {
       if (k === 'top') { Object.assign(p, {x: (u0 + u1) / 2, y: (v0 + v1) / 2, w: du, d: dv, z: 0, h: t === 'sph' ? Math.min(du, dv) : E.defH}); }
       else if (k === 'front') { const dd = t === 'box' ? E.defD : du; Object.assign(p, {x: (u0 + u1) / 2, y: 0, w: du, d: dd, z: Math.max(0, v0), h: dv}); }
       else { const ww = t === 'box' ? E.defD : du; Object.assign(p, {x: 0, y: (u0 + u1) / 2, w: ww, d: du, z: Math.max(0, v0), h: dv}); }
+      /* v30.4: il pezzo nuovo si appoggia a quelli che copre nella vista: davanti (frontale), a destra (laterale), sopra (dall'alto) */
+      const hit = E.parts.filter(q => { const o = outline(q, k), us = o.pts.map(v => v[0]), vs = o.pts.map(v => v[1]); return Math.min(...us) < u1 && Math.max(...us) > u0 && Math.min(...vs) < v1 && Math.max(...vs) > v0; });
+      if (hit.length) { const V = []; hit.forEach(q => meshV(q).forEach(v => V.push(v)));
+        if (k === 'front') p.y = Math.min(...V.map(v => v[1])) - p.d / 2;
+        else if (k === 'side') p.x = Math.max(...V.map(v => v[0])) + p.w / 2;
+        else p.z = Math.max(...V.map(v => v[2])); }
       return p;
     }
     function polyClose() {
@@ -27442,10 +27565,11 @@ window.SC_REL = {
         if (E.tool === 'prof') { DRG = {k, id: e.pointerId, prof: true, run: 0, lx: e.clientX, ly: e.clientY}; FC = null; return; }
         if (E.tool !== 'sel') { DRG = {k, id: e.pointerId, draw: true, run: 0, lx: e.clientX, ly: e.clientY, a: null}; if (!touchOff(e)) { DRG.a = [sn(w0[0]), sn(w0[1])]; } return; }
         const hd = handles(k).find(h => Math.hypot(h.X - X, h.Y - Y) < (e.pointerType === 'mouse' ? 9 : 18));
-        if (hd) { const i = [...E.sel][0]; DRG = {k, id: e.pointerId, hd, i, p0: clone(E.parts[i]), run: 0, lx: e.clientX, ly: e.clientY}; return; }
+        if (hd) { DRG = {k, id: e.pointerId, hd, P0: clone(E.parts), run: 0, lx: e.clientX, ly: e.clientY}; return; }
         const i = pick(k, X, Y);
         if (i < 0) { if (!E.multi && E.sel.size) { E.sel = new Set(); drawAll(); panel(); } DRG = {k, id: e.pointerId, pan: true, X, Y, t0: Object.assign({}, vt(k))}; return; }
-        if (E.multi) { E.sel.has(i) ? E.sel.delete(i) : E.sel.add(i); } else if (!E.sel.has(i)) E.sel = new Set([i]);
+        const grp = E.parts[i].g != null ? E.parts.map((q, j) => q.g === E.parts[i].g ? j : -1).filter(j => j >= 0) : [i];
+        if (E.multi) { const on = E.sel.has(i); grp.forEach(j => on ? E.sel.delete(j) : E.sel.add(j)); } else if (!E.sel.has(i)) E.sel = new Set(grp);
         DRG = {k, id: e.pointerId, move: true, w0, P0: [...E.sel].map(j => [j, E.parts[j].x, E.parts[j].y, E.parts[j].z]), moved: false}; drawAll(); panel();
       });
       c.addEventListener('pointermove', e => {
@@ -27462,10 +27586,12 @@ window.SC_REL = {
         const [fx, fy] = fcur(k, e, DRG.run), w = toW(k, fx, fy), q = [sn(w[0]), sn(w[1])]; FC = touchOff(e) ? {k, X: fx, Y: fy} : null;
         if (DRG.prof) { if (!E.poly || E.poly.v !== k) E.poly = {v: k, pts: []}; E.poly.cur = q; draw2(k); return; }
         if (DRG.draw) { if (!DRG.a) DRG.a = q; DRG.ghost = [DRG.a[0], DRG.a[1], q[0], q[1]]; draw2(k); return; }
-        if (DRG.hd) { const h = DRG.hd, p = E.parts[DRG.i], p0 = DRG.p0, [a, b] = AX[k], dm = {x: 'w', y: 'd', z: 'h'};
+        if (DRG.hd) { const h = DRG.hd, [a, b] = AX[k];
           let u0 = h.u0, u1 = h.u1, v0 = h.v0, v1 = h.v1; if (h.su < 0) u0 = Math.min(q[0], u1 - 0.005); if (h.su > 0) u1 = Math.max(q[0], u0 + 0.005); if (h.sv < 0) v0 = Math.min(q[1], v1 - 0.005); if (h.sv > 0) v1 = Math.max(q[1], v0 + 0.005);
-          const set = (ax, lo, hi) => { if (ax === 'z') { p.z = lo; p.h = hi - lo; } else { p[ax] = (lo + hi) / 2; p[dm[ax]] = hi - lo; } };
-          set(a, u0, u1); set(b, v0, v1); draw2All(); }
+          E.parts = clone(DRG.P0); const S = selParts(), fu = (u1 - u0) / ((h.u1 - h.u0) || 1), fv = (v1 - v0) / ((h.v1 - h.v0) || 1), f = [1, 1, 1], o = [0, 0, 0], I = {x: 0, y: 1, z: 2};
+          f[I[a]] = fu; f[I[b]] = fv; o[I[a]] = h.su < 0 ? h.u1 : h.u0; o[I[b]] = h.sv < 0 ? h.v1 : h.v0;
+          const bb = bounds(S); if (a !== 'x' && b !== 'x') o[0] = bb.x0; if (a !== 'y' && b !== 'y') o[1] = bb.y0; if (a !== 'z' && b !== 'z') o[2] = bb.z0;
+          scaleParts(S, f, o); draw2All(); }
       });
       const up = e => {
         if (k === '3d') return r3up(e);
@@ -27494,6 +27620,7 @@ window.SC_REL = {
       const r = R3.cv.getBoundingClientRect(), m = new THREE.Vector2((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1), rc = new THREE.Raycaster(); rc.setFromCamera(m, R3.cam);
       const hit = rc.intersectObjects(R3.G.children.filter(o => o.isMesh), false)[0]; const i = hit ? hit.object.userData.pi : -1;
       if (i == null || i < 0) { if (!E.multi) E.sel = new Set(); } else if (E.multi) { E.sel.has(i) ? E.sel.delete(i) : E.sel.add(i); } else E.sel = new Set([i]);
+      if (i != null && i >= 0 && E.parts[i] && E.parts[i].g != null && E.sel.has(i)) E.parts.forEach((q, j) => { if (q.g === E.parts[i].g) E.sel.add(j); });
       E.tool = 'sel'; drawAll(); panel();
     }
     window.addEventListener('keydown', function kd(e) { if (!ov) return window.removeEventListener('keydown', kd, true); const t = e.target; if (t && (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA')) return;
@@ -27501,24 +27628,24 @@ window.SC_REL = {
       else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); e.stopPropagation(); redo(); }
       else if (e.key === 'Delete' || e.key === 'Backspace') { if (E.sel.size) { e.preventDefault(); e.stopPropagation(); act('del'); } }
       else if (e.key === 'Escape') { e.stopPropagation(); if (E.poly) { E.poly = null; drawAll(); } else if (E.sel.size) { E.sel = new Set(); drawAll(); panel(); } }
-      else if (e.key === 'Enter' && E.poly) { e.preventDefault(); polyClose(); } }, true);
+      else if (e.key === 'Enter' && E.poly) { e.preventDefault(); polyClose(); }
+      else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); e.stopPropagation(); saveDlg(); } }, true);
 
     /* ---- chiusura e salvataggio */
     const close = () => { setTimeout(() => { window.__cfPlace = false; }, 100); try { if (R3) { R3.rd.dispose(); if (R3.ctl) R3.ctl.dispose(); } } catch (_) {} ov.remove(); ov = null; };
     $('c2X').onclick = async () => { if (E.hist.length && !await uiConfirm('Chiudere senza salvare? Le modifiche all\'arredo andranno perse.')) return; close(); };
-    $('c2Save').onclick = () => {
-      if (E.poly && E.poly.pts.length >= 3) polyClose();
-      const name = $('c2Name').value.trim(); if (!E.parts.length) return toast('Aggiungi almeno un pezzo'); if (!name) { $('c2Name').focus(); return toast('Scrivi il nome dell\'arredo'); }
+    function doSave() {
+      const name = E.name;
       const b = bounds(E.parts), cx0 = (b.x0 + b.x1) / 2, cy0 = (b.y0 + b.y1) / 2, cp = E.parts.map(p => { const q = clone(p); q.x -= cx0; q.y -= cy0; q.z -= b.z0; return q; });
       const cnt = {}; cp.forEach(p => { const v = Math.abs(p.w * p.d * p.h); cnt[p.c] = (cnt[p.c] || 0) + v; }); const color = Object.keys(cnt).sort((a, c) => cnt[c] - cnt[a])[0] || '#8b6f47';
       const w = Math.max(0.02, b.x1 - b.x0), d = Math.max(0.02, b.y1 - b.y0), h = Math.max(0.02, b.z1 - b.z0), key = editKey || 'c_' + Date.now().toString(36), prev = FURNITURE[key] ? Object.assign({}, FURNITURE[key]) : null;
-      const role = $('c2Role').value || '';
+      const role = E.role || '';
       SCcf._add(key, {name, w, d, h, color, shapes: [], cp, role});
       if (role && prev) [].concat(state.doors || [], state.windows || []).forEach(o => { if (o.model === key) { o.width = Math.round(o.width / prev.w * w * 1000) / 1000 || w; o.height = Math.round(o.height / prev.h * h * 1000) / 1000 || h; } });
       if (prev) state.furniture.forEach(f => { if (f.type === key) { f.w = f.w * w / prev.w; f.d = f.d * d / prev.d; f.h = (f.h || prev.h) * h / prev.h; if (f.color === prev.color) f.color = color; } });
       SCcf._save(); close(); if (window.__cfPlace && !role && window.SCfp) { window.__cfPlace = false; setTimeout(() => SCfp.start('f', key), 50); } toast((role === 'door' ? 'Modello di porta salvato: ' : role === 'window' ? 'Modello di finestra salvato: ' : 'Arredo salvato: ') + name + ' (' + fm(w) + ' × ' + fm(d) + ' × ' + fm(h) + ' m)');
       try { draw2D(); if (state.mode === '3d') build3D(); if (prev) checkpoint(); } catch (_) {}
-    };
+    }
     window.addEventListener('resize', function rs() { if (!ov) return window.removeEventListener('resize', rs); sizeAll(); drawAll(); });
     layout(); panel(); setTimeout(() => drawAll(true), 60);
     SCcf2._E = E;   /* per le prove */
