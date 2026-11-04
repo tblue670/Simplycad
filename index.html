@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v30.4</title>
+<title>SimplyCAD Pro · v30.5</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -933,6 +933,27 @@ body.mode-3d #infoStrip .scale-badge{display:none}
       <div class="menu-label">Rimozione</div>
       <button class="menu-row danger" id="impRmHeatBtn"><span class="mi-icon">🗑️</span><span class="mi-label">Rimuovi caloriferi automatici</span></button>
       <button class="menu-row danger" id="impRmElecBtn"><span class="mi-icon">🗑️</span><span class="mi-label">Rimuovi impianto elettrico automatico</span></button>
+    </div>
+  </div>
+
+  <div class="menu-item" data-menu="struttura">
+    <button class="menu-trigger">🏗 Struttura</button>
+    <div class="menu-dropdown" id="strDd">
+      <div class="menu-label">Disegno</div>
+      <div id="strTools"></div>
+      <button class="menu-row" id="strPortBtn"><span class="mi-icon">▧</span><span class="mi-label">Muro portante (sì / no)</span><span class="mi-kbd">muri scelti</span></button>
+      <button class="menu-row" id="strCordBtn"><span class="mi-icon">═</span><span class="mi-label">Cordolo in c.a. in testa al muro</span><span class="mi-kbd">muri scelti</span></button>
+      <button class="menu-row" id="strFondBtn"><span class="mi-icon">▭</span><span class="mi-label">Fondazione continua sotto il muro</span><span class="mi-kbd">muri scelti</span></button>
+      <div class="menu-sep"></div>
+      <div class="menu-label">Calcoli</div>
+      <button class="menu-row" id="strCalcBtn"><span class="mi-icon">🧮</span><span class="mi-label">Calcoli strutturali…</span><span class="mi-kbd">NTC 2018</span></button>
+    </div>
+  </div>
+
+  <div class="menu-item" data-menu="verifiche">
+    <button class="menu-trigger">✅ Verifiche</button>
+    <div class="menu-dropdown" id="verDd">
+      <div class="menu-label">Verifiche e superfici</div>
     </div>
   </div>
 
@@ -11173,6 +11194,7 @@ updateRoomList();
       });
       Object.values(sg).forEach(g => add('Solai e coperture', g.key, g.desc, g.um, g.q, g.n.join(', ')));
     }
+    if (window.SCca) try { SCca.items().forEach(v => add(v.cat, v.key, v.desc, v.um, v.q, v.det)); } catch (e) { console.warn('computo c.a.', e); }   /* v30.5 */
     // impianti e scale
     const F = state.furniture.filter(isEntityVisible), cnt = t => F.filter(f => f.type === t).length;
     const rad = F.filter(f => f.type === 'radiatore');
@@ -14496,7 +14518,7 @@ updateRoomList();
   }
 
   /* ---- menu Progetto: gruppo unico ---- */
-  const ORDER = ['computoBtn', 'economicoBtn', 'costBtn', 'statsBtn', 'wallTableBtn', '#Verifiche e superfici', 'vfDmBtn', 'vfScBtn', 'vfRfBtn', '#Finiture', 'skinBtn', '#Stampa ed esporta', 'computoPrintBtn', 'reportBtn', 'computoCsvBtn', 'wallTableCsvBtn'];
+  const ORDER = ['computoBtn', 'economicoBtn', 'costBtn', 'statsBtn', 'wallTableBtn', '#Finiture', 'skinBtn', '#Stampa ed esporta', 'computoPrintBtn', 'reportBtn', 'computoCsvBtn', 'wallTableCsvBtn'];
   let grp = null, hidden = [];
   function groupOn() {
     groupOff();
@@ -21826,8 +21848,9 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
    SC_REL.v è l'unica versione: titolo, Guida, file salvato, avvisi e riga messaggi la leggono da qui.
    ======================================================================== */
 window.SC_REL = {
-  v: '30.4', d: '04/11/2026',
+  v: '30.5', d: '04/11/2026',
   news: [
+    ['30.5', 'Nuovo menu 🏗 Struttura: pilastri, travi, orditure, muro portante, cordoli e fondazioni continue in c.a., pianta strutturale e Calcoli strutturali di predimensionamento (NTC 2018) per solai, travi (c.a., acciaio, legno), pilastri, architravi delle aperture nei muri portanti e fondazioni, con relazione stampabile; il computo ha le voci del c.a. (calcestruzzo, armature, casseforme) e degli architravi. Nuovo menu ✅ Verifiche con verifica locali, superficie commerciale, analisi metrica e relazione fotografica.'],
     ['30.4', 'Crea arredo riorganizzato: barra con menu ➕ Forme, ✏️ Modifica, ☰ Scegli più (come nei muri), Tutti, 💾 Salva, e ↩ ↪ ⤢ ?; le istruzioni sono sotto «?». Nuovo: Raggruppa/Separa (anta + maniglia si scelgono e si spostano con un tocco), Allinea, Specchia, Torsione a vite, Ruota 90° anche di più pezzi insieme, misure d’insieme della scelta, maniglie per allungare anche pezzi ruotati e più pezzi. Nome e tipo (arredo, porta, finestra) si chiedono al salvataggio. Le sagome e i pezzi a vite si vedono con le loro facce anche in pianta e nel prospetto.'],
     ['30.3', 'Arredo: prima si sceglie, poi si posa. Lo strumento Arredo apre subito il pannello; scelto l’oggetto (o creato un arredo nuovo) la sua sagoma segue il dito o il mouse e un tocco lo posa. Si resta pronti a posarne altri uguali; barra in basso con rotazione 90° e 15°, «Al muro», «Cambia» e «Fine». Due dita fanno sempre lo zoom.'],
     ['30.2', 'Modelli di porta e finestra: in «Crea arredo» scegli «Porta» o «Finestra (va nel muro)» e salvi. Poi la inserisci con lo strumento Porta o Finestra e nella sua scheda scegli il Modello: il foro nel muro si apre con le misure del modello, in 3D e nel prospetto si vede il tuo modello, in pianta resta il simbolo di apertura e nel computo la voce porta il nome del modello. Posizione nello spessore del muro: centrato o a filo di un lato.'],
@@ -27784,5 +27807,290 @@ window.SC_REL = {
 #fplBar .fpl-n i{color:#9ca3af;font-style:normal}
 #fplBar .fpl-h{flex-basis:100%;text-align:center;font-size:11.5px;color:#9ca3af}
 </style>
+<script>
+/* ========================================================================
+   v30.5 · STRUTTURA: menu proprio, cemento armato e PREDIMENSIONAMENTO (NTC 2018)
+   - Elementi: pilastri, travi, orditure dei solai (già esistenti), muri portanti, cordoli e fondazioni continue (sul muro:
+     w.cord = {b, h}, w.fond = {b, h}), architravi delle aperture nei muri portanti (calcolati, non disegnati a mano).
+   - Calcoli indicativi allo SLU (1,3 G1 + 1,5 G2 + 1,5 Q) e verifiche semplici di deformabilità allo SLE.
+     Materiali: c.a. C25/30 + B450C, acciaio S275, legno lamellare GL24h. Dati generali in floors[0].strCfg.
+   - Computo del c.a.: calcestruzzo, acciaio d'armatura (incidenze), casseforme.
+   - NON sostituisce il calcolo strutturale firmato: ogni scheda e la relazione lo dicono.
+   ======================================================================== */
+(function () {
+  if (!window.SCstr) return;
+  const f2 = (v, n) => (Math.round(v * Math.pow(10, n == null ? 2 : n)) / Math.pow(10, n == null ? 2 : n)).toFixed(n == null ? 2 : n).replace('.', ',');
+  const cm = v => String(Math.round(v * 100));
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, m => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'})[m]);
+  const numIn = s => { const m = String(s ?? '').replace(/\s+/g, '').replace(',', '.').match(/^(-?(?:\d+(?:\.\d*)?|\.\d+))(mm|cm|m)?$/); if (!m) return null; let n = parseFloat(m[1]); if (m[2] === 'cm') n /= 100; else if (m[2] === 'mm') n /= 1000; return n; };
+  /* ---------------------------------------------------------------- dati generali */
+  const CAT = {A: ['Residenziale (cat. A)', 2.0], B: ['Uffici (cat. B)', 3.0], C1: ['Aperto al pubblico con tavoli (C1)', 3.0], C2: ['Aperto al pubblico con posti fissi (C2)', 4.0], D: ['Negozi (cat. D)', 4.0], H: ['Copertura praticabile solo per manutenzione (H)', 0.5], S: ['Neve (copertura, Liguria costiera)', 0.8]};
+  const DEF = {cat: 'A', g2: 2.0, cls: 25, acc: 450, gMur: 18, sig: 150, appoggio: 0.15};
+  const cfg = () => { const f = state.floors[0]; if (!f.strCfg) f.strCfg = {}; return Object.assign({}, DEF, f.strCfg); };
+  const setCfg = (k, v) => { const f = state.floors[0]; if (!f.strCfg) f.strCfg = {}; f.strCfg[k] = v; };
+  const qk = () => (CAT[cfg().cat] || CAT.A)[1];
+  const fcd = () => 0.85 * cfg().cls / 1.5, fyd = () => cfg().acc / 1.15, FYS = 275 / 1.05, FML = 0.8 * 24 / 1.45;   /* MPa */
+  /* ---------------------------------------------------------------- profili in acciaio: [nome, Wpl cm³, Iy cm⁴, A cm², kg/m] */
+  const IPE = [[100, 39.4, 171, 10.3, 8.1], [120, 60.7, 318, 13.2, 10.4], [140, 88.3, 541, 16.4, 12.9], [160, 124, 869, 20.1, 15.8], [180, 166, 1317, 23.9, 18.8], [200, 221, 1943, 28.5, 22.4], [220, 285, 2772, 33.4, 26.2], [240, 367, 3892, 39.1, 30.7], [270, 484, 5790, 45.9, 36.1], [300, 628, 8356, 53.8, 42.2], [330, 804, 11770, 62.6, 49.1], [360, 1019, 16270, 72.7, 57.1], [400, 1307, 23130, 84.5, 66.3], [450, 1702, 33740, 98.8, 77.6], [500, 2194, 48200, 116, 90.7], [550, 2787, 67120, 134, 106], [600, 3512, 92080, 156, 122]].map(r => ({n: 'IPE ' + r[0], W: r[1], I: r[2], A: r[3], kg: r[4]}));
+  const HEA = [[100, 83, 349, 21.2, 16.7], [120, 119.5, 606, 25.3, 19.9], [140, 173.5, 1033, 31.4, 24.7], [160, 245, 1673, 38.8, 30.4], [180, 325, 2510, 45.3, 35.5], [200, 429, 3692, 53.8, 42.3], [220, 568, 5410, 64.3, 50.5], [240, 745, 7763, 76.8, 60.3], [260, 920, 10450, 86.8, 68.2], [280, 1112, 13670, 97.3, 76.4], [300, 1383, 18260, 112.5, 88.3]].map(r => ({n: 'HEA ' + r[0], W: r[1], I: r[2], A: r[3], kg: r[4]}));
+  const pickProf = (T, Wreq, Ireq) => T.find(p => p.W >= Wreq && p.I >= (Ireq || 0)) || null;
+  /* ---------------------------------------------------------------- solai */
+  const TIPI = SCstr.TIPI || {lat: 'laterocemento', pred: 'predalles', leg: 'legno', acc: 'acciaio e lamiera grecata', cls: 'soletta piena in c.a.'};
+  const spH = sp => { const n = String(sp || '').match(/\d+(?:[.,]\d+)?/g); return n ? n.reduce((a, x) => a + parseFloat(x.replace(',', '.')), 0) / 100 : 0.24; };
+  function g1Solaio(tipo, H) { const h = H * 100; return tipo === 'cls' ? 25 * H : tipo === 'pred' ? 0.13 * h + 0.3 : tipo === 'leg' ? 0.6 + 0.01 * h : tipo === 'acc' ? 2.2 + 0.02 * h : 0.6 + 0.1 * h; }
+  const LH = {lat: 25, pred: 25, cls: 30, leg: 20, acc: 30};
+  function calcSolaio(o) {
+    const c = cfg(), H = spH(o.sp), L = o.L, tipo = o.tipo || 'lat', g1 = g1Solaio(tipo, H), g2 = c.g2, q = qk(), cont = o.cont === true;
+    const qd = 1.3 * g1 + 1.5 * g2 + 1.5 * q, Md = qd * L * L / (cont ? 10 : 8), Hmin = L / LH[tipo], out = {L, H, g1, g2, q, qd, Md, Hmin, ok: H >= Hmin - 0.005, rows: []};
+    out.rows.push(['Carichi: G1 (peso proprio) ' + f2(g1) + ' · G2 (permanenti) ' + f2(g2) + ' · Q (uso) ' + f2(q) + ' kN/m²', '']);
+    out.rows.push(['Carico allo SLU 1,3·G1 + 1,5·G2 + 1,5·Q = ' + f2(qd) + ' kN/m²', '']);
+    out.rows.push(['Spessore ' + cm(H) + ' cm · minimo L/' + LH[tipo] + ' = ' + cm(Hmin) + ' cm', out.ok]);
+    out.rows.push(['Momento massimo ' + (cont ? 'qL²/10 (campata continua)' : 'qL²/8 (appoggiato)') + ' = ' + f2(Md) + ' kNm per metro', '']);
+    if (tipo === 'lat' || tipo === 'pred') { const d = (H - 0.03) * 1000, Mt = Md * (tipo === 'lat' ? 0.5 : 1.2), As = Mt * 1e6 / (0.9 * d * fyd()); out.As = As;
+      out.rows.push(['Armatura inferiore ' + (tipo === 'lat' ? 'per travetto (interasse 50 cm)' : 'per lastra (larghezza 120 cm)') + ': ' + Math.round(As) + ' mm² ≈ ' + barre(As), '']); }
+    else if (tipo === 'cls') { const d = (H - 0.03) * 1000, As = Md * 1e6 / (0.9 * d * fyd()); out.rows.push(['Armatura inferiore per metro: ' + Math.round(As) + ' mm²/m ≈ ' + barreM(As), '']); }
+    else if (tipo === 'leg') { const b = 0.12, h = Math.max(H - 0.04, 0.1), i = 0.5, M = Md * i, W = b * h * h / 6 * 1e9, sg = M * 1e6 / W; out.rows.push(['Travetto in legno 12×' + cm(h) + ' cm ogni 50 cm: tensione ' + f2(sg, 1) + ' MPa · resistenza GL24h ' + f2(FML, 1) + ' MPa', sg <= FML]); if (sg > FML) out.ok = false; }
+    else { const W = Md * 1000 / FYS * 0.6; const p = pickProf(IPE, W); out.rows.push(['Travi secondarie in acciaio ogni 60 cm: ' + (p ? p.n : 'oltre IPE 600'), '']); }
+    return out;
+  }
+  const BARS = [[8, 50.3], [10, 78.5], [12, 113.1], [14, 153.9], [16, 201.1], [18, 254.5], [20, 314.2], [24, 452.4]];
+  function barre(As, n0) { for (let n = n0 || 2; n <= 8; n++) for (const [d, a] of BARS) if (d >= 10 && d <= 20 && n * a >= As) return n + 'Ø' + d; return 'oltre 8Ø20: aumentare la sezione'; }
+  function barreM(As) { for (const [d, a] of BARS) for (const s of [25, 20, 15, 12.5, 10]) if (a * 1000 / (s * 10) >= As) return 'Ø' + d + '/' + s + ' cm'; return 'molta armatura: aumentare lo spessore'; }
+  /* ---------------------------------------------------------------- carico del solaio che porta una trave o un pilastro */
+  function qdSolaioFloor(fl) { const o = SCstr && (fl && Array.isArray(fl.ord) ? fl.ord[0] : null); const tipo = o ? o.tipo : 'lat', H = o ? spH(o.sp) : 0.24, c = cfg(); return {qd: 1.3 * g1Solaio(tipo, H) + 1.5 * c.g2 + 1.5 * qk(), qe: g1Solaio(tipo, H) + c.g2 + qk()}; }
+  const flOf = e => state.floors.find(f => f.id === floorOf(e)) || state.floors[0];
+  /* ---------------------------------------------------------------- travi */
+  function calcTrave(f) {
+    const ca = f.ca || {}, mat = ca.mat || 'ca', L = f.w, b = f.d, h = f.h, infl = ca.infl != null ? ca.infl : 4, cont = !!ca.cont, S = qdSolaioFloor(flOf(f));
+    const pp = mat === 'ca' ? 25 * b * h : mat === 'legno' ? 5 * b * h : 0.5;
+    const qd = S.qd * infl + 1.3 * pp, qe = S.qe * infl + pp, k = cont ? 10 : 8, Md = qd * L * L / k, Vd = qd * L / 2, out = {mat, L, infl, qd, Md, Vd, rows: [], ok: true};
+    out.rows.push(['Luce ' + f2(L) + ' m · larghezza del solaio che porta ' + f2(infl) + ' m · carico SLU ' + f2(qd) + ' kN/m', '']);
+    out.rows.push(['Momento ' + (cont ? 'qL²/10' : 'qL²/8') + ' = ' + f2(Md) + ' kNm · taglio ' + f2(Vd) + ' kN', '']);
+    if (mat === 'ca') {
+      const d = (h - 0.04) * 1000, B = b * 1000, mu = Md * 1e6 / (B * d * d * fcd()), As = Md * 1e6 / (0.9 * d * fyd()), hmin = L / (cont ? 20 : 16);
+      const okM = mu <= 0.295, okH = h >= hmin - 0.005; out.ok = okM && okH; out.As = As;
+      out.rows.push(['Sezione ' + cm(b) + '×' + cm(h) + ' cm · μ = ' + f2(mu, 3) + ' (massimo 0,295)', okM]);
+      out.rows.push(['Altezza minima per la freccia L/' + (cont ? 20 : 16) + ' = ' + cm(hmin) + ' cm', okH]);
+      out.rows.push(['Armatura inferiore ' + Math.round(As) + ' mm² ≈ ' + barre(As), '']);
+      { const ct = 2.5, VRmax = 0.9 * d * B * 0.5 * fcd() / (ct + 1 / ct) / 1000, Asw = 2 * 50.3, sReq = Asw * 0.9 * d * fyd() * ct / (Vd * 1000), sMax = Math.min(0.8 * d, 330), sUse = Math.max(50, Math.floor(Math.min(sReq, sMax) / 50) * 50), okV = Vd <= VRmax;   /* taglio: traliccio a inclinazione variabile, cotθ = 2,5 */
+        out.rows.push(['Taglio ' + f2(Vd) + ' kN · resistenza del calcestruzzo ' + f2(VRmax, 0) + ' kN · staffe Ø8 a 2 bracci passo ' + Math.round(sUse / 10) + ' cm agli appoggi', okV]); if (!okV) out.ok = false; }
+      if (!okM || !okH) { const hn = Math.max(hmin, Math.sqrt(Md * 1e6 / (0.295 * B * fcd())) / 1000 + 0.04); out.sug = 'Altezza consigliata almeno ' + cm(Math.ceil(hn * 20) / 20) + ' cm'; }
+    } else if (mat === 'acc') {
+      const Wr = Md * 1000 / FYS, Ir = 5 * qe * Math.pow(L * 1000, 4) / (384 * 210000 * (L * 1000 / 250)) / 1e4, p = pickProf(IPE, Wr, Ir) , ph = pickProf(HEA, Wr, Ir);
+      out.rows.push(['Modulo resistente richiesto ' + Math.round(Wr) + ' cm³ · inerzia per freccia L/250 ' + Math.round(Ir) + ' cm⁴', '']);
+      out.rows.push(['Profilo minimo: ' + (p ? p.n : 'oltre IPE 600') + (ph ? ' oppure ' + ph.n : ''), !!p]); out.ok = !!p; out.prof = p && p.n;
+    } else {
+      const W = b * h * h / 6 * 1e9, sg = Md * 1e6 / W, I = b * h * h * h / 12 * 1e12, dl = 5 * qe * Math.pow(L * 1000, 4) / (384 * 11500 * I), okS = sg <= FML, okD = dl <= L * 1000 / 300; out.ok = okS && okD;
+      out.rows.push(['Legno lamellare GL24h ' + cm(b) + '×' + cm(h) + ' cm · tensione ' + f2(sg, 1) + ' MPa (massimo ' + f2(FML, 1) + ')', okS]);
+      out.rows.push(['Freccia ' + f2(dl, 1) + ' mm (massimo L/300 = ' + f2(L * 1000 / 300, 1) + ' mm)', okD]);
+      if (!out.ok) { let hn = h; while (hn < 1.2) { hn += 0.02; const W2 = b * hn * hn / 6 * 1e9, I2 = b * Math.pow(hn, 3) / 12 * 1e12; if (Md * 1e6 / W2 <= FML && 5 * qe * Math.pow(L * 1000, 4) / (384 * 11500 * I2) <= L * 1000 / 300) break; } out.sug = 'Altezza consigliata ' + cm(hn) + ' cm'; }
+    }
+    return out;
+  }
+  /* ---------------------------------------------------------------- pilastri */
+  function pilArea(f) {
+    if ((f.shape || '') === 'poly' && typeof pilPolyW === 'function') { const P = pilPolyW(f); let a = 0; for (let i = 0; i < P.length; i++) { const p = P[i], q = P[(i + 1) % P.length]; a += p.x * q.y - q.x * p.y; } return Math.abs(a) / 2; }
+    const sp = FURNITURE[f.type] || {}; if ((f.shape || sp.shape) === 'round') return Math.PI * f.w * f.d / 4; return f.w * f.d;
+  }
+  const pilPerim = f => { const sp = FURNITURE[f.type] || {}; if ((f.shape || sp.shape) === 'round') return Math.PI * (f.w + f.d) / 2; return 2 * (f.w + f.d); };
+  function floorsAbove(f) { const fl = flOf(f); return Math.max(1, state.floors.filter(x => (x.elev || 0) >= (fl.elev || 0) - 0.01).length); }
+  function calcPil(f) {
+    const ca = f.ca || {}, mat = ca.mat || 'ca', Ai = ca.ainf != null ? ca.ainf : 16, np = ca.np != null ? ca.np : floorsAbove(f), S = qdSolaioFloor(flOf(f)), H = f.h || 2.7, A = pilArea(f);
+    const N = S.qd * Ai * np + 1.3 * (mat === 'ca' ? 25 * A * H * np : 1 * H * np), out = {mat, Ai, np, N, A, rows: [], ok: true};
+    out.rows.push(['Area di solaio portata ' + f2(Ai) + ' m² × ' + np + (np === 1 ? ' piano' : ' piani') + ' · carico SLU ' + f2(N, 0) + ' kN', '']);
+    if (mat === 'ca') { const Amin = N * 1000 / (0.55 * fcd()) / 1e6, okA = A >= Amin - 1e-4, okL = Math.min(f.w, f.d) >= 0.25 - 0.005; out.ok = okA && okL;
+      out.rows.push(['Sezione ' + f2(A * 1e4, 0) + ' cm² · minima per sforzo normale (ν ≤ 0,55) ' + f2(Amin * 1e4, 0) + ' cm²', okA]);
+      out.rows.push(['Lato minimo 25 cm (30 cm consigliati in zona sismica)', okL]);
+      const As = Math.max(0.003 * A * 1e6, 4 * 113); out.rows.push(['Armatura longitudinale minima (0,3%) ' + Math.round(As) + ' mm² ≈ ' + barre(As, 4) + ' (almeno uno per spigolo)', '']);
+      if (!out.ok) { const l = Math.max(0.3, Math.sqrt(Amin)); out.sug = 'Sezione consigliata almeno ' + cm(Math.ceil(l * 20) / 20) + '×' + cm(Math.ceil(l * 20) / 20) + ' cm'; } }
+    else if (mat === 'acc') { const Ar = N * 1000 / FYS / 100 * 1.6, p = HEA.find(q => q.A >= Ar); out.rows.push(['Area richiesta (con margine per l\'instabilità) ' + f2(Ar, 1) + ' cm² · profilo ' + (p ? p.n : 'oltre HEA 300'), !!p]); out.ok = !!p; }
+    else { const sg = N * 1000 / (A * 1e6), fc = 0.8 * 24 / 1.45 * 0.5; out.ok = sg <= fc; out.rows.push(['Tensione ' + f2(sg, 1) + ' MPa (massimo con instabilità ≈ ' + f2(fc, 1) + ' MPa)', out.ok]); }
+    return out;
+  }
+  /* ---------------------------------------------------------------- aperture nei muri portanti: architrave in acciaio */
+  function openingsPort() {
+    const out = []; [].concat(state.doors.map(o => ({o, k: 'door'})), state.windows.map(o => ({o, k: 'win'}))).forEach(x => { const w = state.walls.find(q => q.id === x.o.wallId); if (w && w.portante && isEntityVisible(x.o)) out.push(Object.assign(x, {w})); });
+    return out;
+  }
+  function calcArch(x) {
+    const c = cfg(), o = x.o, w = x.w, t = getWallThickness(w), ca = o.ca || {}, Ln = +o.width || 0.9, L = Ln + 2 * c.appoggio, S = qdSolaioFloor(flOf(w));
+    const hTri = L * Math.tan(Math.PI / 3) / 2, Wtri = c.gMur * t * L * hTri / 2, qs = ca.qsol != null ? ca.qsol : (w.portaSol === false ? 0 : S.qd * 2.5);
+    const Md = 1.3 * Wtri * L / 6 + qs * L * L / 8, qe = Wtri / L * 2 + qs / 1.4, nP = t > 0.2 ? 2 : 1;
+    const Wr = Md * 1000 / FYS / nP, Ir = 5 * qe / nP * Math.pow(L * 1000, 4) / (384 * 210000 * (L * 1000 / 500)) / 1e4, p = pickProf(IPE, Wr, Ir), out = {L, Ln, Md, qs, nP, prof: p, ok: !!p, rows: []};
+    out.rows.push(['Luce netta ' + f2(Ln) + ' m · di calcolo con gli appoggi ' + f2(L) + ' m · muro sp. ' + cm(t) + ' cm', '']);
+    out.rows.push(['Muratura sopra (triangolo di scarico a 60°) ' + f2(Wtri, 1) + ' kN · solaio ' + f2(qs, 1) + ' kN/m · momento ' + f2(Md) + ' kNm', '']);
+    out.rows.push(['Architrave: ' + nP + ' × ' + (p ? p.n : 'oltre IPE 600') + ' (freccia ≤ L/500), appoggi di ' + cm(c.appoggio) + ' cm per lato', !!p]);
+    out.rows.push(['Cerchiatura: telaio in acciaio (es. HEA/HEB) con rigidezza e resistenza non inferiori al muro tolto (NTC 2018 § 8.4.1): da verificare a cura del progettista', '']);
+    return out;
+  }
+  /* ---------------------------------------------------------------- cordoli e fondazioni */
+  const wallsOn = k => state.walls.filter(w => w[k] && isEntityVisible(w));
+  const Lw = w => Math.hypot(w.p2.x - w.p1.x, w.p2.y - w.p1.y);
+  function calcFond(w) {
+    const c = cfg(), t = getWallThickness(w), F = w.fond, Hm = (w.height || 2.7), nf = state.floors.filter(x => (x.elev || 0) >= ((flOf(w).elev) || 0) - 0.01).length, S = qdSolaioFloor(flOf(w));
+    const N = nf * (c.gMur * t * Hm + S.qe * 2.5) + 25 * F.b * F.h, sig = N / F.b, bmin = N / c.sig, ok = sig <= c.sig;
+    return {N, sig, bmin, ok, rows: [['Carico per metro (muro ' + nf + (nf === 1 ? ' piano' : ' piani') + ' + solaio + fondazione, SLE) ' + f2(N, 1) + ' kN/m', ''], ['Pressione sul terreno ' + f2(sig, 0) + ' kPa (ammissibile ' + c.sig + ' kPa) · larghezza minima ' + cm(bmin) + ' cm', ok]], sug: ok ? '' : 'Larghezza consigliata ' + cm(Math.ceil(bmin * 20) / 20) + ' cm'};
+  }
+  /* ---------------------------------------------------------------- computo del c.a. */
+  function items() {
+    const out = [], g = {cls: 0, acc: 0, cas: 0, d: []}, add = (V, kg, cas, nm) => { g.cls += V; g.acc += V * kg; g.cas += cas; if (nm) g.d.push(nm); };
+    state.furniture.forEach(f => {
+      if (!isEntityVisible(f)) return; const mat = (f.ca && f.ca.mat) || 'ca'; if (mat !== 'ca') return;
+      if (f.type === 'pilastro' || f.type === 'colonna') { const H = f.h || 2.7; add(pilArea(f) * H, 150, pilPerim(f) * H, 'pilastri'); }
+      else if (f.type === 'trave') add(f.w * f.d * f.h, 130, f.w * (f.d + 2 * f.h), 'travi');
+    });
+    wallsOn('cord').forEach(w => add(Lw(w) * w.cord.b * w.cord.h, 100, Lw(w) * 2 * w.cord.h, 'cordoli'));
+    wallsOn('fond').forEach(w => add(Lw(w) * w.fond.b * w.fond.h, 80, Lw(w) * 2 * w.fond.h, 'fondazioni'));
+    const det = [...new Set(g.d)].join(', ');
+    if (g.cls > 0) {
+      out.push({cat: 'Strutture in c.a.', key: 'ca_cls', desc: 'Calcestruzzo per strutture C' + cfg().cls + '/' + (cfg().cls + 5) + ', classe di esposizione XC1, gettato in opera e vibrato', um: 'm³', q: g.cls, det});
+      out.push({cat: 'Strutture in c.a.', key: 'ca_acc', desc: 'Acciaio per armature B' + cfg().acc + 'C in barre ad aderenza migliorata, lavorato e posto in opera (incidenza stimata)', um: 'kg', q: g.acc, det});
+      out.push({cat: 'Strutture in c.a.', key: 'ca_cas', desc: 'Casseforme in legno o metalliche per getti di strutture in c.a., compreso disarmo', um: 'm²', q: g.cas, det});
+    }
+    openingsPort().forEach(x => { const r = calcArch(x); if (r.prof) out.push({cat: 'Strutture in c.a.', key: 'arch_' + r.prof.n.replace(/\s/g, '') + '_' + r.nP, desc: 'Architrave in acciaio S275 ' + r.nP + '×' + r.prof.n + ' per apertura in muro portante, compresi taglio, appoggi, ancoraggi e ripristini', um: 'kg', q: r.prof.kg * r.L * r.nP, det: (x.w.name || 'muro') + ' ' + cm(+x.o.width || 0.9) + ' cm'}); });
+    state.furniture.forEach(f => { if (f.type === 'trave' && f.ca && f.ca.mat === 'acc' && isEntityVisible(f)) { const r = calcTrave(f); if (r.prof) out.push({cat: 'Strutture in acciaio', key: 'tr_acc_' + r.prof.replace(/\s/g, ''), desc: 'Trave in acciaio S275 ' + r.prof + ' in opera, compresi piastre e bulloneria', um: 'kg', q: (IPE.find(p => p.n === r.prof) || {kg: 0}).kg * f.w, det: f2(f.w) + ' m'}); } });
+    return out;
+  }
+
+  /* ---------------------------------------------------------------- finestra dei calcoli */
+  let ov = null, tab = 'gen';
+  const badge = v => v === '' ? '' : v ? '<span class="ok">✔</span>' : '<span class="ko">✘</span>';
+  const tbl = rows => '<table>' + rows.map(r => `<tr><td>${esc(r[0])}</td><td class="b">${badge(r[1])}</td></tr>`).join('') + '</table>';
+  const ords = () => { const out = []; state.floors.forEach(fl => (fl.ord || []).forEach(o => out.push({o, fl}))); return out; };
+  const pils = () => state.furniture.filter(f => (f.type === 'pilastro' || f.type === 'colonna') && isEntityVisible(f));
+  const travi = () => state.furniture.filter(f => f.type === 'trave' && isEntityVisible(f));
+  const MATS = [['ca', 'C.a.'], ['acc', 'Acciaio'], ['legno', 'Legno']];
+  function card(title, r, extra) { return `<div class="sc-card ${r.ok ? '' : 'bad'}"><div class="sc-h"><b>${title}</b>${badge(r.ok)}</div>${extra || ''}${tbl(r.rows)}${r.sug ? `<div class="sug">👉 ${esc(r.sug)}</div>` : ''}</div>`; }
+  function body() {
+    const c = cfg();
+    if (tab === 'gen') return `<div class="sc-card"><div class="sc-h"><b>Dati generali</b></div><div class="grid">
+        <label>Destinazione d'uso<select data-c="cat">${Object.entries(CAT).map(([k, v]) => `<option value="${k}"${k === c.cat ? ' selected' : ''}>${v[0]} · ${f2(v[1])} kN/m²</option>`).join('')}</select></label>
+        <label>Permanenti non strutturali G2 (kN/m²)<input data-c="g2" inputmode="decimal" value="${f2(c.g2)}"></label>
+        <label>Calcestruzzo<select data-c="cls">${[20, 25, 28, 30, 32, 35].map(v => `<option value="${v}"${v === c.cls ? ' selected' : ''}>C${v}/${v + 5}</option>`).join('')}</select></label>
+        <label>Acciaio d'armatura<select data-c="acc"><option value="450" selected>B450C</option></select></label>
+        <label>Peso della muratura (kN/m³)<input data-c="gMur" inputmode="decimal" value="${f2(c.gMur, 0)}"></label>
+        <label>Pressione ammissibile del terreno (kPa)<input data-c="sig" inputmode="decimal" value="${f2(c.sig, 0)}"></label>
+        <label>Appoggio degli architravi per lato (m)<input data-c="appoggio" inputmode="decimal" value="${f2(c.appoggio)}"></label></div>
+        <div class="note">G2 comprende massetto, pavimento, intonaco e tramezzi (indicativo 2,0 kN/m² per una casa). Le tabelle usano NTC 2018: carico allo SLU 1,3·G1 + 1,5·G2 + 1,5·Q.</div></div>
+        <div class="sc-card"><div class="sc-h"><b>Riepilogo</b></div>${tbl(summary())}</div>`;
+    if (tab === 'sol') { const L = ords(); return L.length ? L.map(({o, fl}, i) => card('Solaio sopra «' + esc(fl.name) + '» · ' + (TIPI[o.tipo] || TIPI.lat) + ' ' + esc(o.sp || ''), calcSolaio(o), `<div class="grid"><label>Luce (m)<input data-o="${i}" data-k="L" inputmode="decimal" value="${f2(o.L)}"></label><label>Schema<select data-o="${i}" data-k="cont"><option value="0"${o.cont ? '' : ' selected'}>Appoggiato</option><option value="1"${o.cont ? ' selected' : ''}>Campata continua</option></select></label></div>`)).join('') : empty('Nessuna orditura di solaio: disegnala con Struttura › Orditura solaio (due tocchi nel verso dei travetti, lunghi quanto la luce).'); }
+    if (tab === 'tra') { const L = travi(); return L.length ? L.map((f, i) => card('Trave ' + (i + 1) + ' · ' + f2(f.w) + ' m', calcTrave(f), `<div class="grid"><label>Materiale<select data-f="${f.id}" data-k="mat">${MATS.map(([k, n]) => `<option value="${k}"${((f.ca || {}).mat || 'ca') === k ? ' selected' : ''}>${n}</option>`).join('')}</select></label><label>Larghezza del solaio portato (m)<input data-f="${f.id}" data-k="infl" inputmode="decimal" value="${f2((f.ca || {}).infl != null ? f.ca.infl : 4)}"></label><label>Sezione b × h (cm)<input data-f="${f.id}" data-k="sez" value="${cm(f.d)}×${cm(f.h)}"></label><label>Schema<select data-f="${f.id}" data-k="cont"><option value="0"${(f.ca || {}).cont ? '' : ' selected'}>Appoggiata</option><option value="1"${(f.ca || {}).cont ? ' selected' : ''}>Continua</option></select></label></div>`)).join('') : empty('Nessuna trave: disegnala con Struttura › Trave (tocchi inizio e fine).'); }
+    if (tab === 'pil') { const L = pils(); return L.length ? L.map((f, i) => card('Pilastro ' + (i + 1) + ((f.shape || '') === 'poly' ? ' (forma libera)' : ' ' + cm(f.w) + '×' + cm(f.d) + ' cm'), calcPil(f), `<div class="grid"><label>Materiale<select data-f="${f.id}" data-k="mat">${MATS.map(([k, n]) => `<option value="${k}"${((f.ca || {}).mat || 'ca') === k ? ' selected' : ''}>${n}</option>`).join('')}</select></label><label>Area di solaio portata (m²)<input data-f="${f.id}" data-k="ainf" inputmode="decimal" value="${f2((f.ca || {}).ainf != null ? f.ca.ainf : 16)}"></label><label>Piani sopra (compreso)<input data-f="${f.id}" data-k="np" inputmode="numeric" value="${(f.ca || {}).np != null ? f.ca.np : floorsAbove(f)}"></label></div>`)).join('') : empty('Nessun pilastro: inseriscilo con Struttura › Pilastro.'); }
+    if (tab === 'ap') { const L = openingsPort(); return L.length ? L.map(x => card((x.k === 'door' ? 'Porta' : 'Finestra') + ' ' + cm(+x.o.width || 0) + ' cm su ' + esc(x.w.name || 'muro portante'), calcArch(x), `<div class="grid"><label>Carico dal solaio (kN/m)<input data-a="${x.o.id}" data-k="qsol" inputmode="decimal" value="${f2(calcArch(x).qs, 1)}"></label></div>`)).join('') : empty('Nessuna apertura in muri portanti. Un muro diventa portante con Struttura › Muro portante (oppure dalla sua scheda).'); }
+    if (tab === 'cf') { const C = wallsOn('cord'), F = wallsOn('fond');
+      return (C.length ? C.map(w => card('Cordolo su ' + esc(w.name || 'muro') + ' · ' + f2(Lw(w)) + ' m', {ok: true, rows: [['Sezione ' + cm(w.cord.b) + '×' + cm(w.cord.h) + ' cm · calcestruzzo ' + f2(Lw(w) * w.cord.b * w.cord.h, 3) + ' m³ · armatura minima 4Ø14, staffe Ø8/20', '']]}, `<div class="grid"><label>Base × altezza (cm)<input data-w="${w.id}" data-k="cord" value="${cm(w.cord.b)}×${cm(w.cord.h)}"></label></div>`)).join('') : '')
+        + (F.length ? F.map(w => card('Fondazione sotto ' + esc(w.name || 'muro') + ' · ' + f2(Lw(w)) + ' m', calcFond(w), `<div class="grid"><label>Base × altezza (cm)<input data-w="${w.id}" data-k="fond" value="${cm(w.fond.b)}×${cm(w.fond.h)}"></label></div>`)).join('') : '')
+        || empty('Nessun cordolo o fondazione: scegli un muro e usa Struttura › Cordolo o Fondazione.'); }
+    return '';
+  }
+  const empty = t => `<div class="note" style="padding:14px">${esc(t)}</div>`;
+  function summary() {
+    const R = [], cnt = (L, f) => { const r = L.map(f), ko = r.filter(x => !x.ok).length; return [L.length, ko]; };
+    const s = cnt(ords(), x => calcSolaio(x.o)), t = cnt(travi(), calcTrave), p = cnt(pils(), calcPil), a = cnt(openingsPort(), calcArch), fo = cnt(wallsOn('fond'), calcFond);
+    [['Solai', s], ['Travi', t], ['Pilastri', p], ['Aperture nei muri portanti', a], ['Fondazioni', fo]].forEach(([n, [N, K]]) => { if (N) R.push([n + ': ' + N + (K ? ' · da rivedere ' + K : ' · tutti verificati'), !K]); });
+    if (!R.length) R.push(['Nessun elemento strutturale disegnato', '']);
+    return R;
+  }
+  function render() {
+    if (!ov) return; ov.querySelector('.sc-body').innerHTML = body() + '<div class="note warn">⚠ Predimensionamento indicativo secondo NTC 2018, utile per preventivi e prime scelte. Non sostituisce il progetto e il calcolo strutturale firmati da un tecnico abilitato, né la verifica sismica.</div>';
+    ov.querySelectorAll('.sc-tab').forEach(b => b.classList.toggle('on', b.dataset.t === tab));
+  }
+  function open(t) {
+    if (t) tab = t; if (ov) return render();
+    ov = document.createElement('div'); ov.id = 'scCalc';
+    ov.innerHTML = `<style>
+      #scCalc{position:fixed;inset:0;z-index:10040;background:rgba(8,10,18,.75);display:flex;align-items:center;justify-content:center;font:13px 'Segoe UI',system-ui,sans-serif;color:#e5e7eb}
+      #scCalc .box{background:#161a2b;border:1px solid #475569;border-radius:12px;width:min(900px,calc(100vw - 10px));height:min(92vh,900px);display:flex;flex-direction:column;overflow:hidden}
+      #scCalc .hd{display:flex;gap:4px;align-items:center;padding:6px;border-bottom:1px solid #2c3350;flex-wrap:wrap}
+      #scCalc button,#scCalc select,#scCalc input{font:inherit;color:#e5e7eb;background:#232a40;border:1px solid #475569;border-radius:8px;min-height:34px;padding:0 8px;box-sizing:border-box}
+      #scCalc .sc-tab.on{background:#0e7490;border-color:#67e8f9}
+      #scCalc .sc-body{flex:1;overflow:auto;padding:8px}
+      #scCalc .sc-card{border:1px solid #2f3756;border-radius:10px;padding:8px;margin-bottom:8px;background:#1b2034}
+      #scCalc .sc-card.bad{border-color:#b91c1c}
+      #scCalc .sc-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;color:#fcd34d}
+      #scCalc table{width:100%;border-collapse:collapse}#scCalc td{padding:3px 4px;border-top:1px solid #262c45;vertical-align:top}#scCalc td.b{width:28px;text-align:center}
+      #scCalc .ok{color:#4ade80;font-weight:700}#scCalc .ko{color:#f87171;font-weight:700}
+      #scCalc .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:6px;margin:4px 0 6px}
+      #scCalc .grid label{display:flex;flex-direction:column;gap:2px;font-size:11.5px;color:#9ca3af}
+      #scCalc .note{color:#9ca3af;font-size:12px;margin:4px 2px;line-height:1.4}#scCalc .note.warn{color:#fbbf24}
+      #scCalc .sug{color:#fde68a;margin-top:4px}
+    </style><div class="box"><div class="hd"><b style="color:#f59e0b;margin-right:4px">🏗 Calcoli strutturali</b>
+      ${[['gen', 'Dati e riepilogo'], ['sol', 'Solai'], ['tra', 'Travi'], ['pil', 'Pilastri'], ['ap', 'Aperture nei portanti'], ['cf', 'Cordoli e fondazioni']].map(([k, n]) => `<button class="sc-tab" data-t="${k}">${n}</button>`).join('')}
+      <span style="flex:1"></span><button data-x="print">🖨 Relazione</button><button data-x="close">✕</button></div><div class="sc-body"></div></div>`;
+    ['pointerdown', 'pointerup', 'click', 'touchstart', 'wheel', 'keydown'].forEach(ev => ov.addEventListener(ev, e => e.stopPropagation()));
+    ov.addEventListener('click', e => { const b = e.target.closest('[data-t],[data-x]'); if (!b) { if (e.target === ov) close(); return; } if (b.dataset.t) { tab = b.dataset.t; render(); } else if (b.dataset.x === 'close') close(); else if (b.dataset.x === 'print') report(); });
+    ov.addEventListener('change', onChange);
+    document.body.appendChild(ov); render();
+  }
+  function close() { if (ov) { ov.remove(); ov = null; } try { draw2D(); } catch (_) {} }
+  function onChange(e) {
+    const t = e.target, k = t.dataset.k, v = t.value;
+    if (t.dataset.c) { const n = t.dataset.c === 'cat' ? v : numIn(v); if (n == null || (typeof n === 'number' && !(n >= 0))) { toast('Valore non valido'); return render(); } setCfg(t.dataset.c, n); }
+    else if (t.dataset.o != null) { const o = ords()[+t.dataset.o].o; if (k === 'L') { const n = numIn(v); if (!(n > 0.3 && n < 30)) { toast('Luce non valida'); return render(); } o.L = n; } else o.cont = v === '1'; }
+    else if (t.dataset.f) { const f = state.furniture.find(x => x.id == t.dataset.f); if (!f) return; f.ca = f.ca || {};
+      if (k === 'mat') f.ca.mat = v; else if (k === 'cont') f.ca.cont = v === '1'; else if (k === 'np') { const n = parseInt(v, 10); if (n >= 1 && n <= 20) f.ca.np = n; }
+      else if (k === 'sez') { const m = String(v).replace(/\s/g, '').replace(/,/g, '.').match(/^(\d+(?:\.\d+)?)[x×*](\d+(?:\.\d+)?)$/i); if (!m) { toast('Scrivi la sezione come 30×50'); return render(); } f.d = +m[1] / 100; f.h = +m[2] / 100; }
+      else { const n = numIn(v); if (!(n >= 0)) { toast('Valore non valido'); return render(); } f.ca[k] = n; } }
+    else if (t.dataset.a) { const o = [].concat(state.doors, state.windows).find(x => x.id == t.dataset.a); const n = numIn(v); if (o && n >= 0) { o.ca = o.ca || {}; o.ca.qsol = n; } }
+    else if (t.dataset.w) { const w = state.walls.find(x => x.id == t.dataset.w); const m = String(v).replace(/\s/g, '').replace(/,/g, '.').match(/^(\d+(?:\.\d+)?)[x×*](\d+(?:\.\d+)?)$/i); if (!w || !m) { toast('Scrivi come 30×25'); return render(); } w[k] = {b: +m[1] / 100, h: +m[2] / 100}; }
+    try { checkpoint(); } catch (_) {} render();
+  }
+  function report() {
+    const keep = tab, parts = [];
+    [['gen', 'Dati generali e riepilogo'], ['sol', 'Solai'], ['tra', 'Travi'], ['pil', 'Pilastri'], ['ap', 'Aperture nei muri portanti'], ['cf', 'Cordoli e fondazioni']].forEach(([k, n]) => { tab = k; parts.push('<h2>' + n + '</h2>' + body().replace(/<input[^>]*value="([^"]*)"[^>]*>/g, '<b>$1</b>').replace(/<select[^>]*>[\s\S]*?<option[^>]*selected[^>]*>([^<]*)<\/option>[\s\S]*?<\/select>/g, '<b>$1</b>').replace(/<select[^>]*>[\s\S]*?<\/select>/g, '')); });
+    tab = keep;
+    const meta = window.SCmeta ? SCmeta.get() : {}, html = `<!doctype html><html><head><meta charset="utf-8"><title>Predimensionamento strutturale</title><style>body{font:12px 'Segoe UI',Arial,sans-serif;color:#111;margin:18mm}h1{font-size:18px}h2{font-size:15px;border-bottom:1px solid #999;margin-top:18px}.sc-card{border:1px solid #bbb;border-radius:6px;padding:6px;margin:6px 0;page-break-inside:avoid}.sc-card.bad{border-color:#b91c1c}.sc-h{display:flex;justify-content:space-between}table{width:100%;border-collapse:collapse}td{border-top:1px solid #ddd;padding:3px}.ok{color:#15803d}.ko{color:#b91c1c}.grid{display:flex;flex-wrap:wrap;gap:12px;color:#444}.grid label{display:flex;gap:4px}.note{color:#555}.warn{color:#92400e;font-weight:600}</style></head><body>
+      <h1>Predimensionamento strutturale (NTC 2018)</h1><div>${esc((meta && (meta.titolo || meta.title)) || '')} ${esc((meta && (meta.indirizzo || meta.address)) || '')}</div><div>Data: ${new Date().toLocaleDateString('it-IT')}</div>${parts.join('')}
+      <p class="warn">Predimensionamento indicativo: non sostituisce il progetto e il calcolo strutturale firmati da un tecnico abilitato, né la verifica sismica.</p></body></html>`;
+    const w = window.open('', '_blank'); if (w) { w.document.write(html); w.document.close(); setTimeout(() => { try { w.print(); } catch (_) {} }, 300); }
+    else { const b = new Blob([html], {type: 'text/html'}), a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'predimensionamento_strutturale.html'; a.click(); toast('Relazione scaricata (apri il file e stampa)'); }
+  }
+
+  /* ---------------------------------------------------------------- pianta strutturale: cordoli, fondazioni, architravi */
+  const _dp = SCstr.drawPlan;
+  SCstr.drawPlan = function () {
+    const r = _dp.apply(this, arguments);
+    try { if (!SCstr.on()) return r; const P = !!window.__printing, cur = state.currentFloorId;
+      const band = (w, b, dash, col, lw) => { const a = worldToScreen(w.p1.x, w.p1.y), c = worldToScreen(w.p2.x, w.p2.y), L = Math.hypot(c.x - a.x, c.y - a.y); if (L < 1) return; const B = b * viewScale; ctx.save(); ctx.translate(a.x, a.y); ctx.rotate(Math.atan2(c.y - a.y, c.x - a.x)); ctx.setLineDash(dash); ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.strokeRect(0, -B / 2, L, B); ctx.restore(); };
+      state.walls.forEach(w => { if (floorOf(w) !== cur || !isEntityVisible(w)) return; if (w.fond) band(w, w.fond.b, [8, 5], P ? '#000' : '#a3e635', 1.4); if (w.cord) { const a = worldToScreen(w.p1.x, w.p1.y), c = worldToScreen(w.p2.x, w.p2.y); ctx.save(); ctx.setLineDash([12, 4, 3, 4]); ctx.strokeStyle = P ? '#000' : '#38bdf8'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(c.x, c.y); ctx.stroke(); ctx.restore(); } });
+    } catch (e) { console.warn('struttura', e); }
+    return r;
+  };
+
+  /* architravi disegnati sopra porte e finestre (dopo tutto il resto) */
+  if (typeof draw2D === 'function') { const _d2 = draw2D; draw2D = function () { const r = _d2.apply(this, arguments);
+    try { if (SCstr.on() && state.mode === '2d') { const P = !!window.__printing, cur = state.currentFloorId;
+      openingsPort().forEach(x => { if (floorOf(x.w) !== cur) return; const w = x.w, L = Lw(w) || 1, ux = (w.p2.x - w.p1.x) / L, uy = (w.p2.y - w.p1.y) / L, hl = (+x.o.width || 0.9) / 2 + cfg().appoggio, cx0 = w.p1.x + (w.p2.x - w.p1.x) * x.o.t, cy0 = w.p1.y + (w.p2.y - w.p1.y) * x.o.t;
+          const A = worldToScreen(cx0 - ux * hl, cy0 - uy * hl), B = worldToScreen(cx0 + ux * hl, cy0 + uy * hl), r2 = calcArch(x); ctx.save(); ctx.strokeStyle = P ? '#000' : (r2.ok ? '#f472b6' : '#ef4444'); ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.lineTo(B.x, B.y); ctx.stroke();
+          ctx.fillStyle = P ? '#000' : '#fbcfe8'; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(r2.prof ? r2.nP + '×' + r2.prof.n : 'architrave ?', (A.x + B.x) / 2, (A.y + B.y) / 2 - 8); ctx.restore(); });
+        } } catch (e) { console.warn('architravi', e); } return r; }; }
+
+  /* ---------------------------------------------------------------- menu Struttura e Verifiche */
+  const selWalls = () => (state.sel || []).filter(x => x.type === 'wall').map(x => state.walls.find(w => w.id === x.id)).filter(Boolean).concat(state.selected && state.selected.type === 'wall' && !(state.sel || []).length ? [state.walls.find(w => w.id === state.selected.id)].filter(Boolean) : []);
+  function needWalls() { const W = selWalls(); if (!W.length) { const s = document.querySelector('.tool[data-tool="select"]'); if (s) s.click(); toast('Scegli prima uno o più muri (tocca il muro), poi ripeti il comando'); return null; } return W; }
+  function wallToggle(k) {
+    const W = needWalls(); if (!W) return; const onAll = W.every(w => w[k]);
+    W.forEach(w => { if (isEntityLocked(w)) return; if (k === 'portante') { if (onAll) delete w.portante; else w.portante = true; return; }
+      if (onAll) delete w[k]; else { const t = getWallThickness(w); w[k] = k === 'cord' ? {b: Math.round(t * 100) / 100, h: 0.25} : {b: Math.max(0.5, Math.round(t * 2 * 20) / 20), h: 0.5}; if (k !== 'portante') w.portante = true; } });
+    try { checkpoint(); } catch (_) {} if (!SCstr.on()) SCstr.setView(true); else draw2D();
+    toast({portante: 'Muro portante', cord: 'Cordolo in c.a.', fond: 'Fondazione continua'}[k] + (onAll ? ' tolto' : ' messo') + ' su ' + W.length + (W.length === 1 ? ' muro' : ' muri') + (onAll ? '' : ' · misure in Struttura › Calcoli'));
+  }
+  function setupMenus() {
+    const sd = document.getElementById('strDd'), vd = document.getElementById('verDd'); if (!sd) return;
+    /* gli strumenti «Strutture» di Disegna passano qui (con i loro comandi) */
+    const dis = [...document.querySelectorAll('.menu-dropdown .menu-label')].find(l => l.textContent.trim() === 'Strutture' && !sd.contains(l));
+    const slot = document.getElementById('strTools');
+    if (dis && slot) { const g = dis.nextElementSibling; dis.remove(); if (g && g.classList.contains('tool-grid')) slot.appendChild(g); }
+    const bind = (id, fn) => { const b = document.getElementById(id); if (b) b.addEventListener('click', () => { try { document.querySelectorAll('.menu-dropdown.open,.menu-item.open').forEach(m => m.classList.remove('open')); document.querySelectorAll('.menu-dropdown.open-fixed').forEach(m => m.classList.remove('open-fixed')); } catch (_) {} fn(); }); };
+    bind('strPortBtn', () => wallToggle('portante')); bind('strCordBtn', () => wallToggle('cord')); bind('strFondBtn', () => wallToggle('fond'));
+    bind('strCalcBtn', () => open()); bind('strViewBtn', () => { SCstr.setView(!SCstr.on()); toast(SCstr.on() ? 'Pianta strutturale accesa' : 'Pianta strutturale spenta'); });
+    if (vd) ['vfDmBtn', 'vfScBtn', 'vfRfBtn'].forEach(id => { const o = document.getElementById(id); if (!o) return; const r = document.createElement('button'); r.className = 'menu-row'; r.id = 'ver_' + id; r.innerHTML = o.innerHTML;
+      r.addEventListener('click', () => { const t = document.getElementById(id); if (t) t.click(); }); vd.appendChild(r); o.style.display = 'none'; });   /* l'originale resta (con i suoi comandi) ma non si vede più in Progetto */
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setupMenus); else setupMenus();
+
+  window.SCca = {open, close, items, calcSolaio, calcTrave, calcPil, calcArch, calcFond, cfg, IPE, HEA, wallToggle};
+})();
+</script>
 </body>
 </html>

@@ -566,6 +566,23 @@ NOVITÀ v29.0
   in cui li hai lasciati e, se coprirebbero il punto appena toccato, si aprono dall'altra parte dello schermo.
   Doppio tocco sulla maniglia: posizione iniziale.
 
+NOVITÀ v30.5 — MENU STRUTTURA E MENU VERIFICHE
+- Nuovo menu 🏗 STRUTTURA (nella barra in alto, dopo Impianti):
+  · Pilastro, Pilastro a forma libera, Orditura solaio, Trave, Pianta strutturale;
+  · Muro portante (sì/no), Cordolo in c.a. in testa al muro, Fondazione continua sotto il muro:
+    si applicano ai muri scelti (tocca il muro, poi il comando);
+  · CALCOLI STRUTTURALI (predimensionamento NTC 2018), con schede:
+    Dati e riepilogo (destinazione d'uso, carichi, calcestruzzo, terreno) · Solai (spessore minimo,
+    momento, armatura dei travetti) · Travi in c.a., acciaio o legno (momento, taglio e staffe, freccia,
+    armatura o profilo IPE/HEA, sezione consigliata) · Pilastri (sforzo normale, sezione e armatura
+    minima) · Aperture nei muri portanti (architrave in acciaio, appoggi, nota sulla cerchiatura)
+    · Cordoli e fondazioni (pressione sul terreno, larghezza minima) · 🖨 Relazione stampabile.
+- La pianta strutturale mostra anche cordoli, fondazioni e gli architravi calcolati sopra le aperture.
+- Computo: voci di calcestruzzo, acciaio d'armatura, casseforme e architravi in acciaio.
+- I calcoli sono un PREDIMENSIONAMENTO indicativo: non sostituiscono il progetto firmato.
+- Nuovo menu ✅ VERIFICHE: Verifica locali (altezze, superfici, rapporto aeroilluminante 1/8),
+  Superficie commerciale (DPR 138/1998), Relazione fotografica.
+
 NOVITÀ v30.4 — CREA ARREDO RIORGANIZZATO
 - Barra a menu: ➤ (scegli e sposta) · ➕ Forme ▾ · ✏️ Modifica ▾ · ☰ Scegli più · Tutti · 💾 Salva ▾ ·
   ↩ ↪ ⤢ · ? (aiuto e passo griglia) · ✕. Le istruzioni sono sotto «?».
