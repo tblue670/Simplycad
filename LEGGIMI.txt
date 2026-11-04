@@ -566,6 +566,21 @@ NOVITÀ v29.0
   in cui li hai lasciati e, se coprirebbero il punto appena toccato, si aprono dall'altra parte dello schermo.
   Doppio tocco sulla maniglia: posizione iniziale.
 
+NOVITÀ v30.2 — PORTE E FINESTRE FATTE DA TE
+- In «Crea arredo», accanto al nome, scegli che cosa stai creando: Arredo, Porta o Finestra.
+  Per porte e finestre disegna il modello visto di fronte, largo e alto come il vano.
+- Inserisci la porta (o finestra) con lo strumento normale, toccala e nella scheda scegli
+  «Modello»: il vano prende le misure del modello e il muro si apre da solo.
+- In 3D e nel prospetto si vede il tuo modello; in pianta resta il simbolo di apertura
+  (tipo, cerniera e verso si scelgono come sempre).
+- «Posizione nello spessore del muro»: centrato, a filo del lato di apertura o del lato opposto.
+- Nel computo la voce riporta il nome del modello (es. Porta interna «Porta noce» 90×210 cm).
+- Larghezza e altezza restano modificabili: il modello si adatta.
+- I modelli usati viaggiano dentro il file del progetto.
+- Nella scelta degli arredi i modelli di porte e finestre hanno una sezione a parte
+  (lì si modificano o si eliminano, ma non si inseriscono come arredo).
+- La porta già fatta come arredo: aprila con ✏️, scegli «Porta (va nel muro)» e salva.
+
 NOVITÀ v30.1 — CREA ARREDO rifatto
 - L'arredo si compone a PEZZI: scatola (anche con spigoli arrotondati), cilindro, cono, sfera,
   sagoma (contorno disegnato a tocchi, poi estruso).

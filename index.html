@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v30.1</title>
+<title>SimplyCAD Pro · v30.2</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -2035,11 +2035,11 @@ const FURNITURE = {
 (function () {
   const LK = 'simplycad_custom_furn_v1', GR = 0.05;
   const save = () => { try { const o = {}; for (const [k, v] of Object.entries(FURNITURE)) if (v.custom) o[k] = v; localStorage.setItem(LK, JSON.stringify(o)); } catch (_) {} };
-  const add = (k, v) => { if (!v || !Array.isArray(v.shapes)) return; FURNITURE[k] = {name: String(v.name || 'Arredo'), w: +v.w || 0.5, d: +v.d || 0.5, h: +v.h || 0.8, color: v.color || '#8b6f47', icon: '🧩', custom: true, shapes: v.shapes}; if (Array.isArray(v.cp) && v.cp.length) FURNITURE[k].cp = v.cp; const sel = document.getElementById('furnitureType'); if (sel) { let o = sel.querySelector('option[value="' + k + '"]'); if (!o) { o = document.createElement('option'); o.value = k; sel.appendChild(o); } o.textContent = '🧩 ' + FURNITURE[k].name; } };
+  const add = (k, v) => { if (!v || !Array.isArray(v.shapes)) return; FURNITURE[k] = {name: String(v.name || 'Arredo'), w: +v.w || 0.5, d: +v.d || 0.5, h: +v.h || 0.8, color: v.color || '#8b6f47', icon: '🧩', custom: true, shapes: v.shapes}; if (Array.isArray(v.cp) && v.cp.length) FURNITURE[k].cp = v.cp; if (v.role === 'door' || v.role === 'window') FURNITURE[k].role = v.role; const sel = document.getElementById('furnitureType'); if (sel) { let o = sel.querySelector('option[value="' + k + '"]'); if (!o) { o = document.createElement('option'); o.value = k; sel.appendChild(o); } o.textContent = '🧩 ' + FURNITURE[k].name; } };
   try { const o = JSON.parse(localStorage.getItem(LK) || '{}'); for (const k of Object.keys(o)) add(k, o[k]); } catch (_) {}
   window.SCcf = {
     merge(o) { if (!o) return; for (const k of Object.keys(o)) if (!FURNITURE[k]) add(k, o[k]); save(); },
-    exportUsed() { const o = {}; for (const f of (state.furniture || [])) if (FURNITURE[f.type] && FURNITURE[f.type].custom) o[f.type] = FURNITURE[f.type]; return o; },
+    exportUsed() { const o = {}; for (const f of (state.furniture || [])) if (FURNITURE[f.type] && FURNITURE[f.type].custom) o[f.type] = FURNITURE[f.type]; for (const d of [].concat(state.doors || [], state.windows || [])) if (d.model && FURNITURE[d.model] && FURNITURE[d.model].custom) o[d.model] = FURNITURE[d.model]; return o; },
     list: () => Object.keys(FURNITURE).filter(k => FURNITURE[k].custom),
     _add: (k, v) => add(k, v), _save: () => save()
   };
@@ -3556,8 +3556,9 @@ function openFurniturePicker(cx, cy, world) {
   let html = `<div class="fp-head"><span>Scegli l'arredo da inserire</span><button type="button" data-close="1">✕</button></div><button type="button" class="fp-new" data-cpnew="1">🧱 Composizione su misura (cucine, bagni, armadi, pareti attrezzate)…</button><button type="button" class="fp-new" data-new="1">➕ Crea un nuovo arredo (linea, arco, cerchio, rettangolo, poligono)</button><button type="button" class="fp-new" data-m3dimp="1">📦 Importa modello 3D (GLB, glTF, OBJ) di produttori o librerie gratuite…</button>`;
   if (window.SCm3d) { const ml = SCm3d.list(); if (ml.length) html += '<h4>Modelli 3D importati</h4><div class="fp-grid">' + ml.map(m => `<button class="fp-it" data-k="${escHtml(m.key)}"><span>📦</span>${escHtml(m.name)}<div class="fp-row"><i class="fp-ac" data-m3del="${escHtml(m.key)}" title="Elimina">🗑️</i></div></button>`).join('') + '</div>'; }
   if (window.SCcomp) { const lib = SCcomp.libGet(); html += '<h4>Composizioni</h4><div class="fp-grid">' + lib.map(x => `<button class="fp-it" data-cp="${escHtml(x.id)}"><span>⭐</span>${escHtml(x.name)}</button>`).join('') + Object.keys(SCcomp.TPLN).map(k => `<button class="fp-it" data-cp="${k}"><span>🧱</span>${escHtml(SCcomp.TPLN[k])}</button>`).join('') + '</div>'; }
-  const mine = window.SCcf ? SCcf.list() : [];
+  const mine = window.SCcf ? SCcf.list().filter(k => !FURNITURE[k].role) : [], mods = window.SCcf ? SCcf.list().filter(k => FURNITURE[k].role) : [];
   if (mine.length) html += `<h4>I miei arredi</h4><div class="fp-grid">${mine.map(btn).join('')}</div>`;
+  if (mods.length) html += `<h4>I miei modelli di porte e finestre <span style="font-weight:400;font-size:11px;color:#9ca3af">(si scelgono nella scheda della porta o finestra)</span></h4><div class="fp-grid">${mods.map(k => btn(k).replace('data-k="' + k + '"', 'data-mk="' + k + '"').replace('<span>🧩</span>', '<span>' + (FURNITURE[k].role === 'door' ? '🚪' : '🪟') + '</span>')).join('')}</div>`;
   { const IMPG = new Set((window.FURN_GROUPS && FURN_GROUPS.Impianti) || []), rec = _furRecent.filter(k => !IMPG.has(k)); if (rec.length) html += `<h4>Ultimi usati</h4><div class="fp-grid">${rec.map(btn).join('')}</div>`; }
   const seen = new Set();
   for (const [g, items] of Object.entries(window.FURN_GROUPS || {})) {
@@ -11143,13 +11144,13 @@ updateRoomList();
     const opSt = (o, w, h) => { if (o.stato === 'nuovo') { ops.ap.a += w * h; ops.ap.n.push(cm(w) + '×' + cm(h)); } else if (o.stato === 'demolire') { ops.tp.a += w * h; ops.tp.n.push(cm(w) + '×' + cm(h)); } };   /* v26.9 */
     state.doors.filter(d => isEntityVisible(d) && !isDemo(state.walls.find(w => w.id === d.wallId))).forEach(d => {
       const P = doorProps(d); opSt(d, +d.width || 0.9, +d.height || 2.1); if (d.stato === 'demolire') return; if (P.kind === 'open') return;
-      const k = `por_${P.kind}_${cm(+d.width || 0.9)}x${cm(+d.height || 2.1)}`;
-      (dg[k] || (dg[k] = {k, desc: `Porta interna ${DOORK[P.kind]} ${cm(+d.width || 0.9)}×${cm(+d.height || 2.1)} cm, completa di telaio e ferramenta`, n: 0})).n++;
+      const MN = d.model && FURNITURE[d.model] ? FURNITURE[d.model].name : '', k = `por_${P.kind}_${MN ? 'm_' + d.model + '_' : ''}${cm(+d.width || 0.9)}x${cm(+d.height || 2.1)}`;
+      (dg[k] || (dg[k] = {k, desc: `Porta interna ${MN ? '«' + MN + '» ' : ''}${DOORK[P.kind]} ${cm(+d.width || 0.9)}×${cm(+d.height || 2.1)} cm, completa di telaio e ferramenta`, n: 0})).n++;
     });
     let dav = 0; const osc = {};
     state.windows.filter(d => isEntityVisible(d) && !isDemo(state.walls.find(w => w.id === d.wallId))).forEach(d => {
-      const w = +d.width || 1.2, h = +d.height || 1.2, k = `fin_${cm(w)}x${cm(h)}`; opSt(d, w, h); if (d.stato === 'demolire') return;
-      (wg[k] || (wg[k] = {k, desc: `Serramento esterno ${cm(w)}×${cm(h)} cm, completo di vetrocamera`, n: 0})).n++;
+      const w = +d.width || 1.2, h = +d.height || 1.2, MN = d.model && FURNITURE[d.model] ? FURNITURE[d.model].name : '', k = `fin_${MN ? 'm_' + d.model + '_' : ''}${cm(w)}x${cm(h)}`; opSt(d, w, h); if (d.stato === 'demolire') return;
+      (wg[k] || (wg[k] = {k, desc: `Serramento esterno ${MN ? '«' + MN + '» ' : ''}${cm(w)}×${cm(h)} cm, completo di vetrocamera`, n: 0})).n++;
       dav += w; if (d.osc) { const ko = 'osc_' + d.osc; (osc[ko] || (osc[ko] = {k: ko, a: 0, n: []})).a += w * h; osc[ko].n.push(cm(w) + '×' + cm(h)); }
     });
     Object.values(dg).sort((a, b) => a.k.localeCompare(b.k)).forEach(g => add('Serramenti', g.k, g.desc, 'n.', g.n));
@@ -15797,7 +15798,9 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       const a = toU(w, o.x0), b = toU(w, o.x1), u0 = Math.min(a, b), u1 = Math.max(a, b), isS = S.oSel && S.oSel.id === o.id;
       cx.fillStyle = S.phOn ? (o.t === 'door' ? 'rgba(42,48,71,.35)' : 'rgba(41,68,90,.35)') : o.t === 'door' ? '#2a3047' : '#29445a'; cx.fillRect(sx(u0), sy(o.y1), (u1 - u0) * S.view.s, (o.y1 - o.y0) * S.view.s);
       cx.strokeStyle = isS ? '#22d3ee' : '#94a3b8'; cx.lineWidth = isS ? 2.5 : 1.5; cx.strokeRect(sx(u0), sy(o.y1), (u1 - u0) * S.view.s, (o.y1 - o.y0) * S.view.s);
-      cx.fillStyle = '#cbd5e1'; cx.font = '11px "Segoe UI",sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.fillText(o.t === 'door' ? 'Porta' : 'Finestra', sx((u0 + u1) / 2), sy((o.y0 + o.y1) / 2));
+      const ob = (o.t === 'door' ? state.doors : state.windows).find(x => x.id === o.id);   /* v30.2: porta o finestra a modello */
+      if (window.SCcf2 && ob && ob.model && SCcf2.elev(cx, ob, sx, sy, u0, u1, o.y0, o.y1, a > b)) { cx.strokeStyle = isS ? '#22d3ee' : '#94a3b8'; cx.lineWidth = isS ? 2.5 : 1.5; cx.strokeRect(sx(u0), sy(o.y1), (u1 - u0) * S.view.s, (o.y1 - o.y0) * S.view.s); }
+      else { cx.fillStyle = '#cbd5e1'; cx.font = '11px "Segoe UI",sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.fillText(o.t === 'door' ? 'Porta' : 'Finestra', sx((u0 + u1) / 2), sy((o.y0 + o.y1) / 2)); }
     });
     /* v21.0: pilastri addossati a questo muro: davanti pieni, sull'altro lato tratteggiati */
     pillarsOf(w).forEach(f => {
@@ -21823,8 +21826,9 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
    SC_REL.v è l'unica versione: titolo, Guida, file salvato, avvisi e riga messaggi la leggono da qui.
    ======================================================================== */
 window.SC_REL = {
-  v: '30.1', d: '04/11/2026',
+  v: '30.2', d: '04/11/2026',
   news: [
+    ['30.2', 'Modelli di porta e finestra: in «Crea arredo» scegli «Porta» o «Finestra (va nel muro)» e salvi. Poi la inserisci con lo strumento Porta o Finestra e nella sua scheda scegli il Modello: il foro nel muro si apre con le misure del modello, in 3D e nel prospetto si vede il tuo modello, in pianta resta il simbolo di apertura e nel computo la voce porta il nome del modello. Posizione nello spessore del muro: centrato o a filo di un lato.'],
     ['30.1', 'Crea arredo rifatto: l’arredo si compone a pezzi (scatola anche con spigoli arrotondati, cilindro, cono, sfera, sagoma disegnata), ognuno con misure, quota da terra, posizione, rotazione su tutti gli assi, colore da una tavolozza con sfumature e finitura. Quattro viste (dall’alto, frontale, laterale, 3D): una grande e tre piccole, tocchi una piccola e diventa la grande. Pezzi selezionabili, spostabili col dito e allungabili dalle maniglie; duplica, elimina, annulla. Misure d’insieme che ridimensionano tutto. Blocchi: gruppi di pezzi salvati e riusati in altri arredi. Gli arredi creati si vedono in pianta, in 3D e ora anche nel prospetto; quelli vecchi si aprono convertiti in pezzi.'],
     ['30.0', 'Pulizia interna: tolte le parti di programma non più usate (vecchio motore per le immagini, vecchio import PDF, vecchie funzioni del rilievo) e controllato tutto il codice con un analizzatore automatico. Nessun cambiamento nell’uso.'],
     ['29.6', 'Rilievo: «✋ Sposta» per mettere a mano una stanza al suo posto quando non hai le misure di collegamento: la trascini col dito e la ruoti con i pulsanti (90°, 15°, 1°). La posizione resta legata alla stanza più vicina; un collegamento con «🔗 Collega» la sostituisce con quella esatta.'],
@@ -27130,6 +27134,25 @@ window.SC_REL = {
     return out.sort((a, b) => a.n - b.n);
   }
 
+  /* ---------------------------------------------------------------- v30.2: modelli di porta e finestra (vanno nel muro) */
+  const modelOf = o => { const sp = o && o.model ? FURNITURE[o.model] : null; return sp && sp.cp && sp.cp.length ? sp : null; };
+  function opening3D(g, o, T, kind) {   /* g: gruppo dell'apertura (x da 0 a larghezza, y in alto, z attraverso il muro) */
+    const sp = modelOf(o); if (!sp) return false; const W = +o.width || sp.w, H = +o.height || sp.h, y0 = kind === 'win' ? (+o.sillHeight || 0) : 0, main = (sp.color || '').toLowerCase();
+    const uc = o.cu && o.color ? o.color : null, G = group3D(sp.cp, p => uc && String(p.c).toLowerCase() === main ? uc : p.c);
+    G.scale.set(W / sp.w, H / sp.h, 1); const side = kind === 'door' ? (o.side === -1 ? -1 : 1) : (o.mSide === -1 ? -1 : 1), C = new THREE.Group(); C.add(G);
+    if (side < 0) C.rotation.y = Math.PI; const off = Math.max(0, T / 2 - sp.d / 2), al = o.mAl || 'c';
+    C.position.set(W / 2, y0, al === 'f' ? side * off : al === 'o' ? -side * off : 0); g.add(C); return true;
+  }
+  function elev(cx, o, sx, sy, u0, u1, y0, y1, flip) {   /* modello nel prospetto, dentro il riquadro dell'apertura */
+    const sp = modelOf(o); if (!sp) return false; const main = (sp.color || '').toLowerCase(), uc = o.cu && o.color ? o.color : null, mir = !!flip !== ((o.side === -1) || (o.mSide === -1));
+    const L = sp.cp.map(p => ({p, o: outline(p, 'front')})).sort((a, b) => a.o.dep - b.o.dep);
+    cx.save(); cx.lineJoin = 'round';
+    L.forEach(({p, o: q}) => { if (q.pts.length < 2) return; cx.beginPath(); q.pts.forEach((v, i) => { const f = v[0] / sp.w + 0.5, u = mir ? u1 - f * (u1 - u0) : u0 + f * (u1 - u0), y = y0 + v[1] / sp.h * (y1 - y0); i ? cx.lineTo(sx(u), sy(y)) : cx.moveTo(sx(u), sy(y)); }); cx.closePath();
+      cx.globalAlpha = p.m === 'g' ? 0.45 : 1; cx.fillStyle = uc && String(p.c).toLowerCase() === main ? uc : p.c; cx.fill(); cx.globalAlpha = 1; cx.strokeStyle = 'rgba(0,0,0,.55)'; cx.lineWidth = 1; cx.stroke(); });
+    cx.restore(); return true;
+  }
+  const models = role => Object.keys(FURNITURE).filter(k => FURNITURE[k].custom && FURNITURE[k].role === role && FURNITURE[k].cp);
+
   /* ---------------------------------------------------------------- editor */
   let ov = null;
   function open(editKey) {
@@ -27176,6 +27199,7 @@ window.SC_REL = {
     </style>
     <div class="hd"><b style="font-size:15px">🧩<span class="lg"> ${old ? 'Modifica arredo' : 'Crea arredo'}</span></b>
       <input id="c2Name" placeholder="Nome dell'arredo" maxlength="40" style="flex:1;min-width:60px">
+      <select id="c2Role" title="Che cosa stai creando"><option value="">Arredo</option><option value="door">Porta (va nel muro)</option><option value="window">Finestra (va nel muro)</option></select>
       <button id="c2Save" style="background:#15803d;border-color:#4ade80;font-weight:700">✓ Salva<span class="lg"> arredo</span></button><button id="c2X" title="Chiudi senza salvare">✕</button></div>
     <div class="tb" id="c2Tb">
       <button data-t="sel">➤ Seleziona</button><button data-t="box">▭ Scatola</button><button data-t="cyl">◯ Cilindro</button><button data-t="cone">△ Cono</button><button data-t="sph">● Sfera</button><button data-t="prof">✎ Sagoma</button><i></i>
@@ -27185,7 +27209,8 @@ window.SC_REL = {
     document.body.appendChild(ov);
     const $ = id => ov.querySelector('#' + id);
     ['pointerdown', 'keydown', 'keyup', 'wheel', 'touchstart', 'touchmove', 'click', 'contextmenu'].forEach(ev => ov.addEventListener(ev, e => e.stopPropagation()));
-    $('c2Name').value = E.name; $('c2Grid').value = String(E.grid);
+    $('c2Name').value = E.name; $('c2Grid').value = String(E.grid); $('c2Role').value = (old && old.role) || '';
+    $('c2Role').onchange = e => { if (e.target.value) toast(e.target.value === 'door' ? 'Porta: disegnala vista di fronte, larga e alta come il vano. Si inserisce con lo strumento Porta (scheda della porta › Modello)' : 'Finestra: disegnala vista di fronte, larga e alta come il vano. Si inserisce con lo strumento Finestra (scheda › Modello)'); };
     const VN = {top: 'Dall\'alto', front: 'Frontale', side: 'Laterale (da destra)', '3d': '3D (gira col dito)'};
     const VB = {};
     ['top', 'front', 'side', '3d'].forEach(k => { const d = document.createElement('div'); d.className = 'vb'; d.dataset.v = k; d.innerHTML = `<canvas></canvas><b>${VN[k]}</b>`; VB[k] = d; });
@@ -27486,17 +27511,40 @@ window.SC_REL = {
       const b = bounds(E.parts), cx0 = (b.x0 + b.x1) / 2, cy0 = (b.y0 + b.y1) / 2, cp = E.parts.map(p => { const q = clone(p); q.x -= cx0; q.y -= cy0; q.z -= b.z0; return q; });
       const cnt = {}; cp.forEach(p => { const v = Math.abs(p.w * p.d * p.h); cnt[p.c] = (cnt[p.c] || 0) + v; }); const color = Object.keys(cnt).sort((a, c) => cnt[c] - cnt[a])[0] || '#8b6f47';
       const w = Math.max(0.02, b.x1 - b.x0), d = Math.max(0.02, b.y1 - b.y0), h = Math.max(0.02, b.z1 - b.z0), key = editKey || 'c_' + Date.now().toString(36), prev = FURNITURE[key] ? Object.assign({}, FURNITURE[key]) : null;
-      SCcf._add(key, {name, w, d, h, color, shapes: [], cp});
+      const role = $('c2Role').value || '';
+      SCcf._add(key, {name, w, d, h, color, shapes: [], cp, role});
+      if (role && prev) [].concat(state.doors || [], state.windows || []).forEach(o => { if (o.model === key) { o.width = Math.round(o.width / prev.w * w * 1000) / 1000 || w; o.height = Math.round(o.height / prev.h * h * 1000) / 1000 || h; } });
       if (prev) state.furniture.forEach(f => { if (f.type === key) { f.w = f.w * w / prev.w; f.d = f.d * d / prev.d; f.h = (f.h || prev.h) * h / prev.h; if (f.color === prev.color) f.color = color; } });
-      SCcf._save(); close(); toast('Arredo salvato: ' + name + ' (' + fm(w) + ' × ' + fm(d) + ' × ' + fm(h) + ' m)');
+      SCcf._save(); close(); toast((role === 'door' ? 'Modello di porta salvato: ' : role === 'window' ? 'Modello di finestra salvato: ' : 'Arredo salvato: ') + name + ' (' + fm(w) + ' × ' + fm(d) + ' × ' + fm(h) + ' m)');
       try { draw2D(); if (state.mode === '3d') build3D(); if (prev) checkpoint(); } catch (_) {}
     };
     window.addEventListener('resize', function rs() { if (!ov) return window.removeEventListener('resize', rs); sizeAll(); drawAll(); });
     layout(); panel(); setTimeout(() => drawAll(true), 60);
     SCcf2._E = E;   /* per le prove */
   }
-  window.SCcf2 = {open, plan, build3D: b3D, front, fromShapes, meshV, outline, bounds, geoOf};
+  window.SCcf2 = {open, plan, build3D: b3D, front, opening3D, elev, models, modelOf, fromShapes, meshV, outline, bounds, geoOf};
   window.SCcf.open = open;
+
+  /* ---- v30.2: porte e finestre a modello nel 3D e nella scheda */
+  if (typeof build3DDoor === 'function') { const _bd = build3DDoor; build3DDoor = function (g, d, T) { try { if (modelOf(d) && opening3D(g, d, T, 'door')) return; } catch (e) { console.warn('modello porta', e); } return _bd.apply(this, arguments); }; }
+  if (typeof build3DWindow === 'function') { const _bw = build3DWindow; build3DWindow = function (g, w, T) { try { if (modelOf(w) && opening3D(g, w, T, 'win')) return; } catch (e) { console.warn('modello finestra', e); } return _bw.apply(this, arguments); }; }
+  if (typeof updateSelectionPanel === 'function') { const _usp = updateSelectionPanel; updateSelectionPanel = function () {
+    const r = _usp.apply(this, arguments);
+    try {
+      const sel = state.selected, isD = sel && sel.type === 'door', isW = sel && sel.type === 'window'; if (!isD && !isW) return r;
+      const o = (isD ? state.doors : state.windows).find(x => x.id === sel.id), anchor = document.getElementById(isD ? 'dKind' : 'selWKind'); if (!o || !anchor || document.getElementById('opModel')) return r;
+      const L = models(isD ? 'door' : 'window'), box = document.createElement('div');
+      box.innerHTML = `<label>Modello (creato con «Crea arredo»)</label><select id="opModel"><option value="">Standard</option>${L.map(k => `<option value="${k}"${o.model === k ? ' selected' : ''}>🧩 ${escH(FURNITURE[k].name)}</option>`).join('')}</select>`
+        + (o.model ? `<label>Posizione nello spessore del muro</label><select id="opMAl"><option value="c">Centrato</option><option value="f">A filo, lato ${isD ? 'apertura' : 'scelto'}</option><option value="o">A filo, lato opposto</option></select>` + (isW ? `<label>Verso del modello</label><select id="opMSide"><option value="1">Lato A</option><option value="-1">Lato B</option></select>` : '') : '')
+        + (L.length ? '' : `<div style="font-size:11px;color:#9ca3af;margin-top:2px">Nessun modello: in «Crea arredo» scegli «${isD ? 'Porta' : 'Finestra'} (va nel muro)» e salva.</div>`);
+      anchor.insertAdjacentElement('afterend', box);
+      const up = () => { checkpoint(); draw2D(); if (state.mode === '3d') build3D(); updateSelectionPanel(); };
+      box.querySelector('#opModel').onchange = e => { if (isEntityLocked(o)) return; const k = e.target.value; if (k) { const sp = FURNITURE[k]; o.model = k; o.width = Math.round(sp.w * 1000) / 1000; o.height = Math.round(sp.h * 1000) / 1000; try { clampDoorWindowT(o); } catch (_) {} toast('Modello «' + sp.name + '»: vano ' + fm(o.width) + ' × ' + fm(o.height) + ' m'); } else delete o.model; up(); };
+      const al = box.querySelector('#opMAl'); if (al) { al.value = o.mAl || 'c'; al.onchange = e => { o.mAl = e.target.value; up(); }; }
+      const ms = box.querySelector('#opMSide'); if (ms) { ms.value = String(o.mSide === -1 ? -1 : 1); ms.onchange = e => { o.mSide = +e.target.value; up(); }; }
+    } catch (e) { console.warn('scheda modello', e); }
+    return r;
+  }; }
 })();
 </script>
 </body>
