@@ -566,6 +566,11 @@ NOVITÀ v29.0
   in cui li hai lasciati e, se coprirebbero il punto appena toccato, si aprono dall'altra parte dello schermo.
   Doppio tocco sulla maniglia: posizione iniziale.
 
+NOVITÀ v30.6
+- Pianta: gli arredi si disegnano dal basso verso l'alto secondo la quota da terra (tappeti, basi,
+  pensili, luci): pensili e luci non restano più nascosti sotto le basi, anche dopo aver separato
+  una composizione.
+
 NOVITÀ v30.5 — MENU STRUTTURA E MENU VERIFICHE
 - Nuovo menu 🏗 STRUTTURA (nella barra in alto, dopo Impianti):
   · Pilastro, Pilastro a forma libera, Orditura solaio, Trave, Pianta strutturale;

@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v30.5</title>
+<title>SimplyCAD Pro · v30.6</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -3440,7 +3440,8 @@ function draw2D() {
   for (const wi of state.windows) { drawWindow(wi); try { drawWindowOsc(wi); drawOpeningStato(wi); } catch (_) {} }
   for (const d of state.doors) { drawDoor(d); try { drawOpeningStato(d); } catch (_) {} }
   { const showF = document.getElementById('showFurniture').checked;
-    for (const f of state.furniture) if (showF || STRUCT_TYPES.has(f.type)) drawFurniture(f); }
+    const zq = f => { const sp = FURNITURE[f.type] || {}; const z = f.z != null ? +f.z || 0 : (+sp.z || 0); return f.type === 'rug' ? -1 : z; };   /* v30.6: ciò che sta più in alto si vede sopra */
+    state.furniture.map((f, i) => [f, i]).sort((a, b) => (zq(a[0]) - zq(b[0])) || (a[1] - b[1])).forEach(([f]) => { if (showF || STRUCT_TYPES.has(f.type)) drawFurniture(f); }); }
   for (const s of state.stairs) drawStairs(s);
   if (document.getElementById('showLabels').checked)
     for (const l of state.labels) drawLabel(l);
@@ -21848,8 +21849,9 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
    SC_REL.v è l'unica versione: titolo, Guida, file salvato, avvisi e riga messaggi la leggono da qui.
    ======================================================================== */
 window.SC_REL = {
-  v: '30.5', d: '04/11/2026',
+  v: '30.6', d: '04/11/2026',
   news: [
+    ['30.6', 'Pianta: gli arredi si disegnano dal basso verso l’alto secondo la quota da terra, così i pensili e le luci non restano più nascosti sotto le basi (anche dopo aver separato una composizione).'],
     ['30.5', 'Nuovo menu 🏗 Struttura: pilastri, travi, orditure, muro portante, cordoli e fondazioni continue in c.a., pianta strutturale e Calcoli strutturali di predimensionamento (NTC 2018) per solai, travi (c.a., acciaio, legno), pilastri, architravi delle aperture nei muri portanti e fondazioni, con relazione stampabile; il computo ha le voci del c.a. (calcestruzzo, armature, casseforme) e degli architravi. Nuovo menu ✅ Verifiche con verifica locali, superficie commerciale, analisi metrica e relazione fotografica.'],
     ['30.4', 'Crea arredo riorganizzato: barra con menu ➕ Forme, ✏️ Modifica, ☰ Scegli più (come nei muri), Tutti, 💾 Salva, e ↩ ↪ ⤢ ?; le istruzioni sono sotto «?». Nuovo: Raggruppa/Separa (anta + maniglia si scelgono e si spostano con un tocco), Allinea, Specchia, Torsione a vite, Ruota 90° anche di più pezzi insieme, misure d’insieme della scelta, maniglie per allungare anche pezzi ruotati e più pezzi. Nome e tipo (arredo, porta, finestra) si chiedono al salvataggio. Le sagome e i pezzi a vite si vedono con le loro facce anche in pianta e nel prospetto.'],
     ['30.3', 'Arredo: prima si sceglie, poi si posa. Lo strumento Arredo apre subito il pannello; scelto l’oggetto (o creato un arredo nuovo) la sua sagoma segue il dito o il mouse e un tocco lo posa. Si resta pronti a posarne altri uguali; barra in basso con rotazione 90° e 15°, «Al muro», «Cambia» e «Fine». Due dita fanno sempre lo zoom.'],
