@@ -566,6 +566,15 @@ NOVITÀ v29.0
   in cui li hai lasciati e, se coprirebbero il punto appena toccato, si aprono dall'altra parte dello schermo.
   Doppio tocco sulla maniglia: posizione iniziale.
 
+NOVITÀ v30.3 — ARREDO: PRIMA SCEGLI, POI POSI
+- Tocchi 🪑 Arredo e si apre subito il pannello: scegli l'arredo, una composizione o «Crea un nuovo
+  arredo» (dopo il salvataggio passi direttamente a posarlo).
+- La sagoma azzurra dell'oggetto, con le misure, segue il mouse o il cursore sfalsato del dito;
+  il lato spesso è il davanti. Tocchi (o sollevi il dito) e l'oggetto è posato.
+- Resti pronto a posarne altri uguali. Barra in basso: ⟳ 90°, ⟳ 15°, «Al muro» (si gira e si appoggia
+  al muro vicino), 🔁 Cambia (riapre il pannello), ✕ Fine (torna alla selezione; anche Esc).
+- Due dita fanno sempre lo zoom senza posare nulla.
+
 NOVITÀ v30.2 — PORTE E FINESTRE FATTE DA TE
 - In «Crea arredo», accanto al nome, scegli che cosa stai creando: Arredo, Porta o Finestra.
   Per porte e finestre disegna il modello visto di fronte, largo e alto come il vano.

@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v30.2</title>
+<title>SimplyCAD Pro · v30.3</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -3574,11 +3574,11 @@ function openFurniturePicker(cx, cy, world) {
   el.style.top = Math.max(8, Math.min(cy + 12, innerHeight - H - 8)) + 'px';
   el.addEventListener('click', e => {
     if (e.target.closest('[data-close]')) { closeFurniturePicker(); return; }
-    if (e.target.closest('[data-new]')) { closeFurniturePicker(); SCcf.open(); return; }
+    if (e.target.closest('[data-new]')) { closeFurniturePicker(); window.__cfPlace = !world; SCcf.open(); return; }
     if (e.target.closest('[data-cpnew]')) { closeFurniturePicker(); if (window.SCcomp) SCcomp.open(); return; }
     if (e.target.closest('[data-m3dimp]')) { closeFurniturePicker(); if (window.SCm3d) SCm3d.pick(); return; }
     { const md = e.target.closest('[data-m3del]'); if (md) { e.stopPropagation(); if (window.SCm3d && confirm('Eliminare il modello 3D dalla libreria?') && SCm3d.remove(md.dataset.m3del)) { closeFurniturePicker(); openFurniturePicker(cx, cy, world); } return; } }
-    { const cp = e.target.closest('[data-cp]'); if (cp) { e.stopPropagation(); closeFurniturePicker(); if (window.SCcomp) SCcomp.placeAt(cp.dataset.cp, world); return; } }
+    { const cp = e.target.closest('[data-cp]'); if (cp) { e.stopPropagation(); closeFurniturePicker(); if (!world && window.SCfp) SCfp.start('cp', cp.dataset.cp); else if (window.SCcomp) SCcomp.placeAt(cp.dataset.cp, world); return; } }
     const ed = e.target.closest('[data-ed]'); if (ed) { e.stopPropagation(); closeFurniturePicker(); SCcf.open(ed.dataset.ed); return; }
     const dl = e.target.closest('[data-del]'); if (dl) { e.stopPropagation(); SCcf.remove(dl.dataset.del).then(ok => { if (ok) { closeFurniturePicker(); openFurniturePicker(cx, cy, world); } }); return; }
     const b = e.target.closest('.fp-it'); if (!b) return;
@@ -3588,7 +3588,7 @@ function openFurniturePicker(cx, cy, world) {
     _furRecent.unshift(k); _furRecent.length = Math.min(_furRecent.length, 8);
     try { localStorage.setItem('simplycad_furn_recent', JSON.stringify(_furRecent)); } catch(e) {}
     closeFurniturePicker();
-    placeFurniture(k, world);
+    if (!world && window.SCfp) SCfp.start('f', k); else placeFurniture(k, world);
   });
   document.addEventListener('keydown', _fpEsc, true);
   setTimeout(() => document.addEventListener('pointerdown', function off(e) {
@@ -3671,7 +3671,7 @@ function handleTap(clientX, clientY) {
     if (!measureStart) measureStart = world;
     else { state.measurements.push(assignLayer({id: newId(), p1: measureStart, p2: world})); measureStart = null; draw2D(); }
   } else if (state.tool === 'furniture') {
-    openFurniturePicker(clientX, clientY, world);
+    if (!(window.SCfp && SCfp.tap(clientX, clientY, world))) openFurniturePicker(clientX, clientY, world);
   } else if (state.tool === 'text') {
     uiPrompt('Testo etichetta:').then(txt => {
       if (!txt) return;
@@ -14205,7 +14205,7 @@ updateRoomList();
     if (t === 'measure') return mk(ms ? 'Misura · tocca il secondo punto' : 'Misura · tocca il primo punto');
     if (t === 'dim') return mk(ms ? 'Quota · tocca il secondo punto' : 'Quota · tocca il primo punto');
     if (t === 'room') return mk('Stanza · tocca dentro la stanza per darle un nome');
-    if (t === 'furniture') return mk('Arredo · tocca dove posizionarlo (il tipo si sceglie dal pannello)');
+    if (t === 'furniture') return mk(window.SCfp && SCfp.active() ? 'Arredo · tocca dove posarlo (sagoma azzurra) · ✕ Fine nella barra in basso' : 'Arredo · scegli nel pannello che cosa inserire');
     if (t === 'stairs') return mk('Scala · tocca dove posizionarla', [['skind', '🪜 ' + (STAIR_KINDS.find(k => k[0] === appSettings.stairKind) || STAIR_KINDS[0])[1] + ' ›']].concat(T2));
     if (t === 'text') return mk('Testo · tocca dove scrivere');
     if (t === 'pillar') return mk('Pilastro · tocca dove posizionarlo');
@@ -21826,8 +21826,9 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
    SC_REL.v è l'unica versione: titolo, Guida, file salvato, avvisi e riga messaggi la leggono da qui.
    ======================================================================== */
 window.SC_REL = {
-  v: '30.2', d: '04/11/2026',
+  v: '30.3', d: '04/11/2026',
   news: [
+    ['30.3', 'Arredo: prima si sceglie, poi si posa. Lo strumento Arredo apre subito il pannello; scelto l’oggetto (o creato un arredo nuovo) la sua sagoma segue il dito o il mouse e un tocco lo posa. Si resta pronti a posarne altri uguali; barra in basso con rotazione 90° e 15°, «Al muro», «Cambia» e «Fine». Due dita fanno sempre lo zoom.'],
     ['30.2', 'Modelli di porta e finestra: in «Crea arredo» scegli «Porta» o «Finestra (va nel muro)» e salvi. Poi la inserisci con lo strumento Porta o Finestra e nella sua scheda scegli il Modello: il foro nel muro si apre con le misure del modello, in 3D e nel prospetto si vede il tuo modello, in pianta resta il simbolo di apertura e nel computo la voce porta il nome del modello. Posizione nello spessore del muro: centrato o a filo di un lato.'],
     ['30.1', 'Crea arredo rifatto: l’arredo si compone a pezzi (scatola anche con spigoli arrotondati, cilindro, cono, sfera, sagoma disegnata), ognuno con misure, quota da terra, posizione, rotazione su tutti gli assi, colore da una tavolozza con sfumature e finitura. Quattro viste (dall’alto, frontale, laterale, 3D): una grande e tre piccole, tocchi una piccola e diventa la grande. Pezzi selezionabili, spostabili col dito e allungabili dalle maniglie; duplica, elimina, annulla. Misure d’insieme che ridimensionano tutto. Blocchi: gruppi di pezzi salvati e riusati in altri arredi. Gli arredi creati si vedono in pianta, in 3D e ora anche nel prospetto; quelli vecchi si aprono convertiti in pezzi.'],
     ['30.0', 'Pulizia interna: tolte le parti di programma non più usate (vecchio motore per le immagini, vecchio import PDF, vecchie funzioni del rilievo) e controllato tutto il codice con un analizzatore automatico. Nessun cambiamento nell’uso.'],
@@ -27503,7 +27504,7 @@ window.SC_REL = {
       else if (e.key === 'Enter' && E.poly) { e.preventDefault(); polyClose(); } }, true);
 
     /* ---- chiusura e salvataggio */
-    const close = () => { try { if (R3) { R3.rd.dispose(); if (R3.ctl) R3.ctl.dispose(); } } catch (_) {} ov.remove(); ov = null; };
+    const close = () => { setTimeout(() => { window.__cfPlace = false; }, 100); try { if (R3) { R3.rd.dispose(); if (R3.ctl) R3.ctl.dispose(); } } catch (_) {} ov.remove(); ov = null; };
     $('c2X').onclick = async () => { if (E.hist.length && !await uiConfirm('Chiudere senza salvare? Le modifiche all\'arredo andranno perse.')) return; close(); };
     $('c2Save').onclick = () => {
       if (E.poly && E.poly.pts.length >= 3) polyClose();
@@ -27515,7 +27516,7 @@ window.SC_REL = {
       SCcf._add(key, {name, w, d, h, color, shapes: [], cp, role});
       if (role && prev) [].concat(state.doors || [], state.windows || []).forEach(o => { if (o.model === key) { o.width = Math.round(o.width / prev.w * w * 1000) / 1000 || w; o.height = Math.round(o.height / prev.h * h * 1000) / 1000 || h; } });
       if (prev) state.furniture.forEach(f => { if (f.type === key) { f.w = f.w * w / prev.w; f.d = f.d * d / prev.d; f.h = (f.h || prev.h) * h / prev.h; if (f.color === prev.color) f.color = color; } });
-      SCcf._save(); close(); toast((role === 'door' ? 'Modello di porta salvato: ' : role === 'window' ? 'Modello di finestra salvato: ' : 'Arredo salvato: ') + name + ' (' + fm(w) + ' × ' + fm(d) + ' × ' + fm(h) + ' m)');
+      SCcf._save(); close(); if (window.__cfPlace && !role && window.SCfp) { window.__cfPlace = false; setTimeout(() => SCfp.start('f', key), 50); } toast((role === 'door' ? 'Modello di porta salvato: ' : role === 'window' ? 'Modello di finestra salvato: ' : 'Arredo salvato: ') + name + ' (' + fm(w) + ' × ' + fm(d) + ' × ' + fm(h) + ' m)');
       try { draw2D(); if (state.mode === '3d') build3D(); if (prev) checkpoint(); } catch (_) {}
     };
     window.addEventListener('resize', function rs() { if (!ov) return window.removeEventListener('resize', rs); sizeAll(); drawAll(); });
@@ -27547,5 +27548,114 @@ window.SC_REL = {
   }; }
 })();
 </script>
+<script>
+/* ========================================================================
+   v30.3 · ARREDO: PRIMA SI SCEGLIE, POI SI POSA
+   Strumento Arredo -> si apre subito il pannello. Scelto l'oggetto, la sua sagoma segue il dito (o il mouse);
+   un tocco lo posa e si resta pronti a posarne un altro uguale. Barra in basso: rotazione, «al muro», cambia, fine.
+   ======================================================================== */
+(function () {
+  if (typeof openFurniturePicker !== 'function' || typeof placeFurniture !== 'function') return;
+  let PL = null;   // {kind: 'f' | 'cp', key, rot (gradi aggiunti), at: {x,y} mondo, n}
+  const D2R = Math.PI / 180;
+  const snapOn = () => { const c = document.getElementById('furnSnapWall'); return !!(c && c.checked); };
+  const nameOf = P => P.kind === 'cp' ? (window.SCcomp && SCcomp.libGet ? ((SCcomp.libGet().find(x => x.id === P.key) || {}).name || (SCcomp.TPLN && SCcomp.TPLN[P.key]) || 'Composizione') : 'Composizione') : ((FURNITURE[P.key] || {}).name || 'Arredo');
+  /* posizione e rotazione come le calcolerà placeFurniture (stesse regole: muro vicino, griglia) */
+  function cand(world) {
+    const spec = FURNITURE[PL.key]; if (!spec || !world) return null; let rot = PL.rot * D2R, x = world.x, y = world.y, wall = false;
+    if (snapOn()) {
+      if (spec.parts && window.SClib && SClib.snapWall) { const q = SClib.snapWall(x, y, PL.key); if (q) return {x: q.x, y: q.y, rot: q.rot + PL.rot * D2R, w: spec.w, d: spec.d, wall: true}; }
+      const wa = nearestWallAngle(world, 1.5); if (wa !== null) { rot = wa + PL.rot * D2R; wall = true; }
+    }
+    const sg = document.getElementById('snapGrid'); if (sg && sg.checked) { const g = parseFloat((document.getElementById('gridSize') || {}).value) || 0.25; x = Math.round(x / g) * g; y = Math.round(y / g) * g; }
+    return {x, y, rot, w: spec.w, d: spec.d, wall};
+  }
+  function bar() {
+    let b = document.getElementById('fplBar');
+    if (!PL) { if (b) b.remove(); return; }
+    if (!b) { b = document.createElement('div'); b.id = 'fplBar'; document.body.appendChild(b);
+      ['pointerdown', 'pointerup', 'click', 'touchstart', 'touchend', 'wheel'].forEach(ev => b.addEventListener(ev, e => e.stopPropagation()));
+      b.addEventListener('click', e => { const t = e.target.closest('[data-p]'); if (!t) return; const a = t.dataset.p;
+        if (a === 'r90') PL.rot = (PL.rot + 90) % 360; else if (a === 'r15') PL.rot = (PL.rot + 15) % 360; else if (a === 'r0') PL.rot = 0;
+        else if (a === 'chg') { openFurniturePicker(innerWidth / 2 - 160, 70, null); return; } else if (a === 'end') return end(true);
+        bar(); kick(); });
+      b.addEventListener('change', e => { if (e.target.id === 'fplWall') { const c = document.getElementById('furnSnapWall'); if (c) c.checked = e.target.checked; kick(); } }); }
+    const isF = PL.kind === 'f';
+    b.innerHTML = `<span class="fpl-n">${PL.kind === 'cp' ? '🧱' : ((FURNITURE[PL.key] || {}).icon || '🪑')} <b>${escHtml(nameOf(PL))}</b>${PL.n ? ` <i>· posati ${PL.n}</i>` : ''}</span>
+      ${isF ? `<button data-p="r90">⟳ 90°</button><button data-p="r15">⟳ 15°</button>${PL.rot ? `<button data-p="r0" title="Rotazione aggiunta">${PL.rot}° ✕</button>` : ''}<label class="fpl-w"><input type="checkbox" id="fplWall" ${snapOn() ? 'checked' : ''}> Al muro</label>` : ''}
+      <button data-p="chg">🔁 Cambia</button><button data-p="end" class="fpl-x">✕ Fine</button>
+      <div class="fpl-h">${matchMedia('(pointer: coarse)').matches ? 'Trascina il dito: la sagoma segue il cursore; quando sollevi il dito l\'oggetto è posato' : 'Muovi il mouse e clicca dove posarlo'}</div>`;
+  }
+  function start(kind, key) {
+    PL = {kind, key, rot: 0, at: null, n: 0};
+    if (state.tool !== 'furniture') { const t = document.querySelector('.tool[data-tool="furniture"]'); if (t) { SKIP = true; t.click(); SKIP = false; } }
+    bar(); kick();
+    toast('Ora tocca dove posarlo');
+  }
+  function end(toSelect) {
+    PL = null; bar(); if (OV) OV.style.display = 'none';
+    if (toSelect) { const s = document.querySelector('.tool[data-tool="select"]'); if (s) s.click(); }
+  }
+  function place(world) {
+    if (!PL || !world) return;
+    if (PL.kind === 'cp') { if (window.SCcomp) SCcomp.placeAt(PL.key, world); PL.n++; bar(); return; }
+    const c = cand(world), n0 = state.furniture.length, rotIn = document.getElementById('furnitureRot'), old = rotIn ? rotIn.value : null;
+    if (rotIn) rotIn.value = String(PL.rot);
+    placeFurniture(PL.key, world);
+    if (rotIn) rotIn.value = old;
+    const f = state.furniture.length > n0 ? state.furniture[state.furniture.length - 1] : null;
+    if (f && c && c.wall && PL.rot) { f.rot = (f.rot || 0) + PL.rot * D2R; }   /* al muro: la rotazione scelta si aggiunge a quella del muro */
+    PL.n++; bar(); try { checkpoint(); draw2D(); if (state.mode === '3d') build3D(); } catch (_) {}
+  }
+  /* sagoma: su un foglio trasparente sopra la pianta, aggiornato a ogni fotogramma mentre si posa */
+  let OV = null, RAF = 0, SIG = '';
+  function ovCanvas() {
+    if (OV && OV.isConnected) return OV; OV = document.createElement('canvas'); OV.id = 'fplGhost'; OV.style.cssText = 'position:absolute;pointer-events:none;z-index:5'; c2d.parentElement.appendChild(OV); return OV;
+  }
+  function paint() {
+    RAF = 0; if (!PL) { if (OV) OV.style.display = 'none'; return; }
+    if (state.tool !== 'furniture' || state.mode !== '2d' || document.body.classList.contains('sv-on')) { if (state.tool !== 'furniture') { PL = null; bar(); } if (OV) OV.style.display = 'none'; if (PL) RAF = requestAnimationFrame(paint); return; }
+    const hv = typeof hoverRaw !== 'undefined' && hoverRaw ? hoverRaw : null; PL.at = hv;
+    const o = ovCanvas(), pr = c2d.getBoundingClientRect(), par = c2d.parentElement.getBoundingClientRect(), dpr = devicePixelRatio || 1;
+    const sig = [hv && hv.x, hv && hv.y, PL.rot, PL.key, viewScale, viewOffset.x, viewOffset.y, pr.width, pr.height, snapOn()].join('|');
+    if (sig !== SIG) { SIG = sig;
+      o.style.display = 'block'; o.style.left = (pr.left - par.left + c2d.parentElement.scrollLeft) + 'px'; o.style.top = (pr.top - par.top + c2d.parentElement.scrollTop) + 'px'; o.style.width = pr.width + 'px'; o.style.height = pr.height + 'px';
+      if (o.width !== Math.round(pr.width * dpr) || o.height !== Math.round(pr.height * dpr)) { o.width = Math.round(pr.width * dpr); o.height = Math.round(pr.height * dpr); }
+      const x = o.getContext('2d'); x.setTransform(dpr, 0, 0, dpr, 0, 0); x.clearRect(0, 0, pr.width, pr.height);
+      if (hv) { try {
+        const c = PL.kind === 'f' ? cand(hv) : null, p = worldToScreen(c ? c.x : hv.x, c ? c.y : hv.y);
+        x.save(); x.translate(p.x, p.y);
+        if (c) { x.rotate(-(c.rot || 0)); const w = c.w * viewScale, d = c.d * viewScale; x.fillStyle = 'rgba(34,211,238,.22)'; x.strokeStyle = '#22d3ee'; x.lineWidth = 2; x.setLineDash([6, 4]); x.fillRect(-w / 2, -d / 2, w, d); x.strokeRect(-w / 2, -d / 2, w, d); x.setLineDash([]);
+          x.lineWidth = 4; x.beginPath(); x.moveTo(-w / 2, d / 2); x.lineTo(w / 2, d / 2); x.stroke();   /* lato davanti */
+          x.rotate(c.rot || 0); x.fillStyle = '#e0f2fe'; x.strokeStyle = '#0b1020'; x.lineWidth = 3; x.font = 'bold 12px sans-serif'; x.textAlign = 'center'; const tx = (c.w).toFixed(2).replace('.', ',') + ' × ' + (c.d).toFixed(2).replace('.', ',') + (c.wall ? ' · al muro' : ''), ty = -Math.max(w, d) / 2 - 8; x.strokeText(tx, 0, ty); x.fillText(tx, 0, ty); }
+        else { x.strokeStyle = '#22d3ee'; x.lineWidth = 2; x.beginPath(); x.arc(0, 0, 10, 0, 7); x.moveTo(-16, 0); x.lineTo(16, 0); x.moveTo(0, -16); x.lineTo(0, 16); x.stroke(); }
+        x.restore(); } catch (e) { console.warn('sagoma arredo', e); } }
+    }
+    RAF = requestAnimationFrame(paint);
+  }
+  const kick = () => { SIG = ''; if (!RAF) RAF = requestAnimationFrame(paint); };
+  /* la sagoma segue il cursore del programma: mouse, oppure cursore sfalsato del dito (il tocco poi arriva a handleTap -> SCfp.tap) */
+  window.addEventListener('keydown', e => { if (PL && e.key === 'Escape' && !document.getElementById('furnPicker')) { e.stopPropagation(); end(true); } }, true);
+  /* lo strumento Arredo apre subito il pannello */
+  let SKIP = false;
+  document.addEventListener('click', e => {
+    const t = e.target.closest && e.target.closest('.tool[data-tool="furniture"]'); if (!t || SKIP) return;
+    setTimeout(() => { if (state.tool === 'furniture' && !PL && !document.getElementById('furnPicker')) openFurniturePicker(innerWidth / 2 - 160, 70, null); }, 0);
+  }, true);
+  window.SCfp = {
+    start, end, active: () => !!PL, state: () => PL,
+    /* un tocco «classico» con lo strumento Arredo: se si sta posando, posa; altrimenti apre il pannello */
+    tap(cx, cy, world) { if (PL) { place(world); return true; } openFurniturePicker(innerWidth / 2 - 160, 70, null); return true; }
+  };
+})();
+</script>
+<style>
+#fplBar{position:fixed;left:0;right:0;margin:0 auto;width:fit-content;bottom:12px;z-index:3000;display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:center;max-width:calc(100vw - 16px);box-sizing:border-box;background:#1b2033f2;border:1px solid #22d3ee;border-radius:12px;padding:7px 9px;color:#e5e7eb;font:13px 'Segoe UI',system-ui,sans-serif;box-shadow:0 10px 28px #000a}
+#fplBar button{min-height:38px;padding:0 10px;border-radius:9px;border:1px solid #475569;background:#283048;color:#e5e7eb;font:inherit;cursor:pointer}
+#fplBar .fpl-x{background:#7f1d1d;border-color:#f87171}
+#fplBar .fpl-w{display:flex;align-items:center;gap:4px;padding:0 4px}
+#fplBar .fpl-n i{color:#9ca3af;font-style:normal}
+#fplBar .fpl-h{flex-basis:100%;text-align:center;font-size:11.5px;color:#9ca3af}
+</style>
 </body>
 </html>
