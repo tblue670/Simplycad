@@ -566,6 +566,27 @@ NOVITÀ v29.0
   in cui li hai lasciati e, se coprirebbero il punto appena toccato, si aprono dall'altra parte dello schermo.
   Doppio tocco sulla maniglia: posizione iniziale.
 
+NOVITÀ v30.1 — CREA ARREDO rifatto
+- L'arredo si compone a PEZZI: scatola (anche con spigoli arrotondati), cilindro, cono, sfera,
+  sagoma (contorno disegnato a tocchi, poi estruso).
+- Quattro viste: dall'alto, frontale, laterale, 3D. Una grande e tre piccole sempre visibili:
+  tocchi una piccola e si scambia con la grande. Due dita = zoom; trascinando il vuoto si sposta la vista.
+- Disegno: scegli il pezzo e trascina nella vista grande. Nella frontale decidi larghezza e altezza,
+  dall'alto larghezza e profondità. Col dito c'è il cursore sfalsato come nel resto del programma.
+- ➤ Seleziona: tocchi un pezzo e a destra (sotto, sul telefono) trovi la scheda:
+  nome, tipo, larghezza/profondità/altezza, posizione, quota da terra, rotazione su tutti gli assi
+  (in pianta, avanti/indietro, di lato), colore e finitura (opaco, satinato, lucido, metallo, vetro).
+  Il pezzo si sposta trascinandolo e si allunga dai quadratini gialli.
+  «Appoggia a terra» e «Sopra al pezzo sotto» lo mettono a quota giusta.
+- ☰ Più pezzi / Tutti: scegli più pezzi per spostarli, colorarli, duplicarli o eliminarli insieme.
+- Tavolozza: 12 colori base con 6 sfumature ciascuno, gli ultimi usati e il colore libero.
+- Arredo intero (nessun pezzo scelto): scrivi larghezza, profondità o altezza totale e tutto si
+  ridimensiona in proporzione.
+- ▦ Blocchi: salvi dei pezzi (un'anta, una maniglia, un cassetto) e li inserisci in altri arredi.
+- ↩ ↪ annulla e ripeti; sul PC anche Ctrl+Z, Ctrl+Y, Canc.
+- Gli arredi creati si vedono in pianta, in 3D e ORA ANCHE NEL PROSPETTO.
+- Gli arredi creati con le versioni precedenti si aprono convertiti in pezzi.
+
 NOVITÀ v30.0
 - Rilievo: nuovo strumento «✋ Sposta» (ultimo pulsante a sinistra), per mettere una stanza al suo
   posto a occhio quando non hai le misure per collegarla:
