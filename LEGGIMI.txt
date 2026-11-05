@@ -566,6 +566,36 @@ NOVITÀ v29.0
   in cui li hai lasciati e, se coprirebbero il punto appena toccato, si aprono dall'altra parte dello schermo.
   Doppio tocco sulla maniglia: posizione iniziale.
 
+NOVITÀ v31.0
+- Pannelli radianti a pavimento (Impianti › Riscaldamento: termosifoni o pavimento…): tubi a chiocciola per ogni locale scelto, passo 10/15/20 cm, circuiti divisi oltre la lunghezza massima, collettore in posizione centrale.
+- Sistema classico (circa 8–10 cm di spessore) o a basso spessore (2–3 cm), con avviso sull'altezza.
+- Stima indicativa della resa contro il fabbisogno per locale; il progetto termico resta del termotecnico.
+- Computo: tubo, pannelli isolanti, fascia perimetrale, massetto, collettore, testine e termostati.
+
+NOVITÀ v30.9
+- Riscaldamento: monotubo ad anello, bitubo o a collettore (a stella).
+- Tubi a pavimento, in traccia nel muro, nel controsoffitto o a vista lungo il battiscopa; si vedono in pianta, prospetto e 3D.
+- Termosifoni da escludere; ogni tratto si sposta a mano e il comando avvisa prima di rifare i tratti ritoccati.
+- Computo con tubi per percorso, tracce nel muro o copritubo, collettore e valvole.
+
+NOVITÀ v30.8
+- Icone tutte coerenti: a linea, di un solo colore e della stessa misura in menu, barre, Rilievo, editor degli arredi, barra di posa, finestre dei calcoli e del riscaldamento (comprese Struttura e Verifiche).
+- Le icone degli arredi nella libreria restano come immagine dell'oggetto, ma in grigio.
+
+NOVITÀ v30.7 — RISCALDAMENTO: TERMOSIFONI COLLEGATI AD ANELLO
+- Impianti › «Riscaldamento: collega i termosifoni…»: scegli il tipo d'impianto
+  · Autonomo con caldaia: la caldaia murale si mette da sola su un muro esterno di cucina,
+    lavanderia o bagno (se non c'è già) e fa anche l'acqua calda sanitaria (linee al collettore);
+  · Centralizzato con modulo d'utenza: stacco dalla colonna e contabilizzazione vicino all'ingresso;
+  · Centralizzato a colonne: ogni termosifone resta sulla sua colonna, con i ripartitori.
+- Nei primi due casi i termosifoni sono collegati IN SERIE con un anello monotubo che parte dalla
+  caldaia (o dal modulo), passa tutti i termosifoni nell'ordine più corto e torna indietro.
+  Le linee corrono lungo i muri, in arancio-giallo.
+- Se sposti caldaia, modulo o termosifoni, ripeti il comando. Dopo «Caloriferi…» l'anello si rifà da solo.
+- Computo: valvole monotubo (o termostatiche), ripartitori, modulo d'utenza, acqua calda sanitaria
+  (scaldabagno o pompa di calore nei centralizzati), metri di tubo dell'anello.
+- Avviso: con caldaia a gas lo scarico fumi va a tetto salvo deroghe (DPR 412/93, L. 90/2013, UNI 7129).
+
 NOVITÀ v30.6
 - Pianta: gli arredi si disegnano dal basso verso l'alto secondo la quota da terra (tappeti, basi,
   pensili, luci): pensili e luci non restano più nascosti sotto le basi, anche dopo aver separato
