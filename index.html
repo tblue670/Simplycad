@@ -10,7 +10,8 @@
 <meta name="theme-color" content="#1e1e2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>SimplyCAD Pro · v31.0</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20512%20512%22%3E%3Crect%20width%3D%22512%22%20height%3D%22512%22%20rx%3D%22112%22%20fill%3D%22%231e2a44%22/%3E%3Cg%20stroke%3D%22%23e2f3ff%22%20stroke-width%3D%2226%22%20stroke-linecap%3D%22square%22%20fill%3D%22none%22%3E%3Cpath%20d%3D%22M120%20120H392V392H120Z%22/%3E%3Cpath%20d%3D%22M256%20120V230M256%20300V392M120%20270H200%22/%3E%3C/g%3E%3Cpath%20d%3D%22M256%20300a70%2070%200%200%201%2070-70%22%20stroke%3D%22%237dd3fc%22%20stroke-width%3D%2212%22%20fill%3D%22none%22%20stroke-dasharray%3D%2216%2010%22/%3E%3Cpath%20d%3D%22M256%20230h70%22%20stroke%3D%22%237dd3fc%22%20stroke-width%3D%2212%22/%3E%3Crect%20x%3D%22290%22%20y%3D%22340%22%20width%3D%2270%22%20height%3D%2226%22%20fill%3D%22%237dd3fc%22/%3E%3C/svg%3E">
+<title>SimplyCAD Pro · v32.0</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -735,7 +736,7 @@ body.mode-3d #infoStrip .scale-badge{display:none}
   try { if (localStorage.getItem('simplycad_accesso') === U) return; } catch (_) {}
   const ov = document.createElement('div'); ov.id = 'scLock';
   ov.innerHTML = '<div style="background:#1b2133;border:1px solid #2f3a55;border-radius:14px;padding:22px 20px;width:min(340px,100%);color:#e6e9f2;font:14px system-ui,sans-serif;text-align:center">' +
-    '<div style="font-size:30px">🏠</div><div style="font-size:19px;font-weight:700;margin:4px 0 2px">SimplyCAD</div><div style="color:#9aa3bd;font-size:12.5px;margin-bottom:14px">Scrivi la password per usare l\'app su questo dispositivo</div>' +
+    '<div><svg width="56" height="56" style="border-radius:13px" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="112" fill="#1e2a44"/><g stroke="#e2f3ff" stroke-width="26" stroke-linecap="square" fill="none"><path d="M120 120H392V392H120Z"/><path d="M256 120V230M256 300V392M120 270H200"/></g><path d="M256 300a70 70 0 0 1 70-70" stroke="#7dd3fc" stroke-width="12" fill="none" stroke-dasharray="16 10"/><path d="M256 230h70" stroke="#7dd3fc" stroke-width="12"/><rect x="290" y="340" width="70" height="26" fill="#7dd3fc"/></svg></div><div style="font-size:19px;font-weight:700;margin:4px 0 2px">SimplyCAD</div><div style="color:#9aa3bd;font-size:12.5px;margin-bottom:14px">Scrivi la password per usare l\'app su questo dispositivo</div>' +
     '<input id="scLockPw" type="password" autocomplete="current-password" style="width:100%;box-sizing:border-box;padding:11px;border-radius:8px;border:1px solid #39456a;background:#11162a;color:#fff;font-size:16px;text-align:center">' +
     '<label style="display:flex;gap:6px;align-items:center;justify-content:center;margin:8px 0 0;color:#9aa3bd;font-size:12.5px"><input type="checkbox" id="scLockSee" style="width:18px;height:18px"> mostra</label>' +
     '<div id="scLockMsg" style="min-height:18px;color:#f87171;font-size:12.5px;margin:6px 0"></div>' +
@@ -755,7 +756,7 @@ body.mode-3d #infoStrip .scale-badge{display:none}
 
 
 <header>
-  <div class="header-brand"><h1>🏠 SimplyCAD</h1></div>
+  <div class="header-brand"><h1 style="display:flex;align-items:center"><svg width="28" height="28" style="vertical-align:-4px;margin-right:6px;border-radius:7px;box-shadow:0 0 0 1px #3c4a6e" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="112" fill="#1e2a44"/><g stroke="#e2f3ff" stroke-width="26" stroke-linecap="square" fill="none"><path d="M120 120H392V392H120Z"/><path d="M256 120V230M256 300V392M120 270H200"/></g><path d="M256 300a70 70 0 0 1 70-70" stroke="#7dd3fc" stroke-width="12" fill="none" stroke-dasharray="16 10"/><path d="M256 230h70" stroke="#7dd3fc" stroke-width="12"/><rect x="290" y="340" width="70" height="26" fill="#7dd3fc"/></svg>SimplyCAD</h1></div>
   <div class="undo-redo-quick">
     <button class="header-action-btn" id="selectBtnTop" title="Seleziona (V)">
       <span class="btn-icon">👆</span> <span class="btn-text">Seleziona</span>
@@ -980,7 +981,7 @@ body.mode-3d #infoStrip .scale-badge{display:none}
         <label><input type="checkbox" id="showWallNames" checked> Nomi muri</label>
         <label><input type="checkbox" id="showSkFloor" checked> Skin dei pavimenti (Aree)</label>
         <label><input type="checkbox" id="showSkRiv" checked> Skin dei rivestimenti</label>
-        <label><input type="checkbox" id="showImp"> Impianti (tubi e cavi nei muri)</label>
+        <label><input type="checkbox" id="showImp"> Impianti: tubi e cavi</label><div id="impVis" style="padding:0 0 4px 22px;font-size:12px"></div>
       </div>
       <div class="menu-sep"></div>
       <div class="menu-label">Solo nel 3D</div>
@@ -2745,14 +2746,18 @@ function drawRoom(r) {
   if (window.SCrl) { const lp = SCrl.pos(r); cx = lp.x; cy = lp.y; }   /* v13.4: punto più largo della stanza, o dove l'hai spostato */
   const c = worldToScreen(cx, cy), k = lblK();
   if (!roomNamesOn()) return;   /* v13.3: Vista → Nomi stanze */
+  const lbl = () => {
   ctx.fillStyle = '#fff';
   ctx.font = 'bold ' + Math.round(12 * k) + 'px sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText(r.name, c.x, c.y);
+  ctx.save(); ctx.lineJoin = 'round'; ctx.strokeStyle = 'rgba(11,16,32,.82)'; ctx.lineWidth = Math.max(2.5, 3.5 * k);   /* v31.2: contorno scuro, il nome si legge anche sulle piastrelle chiare */
+  ctx.strokeText(r.name, c.x, c.y); ctx.fillText(r.name, c.x, c.y);
   const at = (window.svRoomArea ? svRoomArea(r) : computeArea(r.polygon)).toFixed(2).replace('.', ',') + ' m²', nw = ctx.measureText(r.name).width;
-  ctx.font = Math.round(10 * k) + 'px sans-serif';
-  ctx.fillText(at, c.x, c.y + 14 * k);
+  ctx.font = Math.round(10 * k) + 'px sans-serif'; ctx.lineWidth = Math.max(2, 3 * k);
+  ctx.strokeText(at, c.x, c.y + 14 * k); ctx.fillText(at, c.x, c.y + 14 * k); ctx.restore();
   const bw = Math.max(nw, ctx.measureText(at).width) + 4; if (window.SCocc) SCocc.add({x: c.x - bw / 2, y: c.y - 12 * k, w: bw, h: 30 * k});   /* v23.0 */
+  };
+  if (window.__roomLblQ) window.__roomLblQ.push(lbl); else lbl();   /* v31.2: in pianta si scrivono dopo le aree */
 }
 /* v12.5: le etichette (locali, aree, controsoffitti) seguono lo zoom, entro un minimo e un massimo leggibili */
 function lblK() { return Math.max(0.45, Math.min(1.0, 0.7 * (typeof viewScale === 'number' ? viewScale : 40) / 40)); }   /* v12.6: più piccole; allontanando si rimpiccioliscono, avvicinando non superano la misura normale */
@@ -3134,6 +3139,7 @@ function drawMeasurement(m) {
   ctx.fillText(fmtLen(len), mid.x, mid.y + 3);
 }
 function drawFurniture(f) {
+  if (window.SCimpv && !SCimpv.ptOk(f.type)) return;   /* v31.8: impianto nascosto in Vista */
   if (!isEntityVisible(f)) return;
   const spec = FURNITURE[f.type];
   if (!spec) return;
@@ -3432,15 +3438,17 @@ function draw2D() {
   ctx.fillRect(0, 0, w, h);
   if (!window.__printing) drawGrid();   /* v15.0: in stampa niente griglia */
   drawImages();
-  for (const r of state.rooms) drawRoom(r);
-  try { if (window.SCzoneFill) SCzoneFill(ctx); } catch (_) {}   /* v21.2: fondo e pezzi delle aree sotto a muri, porte, finestre e arredi */
+  window.__roomLblQ = []; try { for (const r of state.rooms) drawRoom(r); } finally { const Q = window.__roomLblQ; window.__roomLblQ = null;
+  try { if (window.SCzoneFill) SCzoneFill(ctx); } catch (_) {}
+  Q.forEach(f => { try { f(); } catch (_) {} }); }   /* v21.2: fondo e pezzi delle aree sotto a muri, porte, finestre e arredi */
   paintWallsScreen();
   for (const wl of state.walls) drawWall(wl);
   if (window.SCstr) try { SCstr.drawPlan(); } catch (_) {}   /* v27.0: pianta strutturale */
   for (const wi of state.windows) { drawWindow(wi); try { drawWindowOsc(wi); drawOpeningStato(wi); } catch (_) {} }
   for (const d of state.doors) { drawDoor(d); try { drawOpeningStato(d); } catch (_) {} }
   { const showF = document.getElementById('showFurniture').checked;
-    const zq = f => { const sp = FURNITURE[f.type] || {}; const z = f.z != null ? +f.z || 0 : (+sp.z || 0); return f.type === 'rug' ? -1 : z; };   /* v30.6: ciò che sta più in alto si vede sopra */
+    const IMPT = /^(quadro|interruttore|presa|punto_luce|collettore|pt_acqua|pt_scarico|col_scarico|caldaia|mod_risc|coll_risc|scaldabagno|split|unita_est|antenna|pt_tv|router|pt_dati)$/, impOn = !!(document.getElementById('showImp') || {}).checked;
+    const zq = f => { const sp = FURNITURE[f.type] || {}; const z = f.z != null ? +f.z || 0 : (+sp.z || 0); return f.type === 'rug' ? -1 : (impOn && IMPT.test(f.type) ? 100 + z : z); };   /* v31.6: impianti sopra */   /* v30.6: ciò che sta più in alto si vede sopra */
     state.furniture.map((f, i) => [f, i]).sort((a, b) => (zq(a[0]) - zq(b[0])) || (a[1] - b[1])).forEach(([f]) => { if (showF || STRUCT_TYPES.has(f.type)) drawFurniture(f); }); }
   for (const s of state.stairs) drawStairs(s);
   if (document.getElementById('showLabels').checked)
@@ -5281,6 +5289,7 @@ function build3D() {
     const showF = document.getElementById('showFurniture').checked;
     for (const f of state.furniture) {
       if (!isEntityVisible(f) || !(showF || STRUCT_TYPES.has(f.type))) continue;
+      if (window.SCimpv && !SCimpv.ptOk(f.type)) continue;
       const spec = FURNITURE[f.type]; if (!spec) continue;
       const h = f.h || spec.h;
       const col = new THREE.Color(getEntityColor(f, f.color || spec.color));   /* v11.25: stessa regola del 2D (colore assegnato > colore livello > colore arredo) */
@@ -5432,7 +5441,7 @@ function build3D() {
 controls && (controls.userTouched = false);
 function updateStatus() {
   const layerName = getCurrentLayer()?.name || '0';
-  const TN = {wall:'Muro',select:'Seleziona',door:'Porta',window:'Finestra',room:'Stanza',measure:'Misura',trim:'Rifila',extend:'Estendi',split:'Dividi',corner:'Angolo',offset:'Parallela',box:'Riquadro',furniture:'Arredo',text:'Testo',stairs:'Scala',dim:'Quota',line:'Linea',circle:'Cerchio',arc:'Arco',moveBg:'Sposta sfondo',rescale:'Porta in scala'};
+  const TN = {view:'Solo vista',wall:'Muro',select:'Seleziona',door:'Porta',window:'Finestra',room:'Stanza',measure:'Misura',trim:'Rifila',extend:'Estendi',split:'Dividi',corner:'Angolo',offset:'Parallela',box:'Riquadro',furniture:'Arredo',text:'Testo',stairs:'Scala',dim:'Quota',line:'Linea',circle:'Cerchio',arc:'Arco',moveBg:'Sposta sfondo',rescale:'Porta in scala'};
   document.getElementById('status').textContent =
     `Strumento: ${TN[state.tool] || state.tool} | Liv: ${layerName} | Muri: ${state.walls.length} | Stanze: ${state.rooms.length} | Porte: ${state.doors.length} | Finestre: ${state.windows.length} | Arredi: ${state.furniture.length}`;
 }
@@ -5571,7 +5580,7 @@ function moveSelectionToLayer(layerId) {
   const list = state.sel.length ? state.sel : (state.selected ? [state.selected] : []);
   if (!list.length || !state.layers.some(l => l.id === layerId)) return;
   let n = 0, locked = 0;
-  const put = e => { if (e) e.layerId = layerId; };
+  const put = e => { if (e) { e.layerId = layerId; if (e.imp || (window.SCimpv && SCimpv.groupOf(e.type))) e.lyFix = 1; } };   /* v31.8: spostato apposta: resta lì */
   for (const it of list) {
     const e = selEntity(it); if (!e) continue;
     if (isEntityLocked(e)) { locked++; continue; }
@@ -6300,7 +6309,7 @@ async function impHeat() {
   const [z, iso] = v.split(/[,;\s]+/), zf = {A: .75, B: .85, C: .95, D: 1.05, E: 1.15, F: 1.3}[(z || '').toUpperCase()], w0 = {1: 30, 2: 40, 3: 55}[parseInt(iso)];
   if (!zf || !w0) return toast('Valori non validi');
   state.furniture = state.furniture.filter(f => f.auto !== 'heat' || floorOf(f) !== state.currentFloorId);
-  const lid = impLayer('♨ Riscaldamento (auto)'), H = getDefaultWallHeight(), rows = []; let tot = 0, nr = 0;
+  const lid = impLayer('♨ Riscaldamento'), H = getDefaultWallHeight(), rows = []; let tot = 0, nr = 0;
   for (const r of impRooms()) {
     const nm = r.name || '', A = computeArea(r.polygon);
     if (/ripost|disimp|cantina|garage|box|lavander/i.test(nm)) continue;
@@ -6327,7 +6336,7 @@ async function impElec() {
   const lv = parseInt(await uiPrompt('Impianto elettrico automatico\nLivello: 1 base · 2 standard · 3 completo', '2'));
   if (!(lv >= 1 && lv <= 3)) return;
   state.furniture = state.furniture.filter(f => f.auto !== 'elec' || floorOf(f) !== state.currentFloorId);
-  const lid = impLayer('⚡ Elettrico (auto)'), mult = {1: 1, 2: 1.5, 3: 2}[lv], cnt = {presa: 0, interruttore: 0, punto_luce: 0, quadro: 0}; let quadro = false;
+  const lid = impLayer('⚡ Impianto elettrico'), mult = {1: 1, 2: 1.5, 3: 2}[lv], cnt = {presa: 0, interruttore: 0, punto_luce: 0, quadro: 0}; let quadro = false;
   for (const r of impRooms()) {
     const A = computeArea(r.polygon), edges = impRoomEdges(r).filter(e => e.wl), nm = r.name || '', P = r.polygon;
     if (!edges.length) continue;
@@ -9432,7 +9441,7 @@ applyMenuPosition();
   const cur = document.createElement('div'); cur.id = 'fingerCursor';
   cur.innerHTML = '<svg viewBox="-30 -30 60 60" width="60" height="60"><g fill="none" stroke="#fbbf24" stroke-width="2.2" stroke-linecap="round"><path d="M-28 0H-7M7 0H28M0 -28V-7M0 7V28"/><circle r="7"/></g><circle r="1.6" fill="#fbbf24"/></svg>';
   ws.appendChild(cur);
-  const NOT = ['select', 'box', 'moveBg', 'sv'], OFF_MAX = 72, OX_RATIO = 44 / 72, GAIN = 0.6;
+  const NOT = ['select', 'box', 'moveBg', 'sv', 'view'], OFF_MAX = 72, OX_RATIO = 44 / 72, GAIN = 0.6;
   let g = null;
   const eligible = () => appSettings.finger !== 'off' && state.mode === '2d' && !document.body.classList.contains('sv-on') && (!NOT.includes(state.tool) || !!(window.SCsez && SCsez.tracing && SCsez.tracing()));   /* v24.3: anche per la traccia di sezione */
   // Offset progressivo: al tocco il cursore sta sotto il dito (un tocco rapido mette il punto sotto il dito);
@@ -9786,6 +9795,7 @@ updateRoomList();
     setSel(out); toast(out.length + ' selezionati' + (skip ? ' (' + skip + ' su livelli bloccati esclusi)' : ''));
   };
   $('sbEdit').onclick = () => { editOpen = !editOpen; updateSelectionPanel(); };
+  window.SCeditOpen = () => { editOpen = true; updateSelectionPanel(); };
   $('sbDraw').onclick = e => { const r = e.currentTarget.getBoundingClientRect(); ctxOpen(r.left, r.bottom + 6, {sub: true}); };
   $('sbPaste').onclick = () => startPaste();
   $('sbNum').onclick = () => { if (window.SCvkOpen) SCvkOpen(); };
@@ -10227,7 +10237,7 @@ updateRoomList();
       ctx.strokeStyle = rgba(z.color, 0.95); ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.stroke();
       let c = worldToScreen(centroid(z.pts).x, centroid(z.pts).y);
       const t0 = lblOn('lblZoneName') ? [(z.name || '').trim(), z.lav && LAV[z.lav] ? LAV[z.lav].s : ''].filter(Boolean).join(' · ') : '';
-      const L1 = [t0 ? [t0, '#0f4c81'] : null, lblOn('lblZoneSup') ? ['Sup. ' + fmt2(area(z.pts)) + ' m²', '#111827'] : null, lblOn('lblZonePer') ? ['Per. ' + fmt2(perim(z.pts)) + ' m', '#111827'] : null].filter(Boolean);
+      const L1 = [window.SCfloor && SCfloor.missing && SCfloor.missing(z) ? ['⚠ Foto della skin mancante: ricaricala', '#b91c1c'] : null, t0 ? [t0, '#0f4c81'] : null, lblOn('lblZoneSup') ? ['Sup. ' + fmt2(area(z.pts)) + ' m²', '#111827'] : null, lblOn('lblZonePer') ? ['Per. ' + fmt2(perim(z.pts)) + ' m', '#111827'] : null].filter(Boolean);
       const K = lblK(); ctx.font = 'bold ' + Math.round(12 * K) + 'px sans-serif';
       if (!L1.length) { ctx.restore(); boxes.push({z, x: c.x - 14, y: c.y - 14, w: 28, h: 28}); continue; }   /* etichetta nascosta: resta il punto da toccare */
       const w = Math.max(...L1.map(l => ctx.measureText(l[0]).width)) + 16 * K, h = (10 + 14 * L1.length) * K; if (window.SCzoneLbl) c = SCzoneLbl(z, c, w, h); const x = c.x - w / 2, y = c.y - h / 2;
@@ -10379,7 +10389,8 @@ updateRoomList();
     window.removeEventListener('pointermove', zMove, true); window.removeEventListener('pointerup', zUp, true); window.removeEventListener('pointercancel', zUp, true);
     try { c2d.releasePointerCapture(e.pointerId); } catch (_) {}
     if (d.moved) { draw2D(); checkpoint(); }
-    else if (d.openPal) { draw2D(); if (window.SCselbar) try { SCselbar.place(); } catch (_) {} }   /* v18.9: niente riquadro al tocco */
+    else if (d.openPal) { draw2D(); if (window.SCselbar) try { SCselbar.place(); } catch (_) {}
+      const r0 = c2d.getBoundingClientRect(), bx = boxes.find(q => q.z === d.z && d.x0 - r0.left >= q.x && d.x0 - r0.left <= q.x + q.w && d.y0 - r0.top >= q.y && d.y0 - r0.top <= q.y + q.h); if (bx) openPalette(d.z, bx); }   /* v31.7: tocco sul riquadro dell'area: si apre la sua finestra */
   }
   window.__zoneHit = e => {
     if (e.target !== c2d || state.mode !== '2d' || !(state.tool === 'select' || state.tool === 'box') || tmpZ.length || dragZ) return false;
@@ -10402,7 +10413,17 @@ updateRoomList();
     }
     if (mouse && e.button !== 0) return false;
     const b = [...boxes].reverse().find(q => x >= q.x && x <= q.x + q.w && y >= q.y && y <= q.y + q.h);
-    if (!b || isEntityLocked(b.z)) return false;
+    if (!b) {   /* v31.2 */
+      const sl = state.sel || [], inS = S => { let c = false; for (let i = 0, j = S.length - 1; i < S.length; j = i++) { const a = S[i], q = S[j]; if ((a.y > y) !== (q.y > y) && x < (q.x - a.x) * (y - a.y) / (q.y - a.y) + a.x) c = !c; } return c; };
+      const rm = sl.length === 1 && sl[0].type === 'room' ? state.rooms.find(r => r.id === sl[0].id) : null;
+      if (!rm || !rm.polygon || !inS(rm.polygon.map(p => worldToScreen(p.x, p.y)))) return false;
+      const ZZ = state.zones.filter(z => isEntityVisible(z) && !isEntityLocked(z) && z.pts && z.pts.length > 2 && inS(z.pts.map(p => worldToScreen(p.x, p.y)))).sort((a, b2) => area(a.pts) - area(b2.pts));
+      if (!ZZ.length) return false;
+      const z = ZZ[0]; try { setSel([]); } catch (_) { state.sel = []; } if (activeZ !== z) selV = 0; activeZ = z; draw2D();
+      toast('Area «' + ((z.name || '').trim() || 'senza nome') + '» selezionata · tocca ancora per tornare alla stanza');
+      startDrag(z, 'move', 0, e, true); return true;
+    }
+    if (isEntityLocked(b.z)) return false;
     if (activeZ !== b.z) selV = 0;
     activeZ = b.z; draw2D();
     if (!hinted) { hinted = true; toast('Area selezionata: trascina i punti per deformare, il bordo o il riquadro per spostare, il punto medio aggiunge un punto, clic destro su un punto lo toglie'); }
@@ -10440,7 +10461,7 @@ updateRoomList();
   build3D = function () { const r = _b3z.apply(this, arguments); try { addZones3D(); } catch (err) { console.warn('aree 3D', err); } return r; };
 
   /* tasto destro / due dita: chiude l'area se ci sono almeno 3 punti, altrimenti annulla */
-  window.SCzone = {closePal, busy: () => state.tool === 'zone' && tmpZ.length > 0, finish, palZone: () => palZ, openPal: z => openPalette(z, boxes.find(q => q.z === z)),
+  window.SCzone = {boxAt: (x, y) => { const b = [...boxes].reverse().find(q => !isEntityLocked(q.z) && x >= q.x && x <= q.x + q.w && y >= q.y && y <= q.y + q.h); return b ? b.z : null; }, closePal, busy: () => state.tool === 'zone' && tmpZ.length > 0, finish, palZone: () => palZ, openPal: z => openPalette(z, boxes.find(q => q.z === z)),
     tmp: () => tmpZ, addPt: p => { tmpZ.push({x: r6(p.x), y: r6(p.y)}); draw2D(); },
     active: () => (activeZ && state.zones.includes(activeZ) && isEntityVisible(activeZ) && !isEntityLocked(activeZ) && (state.tool === 'select' || state.tool === 'box')) ? activeZ : null,
     vert: () => { const z = activeZ; return z && z.pts ? Math.min(selV, z.pts.length - 1) : 0; },
@@ -11197,6 +11218,7 @@ updateRoomList();
     }
     if (window.SCca) try { SCca.items().forEach(v => add(v.cat, v.key, v.desc, v.um, v.q, v.det)); } catch (e) { console.warn('computo c.a.', e); }   /* v30.5 */
     if (window.SCrisc) try { SCrisc.items().forEach(v => add(v.cat, v.key, v.desc, v.um, v.q, v.det)); } catch (e) { console.warn('computo riscaldamento', e); }   /* v30.7 */
+    if (window.SCimpr && SCimpr.items) try { SCimpr.items().forEach(v => add(v.cat, v.key, v.desc, v.um, v.q, v.det)); } catch (e) { console.warn('computo tracce', e); }   /* v32.0 */
     // impianti e scale
     const F = state.furniture.filter(isEntityVisible), cnt = t => F.filter(f => f.type === t).length;
     const rad = F.filter(f => f.type === 'radiatore');
@@ -16250,7 +16272,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     let d = $w('wkVis'); if (d) { d.remove(); return; }
     d = document.createElement('div'); d.id = 'wkVis'; d.style.cssText = 'position:absolute;right:8px;top:48px;z-index:5;background:#1b1e2e;border:1px solid #475175;border-radius:10px;padding:8px;box-shadow:0 8px 24px rgba(0,0,0,.5);display:grid;gap:6px;max-width:min(420px,92%)';
     const row = (lab, key, opts, cur) => '<div><div style="font-size:11.5px;color:#9ca3b8;margin-bottom:3px">' + lab + '</div><div class="wk-row" style="flex-wrap:wrap;gap:4px">' + opts.map(([v, n]) => '<button class="wk-b' + (cur === v ? ' on' : '') + '" data-vk="' + key + '" data-vv="' + v + '">' + n + '</button>').join('') + '</div></div>';
-    const draw = () => { d.innerHTML = row('Impianti (linee e punti)', 'wkImp', [['all', 'Tutti'], ['el', 'Solo elettrico'], ['idro', 'Solo idraulico'], ['none', 'Nessuno']], SCwf.impMode()) + row('Arredi', 'wkFur', [['xray', 'Trasparenti'], ['on', 'Pieni'], ['off', 'Nascosti']], SCwf.furMode()) + row('Etichette (arredi, punti, controsoffitti)', 'wkLbl', [['1', 'Visibili'], ['0', 'Nascoste']], SCwf.lblOk() ? '1' : '0') + '<div style="font-size:11px;color:#9ca3b8">Vale solo per i prospetti; la pianta ha le sue impostazioni (menu Impianti e Vista).</div>'; };
+    const draw = () => { d.innerHTML = row('Impianti (linee e punti): quali, lo scegli in Vista › Impianti', 'wkImp', [['all', 'Come in pianta'], ['none', 'Nessuno']], SCwf.impMode()) + row('Arredi', 'wkFur', [['xray', 'Trasparenti'], ['on', 'Pieni'], ['off', 'Nascosti']], SCwf.furMode()) + row('Etichette (arredi, punti, controsoffitti)', 'wkLbl', [['1', 'Visibili'], ['0', 'Nascoste']], SCwf.lblOk() ? '1' : '0') + '<div style="font-size:11px;color:#9ca3b8">Vale solo per i prospetti; la pianta ha le sue impostazioni (menu Impianti e Vista).</div>'; };
     draw(); P.appendChild(d);
     d.addEventListener('click', e => { const b = e.target.closest('[data-vk]'); if (!b) return; const k = b.dataset.vk, v = b.dataset.vv; appSettings[k] = k === 'wkLbl' ? v === '1' : v; if (k === 'wkFur') appSettings.wkXray = v === 'xray'; try { persistSettings(); } catch (_) {} draw(); ui(); render(); });
     setTimeout(() => document.addEventListener('pointerdown', function off(e) { if (!d.isConnected) { document.removeEventListener('pointerdown', off, true); return; } if (!d.contains(e.target) && e.target !== $w('wkXray')) { d.remove(); document.removeEventListener('pointerdown', off, true); } }, true), 0);
@@ -17128,7 +17150,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     for (const b of state.beams) {
       if (!isEntityVisible(b) || b.pts.length < 2) continue;
       if (b.imp && window.SCwl) {   /* v25.4: impianto a linea */
-        if (!SCwl.impOn() && b !== active) continue;
+        if ((!SCwl.impOn() || (window.SCimpv && !SCimpv.lineOk(b.imp))) && b !== active) continue;
         const T = SCwl.IMPT[b.imp] || SCwl.IMPT.acf, D = dense(b, false), S5 = D.map(q => worldToScreen(q.x, q.y)), path = () => { ctx.beginPath(); S5.forEach((q, i) => i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y)); ctx.stroke(); };
         ctx.setLineDash([]); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
         ctx.strokeStyle = b === active ? '#fde047' : 'rgba(255,255,255,.9)'; ctx.lineWidth = b === active ? 6.5 : 5; path();
@@ -17328,7 +17350,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   const IMPK = () => (window.SCwl && SCwl.IMPT[appSettings.impT]) ? appSettings.impT : 'acf';
   const IMPDIAM = k => (window.SCwl && SCwl.IMPT[k]) ? SCwl.IMPT[k][2] : 20;
   const ZMN = {pav: 'A pavimento (nel massetto)', mur: 'In traccia nel muro', sop: 'Sopra il controsoffitto', bat: 'A vista lungo il battiscopa', lib: 'Quota libera'};
-  function showImpOn() { appSettings.showImp = true; try { persistSettings(); } catch (_) {} const c = document.getElementById('showImp'); if (c) c.checked = true; }
+  function showImpOn(g) { if (g && window.SCimpv) SCimpv.show(g); appSettings.showImp = true; try { persistSettings(); } catch (_) {} const c = document.getElementById('showImp'); if (c) c.checked = true; }
   function openImpPal(el) {
     closePal(); active = el; const T = window.SCwl.IMPT, DI = window.SCwl.DIAMS;
     const ist = 'width:100%;box-sizing:border-box;padding:7px 8px;border-radius:6px;border:1px solid #475569;background:#12151f;color:#e5e7eb;font:14px sans-serif';
@@ -17339,6 +17361,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       '<label style="font-size:12px">Tipo<select id="imT" style="' + ist + '"></select></label>' +
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px"><label style="font-size:12px">Diametro (mm)<select id="imD" style="' + ist + '"></select></label><label style="font-size:12px">Posizione<select id="imZm" style="' + ist + '"></select></label></div>' +
       '<label id="imZw" style="font-size:12px">Quota da pavimento (m)<input id="imZ" inputmode="decimal" style="' + ist + '"></label>' +
+      '<button id="imSplit" style="padding:7px;border-radius:7px;border:1px solid #475569;background:#283048;color:#e5e7eb;cursor:pointer">✂ Dividi la linea in un punto</button>' +
       '<label style="font-size:12px">Nome<input id="imName" style="' + ist + '" value="' + esc(el.name || '') + '"></label>' +
       '<div id="imSum" style="font-size:11.5px;color:#cbd5e1;background:#151826;border:1px solid #2f3550;border-radius:6px;padding:5px 7px"></div>' +
       '<div style="font-size:11px;color:#9ca3b8;line-height:1.35">Quadratini: sposta i punti · pallini a metà tratto: spostano il tratto. Si vedono in pianta, 3D e sezione con Vista › Impianti.</div>';
@@ -17355,7 +17378,8 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     const ck = () => { try { checkpoint(); } catch (_) {} };
     $p('imT').onchange = e => { el.imp = e.target.value; el.d = IMPDIAM(el.imp); appSettings.impT = el.imp; try { persistSettings(); } catch (_) {} ch(); ck(); };
     $p('imD').onchange = e => { el.d = +e.target.value; ch(); ck(); };
-    $p('imZm').onchange = e => { el.zm = e.target.value; appSettings.impZm = el.zm; if (el.zm === 'mur' && !(el.z >= 0)) el.z = 0.25; if (el.zm === 'lib' && !(el.z >= 0)) el.z = +appSettings.impZ || 0.5; try { persistSettings(); } catch (_) {} ch(); ck(); };
+    { const sb = $p('imSplit'); if (sb) sb.onclick = () => { closePal(); if (window.SCimpr) SCimpr.armSplit(el); }; }
+    $p('imZm').onchange = e => { el.zm = e.target.value; el.zmFix = 1; appSettings.impZm = el.zm; if (el.zm === 'mur' && !(el.z >= 0)) el.z = 0.25; if (el.zm === 'lib' && !(el.z >= 0)) el.z = +appSettings.impZ || 0.5; try { persistSettings(); } catch (_) {} ch(); ck(); };
     $p('imZ').onchange = e => { const v = num(String(e.target.value).trim()); if (!(v >= 0 && v <= 10)) { toast('Quota da 0 a 10 m'); fill(); return; } el.z = v; appSettings.impZ = v; try { persistSettings(); } catch (_) {} ch(); ck(); };
     $p('imName').oninput = e => { el.name = e.target.value; draw2D(); }; $p('imName').onchange = ck;
     $p('imDel').onclick = () => { state.beams = state.beams.filter(x => x !== el); active = null; closePal(); draw2D(); if (state.mode === '3d') build3D(); ck(); toast('Eliminato'); };
@@ -17414,7 +17438,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     const Ax = by('antenna'), Rx = by('router'); let nt = 0, nd = 0;
     by('pt_tv').forEach(f => { const g = near(f, Ax); if (g) { connect(f, g, {auto: 'elec'}); nt++; } });
     by('pt_dati').forEach(f => { const g = near(f, Rx); if (g) { connect(f, g, {auto: 'elec'}); nd++; } });
-    showImpOn(); draw2D(); if (state.mode === '3d') build3D(); try { checkpoint(); } catch (_) {}
+    showImpOn(['ele', 'dati']); draw2D(); if (state.mode === '3d') build3D(); try { checkpoint(); } catch (_) {}
     toast('Collegati: ' + nl + ' luci, ' + ni + ' interruttori, ' + np + ' prese' + (nt ? ', ' + nt + ' prese TV' : '') + (nd ? ', ' + nd + ' prese dati' : '') + '. Rifai il comando per rigenerare i collegamenti automatici');
   }
   /* v26.2 · IMPIANTO IDRAULICO AUTOMATICO: punti acqua e scarico dai sanitari, poi collegamenti al collettore (calda rossa, fredda blu) e alla colonna di scarico (nero) */
@@ -17602,7 +17626,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
       if (lk) { lk.bg = [{x: r6(T.x), y: r6(T.y), dm: Math.max(110, Dl), db: Dl, col: 1}]; nb++; if (ends.length > 1) { lk.bg.push({x: r6(pc.q.x), y: r6(pc.q.y), dm: Dl, db: Math.min(...ends)}); nb++; } }
     });
     { const pa = new Set(PA.map(f => 'acq:' + f.id)); state.beams = state.beams.filter(b => !(b.net && floorOf(b) === fl && ((b.net.startsWith('acq:') && !pa.has(b.net)) || (b.net.startsWith('scn:') && !nets.has(b.net))))); }
-    if (!quiet) showImpOn();
+    if (!quiet) showImpOn('idro');
     draw2D(); if (state.mode === '3d') build3D();
     if (!quiet) { try { checkpoint(); } catch (_) {} }
     const miss = hubs.length ? [hubs.join(' e ') + ' messi da soli: spostali dove servono, il resto si adegua'] : [];
@@ -17617,7 +17641,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     const sigOf = () => { const fl = state.currentFloorId, F = state.furniture.filter(f => floorOf(f) === fl && isEntityVisible(f) && (SANF(f) || f.type === 'collettore' || f.type === 'col_scarico' || ((f.type === 'pt_acqua' || f.type === 'pt_scarico') && !f.auto)));
       if (!F.some(f => SANF(f))) return ''; return fl + JSON.stringify(F.map(f => [f.id, f.type, r3q(f.x), r3q(f.y), r3q(f.rot || 0), f.w, f.d, f.visible])) + JSON.stringify((state.rooms || []).filter(r => floorOf(r) === fl).map(r => r.polygon)); };
     checkpoint = function () {
-      if (appSettings.idroAuto !== false && !IDQ) {
+      if (appSettings.idroAuto !== false && !IDQ && (!window.SCimpv || SCimpv.vis('idro'))) {   /* v31.8: idraulico nascosto: non si rifà da solo */
         try { const sg = sigOf(); if (sg !== LAST) { const first = LAST === null && state.beams.some(b => b.auto === 'idro'), prev = LAST; LAST = sg; if ((sg || (prev && state.furniture.some(f => f.auto === 'idro'))) && !first) { IDQ = true; try { autoIdro(true); } finally { IDQ = false; } } } } catch (e) { console.warn('idraulico automatico', e); }
       }
       return _cp.apply(this, arguments);
@@ -17627,7 +17651,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
   const LIB = [
     ['Elettrico', 'linea luci arancione, linea prese viola', ['quadro', 'interruttore', 'presa', 'punto_luce']],
     ['Idraulico', 'acqua calda rossa, fredda blu, scarichi neri', ['collettore', 'pt_acqua', 'pt_scarico', 'col_scarico']],
-    ['Riscaldamento e clima', 'termosifoni in acqua calda, condizionatori in canalina', ['caldaia', 'radiatore', 'stufa_pellet', 'scaldabagno', 'split', 'unita_est']],
+    ['Riscaldamento e clima', 'termosifoni in acqua calda, condizionatori in canalina', ['caldaia', 'mod_risc', 'coll_risc', 'radiatore', 'stufa_pellet', 'scaldabagno', 'split', 'unita_est']],
     ['TV e dati', 'linea TV verde, linea dati rosa', ['antenna', 'pt_tv', 'router', 'pt_dati']]];
   let PT = null;
   function closeLib() { const e = document.getElementById('impLib'); if (e) e.remove(); }
@@ -17641,7 +17665,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     el.addEventListener('click', e => {
       if (e.target.closest('[data-close]')) { closeLib(); return; }
       const b = e.target.closest('.fp-it'); if (!b) return; PT = b.dataset.k; closeLib();
-      document.querySelectorAll('.tool').forEach(x => x.classList.remove('active')); state.tool = 'cgpt'; state.pendingPoint = null; showImpOn(); draw2D();
+      document.querySelectorAll('.tool').forEach(x => x.classList.remove('active')); state.tool = 'cgpt'; state.pendingPoint = null; showImpOn(PT); draw2D();
       toast(FURNITURE[PT].name + ': tocca dove metterlo (vicino a un muro si aggancia). Puoi metterne più di uno');
     });
   }
@@ -18085,7 +18109,6 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
         row('impIdroAutoBtn', '🔁', 'Idraulico automatico', appSettings.idroAuto === false ? 'spento' : 'acceso', () => { appSettings.idroAuto = appSettings.idroAuto === false; try { persistSettings(); } catch (_) {} const k = document.querySelector('#impIdroAutoBtn .mi-kbd'); if (k) k.textContent = appSettings.idroAuto ? 'acceso' : 'spento'; toast(appSettings.idroAuto ? 'Idraulico automatico acceso: mettendo o spostando sanitari, punti e tubi si rifanno da soli' : 'Idraulico automatico spento: rifai a mano con Impianti › Impianto idraulico'); }),
         row('impColBtn', '🔗', 'Collega punti', 'tocca e collega', () => { pickTool('cgcol'); SCcs.colArm(); }),
         row('impLineBtn', '✎', 'Linea libera', 'tubo o cavo', () => { SCcs.showImpOn(); pickTool('cgimp', 'Impianto: tocca i punti del percorso, poi «Fine linea»'); }),
-        row('impShowBtn', '👁', 'Mostra / nascondi impianti', 'tubi e cavi', () => { const c = document.getElementById('showImp'); if (c) { c.checked = !c.checked; c.dispatchEvent(new Event('change')); toast(c.checked ? 'Impianti visibili' : 'Impianti nascosti'); } }),
         sep()];
       items.reverse().forEach(n => md.insertBefore(n, md.firstChild));
     } }
@@ -18999,7 +19022,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
     else handleTap(d.x0, d.y0);   /* tocco senza spostare: come un tocco normale (seleziona la stanza) */
   };
   window.addEventListener('pointerup', rUp, true); window.addEventListener('pointercancel', rUp, true);
-  window.SCrl = {pos, anchor, polylabel};
+  window.SCrl = {pos, anchor, polylabel, labelBox};
 
   /* ---------------------------------------------------------------- quote: calcolo */
   const qCache = new Map();
@@ -21882,8 +21905,18 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
    SC_REL.v è l'unica versione: titolo, Guida, file salvato, avvisi e riga messaggi la leggono da qui.
    ======================================================================== */
 window.SC_REL = {
-  v: '31.0', d: '05/11/2026',
+  v: '32.0', d: '07/11/2026',
   news: [
+    ['32.0', 'Impianti: le linee dello stesso impianto che attraversano lo stesso muro passano per un unico punto (una traccia sola, una salita sola) invece di tante affiancate. Nel computo le tracce nei muri di elettrico, acqua, TV e dati, con i tratti comuni a più linee contati una volta.'],
+    ['31.9', 'Percorso degli impianti per locale: nella finestra del locale scegli dove passano elettrico, acqua, riscaldamento, TV e dati (pavimento, controsoffitto, muro, battiscopa); le linee automatiche si dividono ai confini dei locali e salgono o scendono da sole dove cambia il livello (pianta, prospetto, 3D, computo). Gli scarichi restano a pavimento. Nella finestra di una linea: «Dividi la linea in un punto» e scegli dove passa ogni pezzo.'],
+    ['31.8', 'Impianti più semplici: si mostrano e si nascondono solo da Vista › Impianti, con «tubi e cavi» e una casella per impianto (elettrico, idraulico, riscaldamento, condizionamento, TV e dati) che vale in pianta, 3D e prospetto. Menu Impianti diviso per mestiere. Ogni impianto sta da solo sul suo livello (elettrico, idraulico, riscaldamento, condizionamento, TV e dati): le caselle di Vista accendono e spengono quei livelli. Un comando che crea un impianto accende solo quello.'],
+    ['31.7', 'Etichette: toccando il nome di una stanza, il riquadro di un\'area, il nome di un muro o un testo la finestra di modifica si apre da sola, sia in Solo vista sia con Seleziona.'],
+    ['31.6', 'Solo vista: toccando Seleziona quando è già acceso lo strumento si spegne; con un dito si sposta il disegno, con due si fa lo zoom e nulla si modifica; toccando il nome di una stanza, il riquadro di un\'area, il nome di un muro o un testo si apre la sua finestra. Il programma si apre in Solo vista. In pianta, con gli impianti visibili, caldaia, collettori e punti si vedono sopra gli arredi (anche dentro un pensile).'],
+    ['31.5', 'Riscaldamento: la caldaia, il modulo d\'utenza o il collettore messi a mano hanno la precedenza; quello messo in automatico da un comando precedente viene tolto.'],
+    ['31.4', 'Impianti › Inserisci punti…: nel gruppo «Riscaldamento e clima» anche il collettore del riscaldamento e il modulo d\'utenza, da mettere a mano. Messaggi del riscaldamento con il nome giusto del menu.'],
+    ['31.3', 'Icona nuova dell\'app (la pianta): nella barra in alto, nella scheda del browser e come icona dell\'app installata.'],
+    ['31.2', 'Nomi delle stanze con contorno scuro: si leggono anche sopra le piastrelle chiare. Aree: toccando di nuovo dentro la stanza già scelta si seleziona l\'area (e il tocco dopo torna alla stanza). Skin da foto senza la foto su questo dispositivo: pavimento tratteggiato in rosso e avviso, invece di un azzurro che sembrava un colore scelto.'],
+    ['31.1', 'Prospetto col dito: un solo cursore. Disegnando una finestra, una porta, un foro o spostando un oggetto nel prospetto compariva anche il cursore della pianta: il punto si spostava due volte e finiva bloccato sul bordo.'],
     ['31.0', 'Pannelli radianti a pavimento: Impianti › «Riscaldamento: termosifoni o pavimento…». Per ogni locale scelto i tubi a chiocciola (mandata e ritorno alternati) con passo 10, 15 o 20 cm, circuiti divisi oltre la lunghezza massima, collettore in posizione centrale; sistema classico o a basso spessore con avviso sull\'altezza; stima indicativa della resa contro il fabbisogno; computo con tubo, pannelli, fascia perimetrale, massetto, collettore, testine e termostati.'],
     ['30.9', 'Riscaldamento: monotubo ad anello, bitubo o a collettore (stella); tubi a pavimento, in traccia nel muro, nel controsoffitto o a vista sul battiscopa, visibili in pianta, prospetto e 3D; termosifoni da escludere; ogni tratto si sposta a mano e il comando avvisa prima di rifare i tratti ritoccati; computo con tubi per percorso, tracce o copritubo, collettore e valvole.'],
     ['30.8', 'Icone tutte coerenti: a linea, monocromatiche, della stessa misura, in menu, barre, rilievo, editor degli arredi, finestre dei calcoli e del riscaldamento (anche Struttura e Verifiche). Le emoji rimaste come contenuto (arredi della libreria) sono in grigio.'],
@@ -22750,7 +22783,7 @@ window.SC_REL = {
   function close() { P.hidden = true; PH = null; ED = null; }
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && !P.hidden) close(); });
   const mb = $('skinBtn'); if (mb) mb.onclick = e => { e.stopPropagation(); open(); };
-  window.SCskin = {open, close, get, use, options, imgOf, tileImg, paint, raster, mat, layoutOf, exportUsed, ingest, modes: MODES, modeKey, modeFrom, lib: () => LIB, ready};
+  window.SCskin = {hasImg: id => SKDATA.has(id), open, close, get, use, options, imgOf, tileImg, paint, raster, mat, layoutOf, exportUsed, ingest, modes: MODES, modeKey, modeFrom, lib: () => LIB, ready};
 })();
 
 </script>
@@ -22785,12 +22818,18 @@ window.SC_REL = {
     let c = CH.get(z.id); if (c && c.key === key) return c;
     c = {key, e, res: SCskin.layoutOf(z.pts, e.sk, e.posa, e.ang, e.start)}; CH.set(z.id, c); return c;
   }
+  const missing = sk => sk && sk.kind === 'foto' && SCskin.hasImg && !SCskin.hasImg(sk.id);
   /* pianta */
   function paint2D(ctx, z, S) {
     const c = resolve(z); if (!c) return;
     ctx.save(); ctx.beginPath(); S.forEach((s, i) => i ? ctx.lineTo(s.x, s.y) : ctx.moveTo(s.x, s.y)); ctx.closePath(); ctx.clip();
     if (!skinOn('f') || c.res.pl * viewScale < 3 || !c.res.pieces.length) { ctx.fillStyle = c.e.sk.col || '#cbd5e1'; ctx.fill(); }   /* skin spenta: tinta unita della skin */
     else { ctx.fillStyle = c.e.sk.gcol || '#9ca3af'; ctx.fill(); SCskin.paint(ctx, c.res, c.e.sk, SCskin.mat(c.res.T, p => worldToScreen(p.x, p.y))); }
+    if (missing(c.e.sk)) {   /* v31.2: foto della skin mancante */
+      const xs = S.map(s => s.x), ys = S.map(s => s.y), x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+      ctx.fillStyle = 'rgba(241,245,249,.82)'; ctx.fill(); ctx.strokeStyle = 'rgba(220,38,38,.55)'; ctx.lineWidth = 1.5; ctx.beginPath();
+      for (let t = x0 - (y1 - y0); t < x1; t += 12) { ctx.moveTo(t, y1); ctx.lineTo(t + (y1 - y0), y0); } ctx.stroke();
+    }
     ctx.restore();
   }
   /* 3D */
@@ -22911,7 +22950,7 @@ window.SC_REL = {
     function upd() { draw2D(); try { checkpoint(); } catch (_) {} sum(); }
     render();
   }
-  window.SCfloor = {paint2D, tex3D, matName, detExtra, palette, resolve, pickStart, eff};
+  window.SCfloor = {paint2D, tex3D, matName, detExtra, palette, resolve, pickStart, eff, missing: z => { const e = eff(z); return !!(e && missing(e.sk)); }};
 })();
 
 </script>
@@ -24557,16 +24596,22 @@ window.SC_REL = {
         for (let i = 0; i + 1 < P.length; i++) { const a = at(P[i]), c = at(P[i + 1]), l = Math.hypot(c.x - a.x, c.y - a.y, c.z - a.z); if (l < 1e-4) continue; out.push({p: a, q: c, L: l, fl, imp: r.imp, d: r.d || 20, el: r, wall: w}); }
       });
     });
+    const ENDS = [];
     if (window.SCcs) state.beams.forEach(b => {   /* v25.4: linee d'impianto disegnate in pianta */
       if (!b.imp || !isEntityVisible(b) || !b.pts || b.pts.length < 2) return;
       const fl = floorOf(b), top = SCcs.topOf(fl), D = SCcs.dense(b, false), zm = b.zm || 'pav';
       const zOf = (x, y) => { if (zm === 'lib') return b.z != null && isFinite(b.z) ? +b.z : 0.5; if (zm === 'pav') return 0.05; if (zm === 'mur') return b.z != null && isFinite(b.z) ? +b.z : 0.25; if (zm === 'bat') return 0.1; const base = SCcs.zAt(x, y, fl) + 0.004; return base < top - 0.01 ? base + Math.min(0.12, (top - base) / 2) : top - 0.05; };
+      ENDS.push({x: D[0].x, y: D[0].y, z: zOf(D[0].x, D[0].y), fix: !!(b.dz && b.dz[0] != null), b, fl}, {x: D[D.length - 1].x, y: D[D.length - 1].y, z: zOf(D[D.length - 1].x, D[D.length - 1].y), fix: !!(b.dz && b.dz[1] != null), b, fl});
       if (b.dz) [[D[0], b.dz[0]], [D[D.length - 1], b.dz[1]]].forEach(([pt, z]) => {   /* v25.7: discesa dal percorso al punto */
-        const z0 = zOf(pt.x, pt.y), l = Math.abs(z - z0); if (!(l > 1e-3)) return;
+        if (z == null) return; const z0 = zOf(pt.x, pt.y), l = Math.abs(z - z0); if (!(l > 1e-3)) return;
         out.push({p: {x: pt.x, y: pt.y, z: z0}, q: {x: pt.x, y: pt.y, z}, L: l, fl, imp: b.imp, d: b.d || 20, el: b, wall: null});
       });
       for (let i = 0; i + 1 < D.length; i++) { const a = {x: D[i].x, y: D[i].y, z: zOf(D[i].x, D[i].y)}, c = {x: D[i + 1].x, y: D[i + 1].y, z: zOf(D[i + 1].x, D[i + 1].y)}, l = Math.hypot(c.x - a.x, c.y - a.y, c.z - a.z); if (l < 1e-4) continue; out.push({p: a, q: c, L: l, fl, imp: b.imp, d: b.d || 20, el: b, wall: null}); }
     });
+    for (let i = 0; i < ENDS.length; i++) for (let k = i + 1; k < ENDS.length; k++) {   /* v31.9: due pezzi che si toccano a livelli diversi: salita o discesa */
+      const a = ENDS[i], c = ENDS[k]; if (a.b === c.b || (a.b.ln || a.b.id) !== (c.b.ln || c.b.id) || a.fl !== c.fl || a.b.imp !== c.b.imp || Math.hypot(a.x - c.x, a.y - c.y) > 0.01 || Math.abs(a.z - c.z) < 1e-3) continue;
+      const lo = a.z < c.z ? a : c, hi = lo === a ? c : a; out.push({p: {x: lo.x, y: lo.y, z: lo.z}, q: {x: lo.x, y: lo.y, z: hi.z}, L: hi.z - lo.z, fl: a.fl, imp: a.b.imp, d: Math.max(a.b.d || 20, c.b.d || 20), el: lo.b, wall: null, riser: 1});
+    }
     return out;
   }
   function impItems() {
@@ -24581,6 +24626,7 @@ window.SC_REL = {
   function add3DImp(scene) {
     if (!window.THREE || !impOn()) return;
     impSegs().forEach(q => {
+      if (window.SCimpv && !SCimpv.lineOk(q.imp)) return;
       try {
         const f = state.floors.find(x => x.id === q.fl) || {elev: 0}, m = new THREE.MeshBasicMaterial({color: (IMPT[q.imp] || IMPT.acf)[1], depthTest: false, transparent: true, opacity: 0.95});
         const dir = new THREE.Vector3(q.q.x - q.p.x, q.q.z - q.p.z, -(q.q.y - q.p.y)), rd = Math.max(0.004, q.d / 2000), mesh = new THREE.Mesh(new THREE.CylinderGeometry(rd, rd, q.L, 8), m);
@@ -25774,10 +25820,10 @@ window.SC_REL = {
   /* v27.9: vista del prospetto: impianti (tutto / elettrico / idraulico / nessuno), arredi (trasparenti / pieni / nascosti), etichette */
   const IDRO = new Set(['acc', 'acf', 'scn', 'rmo', 'rma', 'rri']), IDROP = new Set(['pt_acqua', 'pt_scarico', 'collettore', 'radiatore', 'caldaia', 'coll_risc', 'mod_risc']), LUCI = new Set(['applique', 'faretto_p', 'punto_luce']);
   const furMode = () => appSettings.wkFur || (appSettings.wkXray === false ? 'on' : 'xray');
-  const impMode = () => appSettings.wkImp || 'all';
+  const impMode = () => appSettings.wkImp === 'none' ? 'none' : 'all';   /* v31.8: gli impianti seguono Vista › Impianti */
   const xray = () => furMode() === 'xray';
-  const impOk = t => { const m = impMode(); return m === 'all' || (m === 'idro' ? IDRO.has(t) : m === 'el' ? !IDRO.has(t) : false); };
-  const ptOk = t => { if (LUCI.has(t)) return true; const m = impMode(); return m === 'all' || (m === 'idro' ? IDROP.has(t) : m === 'el' ? !IDROP.has(t) : false); };
+  const impOk = t => impMode() !== 'none' && (!window.SCimpv || SCimpv.lineOk(t));
+  const ptOk = t => (LUCI.has(t) || impMode() !== 'none') && (!window.SCimpv || SCimpv.ptOk(t));
   const lblOk = () => appSettings.wkLbl !== false;
   const shade = (hex, k) => {
     let h = String(hex || '#999999').replace('#', ''); if (h.length === 3) h = h.split('').map(c => c + c).join(''); h = h.slice(0, 6);
@@ -27004,7 +27050,7 @@ window.SC_REL = {
   const cursorEl = () => document.getElementById('fingerCursor');
   const isWk = t => t && t.id === 'wkCv';
   const sig = t => isWk(t) ? JSON.stringify(window.SCwk && SCwk.view ? SCwk.view() : null) : (viewOffset.x + ',' + viewOffset.y + ',' + viewScale);
-  const eligible = e => e.pointerType === 'touch' && appSettings.finger !== 'off' && (e.target === c2d || isWk(e.target)) && (isWk(e.target) || state.mode === '2d')
+  const eligible = e => e.pointerType === 'touch' && appSettings.finger !== 'off' && e.target === c2d && state.mode === '2d'   /* v31.1: il prospetto usa il suo cursore */
     && !document.body.classList.contains('sv-on') && !(SCfinger.active && SCfinger.active());
   function fire(type, src, c) {
     const ev = new PointerEvent(type, {bubbles: true, cancelable: true, composed: true, pointerId: src.pointerId, pointerType: 'touch', isPrimary: src.isPrimary,
@@ -28156,7 +28202,7 @@ window.SC_REL = {
   const DIST = {mono: 'Monotubo ad anello', bi: 'Bitubo (mandata e ritorno)', stella: 'A collettore (a stella)', rad: 'Pannelli radianti a pavimento'};
   const tubeD = (imp, d, zm) => 'Tubazione multistrato Ø' + d + ' mm isolata per riscaldamento' + (imp === 'rmo' ? ', anello monotubo' : imp === 'rma' ? ', mandata' : imp === 'rri' ? ', ritorno' : '') + ', ' + (POSA[zm] || POSA.pav) + ', compresi raccordi';
   if (SCwl.IMPD) { SCwl.IMPD.rmo = d => tubeD('rmo', d, 'pav'); SCwl.IMPD.rma = d => tubeD('rma', d, 'pav'); SCwl.IMPD.rri = d => tubeD('rri', d, 'pav'); }
-  if (!FURNITURE.coll_risc) FURNITURE.coll_risc = {name: 'Collettore riscaldamento (cassetta)', w: 0.6, d: 0.1, h: 0.5, z: 0.35, color: '#fde68a', icon: 'C'};
+  if (!FURNITURE.coll_risc) FURNITURE.coll_risc = {name: 'Collettore riscaldamento (cassetta)', w: 0.6, d: 0.1, h: 0.5, z: 0.35, color: '#fde68a', icon: '🎛'};
   if (!FURNITURE.mod_risc) FURNITURE.mod_risc = {name: 'Modulo d\'utenza riscaldamento', w: 0.5, d: 0.12, h: 0.6, z: 0.9, color: '#e2e8f0', icon: '🧮'};
   const f2 = v => (Math.round(v * 100) / 100).toFixed(2).replace('.', ',');
   const r6 = v => Math.round(v * 1e6) / 1e6;
@@ -28224,12 +28270,19 @@ window.SC_REL = {
     let imp = true, guard = 0; while (imp && guard++ < 50) { imp = false; for (let i = 1; i < T.length - 2; i++) for (let k = i + 1; k < T.length - 1; k++) { const nt = T.slice(0, i).concat(T.slice(i, k + 1).reverse(), T.slice(k + 1)); if (len(nt) < len(T) - 1e-6) { T.splice(0, T.length, ...nt); imp = true; } } }
     return T.slice(1, -1).map(i => D[i]);
   }
+  /* v31.5: se c'è un oggetto messo a mano si usa quello e si toglie quello messo in automatico prima */
+  function pickObj(type, fl) {
+    const L = state.furniture.filter(f => f.type === type && floorOf(f) === fl && isEntityVisible(f)), man = L.filter(f => f.auto !== 'risc');
+    if (man.length) { state.furniture = state.furniture.filter(f => !(f.type === type && floorOf(f) === fl && f.auto === 'risc')); return man[0]; }
+    return L[0] || null;
+  }
   const sig = b => JSON.stringify([b.pts, b.zm || 'pav', b.d, b.dz, b.z == null ? null : b.z, b.imp]);   /* impronta: se cambia, il tratto è stato ritoccato a mano */
   let ZM = 'pav';
   function mkLine(pts, imp, d, net, dz, zm) { if (pts.length < 2 || plen(pts) < 0.02) return null; const el = assignLayer({id: newId(), pts, w: 0.02, hh: 0.02, sez: 'U', cg: {}, led: {k: 3000, w: 8}, imp, d, zm: zm || ZM, name: '', auto: 'risc', net, dz}); el.sg = sig(el); state.beams.push(el); return el; }
   const edited = fl => state.beams.filter(b => b.auto === 'risc' && floorOf(b) === fl && b.sg && b.sg !== sig(b));
   function run(quiet, force) {
     const C = cfg(); if (!C) return dialog();
+    try { SCcs.showImpOn('risc'); } catch (_) {}   /* v31.8: il livello del riscaldamento deve essere acceso, altrimenti i termosifoni non si vedono */
     const fl = state.currentFloorId, ALL = state.furniture.filter(f => f.type === 'radiatore' && isEntityVisible(f) && floorOf(f) === fl), RAD = ALL.filter(f => !f.noRisc);
     const ed = edited(fl), dist = C.dist || 'mono', isRad = dist === 'rad' && C.tipo !== 'col';
     if (ed.length && !force) { const ask = window.uiConfirm ? uiConfirm('Hai ritoccato a mano ' + ed.length + (ed.length === 1 ? ' tratto' : ' tratti') + ' di tubo del riscaldamento.\nSe rifai l\'impianto tornano come li propone il programma.\n\nRifare?') : Promise.resolve(true); ask.then(ok => { if (ok) run(quiet, true); }); return; }
@@ -28241,10 +28294,10 @@ window.SC_REL = {
     const K = KZ[ZM], ST = STEP[ZM], zR = 0.15;
     const placed = []; let S = null;
     if (C.tipo === 'aut') {
-      S = state.furniture.find(f => f.type === 'caldaia' && floorOf(f) === fl && isEntityVisible(f));
+      S = pickObj('caldaia', fl);
       if (!S) { const sp = extWallSpot(fl, r => /cucin|cottura|lavander|ripost/i.test(r.name || '') ? 3 : /bagn|wc|servizi/i.test(r.name || '') ? 2 : 0); if (sp) { S = placeObj('caldaia', sp.p, 1.3); placed.push('caldaia' + (sp.ext ? '' : ' (nessun muro esterno libero: controlla lo scarico fumi)')); } }
     } else if (C.tipo === 'cen') {
-      S = state.furniture.find(f => f.type === 'mod_risc' && floorOf(f) === fl && isEntityVisible(f));
+      S = pickObj('mod_risc', fl);
       if (!S) { const sp = entranceSpot(fl) || extWallSpot(fl, () => 0); if (sp) { S = placeObj('mod_risc', sp.p, 0.9); placed.push('modulo d\'utenza vicino all\'ingresso'); } }
     }
     let L = 0; const add = (P, imp, d, net, dz) => { const el = mkLine(P, imp, d, net, dz); if (el) L += plen(P); return el; };
@@ -28263,7 +28316,7 @@ window.SC_REL = {
           add(route(a, b, fl, RC, K), 'rma', 20, net, dz); add(route(b, a, fl, RC, K + ST), 'rri', 20, net, [zR, a === S ? zS : zR]); }
         RAD.forEach(f => { f.rsq = seq.indexOf(f) + 1; });
       } else {   /* a collettore: una cassetta in posizione baricentrica, due tubi per ogni termosifone */
-        CO = state.furniture.find(f => f.type === 'coll_risc' && floorOf(f) === fl && isEntityVisible(f));
+        CO = pickObj('coll_risc', fl);
         if (!CO) { const g = {x: RAD.reduce((a, f) => a + f.x, 0) / RAD.length, y: RAD.reduce((a, f) => a + f.y, 0) / RAD.length};
           const sp = extWallSpot(fl, r => /disimp|corrid|ingress|ripost/i.test(r.name || '') ? 3 : pointInPolygon(g, r.polygon) ? 2 : 0, -3, g); if (sp) { CO = placeObj('coll_risc', sp.p, 0.35); placed.push('collettore in posizione centrale'); } }
         if (CO) {
@@ -28276,13 +28329,13 @@ window.SC_REL = {
     }
     if (S && C.tipo !== 'col' && C.tipo === 'aut' && (C.acs || 'cald') === 'cald') { const CI = state.furniture.filter(f => f.type === 'collettore' && floorOf(f) === fl && isEntityVisible(f)); if (CI.length) { let g = CI[0]; CI.forEach(c => { if (Math.hypot(c.x - S.x, c.y - S.y) < Math.hypot(g.x - S.x, g.y - S.y)) g = c; });
         mkLine(route(S, g, fl, RC, 0.24), 'acc', 20, 'risc_acs:' + fl, [1.3, 0.5], 'pav'); mkLine(route(g, S, fl, RC, 0.30), 'acf', 20, 'risc_acs:' + fl, [0.5, 1.3], 'pav'); } }
-    try { SCcs.showImpOn(); } catch (_) {}
+    try { SCcs.showImpOn('risc'); } catch (_) {}
     try { checkpoint(); } catch (_) {} draw2D(); if (state.mode === '3d') build3D();
     if (isRad && S) { if (RES && RES.err) { toast(RES.err); return; } if (RES && !quiet && window.uiAlert) uiAlert(radReport(RES) + (placed.length ? '\n\nMesso da solo: ' + placed.join(', ') + ' (spostalo e ripeti il comando).' : '') + (ALL.length ? '\n\nI termosifoni presenti non sono collegati: se non servono toglili (Impianti › Rimuovi caloriferi).' : '')); else if (RES) toast('Pannelli radianti: ' + RES.nC + ' circuiti, ' + Math.round(RES.L) + ' m di tubo'); return; }
     const ex = ALL.length - RAD.length, tail = (ex ? ' · ' + ex + ' esclusi' : '') + (placed.length ? ' · messo da solo: ' + placed.join(', ') + ' (spostalo e ripeti il comando)' : '') + ' · ogni tratto si sposta a mano: toccalo in pianta';
     if (!quiet || placed.length) toast(C.tipo === 'col' ? 'Centralizzato a colonne: ogni termosifone è sulla sua colonna; nel computo ripartitori e valvole (' + RAD.length + ')'
-      : !S ? 'Non trovo dove mettere ' + (C.tipo === 'aut' ? 'la caldaia' : 'il modulo d\'utenza') + ': mettilo a mano (Impianti › Libreria) e ripeti'
-      : dist === 'stella' && !CO ? 'Non trovo dove mettere il collettore: mettilo a mano (Libreria › Collettore riscaldamento) e ripeti'
+      : !S ? 'Non trovo dove mettere ' + (C.tipo === 'aut' ? 'la caldaia' : 'il modulo d\'utenza') + ': mettilo a mano (Impianti › Inserisci punti…, gruppo «Riscaldamento e clima») e ripeti'
+      : dist === 'stella' && !CO ? 'Non trovo dove mettere il collettore: mettilo a mano (Impianti › Inserisci punti… › Collettore riscaldamento) e ripeti'
       : DIST[dist] + ' ' + ZMR[ZM].toLowerCase() + ': ' + RAD.length + ' termosifoni, ' + f2(L) + ' m di tubo' + tail, 6000);
   }
   /* ---------------------------------------------------------------- v31.0 · PANNELLI RADIANTI A PAVIMENTO
@@ -28319,10 +28372,10 @@ window.SC_REL = {
   function radRun(C, S, fl, RC, K, ST, add, placed) {
     const R = C.rad || {}, sis = SIS[R.sis] || SIS.std, zf = ZF[R.zona] || ZF.C, w0 = W0[R.iso] || W0[2], H = typeof getDefaultWallHeight === 'function' ? getDefaultWallHeight() : 2.7, rm = R.rooms || {};
     const ROOMS = radRooms(fl).filter(r => rm[r.id] ? rm[r.id].on !== false : !NOHEAT.test(r.name || '')); if (!ROOMS.length) return {err: 'Nessun locale scelto per i pannelli radianti'};
-    let CO = state.furniture.find(f => f.type === 'coll_risc' && floorOf(f) === fl && isEntityVisible(f));
+    let CO = pickObj('coll_risc', fl);
     if (!CO) { const g = {x: 0, y: 0}; let A = 0; ROOMS.forEach(r => { const a = computeArea(r.polygon), c = r.polygon.reduce((s, q) => ({x: s.x + q.x / r.polygon.length, y: s.y + q.y / r.polygon.length}), {x: 0, y: 0}); g.x += c.x * a; g.y += c.y * a; A += a; }); g.x /= A; g.y /= A;
       const sp = extWallSpot(fl, r => /disimp|corrid|ingress|ripost/i.test(r.name || '') ? 3 : pointInPolygon(g, r.polygon) ? 2 : 0, -3, g); if (sp) { CO = placeObj('coll_risc', sp.p, 0.35); placed.push('collettore dei pannelli in posizione centrale'); } }
-    if (!CO) return {err: 'Non trovo dove mettere il collettore: mettilo a mano (Libreria › Collettore riscaldamento) e ripeti'};
+    if (!CO) return {err: 'Non trovo dove mettere il collettore: mettilo a mano (Impianti › Inserisci punti… › Collettore riscaldamento) e ripeti'};
     const zC = 0.4, net = 'rad:' + fl, rows = []; let nC = 0, Ltot = 0;
     if (S) { add(route(S, CO, fl, RC, K), 'rma', 26, 'risc:' + fl, [S.type === 'caldaia' ? 1.3 : 0.9, zC]); add(route(CO, S, fl, RC, K + ST), 'rri', 26, 'risc:' + fl, [zC, S.type === 'caldaia' ? 1.3 : 0.9]); }
     const mk = (pts, imp, d, dz) => { const el = add(pts, imp, d, net, dz); if (el) { el.rad = 1; el.circ = nC + 1; } return el; };
@@ -28440,8 +28493,9 @@ window.SC_REL = {
     /* tubi per tipo, diametro e percorso (con le discese ai termosifoni); tracce o copritubo una volta sola per mandata e ritorno affiancati */
     const zLev = (b, zm) => zm === 'mur' ? (b.z != null && isFinite(b.z) ? +b.z : 0.25) : zm === 'bat' ? 0.1 : zm === 'lib' ? (b.z != null ? +b.z : 0.5) : zm === 'sop' ? Math.max(2.2, (SCcs.topOf ? SCcs.topOf(floorOf(b)) : 2.7) - 0.1) : 0.05;
     const g = {}, op = {mur: 0, bat: 0};
-    state.beams.forEach(b => { if (!/^(rmo|rma|rri)$/.test(b.imp || '') || !isEntityVisible(b) || b.rad) return; const zm = b.zm || 'pav', zl = zLev(b, zm); let Lh = plen(b.pts), Lv = b.dz ? Math.abs(b.dz[0] - zl) + Math.abs(b.dz[1] - zl) : 0;
+    state.beams.forEach(b => { if (!/^(rmo|rma|rri)$/.test(b.imp || '') || !isEntityVisible(b) || b.rad) return; const zm = b.zm || 'pav', zl = zLev(b, zm); let Lh = plen(b.pts), Lv = b.dz ? (b.dz[0] != null ? Math.abs(b.dz[0] - zl) : 0) + (b.dz[1] != null ? Math.abs(b.dz[1] - zl) : 0) : 0;
       const k = b.imp + '|' + b.d + '|' + zm; (g[k] = g[k] || {imp: b.imp, d: b.d, zm, q: 0}).q += Lh + Lv; if (b.imp !== 'rri' && op[zm] != null) op[zm] += Lh + (zm === 'mur' ? Lv : 0); });
+    try { SCwl.impSegs().forEach(q => { if (!q.riser || !/^(rmo|rma|rri)$/.test(q.imp) || q.el.rad) return; const zm = q.el.zm || 'pav', k = q.imp + '|' + q.el.d + '|' + zm; (g[k] = g[k] || {imp: q.imp, d: q.el.d, zm, q: 0}).q += q.L; }); } catch (_) {}   /* v31.9: salite e discese fra un locale e l'altro */
     if (!ml) Object.values(g).forEach(o => out.push({cat: 'Impianti', key: 'risc_t_' + o.imp + '_' + o.d + '_' + o.zm, desc: tubeD(o.imp, o.d, o.zm), um: 'ml', q: o.q}));
     if (op.mur > 0) out.push({cat: 'Impianti', key: 'risc_traccia', desc: 'Apertura di traccia su muratura per tubazioni di riscaldamento, compresi chiusura con malta e ripristino dell\'intonaco', um: 'ml', q: op.mur});
     if (op.bat > 0) out.push({cat: 'Impianti', key: 'risc_copri', desc: 'Copritubo a battiscopa in PVC/alluminio per tubazioni di riscaldamento a vista, compresi fissaggi, angoli e terminali', um: 'ml', q: op.bat});
@@ -28455,7 +28509,267 @@ window.SC_REL = {
     const old = hb.onclick; if (old && !hb._risc) { hb._risc = true; hb.onclick = async function () { const r = await old.apply(this, arguments); try { if (cfg()) run(true); } catch (e) { console.warn('anello', e); } return r; }; }
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setup); else setup();
-  window.SCrisc = {dialog, run, items, cfg, TIPI, DIST, ZMR, edited};
+  window.SCrisc = {dialog, run, items, cfg, TIPI, DIST, ZMR, edited, sig};
+})();
+</script>
+<script>
+/* ========================================================================
+   v31.6 · SOLO VISTA
+   Toccando «Seleziona» quando è già acceso lo strumento si spegne: con un dito si sposta il disegno, con due si fa lo zoom,
+   nulla si seleziona né si sposta. Toccando un'etichetta (nome della stanza, riquadro dell'area, nome del muro, testo)
+   si apre la sua finestra di modifica. Il programma si apre così.
+   ======================================================================== */
+(function () {
+  let hinted = false;
+  function setView(quiet) {
+    if (state.tool === 'view') return;
+    state.tool = 'view'; state.pendingPoint = null;
+    document.querySelectorAll('.tool').forEach(b => b.classList.remove('active'));
+    try { if (window.SCzone && SCzone.closePal) SCzone.closePal(); } catch (_) {}
+    try { setSel([]); } catch (_) { state.sel = []; state.selected = null; }
+    try { draw2D(); } catch (_) {}
+    if (!quiet) toast('Solo vista: sposta e ingrandisci senza modificare. Tocca un nome per modificarlo; per scegliere un oggetto riattiva Seleziona');
+  }
+  /* tocco dell'utente su «Seleziona» già acceso: si spegne (i clic dati dal programma non contano) */
+  document.addEventListener('click', e => {
+    if (!e.isTrusted || state.tool !== 'select' || state.mode !== '2d' || document.body.classList.contains('sv-on')) return;
+    const t = e.target.closest && e.target.closest('#selectBtnTop, .tool[data-tool="select"]'); if (!t) return;
+    e.stopImmediatePropagation(); e.preventDefault(); setView();
+  }, true);
+  const near = (x, y, b) => x >= b.x0 && x <= b.x1 && y >= b.y0 && y <= b.y1;
+  /* v31.7: toccando un'etichetta la finestra di modifica si apre da sola */
+  const openSel = it => { setSel([it]); if (window.SCeditOpen) SCeditOpen(); };
+  function labelHit(cx, cy) {
+    const r = c2d.getBoundingClientRect(), x = cx - r.left, y = cy - r.top, fl = state.currentFloorId;
+    if (window.SCrl && SCrl.labelBox && roomNamesOn()) { const rm = state.rooms.slice().reverse().find(q => isEntityVisible(q) && floorOf(q) === fl && near(x, y, SCrl.labelBox(q))); if (rm) return {type: 'room', id: rm.id}; }
+    if (appSettings.showWallNames !== false) { let best = null, bd = 18;
+      state.walls.forEach(w => { if (!w.name || !isEntityVisible(w) || floorOf(w) !== fl) return; const a = worldToScreen(w.p1.x, w.p1.y), b = worldToScreen(w.p2.x, w.p2.y); if (Math.hypot(b.x - a.x, b.y - a.y) < 36) return;
+        const d = Math.hypot((a.x + b.x) / 2 - x, (a.y + b.y) / 2 - y); if (d < bd) { bd = d; best = w; } }); if (best) return {type: 'wall', id: best.id}; }
+    try { const l = findLabelAt(screenToWorld(x, y)); if (l) return {type: 'label', id: l.id}; } catch (_) {}
+    return null;
+  }
+  function viewTap(cx, cy) {
+    const r = c2d.getBoundingClientRect(), x = cx - r.left, y = cy - r.top, fl = state.currentFloorId;
+    if (window.SCzone && SCzone.boxAt) { const z = SCzone.boxAt(x, y); if (z) { SCzone.openPal(z); return; } }
+    if (window.SCrl && SCrl.labelBox && roomNamesOn()) {
+      const rm = state.rooms.slice().reverse().find(q => isEntityVisible(q) && floorOf(q) === fl && near(x, y, SCrl.labelBox(q)));
+      if (rm) { openSel({type: 'room', id: rm.id}); return; }
+    }
+    if (appSettings.showWallNames !== false) {
+      let best = null, bd = 18;
+      state.walls.forEach(w => { if (!w.name || !isEntityVisible(w) || floorOf(w) !== fl) return; const a = worldToScreen(w.p1.x, w.p1.y), b = worldToScreen(w.p2.x, w.p2.y); if (Math.hypot(b.x - a.x, b.y - a.y) < 36) return;
+        const d = Math.hypot((a.x + b.x) / 2 - x, (a.y + b.y) / 2 - y); if (d < bd) { bd = d; best = w; } });
+      if (best) { openSel({type: 'wall', id: best.id}); return; }
+    }
+    try { const l = findLabelAt(screenToWorld(x, y)); if (l) { openSel({type: 'label', id: l.id}); return; } } catch (_) {}
+    if (state.sel && state.sel.length) { setSel([]); return; }
+    if (!hinted) { hinted = true; toast('Solo vista: per scegliere un oggetto attiva Seleziona (la freccia in alto)'); }
+  }
+  const _ht = handleTap;
+  handleTap = function (cx, cy) {
+    if (state.tool === 'view' && state.mode === '2d') return viewTap(cx, cy);
+    const hit = state.tool === 'select' && state.mode === '2d' && !(document.getElementById('multiSel') || {}).checked ? labelHit(cx, cy) : null;
+    const r = _ht.apply(this, arguments);
+    if (hit) openSel(hit);   /* con Seleziona: anche qui la finestra si apre da sola sulle etichette */
+    return r;
+  };
+  window.SCview = {set: setView, on: () => state.tool === 'view'};
+  /* all'apertura: solo vista */
+  const start = () => { if (state.tool === 'select' && state.mode === '2d' && !(state.sel && state.sel.length) && appSettings.startView !== false && !document.body.classList.contains('sv-on')) setView(true); };
+  if (document.readyState === 'complete') setTimeout(start, 300); else window.addEventListener('load', () => setTimeout(start, 300));
+  /* anche quando si apre un progetto */
+  if (window.SCtoSelect) { const _ts = SCtoSelect; window.SCtoSelect = function () { const r = _ts.apply(this, arguments); start(); return r; }; }   /* progetto aperto, nuovo o ripristinato */
+})();
+</script>
+<script>
+/* ========================================================================
+   v31.8 · IMPIANTI: UN SOLO POSTO PER VEDERE, MENU PER MESTIERE
+   Vista › Impianti: «Tubi e cavi» (i percorsi) e cinque caselle per impianto (linee e punti di quell'impianto).
+   Valgono in pianta, in 3D e nel prospetto. Il computo conta sempre tutto.
+   ======================================================================== */
+(function () {
+  const GRP = {
+    ele: {n: 'Elettrico', L: ['fas', 'neu', 'ter', 'can', 'lux', 'pre'], P: ['quadro', 'interruttore', 'presa', 'punto_luce', 'applique', 'faretto_p']},
+    idro: {n: 'Idraulico', L: ['acc', 'acf', 'scn'], P: ['collettore', 'pt_acqua', 'pt_scarico', 'col_scarico', 'scaldabagno']},
+    risc: {n: 'Riscaldamento', L: ['rmo', 'rma', 'rri'], P: ['caldaia', 'mod_risc', 'coll_risc', 'radiatore', 'stufa_pellet']},
+    clima: {n: 'Condizionamento', L: [], P: ['split', 'unita_est']},
+    dati: {n: 'TV e dati', L: ['tv', 'dat'], P: ['antenna', 'pt_tv', 'router', 'pt_dati']}
+  };
+  const OF = {}; Object.entries(GRP).forEach(([g, o]) => { o.L.forEach(k => OF['L:' + k] = g); o.P.forEach(k => OF['P:' + k] = g); });
+  /* v31.8: ogni impianto sta sul suo livello; le caselle di Vista accendono e spengono quei livelli (una sola verità, anche in Livelli) */
+  const NAME = {ele: '⚡ Impianto elettrico', idro: '💧 Impianto idraulico', risc: '♨ Riscaldamento', clima: '❄ Condizionamento', dati: '📡 TV e dati'};
+  const OLD = {ele: '⚡ Elettrico (auto)', risc: '♨ Riscaldamento (auto)'};
+  const groupOf = k => OF['L:' + k] || OF['P:' + k] || (GRP[k] ? k : null);
+  const layerOf = g => { if (!g) return null; let L = state.layers.find(x => x.name === NAME[g]); if (!L && OLD[g]) { L = state.layers.find(x => x.name === OLD[g]); if (L) L.name = NAME[g]; } return L || null; };
+  const vis = g => { const L = layerOf(g); return !L || L.visible !== false; };
+  function place() {   /* sposta sul suo livello ogni linea e ogni punto d'impianto (salvo chi l'ha spostato apposta: e.lyFix) */
+    let ch = false;
+    const put = (e, g) => { if (!g || e.lyFix) return; let L = layerOf(g); if (!L) { createLayer(NAME[g], false); L = layerOf(g); ch = true; } if (L && e.layerId !== L.id) { e.layerId = L.id; ch = true; } };
+    (state.beams || []).forEach(b => { if (b.imp) put(b, OF['L:' + b.imp]); });
+    (state.furniture || []).forEach(f => put(f, OF['P:' + f.type]));
+    if (ch) { try { renderLayersPanel(); } catch (_) {} }
+    return ch;
+  }
+  const sync = () => { Object.keys(GRP).forEach(g => { const c = document.getElementById('impV_' + g); if (c) c.checked = vis(g); }); };
+  const redraw = () => { try { renderLayersPanel(); } catch (_) {} try { draw2D(); } catch (_) {} try { if (state.mode === '3d') build3D(); } catch (_) {} };
+  function setVis(g, on) { place(); const L = layerOf(g); if (L) L.visible = !!on; sync(); }
+  function show(gs) { (Array.isArray(gs) ? gs : [gs]).forEach(k => { const g = groupOf(k); if (g) setVis(g, true); }); }
+  window.SCimpv = {GRP, NAME, groupOf, vis, lineOk: k => vis(OF['L:' + k]), ptOk: k => vis(OF['P:' + k]), show, place};
+  if (window.SCcs) ['autoElec', 'autoIdro'].forEach(k => { const f = SCcs[k]; if (typeof f === 'function') SCcs[k] = function () { show(k === 'autoElec' ? ['ele', 'dati'] : 'idro'); return f.apply(this, arguments); }; });
+  { const _cp = checkpoint; checkpoint = function () { try { place(); } catch (_) {} return _cp.apply(this, arguments); }; }
+  { const _d = draw2D; draw2D = function () { const r = _d.apply(this, arguments); try { sync(); } catch (_) {} return r; }; }
+  if (window.SCtoSelect) { const _ts = SCtoSelect; window.SCtoSelect = function () { try { place(); } catch (_) {} return _ts.apply(this, arguments); }; }
+  /* caselle in Vista */
+  const box = document.getElementById('impVis');
+  if (box) {
+    box.innerHTML = Object.entries(GRP).map(([g, o]) => `<label style="display:inline-flex;align-items:center;gap:4px;margin:2px 10px 2px 0"><input type="checkbox" id="impV_${g}"> ${o.n}</label>`).join('');
+    sync();
+    box.addEventListener('change', e => { const g = (e.target.id || '').replace('impV_', ''); if (!GRP[g]) return; setVis(g, e.target.checked); redraw(); });
+  }
+  /* menu Impianti ordinato per mestiere */
+  const md = document.getElementById('impPtsBtn') && document.getElementById('impPtsBtn').parentElement;
+  if (md) {
+    const lab = t => { const d = document.createElement('div'); d.className = 'menu-label'; d.textContent = t; return d; }, sep = () => { const d = document.createElement('div'); d.className = 'menu-sep'; return d; };
+    const $ = id => document.getElementById(id);
+    const plan = [lab('Inserisci'), 'impPtsBtn', sep(), lab('Elettrico'), 'impElecBtn', 'impAutoColBtn', 'impAlignBtn', 'impRmElecBtn', sep(), lab('Idraulico'), 'impIdroBtn', 'impIdroAutoBtn', sep(),
+      lab('Riscaldamento'), 'impHeatBtn', 'impRiscBtn', 'impRmHeatBtn', sep(), lab('Linee a mano'), 'impColBtn', 'impLineBtn'];
+    const nodes = plan.map(x => typeof x === 'string' ? $(x) : x).filter(Boolean), keep = new Set(nodes);
+    const rest = [...md.children].filter(e => !keep.has(e) && !e.classList.contains('menu-label') && !e.classList.contains('menu-sep'));
+    [...md.children].forEach(e => { if (e.classList.contains('menu-label') || e.classList.contains('menu-sep')) e.remove(); });
+    nodes.concat(rest.length ? [sep()].concat(rest) : []).forEach(n => md.appendChild(n));
+  }
+})();
+</script>
+<script>
+/* ========================================================================
+   v31.9 · PERCORSO DEGLI IMPIANTI PER LOCALE E PER TRATTO
+   A) Regola per locale: nella finestra del locale si sceglie dove passano elettrico, idraulico (acqua), riscaldamento, TV e dati
+      (pavimento, controsoffitto, in traccia nel muro, a vista sul battiscopa). Le linee automatiche vengono divise ai confini dei
+      locali e ogni pezzo prende il livello del suo locale; dove il livello cambia c'è la salita o la discesa, in pianta, prospetto,
+      3D e computo. Gli scarichi restano sempre a pavimento (pendenza).
+   B) Ritocco: «Dividi la linea» nella finestra della linea, poi si sceglie dove passa ogni pezzo. Un pezzo cambiato a mano
+      non segue più la regola del locale.
+   ======================================================================== */
+(function () {
+  if (!window.SCcs || !window.SCimpv) return;
+  const GR = {ele: 'Elettrico', idro: 'Acqua (calda e fredda)', risc: 'Riscaldamento', dati: 'TV e dati'};
+  const LEV = [['', 'come lo decide il comando'], ['pav', 'a pavimento'], ['sop', 'nel controsoffitto'], ['mur', 'in traccia nel muro'], ['bat', 'a vista sul battiscopa']];
+  const grpOf = imp => imp === 'scn' ? null : SCimpv.groupOf(imp);   /* scarichi: sempre a pavimento */
+  const isAuto = b => !!b.auto && b.imp;
+  const near = (a, b) => Math.hypot(a.x - b.x, a.y - b.y) < 1e-3;
+  /* divide i tratti di una polilinea dove attraversa i bordi dei locali; restituisce pezzi {pts, rm} */
+  const ekey = (c, d) => { const a = [Math.round(c.x * 20), Math.round(c.y * 20)], b = [Math.round(d.x * 20), Math.round(d.y * 20)]; return (a[0] < b[0] || (a[0] === b[0] && a[1] <= b[1])) ? a.concat(b).join(',') : b.concat(a).join(','); };
+  function cut(pts, rooms) {
+    const P = [];
+    for (let i = 0; i + 1 < pts.length; i++) {
+      const a = pts[i], b = pts[i + 1], T = [{t: 0}, {t: 1}];
+      rooms.forEach(r => { const Q = r.polygon; for (let j = 0; j < Q.length; j++) { const c = Q[j], d = Q[(j + 1) % Q.length], den = (b.x - a.x) * (d.y - c.y) - (b.y - a.y) * (d.x - c.x); if (Math.abs(den) < 1e-12) continue;
+        const t = ((c.x - a.x) * (d.y - c.y) - (c.y - a.y) * (d.x - c.x)) / den, u = ((c.x - a.x) * (b.y - a.y) - (c.y - a.y) * (b.x - a.x)) / den;
+        if (t > 1e-4 && t < 1 - 1e-4 && u >= -1e-6 && u <= 1 + 1e-6) { const L = Math.hypot(d.x - c.x, d.y - c.y) || 1; T.push({t, ek: ekey(c, d), eu: {x: (d.x - c.x) / L, y: (d.y - c.y) / L}, e0: c, eL: L}); } } });
+      T.sort((x, y) => x.t - y.t);
+      for (let k = 0; k + 1 < T.length; k++) { if (T[k + 1].t - T[k].t < 1e-4) continue; const p = {x: a.x + (b.x - a.x) * T[k].t, y: a.y + (b.y - a.y) * T[k].t}, q = {x: a.x + (b.x - a.x) * T[k + 1].t, y: a.y + (b.y - a.y) * T[k + 1].t}, m = {x: (p.x + q.x) / 2, y: (p.y + q.y) / 2};
+        const rm = rooms.find(r => pointInPolygon(m, r.polygon)); P.push({p, q, rm: rm ? rm.id : '', end: T[k + 1].ek ? T[k + 1] : null}); }
+    }
+    const out = []; P.forEach(s => { const L = out[out.length - 1]; if (L && L.rm === s.rm && near(L.pts[L.pts.length - 1], s.p)) { L.pts.push(s.q); L.end = s.end; } else out.push({rm: s.rm, pts: [s.p, s.q], end: s.end}); });
+    out.forEach(o => { o.pts = o.pts.map(q => ({x: r6(q.x), y: r6(q.y)})); });
+    return out;
+  }
+  /* v32.0: i passaggi nello stesso muro dello stesso impianto si raggruppano in un unico punto (una traccia sola) */
+  function bundle(J) {
+    const G = {}; J.forEach(j => { (G[j.ek + '|' + j.g] = G[j.ek + '|' + j.g] || []).push(j); });
+    Object.values(G).forEach(L => {
+      L.forEach(j => { j.s = (j.P.x - j.e0.x) * j.eu.x + (j.P.y - j.e0.y) * j.eu.y; }); L.sort((a, b) => a.s - b.s);
+      const C = []; L.forEach(j => { const c = C[C.length - 1]; if (c && j.s - c[0].s < 1.5) c.push(j); else C.push([j]); });
+      C.forEach(c => { if (c.length < 2) return; const m = c[Math.floor(c.length / 2)].s, sT = Math.max(0.15, Math.min(c[0].eL - 0.15, m));
+        c.forEach(j => { const dl = sT - j.s; if (Math.abs(dl) < 0.01) return; const du = {x: j.eu.x * dl, y: j.eu.y * dl}, A = j.A.pts, B = j.B.pts, P2 = {x: r6(j.P.x + du.x), y: r6(j.P.y + du.y)};
+          if (A.length >= 2) { const Q = A[A.length - 2]; A.splice(A.length - 1, 1, {x: r6(Q.x + du.x), y: r6(Q.y + du.y)}, P2); if (A.length >= 3 && near(A[A.length - 3], A[A.length - 2])) A.splice(A.length - 2, 1); }
+          if (B.length >= 2) { const R = B[1]; B.splice(0, 1, P2, {x: r6(R.x + du.x), y: r6(R.y + du.y)}); if (B.length >= 3 && near(B[1], B[2])) B.splice(1, 1); }
+        }); });
+    });
+  }
+  function piece(b, pts, rm, first, last) {
+    const n = Object.assign({}, b, {id: first ? b.id : newId(), pts, rm, zm0: b.zm0 || b.zm || 'pav', ln: b.ln || b.id});
+    n.dz = b.dz ? [first ? b.dz[0] : null, last ? b.dz[1] : null] : undefined; if (n.dz && n.dz[0] == null && n.dz[1] == null) delete n.dz;
+    delete n.bg; if (last && b.bg) n.bg = b.bg;
+    return n;
+  }
+  const ruleOf = (rmId, g) => { const r = rmId && state.rooms.find(x => x.id === rmId); return r && r.impZ && r.impZ[g] || ''; };
+  const sigR = () => window.SCrisc && SCrisc.sig;
+  /* A: le linee automatiche nuove si dividono ai locali; tutte quelle con un locale seguono la sua regola */
+  function apply() {
+    let ch = false; const byFl = {};
+    const roomsOn = fl => byFl[fl] || (byFl[fl] = state.rooms.filter(r => r.polygon && r.polygon.length > 2 && floorOf(r) === fl));
+    const NB = [], J = [];
+    state.beams.forEach(b => {
+      if (!isAuto(b) || b.rm !== undefined || !grpOf(b.imp) || !b.pts || b.pts.length < 2 || b.pts.some(q => q.b)) { NB.push(b); return; }
+      const parts = cut(b.pts, roomsOn(floorOf(b))); if (!parts.length) { b.rm = ''; NB.push(b); return; }
+      const made = [];
+      parts.forEach((o, i) => { const n = piece(b, o.pts, o.rm, i === 0, i === parts.length - 1); if (i === 0) { Object.keys(b).forEach(k => { if (!(k in n)) delete b[k]; }); Object.assign(b, n); NB.push(b); made.push(b); } else { NB.push(n); made.push(n); } });
+      parts.forEach((o, i) => { if (i + 1 < parts.length && o.end) J.push({A: made[i], B: made[i + 1], P: o.pts[o.pts.length - 1], ek: o.end.ek, eu: o.end.eu, e0: o.end.e0, eL: o.end.eL, g: grpOf(b.imp)}); });
+      ch = true;
+    });
+    if (ch) { state.beams = NB; try { bundle(J); } catch (e) { console.warn('raggruppo passaggi', e); } }
+    state.beams.forEach(b => {
+      if (b.rm === undefined || b.zmFix || !b.imp) return; const g = grpOf(b.imp); if (!g) return;
+      let rule = ruleOf(b.rm, g); if (b.imp === 'lux' && (rule === 'pav' || rule === 'bat')) rule = '';   /* le luci si alimentano dall'alto */
+      const want = rule || b.zm0 || b.zm; if (b.zm !== want) { b.zm = want; if (want === 'mur' && !(b.z >= 0)) b.z = 0.25; ch = true; }
+      if (b.auto === 'risc' && sigR()) b.sg = SCrisc.sig(b);
+    });
+    return ch;
+  }
+  { const _cp = checkpoint; checkpoint = function () { try { if (apply()) draw2D(); } catch (e) { console.warn('regole impianti', e); } return _cp.apply(this, arguments); }; }
+  /* B: dividere una linea in un punto toccato */
+  let SPL = null;
+  function armSplit(el) { SPL = el; toast('Tocca il punto della linea dove dividerla'); }
+  addEventListener('pointerdown', e => {
+    if (!SPL || e.target !== c2d) return; e.stopImmediatePropagation(); e.preventDefault();
+    const el = SPL; SPL = null; const r = c2d.getBoundingClientRect(), w = screenToWorld(e.clientX - r.left, e.clientY - r.top);
+    let bi = -1, bt = 0, bd = 1e9; for (let i = 0; i + 1 < el.pts.length; i++) { const a = el.pts[i], b = el.pts[i + 1], L2 = (b.x - a.x) ** 2 + (b.y - a.y) ** 2 || 1e-12, t = Math.max(0, Math.min(1, ((w.x - a.x) * (b.x - a.x) + (w.y - a.y) * (b.y - a.y)) / L2)), d = Math.hypot(a.x + (b.x - a.x) * t - w.x, a.y + (b.y - a.y) * t - w.y); if (d < bd) { bd = d; bi = i; bt = t; } }
+    if (bi < 0 || bd * viewScale > 40) return toast('Troppo lontano dalla linea: riprova da «Dividi la linea»');
+    const a = el.pts[bi], b = el.pts[bi + 1], P = {x: r6(a.x + (b.x - a.x) * bt), y: r6(a.y + (b.y - a.y) * bt)};
+    const A = el.pts.slice(0, bi + 1).concat([P]), B = [P].concat(el.pts.slice(bi + 1));
+    if (A.length < 2 || B.length < 2 || (near(A[0], P)) || near(B[B.length - 1], P)) return toast('Scegli un punto più lontano dagli estremi');
+    const n = piece(el, B, el.rm, false, true); Object.assign(el, piece(el, A, el.rm, true, false)); n.rm = el.rm; if (el.rm === undefined) { delete el.rm; delete n.rm; }
+    state.beams.splice(state.beams.indexOf(el) + 1, 0, n);
+    try { checkpoint(); } catch (_) {} draw2D(); if (state.mode === '3d') build3D();
+    toast('Linea divisa: tocca un pezzo e scegli «Posizione» per decidere dove passa');
+  }, true);
+  /* finestra del locale: dove passano gli impianti */
+  const _usp = updateSelectionPanel;
+  updateSelectionPanel = function () {
+    const res = _usp.apply(this, arguments);
+    try {
+      const s = state.selected, p = document.getElementById('selectionPanel');
+      if (s && s.type === 'room' && state.sel.length <= 1 && p && p.style.display !== 'none' && !p.querySelector('#rmImpZ')) {
+        const r = state.rooms.find(x => x.id === s.id); if (r) {
+          const st = 'width:100%;padding:5px;background:#1e1e2e;border:1px solid #4a4a6e;color:#eee;border-radius:4px;font-size:12px';
+          const d = document.createElement('div'); d.id = 'rmImpZ'; d.style.cssText = 'margin-top:10px;border-top:1px solid #3a3a5e;padding-top:8px';
+          d.innerHTML = '<div style="font-size:12px;color:#7dd3fc;font-weight:700;margin-bottom:4px">Impianti: dove passano in questo locale</div>' +
+            Object.entries(GR).map(([g, n]) => `<label style="display:grid;grid-template-columns:110px 1fr;align-items:center;gap:6px;margin:3px 0">${n}<select data-g="${g}" style="${st}">${LEV.map(([k, t]) => `<option value="${k}"${((r.impZ || {})[g] || '') === k ? ' selected' : ''}>${t}</option>`).join('')}</select></label>`).join('') +
+            '<div style="font-size:10.5px;color:#8b93ad;line-height:1.35;margin-top:3px">Vale per le linee fatte dai comandi automatici: dove si passa da un locale all\'altro il tubo sale o scende da solo. Gli scarichi restano a pavimento e le linee delle luci arrivano sempre dall\'alto. Un pezzo cambiato a mano resta com\'è.</div>';
+          d.addEventListener('change', e => { const g = e.target.dataset.g; if (!g) return; r.impZ = Object.assign({}, r.impZ || {}); if (e.target.value) r.impZ[g] = e.target.value; else delete r.impZ[g]; if (!Object.keys(r.impZ).length) delete r.impZ; try { checkpoint(); } catch (_) {} draw2D(); if (state.mode === '3d') build3D(); });
+          p.appendChild(d);
+        }
+      }
+    } catch (e) { console.warn('pannello locale impianti', e); }
+    return res;
+  };
+  /* v32.0: tracce nei muri, con i tratti comuni a più linee contati una volta (elettrico, acqua, TV e dati; il riscaldamento ha la sua voce) */
+  const TN = {ele: 'impianto elettrico', idro: 'impianto idrico (acqua calda e fredda)', dati: 'impianto TV e dati'};
+  function items() {
+    const V = {}, H = {}, tot = {};
+    let S = []; try { S = SCwl.impSegs(); } catch (_) { return []; }
+    S.forEach(q => {
+      const g = q.imp === 'scn' ? null : SCimpv.groupOf(q.imp); if (!g || !TN[g]) return;
+      const vert = Math.hypot(q.q.x - q.p.x, q.q.y - q.p.y) < 1e-3, inWall = q.wall || vert || (q.el && q.el.zm === 'mur');
+      if (!inWall) return;
+      if (vert) { const k = g + '|' + Math.round(q.p.x * 20) + ',' + Math.round(q.p.y * 20); (V[k] = V[k] || []).push([Math.min(q.p.z, q.q.z), Math.max(q.p.z, q.q.z)]); }
+      else { const a = [q.p.x, q.p.y, q.p.z].map(v => Math.round(v * 20)), b = [q.q.x, q.q.y, q.q.z].map(v => Math.round(v * 20)), k = g + '|' + (a.join() < b.join() ? a.join() + '|' + b.join() : b.join() + '|' + a.join()); if (!H[k]) { H[k] = 1; tot[g] = (tot[g] || 0) + q.L; } }
+    });
+    Object.entries(V).forEach(([k, I]) => { const g = k.split('|')[0]; I.sort((x, y) => x[0] - y[0]); let s0 = I[0][0], e0 = I[0][1], L = 0; I.slice(1).forEach(([a, b]) => { if (a <= e0 + 0.01) e0 = Math.max(e0, b); else { L += e0 - s0; s0 = a; e0 = b; } }); L += e0 - s0; tot[g] = (tot[g] || 0) + L; });
+    return Object.entries(tot).filter(([, q]) => q > 0.05).map(([g, q]) => ({cat: 'Impianti', key: 'traccia_' + g, desc: 'Apertura di traccia su muratura per ' + TN[g] + ', compresi chiusura con malta e ripristino dell\'intonaco (tratti in comune a più linee contati una volta)', um: 'ml', q}));
+  }
+  window.SCimpr = {apply, cut, armSplit, items};
 })();
 </script>
 </body>

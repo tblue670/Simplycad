@@ -566,6 +566,45 @@ NOVITÀ v29.0
   in cui li hai lasciati e, se coprirebbero il punto appena toccato, si aprono dall'altra parte dello schermo.
   Doppio tocco sulla maniglia: posizione iniziale.
 
+NOVITÀ v32.0
+- Impianti: le linee dello stesso impianto che attraversano lo stesso muro passano per un unico punto (una traccia sola, una salita sola) invece di tante affiancate.
+- Computo: tracce nei muri di elettrico, acqua, TV e dati, con i tratti comuni a più linee contati una volta.
+
+NOVITÀ v31.9
+- Percorso degli impianti per locale: nella finestra del locale scegli dove passano elettrico, acqua, riscaldamento, TV e dati (pavimento, controsoffitto, muro, battiscopa). Le linee automatiche si dividono ai confini dei locali e salgono o scendono da sole dove cambia il livello: in pianta, prospetto, 3D e computo. Scarichi sempre a pavimento, linee delle luci sempre dall'alto.
+- Nella finestra di una linea: «Dividi la linea in un punto», poi scegli dove passa ogni pezzo; un pezzo cambiato a mano resta com'è.
+
+NOVITÀ v31.8
+- Impianti: si mostrano e si nascondono solo da Vista › Impianti: «tubi e cavi» e una casella per impianto (elettrico, idraulico, riscaldamento, condizionamento, TV e dati), valida in pianta, 3D e prospetto.
+- Ogni impianto sta da solo sul suo livello; le caselle di Vista accendono e spengono quei livelli.
+- Menu Impianti diviso per mestiere: Inserisci, Elettrico, Idraulico, Riscaldamento, Linee a mano.
+- Un comando che crea un impianto accende solo quello.
+
+NOVITÀ v31.7
+- Etichette: toccando il nome di una stanza, il riquadro di un'area, il nome di un muro o un testo la finestra di modifica si apre da sola, sia in Solo vista sia con Seleziona.
+
+NOVITÀ v31.6
+- Solo vista: toccando Seleziona quando è già acceso lo strumento si spegne. Con un dito si sposta il disegno, con due si fa lo zoom, nulla si modifica. Toccando il nome di una stanza, il riquadro di un'area, il nome di un muro o un testo si apre la sua finestra. Il programma si apre in Solo vista.
+- Pianta: con gli impianti visibili, caldaia, collettori, quadro e punti si vedono sopra gli arredi (anche dentro un pensile).
+
+NOVITÀ v31.5
+- Riscaldamento: la caldaia, il modulo d'utenza o il collettore messi a mano hanno la precedenza; quello messo in automatico da un comando precedente viene tolto.
+
+NOVITÀ v31.4
+- Impianti › Inserisci punti…: nel gruppo «Riscaldamento e clima» anche il collettore del riscaldamento e il modulo d'utenza, da mettere a mano.
+- Messaggi del riscaldamento con il nome giusto del menu.
+
+NOVITÀ v31.3
+- Icona nuova dell'app (la pianta): nella barra in alto, nella scheda del browser e come icona dell'app installata. Chi ha già installato l'app vede l'icona nuova dopo l'aggiornamento (su alcuni tablet serve reinstallarla).
+
+NOVITÀ v31.2
+- Nomi delle stanze sopra le aree e con contorno scuro: si leggono anche sulle piastrelle chiare.
+- Aree: toccando di nuovo dentro la stanza già scelta si seleziona l'area; il tocco dopo torna alla stanza.
+- Skin da foto senza la foto su questo dispositivo: pavimento tratteggiato in rosso e avviso «Foto della skin mancante», invece di un azzurro che sembrava un colore scelto.
+
+NOVITÀ v31.1
+- Prospetto col dito: un solo cursore. Disegnando finestre, porte, fori o spostando oggetti nel prospetto compariva anche il cursore della pianta, che spostava il punto una seconda volta e lo bloccava sul bordo.
+
 NOVITÀ v31.0
 - Pannelli radianti a pavimento (Impianti › Riscaldamento: termosifoni o pavimento…): tubi a chiocciola per ogni locale scelto, passo 10/15/20 cm, circuiti divisi oltre la lunghezza massima, collettore in posizione centrale.
 - Sistema classico (circa 8–10 cm di spessore) o a basso spessore (2–3 cm), con avviso sull'altezza.
