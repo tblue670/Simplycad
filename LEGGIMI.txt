@@ -566,6 +566,77 @@ NOVITÀ v29.0
   in cui li hai lasciati e, se coprirebbero il punto appena toccato, si aprono dall'altra parte dello schermo.
   Doppio tocco sulla maniglia: posizione iniziale.
 
+NOVITÀ v34.1
+- ? › «🔎 Cerca comando o aiuto» (anche Ctrl+K): scrivi una parola, tocchi un comando e parte; le voci «Aiuto» mostrano la spiegazione del manuale.
+- ? › «📖 Manuale (PDF)»: apre manuale.pdf, anche alla pagina giusta dalla ricerca.
+- Piccoli «?» in computo, prospetto, menu del rilievo e composizione.
+- Menu File e Progetto senza voci ripetute.
+
+NOVITÀ v34.0
+- Casa su più piani con una sola caldaia: il riscaldamento automatico del piano senza caldaia parte da un collettore di piano sulla colonna montante, invece di aggiungere una seconda caldaia.
+
+NOVITÀ v33.9
+- Blocchi di arredi: scegli più arredi (rettangolo o selezione multipla) e tocca «🧱 Crea blocco con questi arredi», dai un nome (es. Cucina). Un tocco prende tutto il blocco: si sposta, ruota, copia ed elimina insieme. Doppio tocco su un pezzo: si lavora solo su quello (spostarlo, misure, colore), il blocco resta. «💥 Esplodi blocco» separa i pezzi. Funziona anche con una cucina già separata.
+
+NOVITÀ v33.8
+- Arredi sovrapposti (pensile sopra la base): trascinando dentro l'arredo già selezionato si sposta quello, non quello sotto.
+- Proprietà dell'arredo: posizione X · Y in metri (Y cresce verso l'alto dello schermo).
+
+NOVITÀ v33.7
+- 3D di notte: le lampade accese non cambiano più a ogni minimo movimento della vista. Da fuori la scelta è fissa; nel Tour cambia solo dopo 1,5 m. Niente più salti di luce.
+
+NOVITÀ v33.6
+- Menu Disegna › Arredi: tolti i doppioni «Composizione su misura» e «Importa modello 3D»; restano nella finestra che si apre con «Arredo».
+
+NOVITÀ v33.5
+- Le finestre spostabili (proprietà, computo, aree, verifiche, piani…) restano nell'area di disegno: non finiscono più sotto la barra in alto, i menu o la riga dei messaggi. Se sono più alte dell'area, scorrono dentro. Le finestre grandi (stampa, verifiche) usano tutto lo schermo.
+- Tablet in verticale: la barra in alto sta su una riga con ⚙️ e ? (il nome SimplyCAD resta solo come icona).
+
+NOVITÀ v33.4
+- Impostazioni ⚙️ e Aiuto ? nella barra in alto, a destra: la riga dei menu sta su una sola linea anche sul tablet. Su schermi più stretti si riducono gli spazi tra i menu e «Schermo intero» resta solo icona.
+
+NOVITÀ v33.3
+- Computo con il Prezzario Regione Liguria 2026 (prezzi comprensivi di spese generali 15% e utile d'impresa 10%): ogni lavorazione del CAD ha il prezzo proposto e il codice dell'articolo nel dettaglio della voce.
+- Su ogni riga due pulsanti: «A misura / A corpo» e «Con mat. / Solo m.o.». La scelta vale solo per quella riga e resta salvata nel progetto. Passando a corpo il prezzo parte dall'importo a misura e si corregge a mano.
+- Solo mano d'opera: per le voci complete è il prezzo del prezzario per l'incidenza della manodopera indicata dal prezzario; per le voci di sola posa è il prezzo di posa. Nella descrizione compare «solo mano d'opera (materiali forniti dal committente)».
+- Voci di sola posa senza materiale nel prezzario (pavimento, battiscopa, finestre, davanzali, radiatori, caldaia, scaldabagno): casella del prezzo bordata in arancio, scrivi il prezzo completo; viene ricordato per i progetti successivi.
+- Le voci prima solo a corpo (lavorazioni sui muri, cartongesso, controsoffitti, aree) ora sono a misura con quantità e unità; i prezzi a corpo già scritti nei progetti vecchi restano a corpo.
+- «Prezzario ± %» sopra il computo: sconto o ricarico sui prezzi proposti dal prezzario (non su quelli scritti a mano).
+- «🔎 Prezzario»: cerca tra le 4.089 voci del prezzario e aggiunge quella scelta al computo (file prezzario.json, funziona nella versione GitHub).
+- Impianto elettrico: prezzi a punto con quadro compreso; interruttori e quadro non si pagano a parte. In Opzioni si sceglie il listino (manutenzione straordinaria A10 o nuove costruzioni A05).
+- Radiatori contati a corpo scaldante, come il prezzario.
+
+NOVITÀ v33.2
+- Rilievo: caricando un progetto si vede subito. I muri e le stanze del progetto che non vengono dal rilievo compaiono in grigio sotto lo schizzo, in sola lettura, come riferimento per controllare o completare il rilievo in cantiere. ⌖ inquadra tutto.
+- Il telefono non apre più da solo la Pianta dopo il caricamento: la Pianta resta nel menu ⋮ del Rilievo.
+- Telefono: nel 3D il dito gira solo la vista; nessuna selezione né spostamento (salvo ⚙️ › Apri comunque il CAD completo).
+
+NOVITÀ v33.1
+- Telefono: il Rilievo è la schermata principale. Dal menu ⋮ del Rilievo: Pianta, 3D, Computo, Nuovo progetto, Salva, Condividi, Carica.
+- Pianta e 3D a schermo pieno: in alto solo «← Rilievo», il passaggio Pianta/3D e la scelta del piano (se ce n'è più d'uno). Il dito sposta e ingrandisce; in Pianta un tocco su una stanza mostra nome e superficie, senza modificare nulla.
+- Caricando un progetto dal Rilievo del telefono si apre subito la Pianta.
+- Barra dei comandi del Rilievo a scomparsa: ◀ la chiude (restano Muro e il comando in uso), ▶ la riapre. Vale su telefono e tablet e viene ricordata.
+- Tablet: all'avvio si apre il CAD; il Rilievo parte dal suo pulsante in alto.
+- PC senza schermo touch: il pulsante Rilievo non è più nella barra in alto; si apre da Disegna › Rilievo guidato.
+
+NOVITÀ v33.0
+- Prospetto come il CAD per le pareti: si apre a tutto schermo. La pianta sta in una finestrina che si sposta trascinando la barra, si ingrandisce (⤢), si riduce a icona (—) e si affianca (◫): in orizzontale la pianta va a sinistra, in verticale sopra. Il pulsante ⧉ nel prospetto la rimette in finestrina. L'ultima scelta viene ricordata.
+- Toccando un muro nella finestrina si apre il suo prospetto, dal lato toccato. Nella finestrina non si modifica nulla.
+- Comandi su una riga: Seleziona, Misura, Disegna ▾ (porta, finestra, foro, nicchia, taglio, controparete, forma), Finiture ▾ (rivestimento, pittura, LED), Impianti ▾ (luci e punti, linea, collega), Arredo, Muro ▾ (muro portante e prezzo a corpo, abbassa muro), Adatta.
+- Seleziona toccato di nuovo passa alla Solo vista, come in pianta: il dito sposta e ingrandisce, un tocco mostra le proprietà dell'elemento.
+- Telefono (lato corto sotto i 600 punti): restano Rilievo, 3D, pianta in Solo vista, computo e file. Disegno e modifica si fanno su tablet e PC; in caso di necessità ⚙️ › Apri comunque il CAD completo.
+- In verticale pianta sopra e prospetto sotto tornano a dividersi lo schermo (dalla v32.3 il prospetto finiva fuori schermo).
+
+NOVITÀ v32.3
+- Messaggi: non compaiono più sopra menu e disegno. L'ultimo sta in una riga sua nella barra in basso (arancione appena arriva, poi grigio); toccandola si apre la cronologia degli ultimi 100 messaggi con l'ora. Nel Rilievo il messaggio compare per pochi secondi in basso al centro.
+
+NOVITÀ v32.2
+- Riscaldamento: i tubi si attaccano alla quota vera di caldaia, modulo, collettore e termosifoni, anche dopo averli alzati o abbassati (per esempio dal prospetto).
+
+NOVITÀ v32.1
+- Caldaia, collettori, scaldabagno, quadro dentro un mobile: in pianta tratteggiati del colore scelto (arancio se non scelto); fuori da un mobile pieni del colore scelto.
+- Dove ci sono più oggetti uno sopra l'altro il primo tocco prende l'impianto (se gli impianti sono visibili), poi ciò che sta più in alto.
+
 NOVITÀ v32.0
 - Impianti: le linee dello stesso impianto che attraversano lo stesso muro passano per un unico punto (una traccia sola, una salita sola) invece di tante affiancate.
 - Computo: tracce nei muri di elettrico, acqua, TV e dati, con i tratti comuni a più linee contati una volta.
