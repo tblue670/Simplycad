@@ -566,6 +566,18 @@ NOVITÀ v29.0
   in cui li hai lasciati e, se coprirebbero il punto appena toccato, si aprono dall'altra parte dello schermo.
   Doppio tocco sulla maniglia: posizione iniziale.
 
+NOVITÀ v34.7
+- Tastierino del muro: se il muro ha una stanza da tutti e due i lati, misura quella senza tramezze in mezzo. In alto c'è il nome della stanza misurata e il tasto «⇅ altro lato» per misurare l'altra.
+
+NOVITÀ v34.6
+- Tastierino 123 del muro: disegnino della stanza con tre riquadri INTERNO (dentro la stanza), ASSE (nel muro), ESTERNO (fuori). Tocchi quello che conosci e scrivi la misura; gli altri due si calcolano da soli. La spiegazione compare nella riga dei messaggi in basso.
+- Pannello del muro più semplice: tolta la parte «misura netta / sposta muro». Resta «✥ Sposta muro…» con «Muri collegati seguono».
+- Disegna: al posto delle scelte ripetute, una riga che ricorda il tipo di misura in uso.
+
+NOVITÀ v34.5
+- Tavole: nuovo pulsante «⬇ Scarica PDF» accanto a Stampa. Crea il PDF direttamente (circa 250 dpi), anche offline e dentro claude.ai, dove la finestra di stampa del browser è bloccata.
+- Nell'artefatto le altre stampe avvisano invece di non fare nulla; la distinta della composizione si scarica come pagina da stampare.
+
 NOVITÀ v34.4
 - Tastierino 123 del muro: schema del muro con tre righe INTERNO · ASSE · ESTERNO. Tocchi la misura che conosci e la scrivi: il muro prende quella misura. Di partenza vale INTERNO; chiudendo una stanza lo spessore va da solo verso l'esterno.
 - Con un muro selezionato lo schema mostra le sue tre misure: scrivendo l'interna (es. 4,30) il muro di testata si sposta parallelo, gli angoli restano chiusi.
