@@ -566,6 +566,19 @@ NOVITÀ v29.0
   in cui li hai lasciati e, se coprirebbero il punto appena toccato, si aprono dall'altra parte dello schermo.
   Doppio tocco sulla maniglia: posizione iniziale.
 
+NOVITÀ v34.4
+- Tastierino 123 del muro: schema del muro con tre righe INTERNO · ASSE · ESTERNO. Tocchi la misura che conosci e la scrivi: il muro prende quella misura. Di partenza vale INTERNO; chiudendo una stanza lo spessore va da solo verso l'esterno.
+- Con un muro selezionato lo schema mostra le sue tre misure: scrivendo l'interna (es. 4,30) il muro di testata si sposta parallelo, gli angoli restano chiusi.
+- Pannello del muro: misura netta di ogni lato scrivibile, con i pulsanti per scegliere quale muro spostare. Lo stesso dalla quota netta.
+- Partendo da un muro esistente la misura parte dal suo filo e l'angolo si chiude (prima il muro restava staccato).
+- Sposta muro: seguono anche le tramezze attaccate a T.
+
+NOVITÀ v34.3
+- Disegna › «Linea di riferimento» del muro: Asse, Filo destro, Filo sinistro. Si misura e si tocca sul filo scelto (in senso orario il filo destro è l'interno della stanza).
+- Pannello del muro: lunghezza netta di ogni lato, con il nome della stanza, e lunghezza dell'asse.
+- Quote dei muri: nel pannello della quota si sceglie Luce netta, Esterna o Asse. Nel dubbio la quota nasce come luce netta.
+- Manuale corretto (riferimento dei muri, quote dei muri).
+
 NOVITÀ v34.2
 - Sposta muro: selezioni il muro e lo trascini col dito o col mouse; i muri collegati seguono e la stanza resta chiusa. Accanto al dito vedi distanza e angolo.
 - Per la precisione: pannello del muro › «✥ Sposta muro…» (anche in Modifica): distanza in cm e direzione con 8 frecce, perpendicolare al muro o angolo libero.
