@@ -11,7 +11,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20512%20512%22%3E%3Crect%20width%3D%22512%22%20height%3D%22512%22%20rx%3D%22112%22%20fill%3D%22%231e2a44%22/%3E%3Cg%20stroke%3D%22%23e2f3ff%22%20stroke-width%3D%2226%22%20stroke-linecap%3D%22square%22%20fill%3D%22none%22%3E%3Cpath%20d%3D%22M120%20120H392V392H120Z%22/%3E%3Cpath%20d%3D%22M256%20120V230M256%20300V392M120%20270H200%22/%3E%3C/g%3E%3Cpath%20d%3D%22M256%20300a70%2070%200%200%201%2070-70%22%20stroke%3D%22%237dd3fc%22%20stroke-width%3D%2212%22%20fill%3D%22none%22%20stroke-dasharray%3D%2216%2010%22/%3E%3Cpath%20d%3D%22M256%20230h70%22%20stroke%3D%22%237dd3fc%22%20stroke-width%3D%2212%22/%3E%3Crect%20x%3D%22290%22%20y%3D%22340%22%20width%3D%2270%22%20height%3D%2226%22%20fill%3D%22%237dd3fc%22/%3E%3C/svg%3E">
-<title>SimplyCAD Pro · v34.1</title>
+<title>SimplyCAD Pro · v34.2</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -6656,7 +6656,7 @@ c2d.addEventListener('pointerdown', e => {
         drag = {...base, type: 'vertex', links, touch: e.pointerType !== 'mouse', from: {x: sw[0][k === 'p1' ? 'p2' : 'p1'].x, y: sw[0][k === 'p1' ? 'p2' : 'p1'].y}}; snapSkip = links; break;
       }
       if (!drag && sw.some(x => distancePointToSegment(w, x.p1, x.p2) < getWallThickness(x) / 2 + 0.1))
-        drag = {...base, type: 'move', start: w, orig: sw.map(x => [x, {...x.p1}, {...x.p2}])};
+        drag = {...base, type: 'move', start: w, orig: sw.map(x => [x, {...x.p1}, {...x.p2}]), links: window.SCwmv ? SCwmv.links(sw.filter(x => !isEntityLocked(x))) : []};   /* v34.2: i collegati seguono */
     }
   }
   if (!drag && !boxSel && state.tool === 'select' && e.pointerType === 'mouse' && window.SCinput && SCinput.profile() === 'pc') boxSel = {...base, a: w, b: w};   /* PC: trascinare nel vuoto = rettangolo di selezione */
@@ -6728,6 +6728,7 @@ function dragMove(e, raw) {
     let dx = raw.x - drag.start.x, dy = raw.y - drag.start.y;
     if ($('snapGrid').checked) { const gs = parseFloat($('gridSize').value)||0.25; dx = Math.round(dx / gs) * gs; dy = Math.round(dy / gs) * gs; }
     drag.orig.forEach(([w, a, b]) => { if (isEntityLocked(w)) return; w.p1 = {x: r6(a.x + dx), y: r6(a.y + dy)}; w.p2 = {x: r6(b.x + dx), y: r6(b.y + dy)}; });
+    if (drag.links && window.SCwmv) { SCwmv.applyLinks(drag.links, dx, dy); SCwmv.showTip(e.clientX, e.clientY, dx, dy); }
     detectRooms();
   }
   draw2D();
@@ -22187,8 +22188,9 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
    SC_REL.v è l'unica versione: titolo, Guida, file salvato, avvisi e riga messaggi la leggono da qui.
    ======================================================================== */
 window.SC_REL = {
-  v: '34.1', d: '10/11/2026',
+  v: '34.2', d: '19/11/2026',
   news: [
+    ['34.2', 'Sposta muro libero: trascinando un muro selezionato i muri collegati lo seguono e la stanza resta chiusa; accanto al dito compaiono distanza e angolo. Nel pannello del muro «✥ Sposta muro…»: distanza in cm e direzione con 8 frecce, perpendicolare ai due lati o angolo libero. «Muri collegati seguono» si può spegnere.'],
     ['34.1', 'Aiuto: «🔎 Cerca comando o aiuto» (anche Ctrl+K) trova i comandi dei menu, che si lanciano con un tocco, e le spiegazioni del manuale; «📖 Manuale (PDF)» apre il manuale della versione GitHub alla pagina giusta. Piccoli «?» in computo, prospetto, menu del rilievo e composizione. Menu senza voci ripetute (Progetto, File).'],
     ['34.0', 'Casa su più piani con una sola caldaia: il riscaldamento automatico dei piani senza caldaia parte da un collettore di piano sulla colonna montante, invece di aggiungere una seconda caldaia.'],
     ['33.9', 'Blocchi di arredi: scegli più arredi e tocca «🧱 Crea blocco». Un tocco prende tutto il blocco (si sposta, ruota e copia insieme), il doppio tocco un pezzo solo; «Esplodi blocco» li separa. Funziona anche con una cucina già separata.'],
@@ -29598,6 +29600,92 @@ window.SC_REL = {
   if (document.readyState === 'complete') setTimeout(go, 300); else addEventListener('load', () => setTimeout(go, 300));
   setTimeout(() => { try { dedupe(); } catch (_) {} }, 2500);   /* il menu Verifiche si completa dopo */
   window.SChelp = {open, close, pdf, dedupe};
+})();
+</script>
+<script>
+/* ==================================================================== v34.2 · SPOSTA MURO LIBERO
+   - dito/mouse: trascinando un muro selezionato, gli estremi dei muri collegati lo seguono (la stanza resta chiusa);
+     accanto al dito la misura «18 cm · 90°».
+   - tastierino: nel pannello del muro «✥ Sposta muro…»: distanza (cm) + direzione (8 frecce, ⊥ ai due lati del muro, o angolo libero).
+   - «Muri collegati seguono» si può spegnere (resta sul dispositivo).
+   ==================================================================== */
+(function () {
+  const KEY = 'simplycad_wfollow';
+  const follow = () => { try { return localStorage.getItem(KEY) !== '0'; } catch (_) { return true; } };
+  const setFollow = v => { try { localStorage.setItem(KEY, v ? '1' : '0'); } catch (_) {} };
+  const near = (a, b) => Math.hypot(a.x - b.x, a.y - b.y) < 1e-3;
+  /* estremi dei muri NON selezionati attaccati agli estremi dei muri selezionati */
+  function links(ws) {
+    if (!follow()) return [];
+    const S = new Set(ws), L = [];
+    ws.forEach(w => ['p1', 'p2'].forEach(k => state.walls.forEach(x => {
+      if (S.has(x) || isEntityLocked(x)) return;
+      ['p1', 'p2'].forEach(q => { if (near(x[q], w[k]) && !L.some(l => l.w === x && l.k === q)) L.push({w: x, k: q, o: {...x[q]}}); });
+    })));
+    return L;
+  }
+  function applyLinks(L, dx, dy) { L.forEach(l => { l.w[l.k] = {x: r6(l.o.x + dx), y: r6(l.o.y + dy)}; }); }
+  /* etichetta accanto al dito */
+  let tip = null;
+  function showTip(cx, cy, dx, dy) {
+    if (!tip) { tip = document.createElement('div'); tip.id = 'wmvTip'; tip.style.cssText = 'position:fixed;z-index:9000;pointer-events:none;background:#0c4a6e;color:#e0f2fe;border:1px solid #38bdf8;border-radius:8px;padding:4px 8px;font:600 14px system-ui'; document.body.appendChild(tip); }
+    const d = Math.hypot(dx, dy), a = ((Math.atan2(dy, dx) * 180 / Math.PI) + 360) % 360;
+    tip.textContent = Math.round(d * 100) + ' cm · ' + Math.round(a) + '°'; tip.style.left = (cx + 24) + 'px'; tip.style.top = (cy - 44) + 'px'; tip.style.display = d > 0.004 ? 'block' : 'none';
+  }
+  function hideTip() { if (tip) tip.style.display = 'none'; }
+  addEventListener('pointerup', hideTip, true); addEventListener('pointercancel', hideTip, true);
+  /* spostamento da tastierino */
+  function moveBy(dx, dy) {
+    const ws = selWalls().filter(w => !isEntityLocked(w)); if (!ws.length) return toast('Seleziona un muro');
+    const o = dragSnapshot(), L = links(ws);
+    applyDragDelta(o, dx, dy); applyLinks(L, dx, dy);
+    detectRooms(); refresh(); checkpoint();
+    toast('Muro spostato di ' + Math.round(Math.hypot(dx, dy) * 100) + ' cm' + (L.length ? ' · ' + L.length + ' muri collegati adattati' : ''));
+  }
+  function dialog() {
+    const ws = selWalls(); if (!ws.length) return toast('Seleziona un muro');
+    const w = ws[0], wa = Math.atan2(w.p2.y - w.p1.y, w.p2.x - w.p1.x) * 180 / Math.PI;
+    const n1 = Math.round((wa + 90 + 360) % 360), n2 = Math.round((wa + 270) % 360);
+    const bg = document.createElement('div'); bg.className = 'uidlg-bg'; bg.style.zIndex = 9800;
+    const B = 'min-height:52px;font-size:22px;border-radius:10px;border:1px solid #475175;background:#1b1e2e;color:#e5e7eb;cursor:pointer';
+    const ar = [['↖', 135], ['↑', 90], ['↗', 45], ['←', 180], null, ['→', 0], ['↙', 225], ['↓', 270], ['↘', 315]];
+    bg.innerHTML = '<div class="uidlg" style="max-width:380px;width:94vw;display:flex;flex-direction:column;gap:10px">'
+      + '<b>✥ Sposta muro' + (ws.length > 1 ? ' (' + ws.length + ' muri)' : '') + '</b>'
+      + '<label style="display:flex;gap:8px;align-items:center">Distanza <input id="wmD" type="number" inputmode="decimal" value="20" step="1" style="flex:1;min-height:46px;font-size:18px"> cm</label>'
+      + '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">' + ar.map(x => x ? '<button style="' + B + '" data-a="' + x[1] + '">' + x[0] + '</button>' : '<div style="text-align:center;align-self:center;font-size:12px;color:#94a3b8">direzione</div>').join('') + '</div>'
+      + '<div style="display:flex;gap:6px"><button style="' + B + ';flex:1;font-size:15px" data-a="' + n1 + '">⊥ lato A (' + n1 + '°)</button><button style="' + B + ';flex:1;font-size:15px" data-a="' + n2 + '">⊥ lato B (' + n2 + '°)</button></div>'
+      + '<label style="display:flex;gap:8px;align-items:center">Angolo <input id="wmA" type="number" inputmode="decimal" value="' + n1 + '" step="1" style="flex:1;min-height:46px;font-size:18px"> °</label>'
+      + '<div style="font-size:12px;color:#94a3b8">0° = destra · 90° = su · 180° = sinistra · 270° = giù. ⊥ = perpendicolare al muro.</div>'
+      + '<label style="display:flex;gap:8px;align-items:center"><input id="wmF" type="checkbox"' + (follow() ? ' checked' : '') + ' style="width:22px;height:22px"> Muri collegati seguono (la stanza resta chiusa)</label>'
+      + '<div style="display:flex;gap:8px"><button class="wt-btn" data-x="1" style="flex:1;min-height:46px">Chiudi</button><button class="wt-btn" data-ok="1" style="flex:1;min-height:46px;background:#0369a1;color:#fff">Sposta</button></div></div>';
+    document.body.appendChild(bg);
+    const go = a => {
+      const d = parseFloat(String(bg.querySelector('#wmD').value).replace(',', '.')) / 100; if (!(d > 0)) return toast('Scrivi la distanza');
+      const r = (+a) * Math.PI / 180; setFollow(bg.querySelector('#wmF').checked); moveBy(r6(d * Math.cos(r)), r6(d * Math.sin(r)));
+    };
+    bg.onclick = e => {
+      if (e.target === bg || e.target.closest('[data-x]')) return bg.remove();
+      const b = e.target.closest('[data-a]'); if (b) { bg.querySelector('#wmA').value = b.dataset.a; return go(b.dataset.a); }   /* freccia = sposta subito (ripetibile) */
+      if (e.target.closest('[data-ok]')) go(bg.querySelector('#wmA').value);
+    };
+  }
+  /* pulsante nel pannello del muro */
+  const _usp = window.updateSelectionPanel;
+  window.updateSelectionPanel = updateSelectionPanel = function () {
+    const r = _usp.apply(this, arguments);
+    try {
+      const info = document.getElementById('selectionInfo');
+      if (info && state.sel.length && state.sel.every(s => s.type === 'wall') && !document.getElementById('wmBtn')) {
+        const b = document.createElement('button'); b.id = 'wmBtn'; b.className = 'action'; b.textContent = '✥ Sposta muro… (distanza e direzione)';
+        b.style.cssText = 'margin:6px 0;min-height:42px'; b.onclick = dialog; info.insertBefore(b, info.firstChild ? info.firstChild.nextSibling : null);
+      }
+    } catch (_) {}
+    return r;
+  };
+  /* voce anche in Modifica › Trasforma selezione (e quindi nella ricerca comandi) */
+  try { const pad = document.getElementById('moveDx') && document.getElementById('moveDx').closest('.menu-pad');
+    if (pad) { const r = document.createElement('button'); r.className = 'menu-row'; r.id = 'wmRow'; r.innerHTML = '<span class="mi-icon">✥</span><span class="mi-label">Sposta muro… (distanza e direzione)</span>'; r.onclick = () => { document.querySelectorAll('.menu-item.open').forEach(x => x.classList.remove('open')); dialog(); }; pad.parentElement.insertBefore(r, pad); } } catch (_) {}
+  window.SCwmv = {links, applyLinks, showTip, moveBy, dialog, follow, setFollow};
 })();
 </script>
 </body>

@@ -566,6 +566,11 @@ NOVITÀ v29.0
   in cui li hai lasciati e, se coprirebbero il punto appena toccato, si aprono dall'altra parte dello schermo.
   Doppio tocco sulla maniglia: posizione iniziale.
 
+NOVITÀ v34.2
+- Sposta muro: selezioni il muro e lo trascini col dito o col mouse; i muri collegati seguono e la stanza resta chiusa. Accanto al dito vedi distanza e angolo.
+- Per la precisione: pannello del muro › «✥ Sposta muro…» (anche in Modifica): distanza in cm e direzione con 8 frecce, perpendicolare al muro o angolo libero.
+- «Muri collegati seguono» si può spegnere per staccare il muro.
+
 NOVITÀ v34.1
 - ? › «🔎 Cerca comando o aiuto» (anche Ctrl+K): scrivi una parola, tocchi un comando e parte; le voci «Aiuto» mostrano la spiegazione del manuale.
 - ? › «📖 Manuale (PDF)»: apre manuale.pdf, anche alla pagina giusta dalla ricerca.
