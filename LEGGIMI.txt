@@ -566,6 +566,13 @@ NOVITÀ v29.0
   in cui li hai lasciati e, se coprirebbero il punto appena toccato, si aprono dall'altra parte dello schermo.
   Doppio tocco sulla maniglia: posizione iniziale.
 
+NOVITÀ v34.9
+- Porte e finestre sui muri dell'area rialzata partono dal pavimento rialzato; il davanzale si misura da lì (come in cantiere).
+  Vale in 3D, nel prospetto del muro, nelle sezioni e nei prospetti dell'edificio.
+- Scheda della porta o finestra: casella «Parte dal pavimento rialzato (+0,51 m)», già spuntata; toglila per i casi dubbi
+  (porta tra il mezzanino e una stanza bassa).
+- Prese, interruttori e luci a parete dentro l'area rialzata salgono anche loro nel 3D.
+
 NOVITÀ v34.8
 - Aree: nuovo campo «Dislivello pavimento (m)» per una zona rialzata sullo stesso piano (es. mezzanino a +0,51 con 3 gradini).
   In pianta bordo tratteggiato marrone e scritta «▲ +0,51 m»; in 3D il pavimento sale con il riempimento sotto e gli arredi ci stanno sopra.
