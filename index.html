@@ -11,7 +11,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20512%20512%22%3E%3Crect%20width%3D%22512%22%20height%3D%22512%22%20rx%3D%22112%22%20fill%3D%22%231e2a44%22/%3E%3Cg%20stroke%3D%22%23e2f3ff%22%20stroke-width%3D%2226%22%20stroke-linecap%3D%22square%22%20fill%3D%22none%22%3E%3Cpath%20d%3D%22M120%20120H392V392H120Z%22/%3E%3Cpath%20d%3D%22M256%20120V230M256%20300V392M120%20270H200%22/%3E%3C/g%3E%3Cpath%20d%3D%22M256%20300a70%2070%200%200%201%2070-70%22%20stroke%3D%22%237dd3fc%22%20stroke-width%3D%2212%22%20fill%3D%22none%22%20stroke-dasharray%3D%2216%2010%22/%3E%3Cpath%20d%3D%22M256%20230h70%22%20stroke%3D%22%237dd3fc%22%20stroke-width%3D%2212%22/%3E%3Crect%20x%3D%22290%22%20y%3D%22340%22%20width%3D%2270%22%20height%3D%2226%22%20fill%3D%22%237dd3fc%22/%3E%3C/svg%3E">
-<title>SimplyCAD Pro · v34.7</title>
+<title>SimplyCAD Pro · v34.8</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -1940,7 +1940,7 @@ function floorOf(e) {
 function floorElevOf(e) { const f = state.floors.find(x => x.id === floorOf(e)); return f ? f.elev : 0; }
 function floorAtHeight(y) { const s = sortedFloors(); let r = s[0]; for (const f of s) if (f.elev <= y + 0.05) r = f; return r; }
 function withAllFloors(fn) { const o = FLOORFILTER.over; FLOORFILTER.over = null; try { return fn(); } finally { FLOORFILTER.over = o; } }
-function stairRiser(s, n) { if (s && s.H > 0 && n > 0) return s.H / n; const f = state.floors.find(x => x.id === floorOf(s)), up = f && nextFloor(f); return up && n > 0 ? (up.elev - f.elev) / n : 0.17; }
+function stairRiser(s, n) { if (s && s.H > 0 && n > 0) return s.H / n; if (s && n > 0 && window.SCdz) { const _d = SCdz.stairH(s); if (_d > 0) return _d / n; }   /* v34.8 */ const f = state.floors.find(x => x.id === floorOf(s)), up = f && nextFloor(f); return up && n > 0 ? (up.elev - f.elev) / n : 0.17; }
 function isEntityVisible(e) {
   if (!e) return false;
   const l = getLayer(e.layerId); if (l && l.visible === false) return false;
@@ -4149,7 +4149,7 @@ function updateSelectionPanel() {
     if (k === 'landing' || k === 'L' || k === 'U') h += row('sLp', 'Profondità pianerottolo (m)', p.Lp, 0.4, 4, 0.05);
     if (k === 'U') h += row('sGap', 'Vano centrale · occhio (m)', p.gap, 0, 2, 0.05);
     if (k === 'L' || k === 'U' || wnd) h += sl('sTurn', 'Svolta verso', [['R', 'Destra'], ['L', 'Sinistra']], p.turn);
-    h += row('sH', 'Altezza da salire (m · 0 = dai piani)', s.H || 0, 0, 10, 0.05);
+    h += row('sH', 'Altezza da salire (m · 0 = automatica)', s.H || 0, 0, 10, 0.05);
     h += sl('sProf', 'Verifiche secondo', [['', 'Come nelle impostazioni'], ['unita', 'Unità singola'], ['comune', 'Parti comuni']], s.profile || '');
     h += `<button id="sAnchor" style="width:100%;margin-top:6px">📌 Ancora a spigolo di muro</button><div id="stChk" style="margin-top:4px">${stairChecksHTML(s)}</div><label>Colore</label>${colorPickerHTML('objCol', s.color || '#bababa', false)}${rotationControlsHTML(rotDeg, 'stairRot')}`;
     info.innerHTML = h;
@@ -5387,7 +5387,7 @@ function build3D() {
         g.position.set(f.x, zz + h/2 + (zz ? 0 : 0.02), -f.y); g.rotation.y = rz; }
         g.castShadow = true; g.receiveShadow = true; scene.add(g); _zDone = true;
       }
-      if (_zz && !_zDone) for (let _i = _zn0; _i < scene.children.length; _i++) scene.children[_i].position.y += _zz;
+      { const _dzA = (f.type === 'door_arc' || !window.SCdz) ? 0 : SCdz.at(f, f.x, f.y), _zt = (_zDone ? 0 : _zz) + _dzA; if (_zt) for (let _i = _zn0; _i < scene.children.length; _i++) scene.children[_i].position.y += _zt; }   /* v34.8: + dislivello dell'area */
     }
   }
   for (const s of state.stairs) {
@@ -10223,7 +10223,27 @@ updateRoomList();
     else d = 'Demolizione di pavimento e massetto esistenti, compreso carico e trasporto a discarica';
     return {key: 'area_' + z.id, mq: A, mu: 'm²', desc: nm + fl + ': ' + d + '.', det: 'Superficie ' + fmt2(A) + ' m² · perimetro ' + fmt2(Pm) + ' m' + (window.SCfloor ? SCfloor.detExtra(z) : '') + (hasMass(z.lav) ? ' · massetto ' + fmt2(A * th / 100) + ' m³' : ''), floor: z.lav !== 'solodem'};
   }
-  window.SCzoneWk = {voce: zVoce, items: () => state.zones.filter(z => isEntityVisible(z)).map(zVoce).filter(Boolean), anyFloor: () => state.zones.some(z => isEntityVisible(z) && z.lav && z.lav !== 'solodem'), LAV};
+  /* v34.8: dislivello del pavimento dell'area (z.dz, m, 0..1,5): rialzo sullo stesso piano */
+  const dzOf = z => (z && +z.dz > 0 ? Math.min(1.5, +z.dz) : 0);
+  function dzVoce(z) {
+    const dz = dzOf(z); if (!dz || !z.pts || z.pts.length < 3) return null;
+    const A = area(z.pts), nm = (z.name || '').trim() || 'Area', fl = state.floors.length > 1 && window.floorById ? ' (' + ((floorById(floorOf(z)) || {}).name || '') + ')' : '';
+    return {key: 'rialzo_' + z.id, mq: A * dz, mu: 'm³', desc: nm + fl + ': Formazione di piano rialzato h ' + Math.round(dz * 100) + ' cm con riempimento in calcestruzzo alleggerito, compreso contenimento del bordo e formazione delle alzate dei gradini.', det: 'Superficie ' + fmt2(A) + ' m² · dislivello ' + fmt2(dz) + ' m · volume ' + fmt2(A * dz) + ' m³'};
+  }
+  const dzAt = (e, x, y) => { const fid = floorOf(e); let m = 0; for (const z of state.zones) { const d = dzOf(z); if (!d || !z.pts || z.pts.length < 3 || floorOf(z) !== fid) continue; const L = getLayer(z.layerId); if (L && L.visible === false) continue; if (pointInPolygon({x, y}, z.pts)) m = Math.max(m, d); } return m; };
+  /* scala: altezza = dislivello tra il punto oltre l'ultimo gradino e il punto prima del primo */
+  function stairH(s) {
+    try {
+      if (!state.zones.some(z => dzOf(z))) return 0;
+      const P = stairWorldPolys(s).filter(o => !o.land).sort((a, b) => a.i - b.i); if (P.length < 2) return 0;
+      const c = o => ({x: o.pts.reduce((v, q) => v + q.x, 0) / o.pts.length, y: o.pts.reduce((v, q) => v + q.y, 0) / o.pts.length});
+      const a = c(P[0]), a2 = c(P[1]), b = c(P[P.length - 1]), b2 = c(P[P.length - 2]);
+      const d = dzAt(s, 2 * b.x - b2.x, 2 * b.y - b2.y) - dzAt(s, 2 * a.x - a2.x, 2 * a.y - a2.y);
+      return d > 0.02 ? d : 0;
+    } catch (_) { return 0; }
+  }
+  window.SCdz = {of: dzOf, at: dzAt, stairH};
+  window.SCzoneWk = {voce: zVoce, items: () => state.zones.filter(z => isEntityVisible(z)).flatMap(z => [zVoce(z), dzVoce(z)]).filter(Boolean), anyFloor: () => state.zones.some(z => isEntityVisible(z) && z.lav && z.lav !== 'solodem'), LAV};
   const rgba = (hex, a) => { const n = parseInt(hex.slice(1), 16); return 'rgba(' + (n >> 16 & 255) + ',' + (n >> 8 & 255) + ',' + (n & 255) + ',' + a + ')'; };
 
   /* v21.2: il fondo dell'area (tinta e pezzi della skin) va disegnato prima di muri, porte e arredi */
@@ -10244,10 +10264,10 @@ updateRoomList();
       const S = z.pts.map(p => worldToScreen(p.x, p.y));
       ctx.save();
       ctx.beginPath(); S.forEach((s, i) => i ? ctx.lineTo(s.x, s.y) : ctx.moveTo(s.x, s.y)); ctx.closePath();
-      ctx.strokeStyle = rgba(z.color, 0.95); ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.stroke();
+      ctx.strokeStyle = rgba(z.color, 0.95); ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.stroke(); if (dzOf(z)) { ctx.strokeStyle = '#7c2d12'; ctx.lineWidth = 3.5; ctx.setLineDash([9, 5]); ctx.stroke(); ctx.setLineDash([]); }   /* v34.8: linea del gradino */
       let c = worldToScreen(centroid(z.pts).x, centroid(z.pts).y);
       const t0 = lblOn('lblZoneName') ? [(z.name || '').trim(), z.lav && LAV[z.lav] ? LAV[z.lav].s : ''].filter(Boolean).join(' · ') : '';
-      const L1 = [window.SCfloor && SCfloor.missing && SCfloor.missing(z) ? ['⚠ Foto della skin mancante: ricaricala', '#b91c1c'] : null, t0 ? [t0, '#0f4c81'] : null, lblOn('lblZoneSup') ? ['Sup. ' + fmt2(area(z.pts)) + ' m²', '#111827'] : null, lblOn('lblZonePer') ? ['Per. ' + fmt2(perim(z.pts)) + ' m', '#111827'] : null].filter(Boolean);
+      const L1 = [window.SCfloor && SCfloor.missing && SCfloor.missing(z) ? ['⚠ Foto della skin mancante: ricaricala', '#b91c1c'] : null, dzOf(z) ? ['▲ +' + fmt2(dzOf(z)) + ' m', '#7c2d12'] : null, t0 ? [t0, '#0f4c81'] : null, lblOn('lblZoneSup') ? ['Sup. ' + fmt2(area(z.pts)) + ' m²', '#111827'] : null, lblOn('lblZonePer') ? ['Per. ' + fmt2(perim(z.pts)) + ' m', '#111827'] : null].filter(Boolean);
       const K = lblK(); ctx.font = 'bold ' + Math.round(12 * K) + 'px sans-serif';
       if (!L1.length) { ctx.restore(); boxes.push({z, x: c.x - 14, y: c.y - 14, w: 28, h: 28}); continue; }   /* etichetta nascosta: resta il punto da toccare */
       const w = Math.max(...L1.map(l => ctx.measureText(l[0]).width)) + 16 * K, h = (10 + 14 * L1.length) * K; if (window.SCzoneLbl) c = SCzoneLbl(z, c, w, h); const x = c.x - w / 2, y = c.y - h / 2;
@@ -10307,6 +10327,7 @@ updateRoomList();
     const ist = 'width:100%;box-sizing:border-box;padding:7px 8px;border-radius:6px;border:1px solid #475569;background:#12151f;color:#e5e7eb;font:14px sans-serif';
     pal.innerHTML = '<div style="display:flex;align-items:center;gap:6px"><b style="flex:1;color:#7dd3fc">Area · ' + fmt2(area(z.pts)) + ' m²</b><button id="zpDel" class="sc-del" style="padding:5px 9px;border-radius:7px;border:1px solid #475569;background:#1e293b;color:#f1f5f9;font:600 13px system-ui,sans-serif;cursor:pointer">🗑 Elimina</button><button id="zpOk" class="sc-fine" style="padding:5px 9px;border-radius:7px;border:1px solid #475569;background:#1e293b;color:#f1f5f9;font:600 13px system-ui,sans-serif;cursor:pointer">✔ Fine</button></div>' +
       '<label style="font-size:12px">Nome (es. Cucina)<input id="zpName" style="' + ist + '" value="' + String(z.name || '').replace(/"/g, '&quot;') + '"></label>' +
+      '<label style="font-size:12px">Dislivello pavimento (m) <span style="opacity:.7">es. 0,51 = rialzato · vuoto = nessuno</span><input id="zpDz" inputmode="decimal" style="' + ist + '" value="' + (dzOf(z) ? String(dzOf(z)).replace('.', ',') : '') + '" placeholder="0"></label>' +
       '<label style="font-size:12px">Lavorazione a pavimento<select id="zpLav" style="' + ist + '">' + Object.keys(LAV).map(k => '<option value="' + k + '"' + ((z.lav || '') === k ? ' selected' : '') + '>' + LAV[k].t + '</option>').join('') + '</select></label>' +
       '<div id="zpMore" style="display:flex;flex-direction:column;gap:6px">' +
       '<label style="font-size:12px" id="zpMatL">Pavimento (es. gres 60×60)<input id="zpMat" style="' + ist + '" value="' + String(z.mat || '').replace(/"/g, '&quot;') + '"></label>' +
@@ -10342,6 +10363,8 @@ updateRoomList();
     pal.querySelector('#zpTinH').onchange = () => checkpoint();
     pal.querySelector('#zpTinPick').onclick = () => { closePal(); if (window.SCtin) SCtin.pick(z); };
     pal.querySelector('#zpName').oninput = e => { z.name = e.target.value; syncMore(); draw2D(); };
+    pal.querySelector('#zpDz').oninput = e => { const v = parseFloat(String(e.target.value).replace(',', '.')); if (isFinite(v) && v > 0.005) z.dz = Math.round(Math.min(1.5, v) * 1000) / 1000; else delete z.dz; draw2D(); };   /* v34.8 */
+    pal.querySelector('#zpDz').onchange = () => { checkpoint(); if (state.mode === '3d') build3D(); if (dzOf(z)) toast('Area rialzata +' + fmt2(dzOf(z)) + ' m: la scala che ci arriva prende da sola l’altezza'); };
     pal.querySelector('#zpLav').onchange = e => { z.lav = e.target.value || undefined; if (hasMass(z.lav) && !(+z.mth > 0)) z.mth = 5; syncMore(); draw2D(); checkpoint(); if (z.lav) toast('Lavorazione: ' + LAV[z.lav].t + ' · voce a corpo nel computo'); };
     pal.querySelector('#zpMat').oninput = e => { z.mat = e.target.value; syncMore(); };
     pal.querySelector('#zpMth').oninput = e => { const v = num(e.target.value); if (v >= 1 && v <= 30) { z.mth = v; syncMore(); } };
@@ -10453,7 +10476,7 @@ updateRoomList();
   /* 3D: l'area compare come campitura colorata sul pavimento del suo piano */
   function addZones3D() {
     if (state.mode !== '3d' || typeof scene === 'undefined' || !scene || !state.zones.length) return;
-    { const e = document.getElementById('showFloor'); if (e && !e.checked) return; }   /* v24.2: «Pavimenti» spento toglie anche le Aree */
+    const flOn = (() => { const e = document.getElementById('showFloor'); return !(e && !e.checked); })();   /* v24.2: «Pavimenti» spento toglie anche le Aree · v34.8: non il rialzo */
     const cf = (window.SCfl && SCfl.cfg) || {}, cur = state.floors.find(f => f.id === state.currentFloorId);
     state.zones.forEach(z => {
       if (!z.pts || z.pts.length < 3) return;
@@ -10463,8 +10486,11 @@ updateRoomList();
       if (cf.view3d === 'only' && cur && f.id !== cur.id) return;
       if (cf.view3d === 'upto' && cur && f.elev > cur.elev + 1e-6) return;
       const shape = new THREE.Shape(); z.pts.forEach((p, i) => i ? shape.lineTo(p.x, p.y) : shape.moveTo(p.x, p.y)); shape.closePath();
+      const dz = dzOf(z);
+      if (dz) { const pg = new THREE.Mesh(new THREE.ExtrudeGeometry(shape, {depth: dz, bevelEnabled: false}), new THREE.MeshStandardMaterial({color: '#cfcac0', roughness: 0.8})); pg.rotation.x = -Math.PI / 2; pg.position.y = (f.elev || 0) + 0.002; pg.castShadow = true; pg.receiveShadow = true; pg.userData.zoneId = z.id; scene.add(pg); }
+      if (!flOn) return;
       const m = new THREE.Mesh(new THREE.ShapeGeometry(shape), new THREE.MeshStandardMaterial({color: new THREE.Color(z.color), roughness: 0.8, transparent: true, opacity: 0.8, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2}));
-      m.rotation.x = -Math.PI / 2; m.position.y = (f.elev || 0) + 0.007; m.receiveShadow = true; m.userData.zoneId = z.id;   /* v23.7: prima 5 cm sopra lo zero: lo zoccolino spariva sotto il pavimento */ if (z.sk && window.SCfloor) SCfloor.tex3D(m, z); scene.add(m);
+      m.rotation.x = -Math.PI / 2; m.position.y = (f.elev || 0) + dz + 0.007; m.receiveShadow = true; m.userData.zoneId = z.id;   /* v23.7: prima 5 cm sopra lo zero: lo zoccolino spariva sotto il pavimento */ if (z.sk && window.SCfloor) SCfloor.tex3D(m, z); scene.add(m);
     });
   }
   const _b3z = build3D;
@@ -11862,7 +11888,7 @@ updateRoomList();
     const out = state.holes.filter(h => h.floorId === fid).map(h => ({h, poly: holePoly(h), auto: false}));
     if (cfg.autoHoles) {
       const f = floorById(fid), below = prevFloor(f);
-      if (below) state.stairs.filter(s => floorOf(s) === below.id).forEach(s => out.push({s, poly: rectPoly(s.x, s.y, s.w + 0.1, s.d + 0.1, s.rot || 0), auto: true}));
+      if (below) state.stairs.filter(s => floorOf(s) === below.id && !(window.SCdz && SCdz.stairH(s) > 0)).forEach(s => out.push({s, poly: rectPoly(s.x, s.y, s.w + 0.1, s.d + 0.1, s.rot || 0), auto: true}));
     }
     return out;
   }
@@ -22200,8 +22226,9 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
    SC_REL.v è l'unica versione: titolo, Guida, file salvato, avvisi e riga messaggi la leggono da qui.
    ======================================================================== */
 window.SC_REL = {
-  v: '34.7', d: '19/11/2026',
+  v: '34.8', d: '21/11/2026',
   news: [
+    ['34.8', 'Area con «Dislivello pavimento»: zona rialzata (es. mezzanino a +0,51) sullo stesso piano. In pianta bordo tratteggiato e «▲ +0,51 m»; in 3D il pavimento sale con il riempimento sotto e gli arredi ci stanno sopra; la scala che arriva sull\'area prende da sola l\'altezza da salire (senza foro nel solaio sopra); nel computo la voce del rialzo in m³.'],
     ['34.7', 'Tastierino del muro: con una stanza da tutti e due i lati misura quella senza tramezze in mezzo (prima poteva prendere il tratto fra una tramezza e l\'angolo); in alto il nome della stanza misurata e il tasto «⇅ altro lato».'],
     ['34.6', 'Tastierino 123 del muro: disegnino della stanza con le tre misure INTERNO (dentro la stanza), ASSE (nel muro) ed ESTERNO (fuori); si tocca quella che si conosce, si scrive, le altre due si calcolano da sole. Pannello del muro più semplice (tolta la misura netta con i pulsanti). In Disegna resta solo il promemoria del tipo di misura.'],
     ['34.5', 'Tavole: nuovo pulsante «⬇ Scarica PDF» che crea il PDF direttamente (alta risoluzione, funziona anche offline e dentro claude.ai, dove la finestra di stampa del browser è bloccata). Nell\'artefatto le altre stampe avvisano invece di non fare nulla.'],

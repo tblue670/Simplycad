@@ -566,6 +566,12 @@ NOVITÀ v29.0
   in cui li hai lasciati e, se coprirebbero il punto appena toccato, si aprono dall'altra parte dello schermo.
   Doppio tocco sulla maniglia: posizione iniziale.
 
+NOVITÀ v34.8
+- Aree: nuovo campo «Dislivello pavimento (m)» per una zona rialzata sullo stesso piano (es. mezzanino a +0,51 con 3 gradini).
+  In pianta bordo tratteggiato marrone e scritta «▲ +0,51 m»; in 3D il pavimento sale con il riempimento sotto e gli arredi ci stanno sopra.
+- Scala: se arriva su un'area rialzata prende da sola l'altezza da salire (es. 3 gradini su 51 cm = alzata 17 cm) e non apre il foro nel solaio sopra.
+- Computo: voce «Formazione di piano rialzato» in m³ (superficie × dislivello), prezzo da scrivere a mano.
+
 NOVITÀ v34.7
 - Tastierino del muro: se il muro ha una stanza da tutti e due i lati, misura quella senza tramezze in mezzo. In alto c'è il nome della stanza misurata e il tasto «⇅ altro lato» per misurare l'altra.
 
