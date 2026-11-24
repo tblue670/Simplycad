@@ -11,7 +11,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20512%20512%22%3E%3Crect%20width%3D%22512%22%20height%3D%22512%22%20rx%3D%22112%22%20fill%3D%22%231e2a44%22/%3E%3Cg%20stroke%3D%22%23e2f3ff%22%20stroke-width%3D%2226%22%20stroke-linecap%3D%22square%22%20fill%3D%22none%22%3E%3Cpath%20d%3D%22M120%20120H392V392H120Z%22/%3E%3Cpath%20d%3D%22M256%20120V230M256%20300V392M120%20270H200%22/%3E%3C/g%3E%3Cpath%20d%3D%22M256%20300a70%2070%200%200%201%2070-70%22%20stroke%3D%22%237dd3fc%22%20stroke-width%3D%2212%22%20fill%3D%22none%22%20stroke-dasharray%3D%2216%2010%22/%3E%3Cpath%20d%3D%22M256%20230h70%22%20stroke%3D%22%237dd3fc%22%20stroke-width%3D%2212%22/%3E%3Crect%20x%3D%22290%22%20y%3D%22340%22%20width%3D%2270%22%20height%3D%2226%22%20fill%3D%22%237dd3fc%22/%3E%3C/svg%3E">
-<title>SimplyCAD Pro · v34.9</title>
+<title>SimplyCAD Pro · v34.10</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -697,6 +697,7 @@ body.mode-3d #infoStrip .scale-badge{display:none}
 
 #fingerCursor{position:absolute;z-index:9600;width:60px;height:60px;margin:-30px 0 0 -30px;pointer-events:none;display:none;filter:drop-shadow(0 0 2px #000)}
 #selBar{position:fixed;z-index:9000;display:none;gap:3px;align-items:center;padding:3px 5px;background:#1e1e2e;border:1px solid #38bdf8;border-radius:22px;box-shadow:0 4px 16px rgba(0,0,0,.5);font:13px sans-serif;color:#e5e7eb;-webkit-user-select:none;user-select:none;touch-action:manipulation}
+body.sb3d #selBar > button:not(#sbEdit):not(#sbDel):not(#sbEnd):not(#sbCol){display:none!important}
 #selBar .sb-n{padding:0 5px 0 4px;font-size:12px;font-weight:700;color:#7dd3fc;white-space:nowrap}
 #selBar button{display:inline-flex;align-items:center;justify-content:center;min-width:32px;height:32px;border-radius:16px;border:1px solid #475569;background:#334155;color:#e5e7eb;font-size:15px;cursor:pointer;padding:0 5px}
 #selBar button.on{background:#0ea5e9;border-color:#7dd3fc;color:#fff}
@@ -4852,6 +4853,11 @@ function init3D() {
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   controls = new THREE.OrbitControls(camera, canvas);
   controls.enableDamping = true;
+  controls.mouseButtons = {LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.ROTATE, RIGHT: THREE.MOUSE.PAN};   /* v34.10: rotella premuta = ruota (con Maiusc sposta), come nei CAD; la rotella girata resta lo zoom */
+  canvas.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse' && (e.button === 1 || e.button === 2)) canvas.style.cursor = (e.button === 2 || e.shiftKey) ? 'grabbing' : 'move'; });
+  window.addEventListener('pointerup', () => { if (canvas.style.cursor === 'grabbing' || canvas.style.cursor === 'move') canvas.style.cursor = ''; });
+  canvas.addEventListener('auxclick', e => { if (e.button === 1) e.preventDefault(); });
+  canvas.addEventListener('mousedown', e => { if (e.button === 1) e.preventDefault(); });
   controls.target.set(0, 1.5, 0);
   ambientLight = new THREE.AmbientLight(0xffffff, 0.6); scene.add(ambientLight);
   hemiLight = new THREE.HemisphereLight(0xffffff, 0xb9b3a8, 0.5); scene.add(hemiLight);   /* v24.0: luce riflessa dal pavimento, i soffitti visti da sotto non sono più grigi */
@@ -8607,19 +8613,32 @@ $('impAnyInput').onchange = async e => {
       updateSelectionPanel();
     });
   }
+  let click3D = null;
+  const openProps3D = () => { try { if (window.SCeditOpen) SCeditOpen(); else updateSelectionPanel(); } catch (_) {} };
+  window.addEventListener('pointerup', e => {   /* v34.10: clic fermo su muro o nel vuoto */
+    const c = click3D; click3D = null;
+    if (!c || e.pointerId !== c.id || state.mode !== '3d' || Math.hypot(e.clientX - c.x, e.clientY - c.y) > 5) return;
+    if (!c.entity) { if (state.sel.length || state.selected) { state.selected = null; state.sel = []; updateSelectionPanel(); scheduleRebuild(); } return; }
+    state.selected = c.entity; state.sel = [c.entity]; openProps3D(); scheduleRebuild();
+  }, true);
+  window.SCopenProps3D = openProps3D;
   function onPointerDown3D(e) {
     if (state.mode !== '3d') return;
+    if (e.pointerType === 'mouse' && e.button === 0 && (window.SCcfg && SCcfg.edit3d === false) && !document.body.classList.contains('sc-phone')) {   /* v34.10: avviso se la modifica nel 3D è spenta */
+      const t0 = {x: e.clientX, y: e.clientY}; const up = ev => { window.removeEventListener('pointerup', up, true); if (Math.hypot(ev.clientX - t0.x, ev.clientY - t0.y) <= 5) { const n = Date.now(); if (!window.__e3dT || n - window.__e3dT > 8000) { window.__e3dT = n; try { toast('Selezione nel 3D spenta: Vista › Modifica in 3D'); } catch (_) {} } } }; window.addEventListener('pointerup', up, true);
+    }
     if ((window.SCcfg && SCcfg.edit3d === false) || document.body.classList.contains('sc-phone')) return;   // modifica in 3D disattivata: il tocco ruota solo la vista
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     if (!renderer || !scene || !camera) return;
     setNDC(e); raycaster.setFromCamera(ndc, camera);
     const hits = raycaster.intersectObjects(scene.children, true);
-    if (!hits.length) { if (state.sel.length || state.selected) { state.selected = null; state.sel = []; updateSelectionPanel(); scheduleRebuild(); } return; }
-    const entity = identifyEntity(hits[0].point);
-    if (!entity) { if (state.sel.length || state.selected) { state.selected = null; state.sel = []; updateSelectionPanel(); scheduleRebuild(); } return; }
+    const entity = hits.length ? identifyEntity(hits[0].point) : null;
+    /* v34.10: muri e vuoto si scelgono al rilascio solo se il mouse/dito non si è mosso: trascinare ruota la vista senza cambiare selezione */
+    if (!entity || entity.type === 'wall') { click3D = {x: e.clientX, y: e.clientY, id: e.pointerId, entity}; return; }
+    click3D = null;
+    const was = state.selected && state.selected.type === entity.type && state.selected.id === entity.id;
     state.selected = entity; state.sel = [entity];
-    updateSelectionPanel(); scheduleRebuild();
-    if (entity.type === 'wall') return; /* muri: solo selezione in 3D, nessuno spostamento; la camera continua a ruotare */
+    updateSelectionPanel(); if (!was) scheduleRebuild();
     const gp = groundPointFromEvent(e); if (!gp) return;
     drag3D = { entity, startGround: gp, startPos: capturePosition(entity), moved: false, downX: e.clientX, downY: e.clientY, pointerId: e.pointerId };
     if (controls) controls.enabled = false;
@@ -8642,7 +8661,7 @@ $('impAnyInput').onchange = async e => {
     drag3D = null;
     if (controls) controls.enabled = true;
     try { c3d.releasePointerCapture(e.pointerId); } catch(_) {}
-    if (wasDrag) scheduleRebuild();
+    if (wasDrag) scheduleRebuild(); else openProps3D();   /* v34.10: clic senza spostare = finestra delle proprietà, come in pianta */
     e.stopImmediatePropagation();
   }
   function onPointerCancel3D() { if (drag3D) { drag3D = null; if (controls) controls.enabled = true; } }
@@ -8660,21 +8679,28 @@ $('impAnyInput').onchange = async e => {
     }
     if (!state.selected) return;
     const { type, id } = state.selected;
-    const boxMat = new THREE.LineBasicMaterial({color: 0xfbbf24, linewidth: 2});
-    if (type === 'wall') {
+    const boxMat = new THREE.LineBasicMaterial({color: 0x38bdf8, linewidth: 2, depthTest: false, transparent: true});   /* v34.10: azzurro come in pianta, visibile anche dietro ad altri oggetti */
+    const veil = g => { const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({color: 0x38bdf8, transparent: true, opacity: 0.22, depthWrite: false})); m.renderOrder = 998; return m; };
+    if (type === 'door' || type === 'window') {
+      const o = (type === 'door' ? state.doors : state.windows).find(x => x.id === id); const w = o && state.walls.find(x => x.id === o.wallId); if (!w) return;
+      const p = ptAtLocal(w, o.t), hh = o.height || 2.1, z0 = type === 'window' ? (o.sillHeight || 0) : 0;
+      const geo = new THREE.BoxGeometry((o.width || 0.8) + 0.06, hh + 0.06, getWallThickness(w) + 0.12);
+      selectionHelper = new THREE.LineSegments(new THREE.EdgesGeometry(geo), boxMat); selectionHelper.add(veil(geo));
+      selectionHelper.position.set(p.x, z0 + hh / 2, -p.y); selectionHelper.rotation.y = Math.atan2(w.p2.y - w.p1.y, w.p2.x - w.p1.x);
+    } else if (type === 'wall') {
       const w = state.walls.find(x => x.id === id); if (!w) return;
       const wallH = getWallHeight(w);
       const len = Math.hypot(w.p2.x - w.p1.x, w.p2.y - w.p1.y);
       const geo = new THREE.BoxGeometry(len + 0.1, wallH + 0.1, getWallThickness(w) + 0.1);
-      selectionHelper = new THREE.LineSegments(new THREE.EdgesGeometry(geo), boxMat);
+      selectionHelper = new THREE.LineSegments(new THREE.EdgesGeometry(geo), boxMat); selectionHelper.add(veil(geo));
       selectionHelper.position.set((w.p1.x+w.p2.x)/2, wallH/2, -(w.p1.y+w.p2.y)/2);
       selectionHelper.rotation.y = Math.atan2(w.p2.y - w.p1.y, w.p2.x - w.p1.x);
     } else if (type === 'furniture') {
       const f = state.furniture.find(x => x.id === id); if (!f) return;
       const h = f.h || 0.5;
       const geo = new THREE.BoxGeometry(f.w + 0.1, h + 0.1, f.d + 0.1);
-      selectionHelper = new THREE.LineSegments(new THREE.EdgesGeometry(geo), boxMat);
-      selectionHelper.position.set(f.x, h/2, -f.y); selectionHelper.rotation.y = f.rot || 0;
+      selectionHelper = new THREE.LineSegments(new THREE.EdgesGeometry(geo), boxMat); selectionHelper.add(veil(geo));
+      selectionHelper.position.set(f.x, (f.z || 0) + h/2, -f.y); selectionHelper.rotation.y = f.rot || 0;
     }
     if (selectionHelper) { selectionHelper.position.y += floorElevOf(selEntity(state.selected)); selectionHelper.renderOrder = 999; scene.add(selectionHelper); }
   }
@@ -9791,7 +9817,9 @@ updateRoomList();
   };
   function place() {
     const n = state.sel.length || (state.selected ? 1 : 0), t = state.tool;
-    const show = (n > 0 || !!window.SCbar3) && !(window.SCbar3 && SCbar3.hidden()) && state.mode === '2d' && (t === 'select' || t === 'box') && !document.body.classList.contains('sv-on');   /* v18.7: barra interattiva */
+    const in3 = state.mode === '3d' && n > 0 && !document.body.classList.contains('sc-phone') && !(window.SCcfg && SCcfg.edit3d === false);   /* v34.10: nel 3D la barra compare con un oggetto scelto */
+    document.body.classList.toggle('sb3d', in3);
+    const show = in3 || ((n > 0 || !!window.SCbar3) && !(window.SCbar3 && SCbar3.hidden()) && state.mode === '2d' && (t === 'select' || t === 'box') && !document.body.classList.contains('sv-on'));   /* v18.7: barra interattiva */
     bar.style.display = show ? 'flex' : 'none';
     if (!show) return;
     $('sbN').textContent = n + (n === 1 ? ' sel.' : ' sel.');
@@ -9802,6 +9830,8 @@ updateRoomList();
     $('sbPaste').style.display = clipHas() ? '' : 'none';
     $('sbNum').style.display = (window.SCvkOpen && window.SCvkCanEdit && SCvkCanEdit()) ? '' : 'none';   /* v16.1: anche per ruotare gli oggetti */
     if (window.SCbar2) try { SCbar2.vis(); } catch (_) {}   /* v17.1 */
+    if (in3) { try { if (window.SCbar3) SCbar3.empty(n); } catch (_) {} const c3 = document.getElementById('canvas3d'), r3 = c3 ? c3.getBoundingClientRect() : {left: 0, top: 60, width: innerWidth}, bw3 = bar.offsetWidth || 140;   /* v34.10: nel 3D in alto al centro della vista */
+      bar.style.flexDirection = 'row'; bar.style.right = 'auto'; bar.style.bottom = 'auto'; bar.style.left = Math.max(6, r3.left + (r3.width - bw3) / 2) + 'px'; bar.style.top = Math.max(4, r3.top + 8) + 'px'; return; }
     if (window.SCbar3) { try { SCbar3.empty(n); SCbar3.pos(); } catch (_) {} return; }   /* v18.7: agganciata al bordo scelto */
     const r = c2d.getBoundingClientRect(), bw = bar.offsetWidth || 220;
     bar.style.left = Math.max(6, Math.min(innerWidth - bw - 6, r.left + (r.width - bw) / 2)) + 'px';
@@ -10129,6 +10159,7 @@ updateRoomList();
     try { cancelViewAnim(); } catch (_) {}
     sec = {id: e.pointerId, b: e.button, x0: e.clientX, y0: e.clientY, ox: viewOffset.x, oy: viewOffset.y, pan: e.button === 1 || (e.button === 0 && space)};
     try { c2d.setPointerCapture(e.pointerId); } catch (_) {}
+    if (sec.pan) c2d.style.cursor = 'grabbing';   /* v34.10: mano chiusa subito con la rotella premuta */
   }, true);
   window.addEventListener('pointermove', e => {
     if (!sec || e.pointerId !== sec.id) return;
@@ -15416,7 +15447,7 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
 ' x.fillStyle="rgba(0,0,0,0.55)";x.fillRect(0,0,c.width,c.height);x.fillStyle=l.c||"#fff";x.textAlign="center";x.textBaseline="middle";x.fillText(l.t,c.width/2,c.height/2);',
 ' var s=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),depthTest:false,transparent:true}));',
 ' var k=(l.s/14)*0.5;s.scale.set(c.width/c.height*k,k,1);s.position.set(l.x,l.y,l.z);scene.add(s);});',
-'var oc=new THREE.OrbitControls(camera,renderer.domElement);oc.enableDamping=true;oc.maxPolarAngle=Math.PI/2-0.02;',
+'var oc=new THREE.OrbitControls(camera,renderer.domElement);oc.enableDamping=true;oc.maxPolarAngle=Math.PI/2-0.02;oc.mouseButtons={LEFT:THREE.MOUSE.ROTATE,MIDDLE:THREE.MOUSE.ROTATE,RIGHT:THREE.MOUSE.PAN};renderer.domElement.addEventListener("mousedown",function(e){if(e.button===1)e.preventDefault();});',
 'function iso(){camera.position.set(ctr.x+R*0.9,R*0.8+2,ctr.z+R*0.9);oc.target.set(ctr.x,1,ctr.z);oc.update();}',
 'function topView(){camera.position.set(ctr.x,R*1.6+3,ctr.z+0.001);oc.target.set(ctr.x,0,ctr.z);oc.update();}',
 '__WALKUSE__',
@@ -22253,8 +22284,9 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
    SC_REL.v è l'unica versione: titolo, Guida, file salvato, avvisi e riga messaggi la leggono da qui.
    ======================================================================== */
 window.SC_REL = {
-  v: '34.9', d: '22/11/2026',
+  v: '34.10', d: '24/11/2026',
   news: [
+    ['34.10', 'Mouse come nei CAD: nel 3D la rotella premuta ruota la vista (Maiusc + rotella premuta o tasto destro la spostano, la rotella girata ingrandisce); il tasto sinistro continua a ruotare. Nella pianta la mano chiusa compare appena si preme la rotella. Nel 3D un clic fermo su muro, porta, finestra o arredo lo sceglie (contorno azzurro) e apre la finestra delle proprietà con la barra Proprietà · Elimina · Fine, come in pianta. Trascinando sopra un muro si ruota la vista senza sceglierlo. Se Vista › Modifica in 3D è spenta, un avviso lo ricorda.'],
     ['34.9', 'Porte e finestre sui muri dell\'area rialzata partono dal pavimento rialzato (il davanzale si misura da lì): 3D, prospetto del muro, sezioni e prospetti. Nella scheda la casella «Parte dal pavimento rialzato» per i casi dubbi. Prese, interruttori e luci a parete del rialzo salgono nel 3D.'],
     ['34.8', 'Area con «Dislivello pavimento»: zona rialzata (es. mezzanino a +0,51) sullo stesso piano. In pianta bordo tratteggiato e «▲ +0,51 m»; in 3D il pavimento sale con il riempimento sotto e gli arredi ci stanno sopra; la scala che arriva sull\'area prende da sola l\'altezza da salire (senza foro nel solaio sopra); nel computo la voce del rialzo in m³.'],
     ['34.7', 'Tastierino del muro: con una stanza da tutti e due i lati misura quella senza tramezze in mezzo (prima poteva prendere il tratto fra una tramezza e l\'angolo); in alto il nome della stanza misurata e il tasto «⇅ altro lato».'],
