@@ -1,4 +1,4 @@
-SimplyCAD Pro - pubblicazione su GitHub Pages (v34.10)
+SimplyCAD Pro - pubblicazione su GitHub Pages (v34.12)
 
 Contenuto (vanno caricati tutti, senza rinominarli e SENZA cartelle intorno):
   index.html  sw.js  manifest.webmanifest  icon-192.png  icon-512.png  icon-maskable.png  README.md
@@ -566,6 +566,25 @@ NOVITÀ v29.0
 - Finestre e pannelli: tutti con la maniglia ⠿⠿⠿ in cima e lo stesso aspetto; si riaprono nell'ultima posizione
   in cui li hai lasciati e, se coprirebbero il punto appena toccato, si aprono dall'altra parte dello schermo.
   Doppio tocco sulla maniglia: posizione iniziale.
+
+NOVITÀ v34.12 (finestra della quota)
+- Al posto delle coordinate X/Y: misura e angolo da scrivere (le coordinate restano in «Coordinate», chiuse).
+- Misura libera o linea: Lunghezza e Angolo; «Resta fermo: Inizio / Fine» sceglie l'estremo che non si muove.
+- Quota tra due muri: scrivi la misura e tocchi «Sposta «Muro …»»: quel muro si sposta parallelo,
+  i muri collegati si allungano o accorciano e le stanze restano chiuse (come in Revit, dove si sceglie il muro da spostare).
+- Quota lungo un muro: ai due lati c'è il muro che chiude la misura (si sposta) oppure «Allunga da qui» se il lato è libero.
+- Prima di spostare un muro, i muri che lo toccano a meno di 1 cm, o che finiscono dentro il suo spessore, vengono attaccati all'asse:
+  così lo seguono invece di restare staccati.
+
+NOVITÀ v34.11 (aggancia e sgancia sugli estremi del muro)
+- Tolto il comando «Aggancia» (barra, menu ⋯ e Geometria). Resta «Chiudi muri» per le estremità staccate.
+- Con un muro selezionato, accanto agli estremi compare un pulsante:
+  🧲 viola = estremo libero: tocca e va sul muro più vicino (estremo o asse, entro 50 cm), unito.
+  ✂ arancio = estremo in comune con un altro muro: tocca (diventa rosso) e trascina l'estremo: si sposta solo questo muro.
+  Senza ✂, trascinando l'estremo i muri uniti si muovono insieme e l'angolo resta chiuso.
+- Trascinando un estremo sulla faccia di un altro muro, finisce sull'asse e la stanza si chiude.
+- Stanze: due muri che si toccano a occhio ma per i numeri restano staccati fino a 1 cm ora chiudono la stanza
+  (nel progetto di prova una stanza restava aperta per mezzo millimetro e un'altra veniva unita al disimpegno).
 
 NOVITÀ v34.10 (mouse come nei CAD, selezione nel 3D)
 - 3D: la rotella premuta ruota la vista; Maiusc + rotella premuta, oppure il tasto destro, la spostano; la rotella girata ingrandisce.
