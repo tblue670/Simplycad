@@ -11,7 +11,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20512%20512%22%3E%3Crect%20width%3D%22512%22%20height%3D%22512%22%20rx%3D%22112%22%20fill%3D%22%231e2a44%22/%3E%3Cg%20stroke%3D%22%23e2f3ff%22%20stroke-width%3D%2226%22%20stroke-linecap%3D%22square%22%20fill%3D%22none%22%3E%3Cpath%20d%3D%22M120%20120H392V392H120Z%22/%3E%3Cpath%20d%3D%22M256%20120V230M256%20300V392M120%20270H200%22/%3E%3C/g%3E%3Cpath%20d%3D%22M256%20300a70%2070%200%200%201%2070-70%22%20stroke%3D%22%237dd3fc%22%20stroke-width%3D%2212%22%20fill%3D%22none%22%20stroke-dasharray%3D%2216%2010%22/%3E%3Cpath%20d%3D%22M256%20230h70%22%20stroke%3D%22%237dd3fc%22%20stroke-width%3D%2212%22/%3E%3Crect%20x%3D%22290%22%20y%3D%22340%22%20width%3D%2270%22%20height%3D%2226%22%20fill%3D%22%237dd3fc%22/%3E%3C/svg%3E">
-<title>SimplyCAD Pro · v34.12</title>
+<title>SimplyCAD Pro · v34.13</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -6679,8 +6679,8 @@ c2d.addEventListener('pointerdown', e => {
     } else if (state.selected && state.selected.type === 'image' && !findWallAt(w) && imageAt(w) && imageAt(w).id === state.selected.id) {
       const im = imageAt(w); drag = {...base, type: 'bg', imgId: im.id, start: w, origX: im.x, origY: im.y};
     } else {
-      const sw = selWalls(), th = 14 / viewScale;
-      if (sw.length === 1) for (const k of ['p1', 'p2']) if (Math.hypot(sw[0][k].x - w.x, sw[0][k].y - w.y) < th) {
+      const sw = selWalls(), th = (e.pointerType === 'mouse' ? 14 : 30) / viewScale;   /* v34.13: col dito l'estremo si prende più facilmente */
+      if (sw.length === 1) for (const k of ['p1', 'p2']) if (Math.hypot(sw[0][k].x - w.x, sw[0][k].y - w.y) < ((window.SCends && SCends.det(sw[0], k)) ? th * 1.8 : th)) {
         const o = sw[0][k], links = [];
         state.walls.forEach(x => ['p1', 'p2'].forEach(q => { if (Math.hypot(x[q].x - o.x, x[q].y - o.y) < 1e-3) links.push({w: x, k: q}); }));
         if (window.SCends && SCends.det(sw[0], k)) links.splice(0, links.length, {w: sw[0], k});   /* v34.11: ✂ estremo staccato: si muove solo questo muro */
@@ -6819,7 +6819,7 @@ c2d.addEventListener('pointerup', e => {
   const o = drag || boxSel, wasBox = !!boxSel; if (o && (o.type === 'vertex' || o.touch)) { if (o.type === 'vertex') hover = null; if (window.SCfinger) SCfinger.hide(); } drag = null; boxSel = null; snapSkip = null;
   if (!o.active) handleTap(o.cx, o.cy);
   else if (wasBox) finishBox(o, e.shiftKey);
-  else { if (o.type === 'vertex' && window.SCends) SCends.dropped(o.links); detectRooms(); updateSelectionPanel(); }
+  else { if (o.type === 'vertex' && window.SCends) SCends.dropped(o.links); else if (o.type === 'move' && window.SCends) SCends.dropped(null); detectRooms(); updateSelectionPanel(); }
   refresh();
   if (_boxOnce && wasBox && o.active) { _boxOnce = false; const sb = document.querySelector('.tool[data-tool="select"]'); if (sb) sb.click(); }
 }, true);
@@ -22293,8 +22293,9 @@ document.getElementById("bShot").onclick=function(){renderer.render(scene,camera
    SC_REL.v è l'unica versione: titolo, Guida, file salvato, avvisi e riga messaggi la leggono da qui.
    ======================================================================== */
 window.SC_REL = {
-  v: '34.12', d: '24/11/2026',
+  v: '34.13', d: '24/11/2026',
   news: [
+    ['34.13', 'Correzione ✂: col dito l\'estremo del muro si prende più facilmente (prima, se il dito non era esattamente sull\'estremo, si spostava tutto il muro e il muro collegato lo seguiva). Dopo ✂ l\'estremo staccato ha un anello rosso e, anche spostando tutto il muro, l\'altro muro resta fermo.'],
     ['34.12', 'Finestra della quota: al posto delle coordinate ci sono misura e angolo da scrivere. Misura libera o linea: lunghezza e angolo, con la scelta dell\'estremo che resta fermo. Quota tra due muri: scrivi la misura e tocchi il muro da spostare, che si sposta parallelo con gli angoli chiusi. Quota della lunghezza di un muro: il muro si allunga o si accorcia dall\'estremo scelto. Le coordinate restano in «Coordinate ▸».'],
     ['34.11', 'Tolto il comando Aggancia. Con un muro selezionato, accanto agli estremi: 🧲 (estremo libero) lo porta sul muro più vicino e lo unisce; ✂ (estremo in comune) lo stacca, e trascinandolo si muove solo quel muro. Trascinando un estremo sulla faccia di un muro, finisce sull\'asse. Le stanze si chiudono anche quando i muri si toccano solo a occhio (fino a 1 cm di scarto): prima una stanza poteva restare aperta per mezzo millimetro.'],
     ['34.10', 'Mouse come nei CAD: nel 3D la rotella premuta ruota la vista (Maiusc + rotella premuta o tasto destro la spostano, la rotella girata ingrandisce); il tasto sinistro continua a ruotare. Nella pianta la mano chiusa compare appena si preme la rotella. Nel 3D un clic fermo su muro, porta, finestra o arredo lo sceglie (contorno azzurro) e apre la finestra delle proprietà con la barra Proprietà · Elimina · Fine, come in pianta. Trascinando sopra un muro si ruota la vista senza sceglierlo. Se Vista › Modifica in 3D è spenta, un avviso lo ricorda.'],
@@ -29664,6 +29665,7 @@ window.SC_REL = {
     } catch (_) {}
   }
   function cur() {
+    if (DET && !(state.sel && state.sel.length === 1 && state.sel[0].type === 'wall' && state.sel[0].id === DET.id)) DET = null;
     if (state.mode !== '2d' || (state.tool !== 'select' && state.tool !== 'box') || !state.sel || state.sel.length !== 1 || state.sel[0].type !== 'wall') return null;
     if (document.body.classList.contains('sv-on') || (window.SCag && SCag.active())) return null;
     const w = state.walls.find(x => x.id === state.sel[0].id); if (!w || isEntityLocked(w) || Lw(w) < 0.05) return null;
@@ -29681,6 +29683,7 @@ window.SC_REL = {
   }
   (window.SCdraw && SCdraw.post || []).push(() => {
     const B = buttons(); if (!B.length) return;
+    if (DET) { const w = state.walls.find(x => x.id === DET.id); if (w) { const s = worldToScreen(w[DET.k].x, w[DET.k].y); ctx.save(); ctx.beginPath(); ctx.arc(s.x, s.y, 13, 0, 7); ctx.lineWidth = 3; ctx.strokeStyle = '#dc2626'; ctx.setLineDash([4, 3]); ctx.stroke(); ctx.restore(); } }
     ctx.save(); ctx.font = '15px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     B.forEach(q => {
       const on = q.kind === 'cut' && DET && DET.id === q.w.id && DET.k === q.k;
@@ -29994,10 +29997,11 @@ window.SC_REL = {
     const S = new Set(ws), L = [];
     ws.forEach(w => ['p1', 'p2'].forEach(k => state.walls.forEach(x => {
       if (S.has(x) || isEntityLocked(x)) return;
+      if (window.SCends && SCends.det(w, k)) return;   /* v34.13: estremo staccato con ✂ */
       ['p1', 'p2'].forEach(q => { if (near(x[q], w[k]) && !L.some(l => l.w === x && l.k === q)) L.push({w: x, k: q, o: {...x[q]}}); });
     })));
     /* v34.4: anche i muri attaccati a T sul corpo del muro (tramezze) */
-    state.walls.forEach(x => { if (S.has(x) || isEntityLocked(x)) return; ['p1', 'p2'].forEach(q => { if (L.some(l => l.w === x && l.k === q)) return; if (ws.some(w => distancePointToSegment(x[q], w.p1, w.p2) < 1e-3)) L.push({w: x, k: q, o: {...x[q]}}); }); });
+    state.walls.forEach(x => { if (S.has(x) || isEntityLocked(x)) return; ['p1', 'p2'].forEach(q => { if (L.some(l => l.w === x && l.k === q)) return; if (ws.some(w => window.SCends && ['p1', 'p2'].some(k => SCends.det(w, k) && near(x[q], w[k])))) return; if (ws.some(w => distancePointToSegment(x[q], w.p1, w.p2) < 1e-3)) L.push({w: x, k: q, o: {...x[q]}}); }); });
     return L;
   }
   function applyLinks(L, dx, dy) { L.forEach(l => { l.w[l.k] = {x: r6(l.o.x + dx), y: r6(l.o.y + dy)}; }); }

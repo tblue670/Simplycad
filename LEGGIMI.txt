@@ -1,4 +1,4 @@
-SimplyCAD Pro - pubblicazione su GitHub Pages (v34.12)
+SimplyCAD Pro - pubblicazione su GitHub Pages (v34.13)
 
 Contenuto (vanno caricati tutti, senza rinominarli e SENZA cartelle intorno):
   index.html  sw.js  manifest.webmanifest  icon-192.png  icon-512.png  icon-maskable.png  README.md
@@ -566,6 +566,12 @@ NOVITÀ v29.0
 - Finestre e pannelli: tutti con la maniglia ⠿⠿⠿ in cima e lo stesso aspetto; si riaprono nell'ultima posizione
   in cui li hai lasciati e, se coprirebbero il punto appena toccato, si aprono dall'altra parte dello schermo.
   Doppio tocco sulla maniglia: posizione iniziale.
+
+NOVITÀ v34.13 (correzione ✂)
+- Col dito l'estremo del muro selezionato si prende più facilmente. Prima, se il dito non era proprio sull'estremo,
+  si spostava tutto il muro e il muro collegato lo seguiva, anche dopo aver toccato ✂.
+- Dopo ✂ l'estremo staccato ha un anello rosso tratteggiato; anche spostando tutto il muro, l'altro muro resta fermo.
+- ✂ si annulla da solo cambiando selezione o dopo lo spostamento.
 
 NOVITÀ v34.12 (finestra della quota)
 - Al posto delle coordinate X/Y: misura e angolo da scrivere (le coordinate restano in «Coordinate», chiuse).
